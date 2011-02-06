@@ -22,3 +22,15 @@ This API provides access to posix vfs like functions such as
 stat(), read(), ...
 
 examples/nfsclient-sync.c provides examples on how to use this API
+
+
+
+ROOT vs NON-ROOT
+================
+When running as root, libnfs tries to allocate a system port for its connection
+to the nfs server. When running as non-root it will use a normal 
+ephemeral port.
+Many NFS servers default to a mode where they do not allow non-system
+ports from connecting.
+These servers require you use the "insecure" export option in /etc/exports
+in order to allow libnfs clients to be able to connect.
