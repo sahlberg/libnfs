@@ -1,0 +1,111 @@
+prefix = @prefix@
+exec_prefix = @exec_prefix@
+libdir = @libdir@
+bindir = @bindir@
+LIBS=@LIBS@
+
+INSTALLCMD = @install@ -c
+
+CC=gcc
+CFLAGS=-g -O0 -fPIC -Wall -W -I. -Iinclude -Imount -Infs -Iportmap "-D_U_=__attribute__((unused))" -D_FILE_OFFSET_BITS=64
+
+LIBNFS_A=lib/libnfs.a
+LIBNFS_SO_NAME=libnfs.so.1
+VERSION=1.0.0
+LIBNFS_SO=lib/libnfs.so.$(VERSION)
+
+LIB_OBJS = lib/pdu.o lib/init.o lib/socket.o \
+lib/libnfs.o lib/libnfs-sync.o
+
+LIBNFS_OBJS = \
+mount/libnfs-raw-mount.o mount/mount.o \
+portmap/libnfs-raw-portmap.o portmap/portmap.o \
+nfs/libnfs-raw-nfs.o nfs/nfs.o
+
+EXAMPLES=bin/nfsclient-raw bin/nfsclient-async bin/nfsclient-sync
+
+all: $(LIBNFS_SO) $(EXAMPLES)
+
+bin/nfsclient-async: examples/nfsclient-async.c $(LIBNFS_A)
+	mkdir -p bin
+	$(CC) $(CFLAGS) -o $@ examples/nfsclient-async.c $(LIBNFS_A) $(LIBS)
+
+bin/nfsclient-sync: examples/nfsclient-sync.c $(LIBNFS_A)
+	mkdir -p bin
+	$(CC) $(CFLAGS) -o $@ examples/nfsclient-sync.c $(LIBNFS_A) $(LIBS)
+
+bin/nfsclient-raw: examples/nfsclient-raw.c $(LIBNFS_A)
+	mkdir -p bin
+	$(CC) $(CFLAGS) -o $@ examples/nfsclient-raw.c $(LIBNFS_A) $(LIBS)
+
+$(LIBNFS_A): $(LIBNFS_OBJS) $(LIB_OBJS)
+	@echo Creating library $@
+	ar r $(LIBNFS_A) $(LIBNFS_OBJS) $(LIB_OBJS)
+	ranlib $(LIBNFS_A)
+
+$(LIBNFS_SO): $(LIBNFS_OBJS) $(LIB_OBJS)
+	@echo Creating shared library $@
+	$(CC) -shared -Wl,-soname=$(LIBNFS_SO_NAME) -o $@ $(LIBNFS_OBJS) $(LIB_OBJS)
+
+portmap/libnfs-raw-portmap.h: portmap/portmap.x
+	@echo Generating $@
+	rpcgen -h portmap/portmap.x > portmap/libnfs-raw-portmap.h
+
+portmap/libnfs-raw-portmap.c: portmap/portmap.x
+	@echo Generating $@
+	rpcgen -c portmap/portmap.x | sed -e "s/#include \"portmap\/portmap.h\"/#include \"libnfs-raw-portmap.h\"/" > portmap/libnfs-raw-portmap.c
+
+portmap/libnfs-raw-portmap.o: portmap/libnfs-raw-portmap.c portmap/libnfs-raw-portmap.h
+	@echo Compiling $@
+	$(CC) $(CFLAGS) -c portmap/libnfs-raw-portmap.c -o $@
+
+mount/libnfs-raw-mount.h: mount/mount.x
+	@echo Generating $@
+	rpcgen -h mount/mount.x > mount/libnfs-raw-mount.h
+
+mount/libnfs-raw-mount.c: mount/mount.x
+	@echo Generating $@
+	rpcgen -c mount/mount.x | sed -e "s/#include \"mount\/mount.h\"/#include \"libnfs-raw-mount.h\"/" > mount/libnfs-raw-mount.c
+
+mount/libnfs-raw-mount.o: mount/libnfs-raw-mount.c mount/libnfs-raw-mount.h
+	@echo Compiling $@
+	$(CC) $(CFLAGS) -c mount/libnfs-raw-mount.c -o $@
+
+nfs/libnfs-raw-nfs.h: nfs/nfs.x
+	@echo Generating $@
+	rpcgen -h nfs/nfs.x > nfs/libnfs-raw-nfs.h
+
+nfs/libnfs-raw-nfs.c: nfs/nfs.x
+	@echo Generating $@
+	rpcgen -c nfs/nfs.x | sed -e "s/#include \"nfs\/nfs.h\"/#include \"libnfs-raw-nfs.h\"/" > nfs/libnfs-raw-nfs.c
+
+nfs/libnfs-raw-nfs.o: nfs/libnfs-raw-nfs.c nfs/libnfs-raw-nfs.h
+	@echo Compiling $@
+	$(CC) $(CFLAGS) -c nfs/libnfs-raw-nfs.c -o $@
+
+install: $(LIBNFS_A) $(LIBNFS_SO)
+ifeq ("$(LIBDIR)x","x")
+	$(INSTALLCMD) -m 755 $(LIBNFS_SO) $(libdir)
+	$(INSTALLCMD) -m 755 $(LIBNFS_A) $(libdir)
+	@ldconfig@
+else
+	$(INSTALLCMD) -m 755 $(LIBISCSI_SO) $(LIBDIR)
+	$(INSTALLCMD) -m 755 $(LIBNFS_A) $(LIBDIR)
+endif
+	mkdir -p $(DESTDIR)/usr/include/nfsc
+	$(INSTALLCMD) -m 644 include/libnfs.h $(DESTDIR)/usr/include/nfsc
+	$(INSTALLCMD) -m 644 include/libnfs-private.h $(DESTDIR)/usr/include/nfsc
+	$(INSTALLCMD) -m 644 mount/libnfs-raw-mount.h $(DESTDIR)/usr/include/nfsc
+	$(INSTALLCMD) -m 644 nfs/libnfs-raw-nfs.h $(DESTDIR)/usr/include/nfsc
+	$(INSTALLCMD) -m 644 portmap/libnfs-raw-portmap.h $(DESTDIR)/usr/include/nfsc
+
+distclean: clean
+	rm -f config.h config.log config.status configure Makefile
+
+clean:
+	rm -f bin/* lib/*.o lib/*.a $(LIBNFS_SO)
+	rm -f mount/*.o mount/libnfs-raw-mount.h mount/libnfs-raw-mount.c
+	rm -f nfs/*.o nfs/libnfs-raw-nfs.h nfs/libnfs-raw-nfs.c
+	rm -f portmap/*.o portmap/libnfs-raw-portmap.h portmap/libnfs-raw-portmap.c
+	rm -f nfsclient-raw nfsclient-async nfsclient-sync
+

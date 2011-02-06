@@ -1,0 +1,24 @@
+LIBNFS is a client library for accessing NFS shares over a network.
+
+LIBNFS offers three different APIs, for different use :
+1, RAW : A fully async low level rpc library for nfs protocols
+This API is described in include/libnfs-raw.h
+it offers a fully async interface to raw XDR encoded blobs.
+This api provides very flexible and precice control of the RPC issued.
+
+examples/nfsclient-raw.c provides examples on how to use the raw API
+
+2, NFS ASYNC : A fully asynchronous library for high level vfs functions
+This API is described by the *_async() fucntions in include/libnfs.h.
+This API provides a fully async access to posix vfs like functions such as 
+stat(), read(), ...
+
+examples/nfsclient-async.c provides examples on how to use this API
+
+
+3, NFS SYNC : A synchronous library for high level vfs functions
+This API is described by the *_sync() fucntions in include/libnfs.h.
+This API provides access to posix vfs like functions such as 
+stat(), read(), ...
+
+examples/nfsclient-sync.c provides examples on how to use this API
