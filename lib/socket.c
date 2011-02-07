@@ -43,11 +43,7 @@ int rpc_get_fd(struct rpc_context *rpc)
 
 int rpc_which_events(struct rpc_context *rpc)
 {
-	int events = POLLIN;
-
-	if (rpc->is_connected == 0) {
-		events |= POLLOUT;
-	}	
+	int events = rpc->is_connected ? POLLIN : POLLOUT;
 
 	if (rpc->outqueue) {
 		events |= POLLOUT;
@@ -168,11 +164,20 @@ static int rpc_read_from_socket(struct rpc_context *rpc)
 int rpc_service(struct rpc_context *rpc, int revents)
 {
 	if (revents & POLLERR) {
-		printf("rpc_service: POLLERR, socket error\n");
-		if (rpc->is_connected == 0) {
-			rpc_set_error(rpc, "Failed to connect to server socket.");
+		int err = 0;
+		socklen_t err_size = sizeof(err);
+
+		if (getsockopt(rpc->fd, SOL_SOCKET, SO_ERROR,
+				&err, &err_size) != 0 || err != 0) {
+			if (err == 0) {
+				err = errno;
+			}
+			rpc_set_error(rpc, "rpc_service: socket error "
+					       "%s(%d).",
+					       strerror(err), err);
 		} else {
-			rpc_set_error(rpc, "Socket closed with POLLERR");
+			rpc_set_error(rpc, "rpc_service: POLLERR, "
+						"Unknown socket error.");
 		}
 		rpc->connect_cb(rpc, RPC_STATUS_ERROR, rpc->error_string, rpc->connect_data);
 		return -1;
@@ -185,6 +190,22 @@ int rpc_service(struct rpc_context *rpc, int revents)
 	}
 
 	if (rpc->is_connected == 0 && rpc->fd != -1 && revents&POLLOUT) {
+		int err = 0;
+		socklen_t err_size = sizeof(err);
+
+		if (getsockopt(rpc->fd, SOL_SOCKET, SO_ERROR,
+				&err, &err_size) != 0 || err != 0) {
+			if (err == 0) {
+				err = errno;
+			}
+			rpc_set_error(rpc, "rpc_service: socket error "
+				  	"%s(%d) while connecting.",
+					strerror(err), err);
+			rpc->connect_cb(rpc, RPC_STATUS_ERROR,
+					NULL, rpc->connect_data);
+			return -1;
+		}
+
 		rpc->is_connected = 1;
 		rpc->connect_cb(rpc, RPC_STATUS_SUCCESS, NULL, rpc->connect_data);
 		return 0;
