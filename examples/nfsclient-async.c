@@ -19,7 +19,7 @@
  */
 
 #define SERVER "10.1.1.27"
-#define EXPORT "/VIRTUAL"
+#define EXPORT "/shared"
 #define NFSFILE "/BOOKS/Classics/Dracula.djvu"
 #define NFSDIR "/BOOKS/Classics/"
 
@@ -187,7 +187,7 @@ void nfs_mount_cb(int status, struct nfs_context *nfs, void *data, void *private
 
 
 
-int main(int argc, char *argv[])
+int main(int argc _U_, char *argv[] _U_)
 {
 	struct nfs_context *nfs;
 	struct pollfd pfd;

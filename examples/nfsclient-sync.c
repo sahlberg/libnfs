@@ -44,7 +44,7 @@ struct client {
 };
 
 
-int main(int argc, char *argv[])
+int main(int argc _U_, char *argv[] _U_)
 {
 	struct nfs_context *nfs;
 	int i, ret;
@@ -137,7 +137,7 @@ int main(int argc, char *argv[])
 
 	ret = nfs_close_sync(nfs, nfsfh);
 	if (ret < 0) {
-		printf("Failed to close(%s)\n", NFSFILE, nfs_get_error(nfs));
+		printf("Failed to close(%s): %s\n", NFSFILE, nfs_get_error(nfs));
 		exit(10);
 	}
 
@@ -169,14 +169,14 @@ int main(int argc, char *argv[])
 	}
 	ret = nfs_close_sync(nfs, nfsfh);
 	if (ret < 0) {
-		printf("Failed to close(%s)\n", NFSFILEW, nfs_get_error(nfs));
+		printf("Failed to close(%s) %s\n", NFSFILEW, nfs_get_error(nfs));
 		exit(10);
 	}
 
 
 	ret = nfs_statvfs_sync(nfs, NFSDIR, &svfs);
 	if (ret < 0) {
-		printf("Failed to statvfs(%s)\n", NFSDIR, nfs_get_error(nfs));
+		printf("Failed to statvfs(%s) %s\n", NFSDIR, nfs_get_error(nfs));
 		exit(10);
 	}
 	printf("files %d/%d/%d\n", (int)svfs.f_files, (int)svfs.f_ffree, (int)svfs.f_favail);

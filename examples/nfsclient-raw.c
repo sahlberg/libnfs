@@ -38,7 +38,7 @@ struct client {
        struct nfs_fh3 rootfh;
 };
 
-void nfs_fsinfo_cb(struct rpc_context *rpc, int status, void *data, void *private_data)
+void nfs_fsinfo_cb(struct rpc_context *rpc _U_, int status, void *data, void *private_data)
 {
 	struct client *client = private_data;
 	FSINFO3res *res = data;
@@ -59,7 +59,7 @@ void nfs_fsinfo_cb(struct rpc_context *rpc, int status, void *data, void *privat
 }
 
 
-void nfs_connect_cb(struct rpc_context *rpc, int status, void *data, void *private_data)
+void nfs_connect_cb(struct rpc_context *rpc, int status, void *data _U_, void *private_data)
 {
 	struct client *client = private_data;
 
@@ -130,7 +130,7 @@ void mount_null_cb(struct rpc_context *rpc, int status, void *data, void *privat
 	}
 }
 
-void mount_connect_cb(struct rpc_context *rpc, int status, void *data, void *private_data)
+void mount_connect_cb(struct rpc_context *rpc, int status, void *data _U_, void *private_data)
 {
 	struct client *client = private_data;
 
@@ -151,7 +151,6 @@ void mount_connect_cb(struct rpc_context *rpc, int status, void *data, void *pri
 void pmap_getport_cb(struct rpc_context *rpc, int status, void *data, void *private_data)
 {
 	struct client *client = private_data;
-	uint32_t port;
 
 	if (status == RPC_STATUS_ERROR) {
 		printf("portmapper getport call failed with \"%s\"\n", (char *)data);
@@ -165,7 +164,7 @@ void pmap_getport_cb(struct rpc_context *rpc, int status, void *data, void *priv
 	client->mount_port = *(uint32_t *)data;
 	printf("GETPORT returned Port:%d\n", client->mount_port);
 	if (client->mount_port == 0) {
-		printf("RPC.MOUNTD is not available on server : %s\n", client->server, client->mount_port);
+		printf("RPC.MOUNTD is not available on server : %s:%d\n", client->server, client->mount_port);
 		exit(10);
 	}		
 
@@ -204,7 +203,7 @@ void pmap_null_cb(struct rpc_context *rpc, int status, void *data, void *private
 	}
 }
 
-void pmap_connect_cb(struct rpc_context *rpc, int status, void *data, void *private_data)
+void pmap_connect_cb(struct rpc_context *rpc, int status, void *data _U_, void *private_data)
 {
 	struct client *client = private_data;
 
@@ -222,11 +221,10 @@ void pmap_connect_cb(struct rpc_context *rpc, int status, void *data, void *priv
 }
 
 
-int main(int argc, char *argv[])
+int main(int argc _U_, char *argv[] _U_)
 {
 	struct rpc_context *rpc;
 	struct pollfd pfd;
-	int ret;
 	struct client client;
 
 	rpc = rpc_init_context();
