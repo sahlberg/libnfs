@@ -67,6 +67,16 @@ void nfs_destroy_context(struct nfs_context *nfs);
 
 struct nfsfh;
 
+/*
+ * Get the maximum supported READ3 size by the server
+ */
+size_t nfs_get_readmax(struct nfs_context *nfs);
+
+/*
+ * Get the maximum supported WRITE3 size by the server
+ */
+size_t nfs_get_writemax(struct nfs_context *nfs);
+
 
 /*
  * MOUNT THE EXPORT

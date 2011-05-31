@@ -63,6 +63,8 @@ struct nfs_context {
        char *server;
        char *export;
        struct nfs_fh3 rootfh;
+       size_t readmax;
+       size_t writemax;
 };
 
 struct nfs_cb_data;
@@ -178,7 +180,7 @@ void free_nfs_cb_data(struct nfs_cb_data *data)
 
 
 
-static void nfs_mount_9_cb(struct rpc_context *rpc _U_, int status, void *command_data, void *private_data)
+static void nfs_mount_10_cb(struct rpc_context *rpc _U_, int status, void *command_data, void *private_data)
 {
 	struct nfs_cb_data *data = private_data;
 	struct nfs_context *nfs = data->nfs;
@@ -198,6 +200,33 @@ static void nfs_mount_9_cb(struct rpc_context *rpc _U_, int status, void *comman
 	free_nfs_cb_data(data);
 }
 
+static void nfs_mount_9_cb(struct rpc_context *rpc, int status, void *command_data, void *private_data)
+{
+	struct nfs_cb_data *data = private_data;
+	struct nfs_context *nfs = data->nfs;
+	FSINFO3res *res = command_data;
+
+	if (status == RPC_STATUS_ERROR) {
+		data->cb(-EFAULT, nfs, command_data, data->private_data);
+		free_nfs_cb_data(data);
+		return;
+	}
+	if (status == RPC_STATUS_CANCEL) {
+		data->cb(-EINTR, nfs, "Command was cancelled", data->private_data);
+		free_nfs_cb_data(data);
+		return;
+	}
+
+	nfs->readmax = res->FSINFO3res_u.resok.rtmax;
+	nfs->writemax = res->FSINFO3res_u.resok.wtmax;
+
+	if (rpc_nfs_getattr_async(rpc, nfs_mount_10_cb, &nfs->rootfh, data) != 0) {
+		data->cb(-ENOMEM, nfs, command_data, data->private_data);
+		free_nfs_cb_data(data);
+		return;
+	}
+}
+
 static void nfs_mount_8_cb(struct rpc_context *rpc, int status, void *command_data, void *private_data)
 {
 	struct nfs_cb_data *data = private_data;
@@ -214,13 +243,13 @@ static void nfs_mount_8_cb(struct rpc_context *rpc, int status, void *command_da
 		return;
 	}
 
-
-	if (rpc_nfs_getattr_async(rpc, nfs_mount_9_cb, &nfs->rootfh, data) != 0) {
+	if (rpc_nfs_fsinfo_async(rpc, nfs_mount_9_cb, &nfs->rootfh, data) != 0) {
 		data->cb(-ENOMEM, nfs, command_data, data->private_data);
 		free_nfs_cb_data(data);
 		return;
 	}
 }
+
 
 static void nfs_mount_7_cb(struct rpc_context *rpc, int status, void *command_data, void *private_data)
 {
@@ -2703,3 +2732,20 @@ off_t nfs_get_current_offset(struct nfsfh *nfsfh)
 	return nfsfh->offset;
 }
 
+
+
+/*
+ * Get the maximum supported READ3 size by the server
+ */
+size_t nfs_get_readmax(struct nfs_context *nfs)
+{
+	return nfs->readmax;
+}
+
+/*
+ * Get the maximum supported WRITE3 size by the server
+ */
+size_t nfs_get_writemax(struct nfs_context *nfs)
+{
+	return nfs->writemax;
+}
