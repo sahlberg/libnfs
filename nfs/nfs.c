@@ -537,6 +537,34 @@ int rpc_nfs_fsstat_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh,
 	return 0;
 }
 
+int rpc_nfs_fsinfo_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh, void *private_data)
+{
+	struct rpc_pdu *pdu;
+	FSINFO3args args;
+
+	pdu = rpc_allocate_pdu(rpc, NFS_PROGRAM, NFS_V3, NFS3_FSINFO, cb, private_data, (xdrproc_t)xdr_FSINFO3res, sizeof(FSINFO3res));
+	if (pdu == NULL) {
+		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu for nfs/fsinfo call");
+		return -1;
+	}
+
+	args.fsroot.data.data_len = fh->data.data_len; 
+	args.fsroot.data.data_val = fh->data.data_val; 
+
+	if (xdr_FSINFO3args(&pdu->xdr, &args) == 0) {
+		rpc_set_error(rpc, "XDR error: Failed to encode FSINFO3args");
+		rpc_free_pdu(rpc, pdu);
+		return -2;
+	}
+
+	if (rpc_queue_pdu(rpc, pdu) != 0) {
+		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for nfs/fsinfo call");
+		rpc_free_pdu(rpc, pdu);
+		return -3;
+	}
+
+	return 0;
+}
 
 int rpc_nfs_readlink_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh, void *private_data)
 {
