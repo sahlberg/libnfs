@@ -7,7 +7,7 @@ LIBS=@LIBS@
 INSTALLCMD = @install@ -c
 
 CC=gcc
-CFLAGS=-g -O0 -fPIC -Wall -W -I. -Iinclude -Imount -Infs -Iportmap "-D_U_=__attribute__((unused))" -D_FILE_OFFSET_BITS=64
+CFLAGS=-g -O0 -fPIC -Wall -W -I. -Iinclude -Imount -Infs -Iportmap -Irquota "-D_U_=__attribute__((unused))" -D_FILE_OFFSET_BITS=64
 
 LIBNFS_A=lib/libnfs.a
 LIBNFS_SO_NAME=libnfs.so.1
@@ -20,7 +20,8 @@ lib/libnfs.o lib/libnfs-sync.o
 LIBNFS_OBJS = \
 mount/libnfs-raw-mount.o mount/mount.o \
 portmap/libnfs-raw-portmap.o portmap/portmap.o \
-nfs/libnfs-raw-nfs.o nfs/nfs.o
+nfs/libnfs-raw-nfs.o nfs/nfs.o \
+rquota/libnfs-raw-rquota.o rquota/rquota.o
 
 EXAMPLES=bin/nfsclient-raw bin/nfsclient-async bin/nfsclient-sync
 
@@ -83,6 +84,18 @@ nfs/libnfs-raw-nfs.o: nfs/libnfs-raw-nfs.c nfs/libnfs-raw-nfs.h
 	@echo Compiling $@
 	$(CC) $(CFLAGS) -c nfs/libnfs-raw-nfs.c -o $@
 
+rquota/libnfs-raw-rquota.h: rquota/rquota.x
+	@echo Generating $@
+	rpcgen -h rquota/rquota.x > rquota/libnfs-raw-rquota.h
+
+rquota/libnfs-raw-rquota.c: rquota/rquota.x
+	@echo Generating $@
+	rpcgen -c rquota/rquota.x | sed -e "s/#include \"rquota\/rquota.h\"/#include \"libnfs-raw-rquota.h\"/" > rquota/libnfs-raw-rquota.c
+
+rquota/libnfs-raw-rquota.o: rquota/libnfs-raw-rquota.c rquota/libnfs-raw-rquota.h
+	@echo Compiling $@
+	$(CC) $(CFLAGS) -c rquota/libnfs-raw-rquota.c -o $@
+
 install: $(LIBNFS_A) $(LIBNFS_SO)
 ifeq ("$(LIBDIR)x","x")
 	$(INSTALLCMD) -m 755 $(LIBNFS_SO) $(libdir)
@@ -107,5 +120,6 @@ clean:
 	rm -f mount/*.o mount/libnfs-raw-mount.h mount/libnfs-raw-mount.c
 	rm -f nfs/*.o nfs/libnfs-raw-nfs.h nfs/libnfs-raw-nfs.c
 	rm -f portmap/*.o portmap/libnfs-raw-portmap.h portmap/libnfs-raw-portmap.c
+	rm -f rquota/*.o rquota/libnfs-raw-rquota.h rquota/libnfs-raw-rquota.c
 	rm -f nfsclient-raw nfsclient-async nfsclient-sync
 

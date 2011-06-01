@@ -29,14 +29,51 @@
 #include "libnfs-raw.h"
 #include "libnfs-raw-mount.h"
 #include "libnfs-raw-nfs.h"
+#include "libnfs-raw-rquota.h"
 
 struct client {
        char *server;
        char *export;
        uint32_t mount_port;
+       uint32_t rquota_port;
        int is_finished;
        struct nfs_fh3 rootfh;
 };
+
+void rquota_getquota_cb(struct rpc_context *rpc _U_, int status, void *data, void *private_data)
+{
+	struct client *client = private_data;
+	GETQUOTA1res *res = data;
+
+	if (status == RPC_STATUS_ERROR) {
+		printf("rquota/getquota call failed with \"%s\"\n", (char *)data);
+		exit(10);
+	}
+	if (status != RPC_STATUS_SUCCESS) {
+		printf("rquota/getquota call to server %s failed, status:%d\n", client->server, status);
+		exit(10);
+	}
+
+	printf("rquota responded ok\n");
+	client->is_finished = 1;
+}
+
+void rquota_connect_cb(struct rpc_context *rpc, int status, void *data _U_, void *private_data)
+{
+	struct client *client = private_data;
+
+	if (status != RPC_STATUS_SUCCESS) {
+		printf("connection to RPC.RQUOTAD on server %s failed\n", client->server);
+		exit(10);
+	}
+
+	printf("Connected to RPC.RQUOTAD on %s:%d\n", client->server, client->rquota_port);
+	printf("Send GETQUOTA request for uid 100\n");
+	if (rpc_rquota1_getquota_async(rpc, rquota_getquota_cb, EXPORT, 100, client) != 0) {
+		printf("Failed to send fsinfo request\n");
+		exit(10);
+	}
+}
 
 void nfs_fsinfo_cb(struct rpc_context *rpc _U_, int status, void *data, void *private_data)
 {
@@ -55,7 +92,18 @@ void nfs_fsinfo_cb(struct rpc_context *rpc _U_, int status, void *data, void *pr
 	printf("Got reply from server for NFS/FSINFO procedure.\n");
 	printf("Read Max:%d\n", (int)res->FSINFO3res_u.resok.rtmax);
 	printf("Write Max:%d\n", (int)res->FSINFO3res_u.resok.wtmax);
-	client->is_finished = 1;
+
+	printf("Disconnect socket from nfs server\n");
+	if (rpc_disconnect(rpc, "normal disconnect") != 0) {
+		printf("Failed to disconnect socket to nfs\n");
+		exit(10);
+	}
+
+	printf("Connect to RPC.RQUOTAD on %s:%d\n", client->server, client->rquota_port);
+	if (rpc_connect_async(rpc, client->server, client->rquota_port, rquota_connect_cb, client) != 0) {
+		printf("Failed to start connection\n");
+		exit(10);
+	}
 }
 
 
@@ -68,7 +116,7 @@ void nfs_connect_cb(struct rpc_context *rpc, int status, void *data _U_, void *p
 		exit(10);
 	}
 
-	printf("Connected to RPC.NFSDD on %s:%d\n", client->server, client->mount_port);
+	printf("Connected to RPC.NFSD on %s:%d\n", client->server, client->mount_port);
 	printf("Send FSINFO request\n");
 	if (rpc_nfs_fsinfo_async(rpc, nfs_fsinfo_cb, &client->rootfh, client) != 0) {
 		printf("Failed to send fsinfo request\n");
@@ -101,7 +149,7 @@ void mount_mnt_cb(struct rpc_context *rpc, int status, void *data, void *private
 		exit(10);
 	}
 
-	printf("Connect to RPC.NFSDD on %s:%d\n", client->server, 2049);
+	printf("Connect to RPC.NFSD on %s:%d\n", client->server, 2049);
 	if (rpc_connect_async(rpc, client->server, 2049, nfs_connect_cb, client) != 0) {
 		printf("Failed to start connection\n");
 		exit(10);
@@ -148,7 +196,7 @@ void mount_connect_cb(struct rpc_context *rpc, int status, void *data _U_, void 
 }
 
 
-void pmap_getport_cb(struct rpc_context *rpc, int status, void *data, void *private_data)
+void pmap_getport2_cb(struct rpc_context *rpc, int status, void *data, void *private_data)
 {
 	struct client *client = private_data;
 
@@ -162,7 +210,7 @@ void pmap_getport_cb(struct rpc_context *rpc, int status, void *data, void *priv
 	}
 
 	client->mount_port = *(uint32_t *)data;
-	printf("GETPORT returned Port:%d\n", client->mount_port);
+	printf("GETPORT returned RPC.MOUNTD is on port:%d\n", client->mount_port);
 	if (client->mount_port == 0) {
 		printf("RPC.MOUNTD is not available on server : %s:%d\n", client->server, client->mount_port);
 		exit(10);
@@ -181,6 +229,32 @@ void pmap_getport_cb(struct rpc_context *rpc, int status, void *data, void *priv
 	}
 }
 
+void pmap_getport1_cb(struct rpc_context *rpc, int status, void *data, void *private_data)
+{
+	struct client *client = private_data;
+
+	if (status == RPC_STATUS_ERROR) {
+		printf("portmapper getport call failed with \"%s\"\n", (char *)data);
+		exit(10);
+	}
+       	if (status != RPC_STATUS_SUCCESS) {
+		printf("portmapper getport call to server %s failed, status:%d\n", client->server, status);
+		exit(10);
+	}
+
+	client->rquota_port = *(uint32_t *)data;
+	printf("GETPORT returned RPC.RQUOTAD on port:%d\n", client->rquota_port);
+	if (client->rquota_port == 0) {
+		printf("RPC.RQUOTAD is not available on server : %s:%d\n", client->server, client->rquota_port);
+		exit(10);
+	}		
+
+	printf("Send getport request asking for MOUNT port\n");
+	if (rpc_pmap_getport_async(rpc, MOUNT_PROGRAM, MOUNT_V3, pmap_getport2_cb, client) != 0) {
+		printf("Failed to send getport request\n");
+		exit(10);
+	}
+}
 
 void pmap_null_cb(struct rpc_context *rpc, int status, void *data, void *private_data)
 {
@@ -197,7 +271,7 @@ void pmap_null_cb(struct rpc_context *rpc, int status, void *data, void *private
 
 	printf("Got reply from server for PORTMAP/NULL procedure.\n");
 	printf("Send getport request asking for MOUNT port\n");
-	if (rpc_pmap_getport_async(rpc, MOUNT_PROGRAM, MOUNT_V3, pmap_getport_cb, client) != 0) {
+	if (rpc_pmap_getport_async(rpc, RQUOTA_PROGRAM, RQUOTA_V1, pmap_getport1_cb, client) != 0) {
 		printf("Failed to send getport request\n");
 		exit(10);
 	}
