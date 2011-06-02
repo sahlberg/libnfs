@@ -18,6 +18,8 @@
 #include <stdio.h>
 #include <errno.h>
 #include <sys/stat.h>
+#include <string.h>
+#include <rpc/rpc.h>
 #include <rpc/xdr.h>
 #include "libnfs.h"
 #include "libnfs-raw.h"
