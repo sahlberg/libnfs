@@ -21,6 +21,8 @@
 #include <unistd.h>
 #include <string.h>
 #include <strings.h>
+#include <stdlib.h>
+#include <rpc/rpc.h>
 #include <rpc/xdr.h>
 #include "slist.h"
 #include "libnfs.h"

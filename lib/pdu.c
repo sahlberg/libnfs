@@ -17,6 +17,8 @@
 
 #include <stdio.h>
 #include <strings.h>
+#include <stdlib.h>
+#include <rpc/rpc.h>
 #include <rpc/xdr.h>
 #include <rpc/rpc_msg.h>
 #include "slist.h"

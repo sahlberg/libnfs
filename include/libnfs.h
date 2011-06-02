@@ -93,14 +93,14 @@ size_t nfs_get_writemax(struct nfs_context *nfs);
  * -errno : An error occured.
  *          data is the error string.
  */
-int nfs_mount_async(struct nfs_context *nfs, const char *server, const char *export, nfs_cb cb, void *private_data);
+int nfs_mount_async(struct nfs_context *nfs, const char *server, const char *exportname, nfs_cb cb, void *private_data);
 /*
  * Sync nfs mount.
  * Function returns
  *      0 : The operation was successfull.
  * -errno : The command failed.
  */
-int nfs_mount_sync(struct nfs_context *nfs, const char *server, const char *export);
+int nfs_mount_sync(struct nfs_context *nfs, const char *server, const char *exportname);
 
 
 
