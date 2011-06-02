@@ -15,6 +15,17 @@ struct GETQUOTA1args {
        int uid;
 };
 
+enum quotatype {
+     RQUOTA_TYPE_UID = 0,
+     RQUOTA_TYPE_GID = 1
+};
+
+struct GETQUOTA2args {
+       exportpath export;
+       quotatype type;
+       int uid;
+};
+
 struct GETQUOTA1res_ok {
        int bsize;
        int active;
@@ -46,5 +57,16 @@ program RQUOTA_PROGRAM {
 		GETQUOTA1res
 		RQUOTA1_GETACTIVEQUOTA(GETQUOTA1args)    = 2;
 	} = 1;
+
+	version RQUOTA_V2 {
+		void
+		RQUOTA2_NULL(void)                 = 0;
+
+		GETQUOTA1res
+		RQUOTA2_GETQUOTA(GETQUOTA2args)    = 1;
+
+		GETQUOTA1res
+		RQUOTA2_GETACTIVEQUOTA(GETQUOTA2args)    = 2;
+	} = 2;
 } = 100011;
 

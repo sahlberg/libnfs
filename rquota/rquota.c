@@ -54,12 +54,12 @@ int rpc_rquota1_null_async(struct rpc_context *rpc, rpc_cb cb, void *private_dat
 
 	pdu = rpc_allocate_pdu(rpc, RQUOTA_PROGRAM, RQUOTA_V1, RQUOTA1_NULL, cb, private_data, (xdrproc_t)xdr_void, 0);
 	if (pdu == NULL) {
-		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu for rquota/null call");
+		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu for rquota1/null call");
 		return -1;
 	}
 
 	if (rpc_queue_pdu(rpc, pdu) != 0) {
-		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for rquota/null call");
+		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for rquota1/null call");
 		rpc_free_pdu(rpc, pdu);
 		return -2;
 	}
@@ -74,7 +74,7 @@ int rpc_rquota1_getquota_async(struct rpc_context *rpc, rpc_cb cb, char *export,
 
 	pdu = rpc_allocate_pdu(rpc, RQUOTA_PROGRAM, RQUOTA_V1, RQUOTA1_GETQUOTA, cb, private_data, (xdrproc_t)xdr_GETQUOTA1res, sizeof(GETQUOTA1res));
 	if (pdu == NULL) {
-		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu for rquota/getquota call");
+		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu for rquota1/getquota call");
 		return -1;
 	}
 
@@ -88,7 +88,7 @@ int rpc_rquota1_getquota_async(struct rpc_context *rpc, rpc_cb cb, char *export,
 	}
 
 	if (rpc_queue_pdu(rpc, pdu) != 0) {
-		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for rquota/getquota call");
+		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for rquota1/getquota call");
 		rpc_free_pdu(rpc, pdu);
 		return -3;
 	}
@@ -103,7 +103,7 @@ int rpc_rquota1_getactivequota_async(struct rpc_context *rpc, rpc_cb cb, char *e
 
 	pdu = rpc_allocate_pdu(rpc, RQUOTA_PROGRAM, RQUOTA_V1, RQUOTA1_GETACTIVEQUOTA, cb, private_data, (xdrproc_t)xdr_GETQUOTA1res, sizeof(GETQUOTA1res));
 	if (pdu == NULL) {
-		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu for rquota/getactivequota call");
+		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu for rquota1/getactivequota call");
 		return -1;
 	}
 
@@ -117,7 +117,87 @@ int rpc_rquota1_getactivequota_async(struct rpc_context *rpc, rpc_cb cb, char *e
 	}
 
 	if (rpc_queue_pdu(rpc, pdu) != 0) {
-		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for rquota/getactivequota call");
+		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for rquota1/getactivequota call");
+		rpc_free_pdu(rpc, pdu);
+		return -3;
+	}
+
+	return 0;
+}
+
+
+int rpc_rquota2_null_async(struct rpc_context *rpc, rpc_cb cb, void *private_data)
+{
+	struct rpc_pdu *pdu;
+
+	pdu = rpc_allocate_pdu(rpc, RQUOTA_PROGRAM, RQUOTA_V2, RQUOTA2_NULL, cb, private_data, (xdrproc_t)xdr_void, 0);
+	if (pdu == NULL) {
+		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu for rquota2/null call");
+		return -1;
+	}
+
+	if (rpc_queue_pdu(rpc, pdu) != 0) {
+		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for rquota2/null call");
+		rpc_free_pdu(rpc, pdu);
+		return -2;
+	}
+
+	return 0;
+}
+
+int rpc_rquota2_getquota_async(struct rpc_context *rpc, rpc_cb cb, char *export, int type, int uid, void *private_data)
+{
+	struct rpc_pdu *pdu;
+	GETQUOTA2args args;
+
+	pdu = rpc_allocate_pdu(rpc, RQUOTA_PROGRAM, RQUOTA_V2, RQUOTA2_GETQUOTA, cb, private_data, (xdrproc_t)xdr_GETQUOTA1res, sizeof(GETQUOTA1res));
+	if (pdu == NULL) {
+		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu for rquota2/getquota call");
+		return -1;
+	}
+
+	args.export  = export;
+	args.type    = type;
+	args.uid     = uid;
+
+	if (xdr_GETQUOTA2args(&pdu->xdr, &args) == 0) {
+		rpc_set_error(rpc, "XDR error: Failed to encode GETQUOTA2args");
+		rpc_free_pdu(rpc, pdu);
+		return -2;
+	}
+
+	if (rpc_queue_pdu(rpc, pdu) != 0) {
+		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for rquota2/getquota call");
+		rpc_free_pdu(rpc, pdu);
+		return -3;
+	}
+
+	return 0;
+}
+
+int rpc_rquota2_getactivequota_async(struct rpc_context *rpc, rpc_cb cb, char *export, int type, int uid, void *private_data)
+{
+	struct rpc_pdu *pdu;
+	GETQUOTA2args args;
+
+	pdu = rpc_allocate_pdu(rpc, RQUOTA_PROGRAM, RQUOTA_V2, RQUOTA2_GETACTIVEQUOTA, cb, private_data, (xdrproc_t)xdr_GETQUOTA1res, sizeof(GETQUOTA1res));
+	if (pdu == NULL) {
+		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu for rquota2/getactivequota call");
+		return -1;
+	}
+
+	args.export  = export;
+	args.type    = type;
+	args.uid     = uid;
+
+	if (xdr_GETQUOTA2args(&pdu->xdr, &args) == 0) {
+		rpc_set_error(rpc, "XDR error: Failed to encode GETQUOTA2args");
+		rpc_free_pdu(rpc, pdu);
+		return -2;
+	}
+
+	if (rpc_queue_pdu(rpc, pdu) != 0) {
+		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for rquota2/getactivequota call");
 		rpc_free_pdu(rpc, pdu);
 		return -3;
 	}
