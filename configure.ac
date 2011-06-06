@@ -20,6 +20,9 @@ ldconfig="ldconfig"
 case `uname` in
   Linux*)
     ;;
+  Darwin*)
+    libdir='${exec_prefix}/lib'
+    ;;
   AIX*)
     ;;
   SunOS)
