@@ -60,6 +60,10 @@ AC_ARG_WITH([examples],
 	      )
 AC_SUBST(ENABLE_EXAMPLES)
 
+AC_ARG_WITH([ldconfig],
+	    [  --without-ldconfig  Disable call of ldconfig on make install],
+	    [ldconfig='echo ldconfig disabled'])
+
 AC_CONFIG_HEADER(config.h)
 
 EXTRA_OBJ=""
