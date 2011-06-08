@@ -7,7 +7,15 @@ const NFS3_COOKIEVERFSIZE = 8;
 
 typedef opaque cookieverf3[NFS3_COOKIEVERFSIZE];
 
-typedef unsigned hyper uint64;
+
+/*unsigned hyper can be overridden by giving rpcgen -DU_INT64_PLATTFORM_TYPE="foo" - for plattforms
+  where rpcgen doesn't know anything about hyper
+  default to unsigned hyper as of rfc 1813 */
+#ifndef U_INT64_PLATTFORM_TYPE
+#define U_INT64_PLATTFORM_TYPE unsigned hyper
+#endif/*U_INT64_PLATTFORM_TYPE*/
+
+typedef U_INT64_PLATTFORM_TYPE uint64;
 typedef uint64 cookie3;
 
 struct nfs_fh3 {

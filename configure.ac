@@ -14,6 +14,7 @@ if test "${libdir}" = '${exec_prefix}/lib'; then
 fi
 
 is_solaris="no"
+is_darwin="no"
 install="/usr/bin/install"
 ldconfig="ldconfig"
 
@@ -22,6 +23,8 @@ case `uname` in
     ;;
   Darwin*)
     libdir='${exec_prefix}/lib'
+    ldconfig='echo no ldconfig on darwin'
+    is_darwin="yes"
     ;;
   AIX*)
     ;;
@@ -50,6 +53,17 @@ if test ! -z "$LOGDIR"; then
 fi
 AC_SUBST(LOGDIR)
 
+AC_ARG_WITH([examples],
+              [  --without-examples  Disable build of examples],
+	      [ENABLE_EXAMPLES="no"],
+	      [ENABLE_EXAMPLES="yes"]
+	      )
+AC_SUBST(ENABLE_EXAMPLES)
+
+AC_ARG_WITH([ldconfig],
+	    [  --without-ldconfig  Disable call of ldconfig on make install],
+	    [ldconfig='echo ldconfig disabled'])
+
 AC_CONFIG_HEADER(config.h)
 
 EXTRA_OBJ=""
@@ -69,6 +83,7 @@ fi
 AC_SUBST(libdir)
 AC_SUBST(install)
 AC_SUBST(ldconfig)
+AC_SUBST(is_darwin)
 #AC_SUBST(LIBNFS_LDFLAGS)
 
 AC_OUTPUT(Makefile)
