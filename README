@@ -34,3 +34,11 @@ Many NFS servers default to a mode where they do not allow non-system
 ports from connecting.
 These servers require you use the "insecure" export option in /etc/exports
 in order to allow libnfs clients to be able to connect.
+
+PLATTFORM support
+=================
+As of now this is tested with linux, MacOSX and Apple iOS.
+
+Linux:  - tested with Ubuntu 10.04 - should work with others aswell
+MacOSX: - tested with SDK 10.4 (under Snow Leopard) - should also work with later SDKs and 64Bit
+iOS:    - tested with iOS SDK 4.2 - running on iOS 4.3.x
