@@ -64,6 +64,10 @@ AC_ARG_WITH([ldconfig],
 	    [  --without-ldconfig  Disable call of ldconfig on make install],
 	    [ldconfig='echo ldconfig disabled'])
 
+if test x"$cross_compiling" = xyes; then
+  ldconfig='echo crosscompiling: ldconfig disabled'
+fi
+
 AC_CONFIG_HEADER(config.h)
 
 EXTRA_OBJ=""
