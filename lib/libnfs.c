@@ -19,6 +19,7 @@
  */
 
 #include <stdio.h>
+#include <stdarg.h>
 #include <stdlib.h>
 #include <string.h>
 #include <strings.h>
@@ -33,6 +34,12 @@
 #include "libnfs-raw.h"
 #include "libnfs-raw-mount.h"
 #include "libnfs-raw-nfs.h"
+#include "libnfs-private.h"
+
+struct nfsdir {
+       struct nfsdirent *entries;
+       struct nfsdirent *current;
+};
 
 struct nfsfh {
        struct nfs_fh3 fh;
@@ -40,9 +47,13 @@ struct nfsfh {
        off_t offset;
 };
 
-struct nfsdir {
-       struct nfsdirent *entries;
-       struct nfsdirent *current;
+struct nfs_context {
+       struct rpc_context *rpc;
+       char *server;
+       char *export;
+       struct nfs_fh3 rootfh;
+       size_t readmax;
+       size_t writemax;
 };
 
 void nfs_free_nfsdir(struct nfsdir *nfsdir)
@@ -57,15 +68,6 @@ void nfs_free_nfsdir(struct nfsdir *nfsdir)
 	}
 	free(nfsdir);
 }
-
-struct nfs_context {
-       struct rpc_context *rpc;
-       char *server;
-       char *export;
-       struct nfs_fh3 rootfh;
-       size_t readmax;
-       size_t writemax;
-};
 
 struct nfs_cb_data;
 typedef int (*continue_func)(struct nfs_context *nfs, struct nfs_cb_data *data);
@@ -2854,4 +2856,18 @@ size_t nfs_get_readmax(struct nfs_context *nfs)
 size_t nfs_get_writemax(struct nfs_context *nfs)
 {
 	return nfs->writemax;
+}
+
+void nfs_set_error(struct nfs_context *nfs, char *error_string, ...)
+{
+        va_list ap;
+	char *str;
+
+	if (nfs->rpc->error_string != NULL) {
+		free(nfs->rpc->error_string);
+	}
+        va_start(ap, error_string);
+	vasprintf(&str, error_string, ap);
+	nfs->rpc->error_string = str;
+        va_end(ap);
 }

@@ -65,3 +65,7 @@ int rpc_get_pdu_size(char *buf);
 int rpc_process_pdu(struct rpc_context *rpc, char *buf, int size);
 void rpc_error_all_pdus(struct rpc_context *rpc, char *error);
 
+void rpc_set_error(struct rpc_context *rpc, char *error_string, ...);
+void nfs_set_error(struct nfs_context *nfs, char *error_string, ...);
+
+

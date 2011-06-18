@@ -32,13 +32,12 @@ struct rpc_pdu *rpc_allocate_pdu(struct rpc_context *rpc, int program, int versi
 	struct rpc_msg msg;
 
 	if (rpc == NULL) {
-		printf("trying to allocate rpc pdu on NULL context\n");
 		return NULL;
 	}
 
 	pdu = malloc(sizeof(struct rpc_pdu));
 	if (pdu == NULL) {
-		printf("Failed to allocate pdu structure\n");
+		rpc_set_error(rpc, "Out of memory: Failed to allocate pdu structure");
 		return NULL;
 	}
 	bzero(pdu, sizeof(struct rpc_pdu));
@@ -62,7 +61,7 @@ struct rpc_pdu *rpc_allocate_pdu(struct rpc_context *rpc, int program, int versi
 	msg.rm_call.cb_verf = rpc->auth->ah_verf;
 
 	if (xdr_callmsg(&pdu->xdr, &msg) == 0) {
-		printf("xdr_callmsg failed\n");
+		rpc_set_error(rpc, "xdr_callmsg failed");
 		xdr_destroy(&pdu->xdr);
 		free(pdu);
 		return NULL;
@@ -121,7 +120,7 @@ int rpc_get_pdu_size(char *buf)
 	size = ntohl(*(uint32_t *)buf);
 
 	if ((size & 0x80000000) == 0) {
-		printf("cant handle oncrpc fragments\n");
+		/* cant handle oncrpc fragments */
 		return -1;
 	}
 
@@ -137,7 +136,7 @@ static int rpc_process_reply(struct rpc_context *rpc, struct rpc_pdu *pdu, XDR *
 	if (pdu->xdr_decode_bufsize > 0) {
 		pdu->xdr_decode_buf = malloc(pdu->xdr_decode_bufsize);
 		if (pdu->xdr_decode_buf == NULL) {
-			printf("xdr_replymsg failed in portmap_getport_reply\n");
+			rpc_set_error(rpc, "xdr_replymsg failed in portmap_getport_reply");
 			pdu->cb(rpc, RPC_STATUS_ERROR, "Failed to allocate buffer for decoding of XDR reply", pdu->private_data);
 			return 0;
 		}
@@ -147,7 +146,7 @@ static int rpc_process_reply(struct rpc_context *rpc, struct rpc_pdu *pdu, XDR *
 	msg.acpted_rply.ar_results.proc  = pdu->xdr_decode_fn;
 
 	if (xdr_replymsg(xdr, &msg) == 0) {
-		printf("xdr_replymsg failed in portmap_getport_reply\n");
+		rpc_set_error(rpc, "xdr_replymsg failed in portmap_getport_reply");
 		pdu->cb(rpc, RPC_STATUS_ERROR, "Message rejected by server", pdu->private_data);
 		if (pdu->xdr_decode_buf != NULL) {
 			free(pdu->xdr_decode_buf);
@@ -197,13 +196,13 @@ int rpc_process_pdu(struct rpc_context *rpc, char *buf, int size)
 
 	xdrmem_create(&xdr, buf, size, XDR_DECODE);
 	if (xdr_int(&xdr, &recordmarker) == 0) {
-		printf("xdr_int reading recordmarker failed\n");
+		rpc_set_error(rpc, "xdr_int reading recordmarker failed");
 		xdr_destroy(&xdr);
 		return -1;
 	}
 	pos = xdr_getpos(&xdr);
 	if (xdr_int(&xdr, (int *)&xid) == 0) {
-		printf("xdr_int reading xid failed\n");
+		rpc_set_error(rpc, "xdr_int reading xid failed");
 		xdr_destroy(&xdr);
 		return -1;
 	}
@@ -215,13 +214,13 @@ int rpc_process_pdu(struct rpc_context *rpc, char *buf, int size)
 		}
 		SLIST_REMOVE(&rpc->waitpdu, pdu);
 		if (rpc_process_reply(rpc, pdu, &xdr) != 0) {
-			printf("rpc_procdess_reply failed\n");
+			rpc_set_error(rpc, "rpc_procdess_reply failed");
 		}
 		xdr_destroy(&xdr);
 		rpc_free_pdu(rpc, pdu);
 		return 0;
 	}
-	printf("No matching pdu found for xid:%d\n", xid);
+	rpc_set_error(rpc, "No matching pdu found for xid:%d", xid);
 	xdr_destroy(&xdr);
 	return -1;
 }

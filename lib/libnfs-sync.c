@@ -33,6 +33,7 @@
 #include "libnfs-raw.h"
 #include "libnfs-raw-mount.h"
 #include "libnfs-raw-nfs.h"
+#include "libnfs-private.h"
 
 struct sync_cb_data {
        int is_finished;
@@ -55,12 +56,12 @@ static void wait_for_reply(struct nfs_context *nfs, struct sync_cb_data *cb_data
 		pfd.events = nfs_which_events(nfs);
 
 		if (poll(&pfd, 1, -1) < 0) {
-			printf("Poll failed");
+			nfs_set_error(nfs, "Poll failed");
 			cb_data->status = -EIO;
 			break;
 		}
 		if (nfs_service(nfs, pfd.revents) < 0) {
-			printf("nfs_service failed\n");
+			nfs_set_error(nfs, "nfs_service failed");
 			cb_data->status = -EIO;
 			break;
 		}
@@ -75,7 +76,7 @@ static void wait_for_reply(struct nfs_context *nfs, struct sync_cb_data *cb_data
 /*
  * connect to the server and mount the export
  */
-static void mount_cb(int status, struct nfs_context *nfs _U_, void *data, void *private_data)
+static void mount_cb(int status, struct nfs_context *nfs, void *data, void *private_data)
 {
 	struct sync_cb_data *cb_data = private_data;
 
@@ -83,7 +84,7 @@ static void mount_cb(int status, struct nfs_context *nfs _U_, void *data, void *
 	cb_data->status = status;
 
 	if (status < 0) {
-		printf("mount/mnt call failed with \"%s\"\n", (char *)data);
+		nfs_set_error(nfs, "mount/mnt call failed with \"%s\"", (char *)data);
 		return;
 	}
 }
@@ -95,7 +96,7 @@ int nfs_mount(struct nfs_context *nfs, const char *server, const char *export)
 	cb_data.is_finished = 0;
 
 	if (nfs_mount_async(nfs, server, export, mount_cb, &cb_data) != 0) {
-		printf("nfs_mount_async failed\n");
+		nfs_set_error(nfs, "nfs_mount_async failed");
 		return -1;
 	}
 
@@ -108,7 +109,7 @@ int nfs_mount(struct nfs_context *nfs, const char *server, const char *export)
 /*
  * stat()
  */
-static void stat_cb(int status, struct nfs_context *nfs _U_, void *data, void *private_data)
+static void stat_cb(int status, struct nfs_context *nfs, void *data, void *private_data)
 {
 	struct sync_cb_data *cb_data = private_data;
 
@@ -116,7 +117,7 @@ static void stat_cb(int status, struct nfs_context *nfs _U_, void *data, void *p
 	cb_data->status = status;
 
 	if (status < 0) {
-		printf("stat call failed with \"%s\"\n", (char *)data);
+		nfs_set_error(nfs, "stat call failed with \"%s\"", (char *)data);
 		return;
 	}
 
@@ -131,7 +132,7 @@ int nfs_stat(struct nfs_context *nfs, const char *path, struct stat *st)
 	cb_data.return_data = st;
 
 	if (nfs_stat_async(nfs, path, stat_cb, &cb_data) != 0) {
-		printf("nfs_stat_async failed\n");
+		nfs_set_error(nfs, "nfs_stat_async failed");
 		return -1;
 	}
 
@@ -146,7 +147,7 @@ int nfs_stat(struct nfs_context *nfs, const char *path, struct stat *st)
 /*
  * open()
  */
-static void open_cb(int status, struct nfs_context *nfs _U_, void *data, void *private_data)
+static void open_cb(int status, struct nfs_context *nfs, void *data, void *private_data)
 {
 	struct sync_cb_data *cb_data = private_data;
 	struct nfsfh *fh, **nfsfh;
@@ -155,7 +156,7 @@ static void open_cb(int status, struct nfs_context *nfs _U_, void *data, void *p
 	cb_data->status = status;
 
 	if (status < 0) {
-		printf("open call failed with \"%s\"\n", (char *)data);
+		nfs_set_error(nfs, "open call failed with \"%s\"", (char *)data);
 		return;
 	}
 
@@ -172,7 +173,7 @@ int nfs_open(struct nfs_context *nfs, const char *path, int mode, struct nfsfh *
 	cb_data.return_data = nfsfh;
 
 	if (nfs_open_async(nfs, path, mode, open_cb, &cb_data) != 0) {
-		printf("nfs_open_async failed\n");
+		nfs_set_error(nfs, "nfs_open_async failed");
 		return -1;
 	}
 
@@ -187,7 +188,7 @@ int nfs_open(struct nfs_context *nfs, const char *path, int mode, struct nfsfh *
 /*
  * pread()
  */
-static void pread_cb(int status, struct nfs_context *nfs _U_, void *data, void *private_data)
+static void pread_cb(int status, struct nfs_context *nfs, void *data, void *private_data)
 {
 	struct sync_cb_data *cb_data = private_data;
 	char *buffer;
@@ -195,7 +196,7 @@ static void pread_cb(int status, struct nfs_context *nfs _U_, void *data, void *
 	cb_data->status = status;
 
 	if (status < 0) {
-		printf("pread call failed with \"%s\"\n", (char *)data);
+		nfs_set_error(nfs, "pread call failed with \"%s\"", (char *)data);
 		return;
 	}
 
@@ -211,7 +212,7 @@ int nfs_pread(struct nfs_context *nfs, struct nfsfh *nfsfh, off_t offset, size_t
 	cb_data.return_data = buffer;
 
 	if (nfs_pread_async(nfs, nfsfh, offset, count, pread_cb, &cb_data) != 0) {
-		printf("nfs_pread_async failed\n");
+		nfs_set_error(nfs, "nfs_pread_async failed");
 		return -1;
 	}
 
@@ -231,14 +232,14 @@ int nfs_read(struct nfs_context *nfs, struct nfsfh *nfsfh, size_t count, char *b
 /*
  * close()
  */
-static void close_cb(int status, struct nfs_context *nfs _U_, void *data, void *private_data)
+static void close_cb(int status, struct nfs_context *nfs, void *data, void *private_data)
 {
 	struct sync_cb_data *cb_data = private_data;
 	cb_data->is_finished = 1;
 	cb_data->status = status;
 
 	if (status < 0) {
-		printf("close call failed with \"%s\"\n", (char *)data);
+		nfs_set_error(nfs, "close call failed with \"%s\"", (char *)data);
 		return;
 	}
 }
@@ -250,7 +251,7 @@ int nfs_close(struct nfs_context *nfs, struct nfsfh *nfsfh)
 	cb_data.is_finished = 0;
 
 	if (nfs_close_async(nfs, nfsfh, close_cb, &cb_data) != 0) {
-		printf("nfs_close_async failed\n");
+		nfs_set_error(nfs, "nfs_close_async failed");
 		return -1;
 	}
 
@@ -273,7 +274,7 @@ int nfs_fstat(struct nfs_context *nfs, struct nfsfh *nfsfh, struct stat *st)
 	cb_data.return_data = st;
 
 	if (nfs_fstat_async(nfs, nfsfh, stat_cb, &cb_data) != 0) {
-		printf("nfs_fstat_async failed\n");
+		nfs_set_error(nfs, "nfs_fstat_async failed");
 		return -1;
 	}
 
@@ -286,14 +287,14 @@ int nfs_fstat(struct nfs_context *nfs, struct nfsfh *nfsfh, struct stat *st)
 /*
  * pwrite()
  */
-static void pwrite_cb(int status, struct nfs_context *nfs _U_, void *data, void *private_data)
+static void pwrite_cb(int status, struct nfs_context *nfs, void *data, void *private_data)
 {
 	struct sync_cb_data *cb_data = private_data;
 	cb_data->is_finished = 1;
 	cb_data->status = status;
 
 	if (status < 0) {
-		printf("pwrite call failed with \"%s\"\n", (char *)data);
+		nfs_set_error(nfs, "pwrite call failed with \"%s\"", (char *)data);
 		return;
 	}
 }
@@ -305,7 +306,7 @@ int nfs_pwrite(struct nfs_context *nfs, struct nfsfh *nfsfh, off_t offset, size_
 	cb_data.is_finished = 0;
 
 	if (nfs_pwrite_async(nfs, nfsfh, offset, count, buf, pwrite_cb, &cb_data) != 0) {
-		printf("nfs_pwrite_async failed\n");
+		nfs_set_error(nfs, "nfs_pwrite_async failed");
 		return -1;
 	}
 
@@ -326,14 +327,14 @@ int nfs_write(struct nfs_context *nfs, struct nfsfh *nfsfh, size_t count, char *
 /*
  * fsync()
  */
-static void fsync_cb(int status, struct nfs_context *nfs _U_, void *data, void *private_data)
+static void fsync_cb(int status, struct nfs_context *nfs, void *data, void *private_data)
 {
 	struct sync_cb_data *cb_data = private_data;
 	cb_data->is_finished = 1;
 	cb_data->status = status;
 
 	if (status < 0) {
-		printf("fsync call failed with \"%s\"\n", (char *)data);
+		nfs_set_error(nfs, "fsync call failed with \"%s\"", (char *)data);
 		return;
 	}
 }
@@ -345,7 +346,7 @@ int nfs_fsync(struct nfs_context *nfs, struct nfsfh *nfsfh)
 	cb_data.is_finished = 0;
 
 	if (nfs_fsync_async(nfs, nfsfh, fsync_cb, &cb_data) != 0) {
-		printf("nfs_fsync_async failed\n");
+		nfs_set_error(nfs, "nfs_fsync_async failed");
 		return -1;
 	}
 
@@ -360,14 +361,14 @@ int nfs_fsync(struct nfs_context *nfs, struct nfsfh *nfsfh)
 /*
  * ftruncate()
  */
-static void ftruncate_cb(int status, struct nfs_context *nfs _U_, void *data, void *private_data)
+static void ftruncate_cb(int status, struct nfs_context *nfs, void *data, void *private_data)
 {
 	struct sync_cb_data *cb_data = private_data;
 	cb_data->is_finished = 1;
 	cb_data->status = status;
 
 	if (status < 0) {
-		printf("ftruncate call failed with \"%s\"\n", (char *)data);
+		nfs_set_error(nfs, "ftruncate call failed with \"%s\"", (char *)data);
 		return;
 	}
 }
@@ -379,7 +380,7 @@ int nfs_ftruncate(struct nfs_context *nfs, struct nfsfh *nfsfh, off_t length)
 	cb_data.is_finished = 0;
 
 	if (nfs_ftruncate_async(nfs, nfsfh, length, ftruncate_cb, &cb_data) != 0) {
-		printf("nfs_ftruncate_async failed\n");
+		nfs_set_error(nfs, "nfs_ftruncate_async failed");
 		return -1;
 	}
 
@@ -393,14 +394,14 @@ int nfs_ftruncate(struct nfs_context *nfs, struct nfsfh *nfsfh, off_t length)
 /*
  * truncate()
  */
-static void truncate_cb(int status, struct nfs_context *nfs _U_, void *data, void *private_data)
+static void truncate_cb(int status, struct nfs_context *nfs, void *data, void *private_data)
 {
 	struct sync_cb_data *cb_data = private_data;
 	cb_data->is_finished = 1;
 	cb_data->status = status;
 
 	if (status < 0) {
-		printf("truncate call failed with \"%s\"\n", (char *)data);
+		nfs_set_error(nfs, "truncate call failed with \"%s\"", (char *)data);
 		return;
 	}
 }
@@ -412,7 +413,7 @@ int nfs_truncate(struct nfs_context *nfs, const char *path, off_t length)
 	cb_data.is_finished = 0;
 
 	if (nfs_truncate_async(nfs, path, length, truncate_cb, &cb_data) != 0) {
-		printf("nfs_ftruncate_async failed\n");
+		nfs_set_error(nfs, "nfs_ftruncate_async failed");
 		return -1;
 	}
 
@@ -428,14 +429,14 @@ int nfs_truncate(struct nfs_context *nfs, const char *path, off_t length)
 /*
  * mkdir()
  */
-static void mkdir_cb(int status, struct nfs_context *nfs _U_, void *data, void *private_data)
+static void mkdir_cb(int status, struct nfs_context *nfs, void *data, void *private_data)
 {
 	struct sync_cb_data *cb_data = private_data;
 	cb_data->is_finished = 1;
 	cb_data->status = status;
 
 	if (status < 0) {
-		printf("mkdir call failed with \"%s\"\n", (char *)data);
+		nfs_set_error(nfs, "mkdir call failed with \"%s\"", (char *)data);
 		return;
 	}
 }
@@ -447,7 +448,7 @@ int nfs_mkdir(struct nfs_context *nfs, const char *path)
 	cb_data.is_finished = 0;
 
 	if (nfs_mkdir_async(nfs, path, mkdir_cb, &cb_data) != 0) {
-		printf("nfs_mkdir_async failed\n");
+		nfs_set_error(nfs, "nfs_mkdir_async failed");
 		return -1;
 	}
 
@@ -463,14 +464,14 @@ int nfs_mkdir(struct nfs_context *nfs, const char *path)
 /*
  * rmdir()
  */
-static void rmdir_cb(int status, struct nfs_context *nfs _U_, void *data, void *private_data)
+static void rmdir_cb(int status, struct nfs_context *nfs, void *data, void *private_data)
 {
 	struct sync_cb_data *cb_data = private_data;
 	cb_data->is_finished = 1;
 	cb_data->status = status;
 
 	if (status < 0) {
-		printf("rmdir call failed with \"%s\"\n", (char *)data);
+		nfs_set_error(nfs, "rmdir call failed with \"%s\"", (char *)data);
 		return;
 	}
 }
@@ -482,7 +483,7 @@ int nfs_rmdir(struct nfs_context *nfs, const char *path)
 	cb_data.is_finished = 0;
 
 	if (nfs_rmdir_async(nfs, path, rmdir_cb, &cb_data) != 0) {
-		printf("nfs_rmdir_async failed\n");
+		nfs_set_error(nfs, "nfs_rmdir_async failed");
 		return -1;
 	}
 
@@ -496,7 +497,7 @@ int nfs_rmdir(struct nfs_context *nfs, const char *path)
 /*
  * creat()
  */
-static void creat_cb(int status, struct nfs_context *nfs _U_, void *data, void *private_data)
+static void creat_cb(int status, struct nfs_context *nfs, void *data, void *private_data)
 {
 	struct sync_cb_data *cb_data = private_data;
 	struct nfsfh *fh, **nfsfh;
@@ -505,7 +506,7 @@ static void creat_cb(int status, struct nfs_context *nfs _U_, void *data, void *
 	cb_data->status = status;
 
 	if (status < 0) {
-		printf("creat call failed with \"%s\"\n", (char *)data);
+		nfs_set_error(nfs, "creat call failed with \"%s\"", (char *)data);
 		return;
 	}
 
@@ -522,7 +523,7 @@ int nfs_creat(struct nfs_context *nfs, const char *path, int mode, struct nfsfh 
 	cb_data.return_data = nfsfh;
 
 	if (nfs_creat_async(nfs, path, mode, creat_cb, &cb_data) != 0) {
-		printf("nfs_creat_async failed\n");
+		nfs_set_error(nfs, "nfs_creat_async failed");
 		return -1;
 	}
 
@@ -537,7 +538,7 @@ int nfs_creat(struct nfs_context *nfs, const char *path, int mode, struct nfsfh 
 /*
  * unlink()
  */
-static void unlink_cb(int status, struct nfs_context *nfs _U_, void *data, void *private_data)
+static void unlink_cb(int status, struct nfs_context *nfs, void *data, void *private_data)
 {
 	struct sync_cb_data *cb_data = private_data;
 
@@ -545,7 +546,7 @@ static void unlink_cb(int status, struct nfs_context *nfs _U_, void *data, void 
 	cb_data->status = status;
 
 	if (status < 0) {
-		printf("unlink call failed with \"%s\"\n", (char *)data);
+		nfs_set_error(nfs, "unlink call failed with \"%s\"", (char *)data);
 		return;
 	}
 }
@@ -557,7 +558,7 @@ int nfs_unlink(struct nfs_context *nfs, const char *path)
 	cb_data.is_finished = 0;
 
 	if (nfs_unlink_async(nfs, path, unlink_cb, &cb_data) != 0) {
-		printf("nfs_unlink_async failed\n");
+		nfs_set_error(nfs, "nfs_unlink_async failed");
 		return -1;
 	}
 
@@ -571,7 +572,7 @@ int nfs_unlink(struct nfs_context *nfs, const char *path)
 /*
  * opendir()
  */
-static void opendir_cb(int status, struct nfs_context *nfs _U_, void *data, void *private_data)
+static void opendir_cb(int status, struct nfs_context *nfs, void *data, void *private_data)
 {
 	struct sync_cb_data *cb_data = private_data;
 	struct nfsdir *dir, **nfsdir;
@@ -580,7 +581,7 @@ static void opendir_cb(int status, struct nfs_context *nfs _U_, void *data, void
 	cb_data->status = status;
 
 	if (status < 0) {
-		printf("opendir call failed with \"%s\"\n", (char *)data);
+		nfs_set_error(nfs, "opendir call failed with \"%s\"", (char *)data);
 		return;
 	}
 
@@ -597,7 +598,7 @@ int nfs_opendir(struct nfs_context *nfs, const char *path, struct nfsdir **nfsdi
 	cb_data.return_data = nfsdir;
 
 	if (nfs_opendir_async(nfs, path, opendir_cb, &cb_data) != 0) {
-		printf("nfs_opendir_async failed\n");
+		nfs_set_error(nfs, "nfs_opendir_async failed");
 		return -1;
 	}
 
@@ -610,7 +611,7 @@ int nfs_opendir(struct nfs_context *nfs, const char *path, struct nfsdir **nfsdi
 /*
  * lseek()
  */
-static void lseek_cb(int status, struct nfs_context *nfs _U_, void *data, void *private_data)
+static void lseek_cb(int status, struct nfs_context *nfs, void *data, void *private_data)
 {
 	struct sync_cb_data *cb_data = private_data;
 
@@ -618,7 +619,7 @@ static void lseek_cb(int status, struct nfs_context *nfs _U_, void *data, void *
 	cb_data->status = status;
 
 	if (status < 0) {
-		printf("lseek call failed with \"%s\"\n", (char *)data);
+		nfs_set_error(nfs, "lseek call failed with \"%s\"", (char *)data);
 		return;
 	}
 
@@ -635,7 +636,7 @@ int nfs_lseek(struct nfs_context *nfs, struct nfsfh *nfsfh, off_t offset, int wh
 	cb_data.return_data = current_offset;
 
 	if (nfs_lseek_async(nfs, nfsfh, offset, whence, lseek_cb, &cb_data) != 0) {
-		printf("nfs_lseek_async failed\n");
+		nfs_set_error(nfs, "nfs_lseek_async failed");
 		return -1;
 	}
 
@@ -649,7 +650,7 @@ int nfs_lseek(struct nfs_context *nfs, struct nfsfh *nfsfh, off_t offset, int wh
 /*
  * statvfs()
  */
-static void statvfs_cb(int status, struct nfs_context *nfs _U_, void *data, void *private_data)
+static void statvfs_cb(int status, struct nfs_context *nfs, void *data, void *private_data)
 {
 	struct sync_cb_data *cb_data = private_data;
 
@@ -657,7 +658,7 @@ static void statvfs_cb(int status, struct nfs_context *nfs _U_, void *data, void
 	cb_data->status = status;
 
 	if (status < 0) {
-		printf("statvfs call failed with \"%s\"\n", (char *)data);
+		nfs_set_error(nfs, "statvfs call failed with \"%s\"", (char *)data);
 		return;
 	}
 
@@ -672,7 +673,7 @@ int nfs_statvfs(struct nfs_context *nfs, const char *path, struct statvfs *svfs)
 	cb_data.return_data = svfs;
 
 	if (nfs_statvfs_async(nfs, path, statvfs_cb, &cb_data) != 0) {
-		printf("nfs_statvfs_async failed\n");
+		nfs_set_error(nfs, "nfs_statvfs_async failed");
 		return -1;
 	}
 
@@ -688,7 +689,7 @@ int nfs_statvfs(struct nfs_context *nfs, const char *path, struct statvfs *svfs)
 /*
  * readlink()
  */
-static void readlink_cb(int status, struct nfs_context *nfs _U_, void *data, void *private_data)
+static void readlink_cb(int status, struct nfs_context *nfs, void *data, void *private_data)
 {
 	struct sync_cb_data *cb_data = private_data;
 
@@ -696,12 +697,12 @@ static void readlink_cb(int status, struct nfs_context *nfs _U_, void *data, voi
 	cb_data->status = status;
 
 	if (status < 0) {
-		printf("readlink call failed with \"%s\"\n", (char *)data);
+		nfs_set_error(nfs, "readlink call failed with \"%s\"", (char *)data);
 		return;
 	}
 
 	if (strlen(data) > (size_t)cb_data->return_int) {
-		printf("Too small buffer for readlink\n");
+		nfs_set_error(nfs, "Too small buffer for readlink");
 		cb_data->status = -ENAMETOOLONG;
 		return;
 	}
@@ -718,7 +719,7 @@ int nfs_readlink(struct nfs_context *nfs, const char *path, char *buf, int bufsi
 	cb_data.return_int  = bufsize;
 
 	if (nfs_readlink_async(nfs, path, readlink_cb, &cb_data) != 0) {
-		printf("nfs_readlink_async failed\n");
+		nfs_set_error(nfs, "nfs_readlink_async failed");
 		return -1;
 	}
 
@@ -732,7 +733,7 @@ int nfs_readlink(struct nfs_context *nfs, const char *path, char *buf, int bufsi
 /*
  * chmod()
  */
-static void chmod_cb(int status, struct nfs_context *nfs _U_, void *data, void *private_data)
+static void chmod_cb(int status, struct nfs_context *nfs, void *data, void *private_data)
 {
 	struct sync_cb_data *cb_data = private_data;
 
@@ -740,7 +741,7 @@ static void chmod_cb(int status, struct nfs_context *nfs _U_, void *data, void *
 	cb_data->status = status;
 
 	if (status < 0) {
-		printf("chmod call failed with \"%s\"\n", (char *)data);
+		nfs_set_error(nfs, "chmod call failed with \"%s\"", (char *)data);
 		return;
 	}
 }
@@ -752,7 +753,7 @@ int nfs_chmod(struct nfs_context *nfs, const char *path, int mode)
 	cb_data.is_finished = 0;
 
 	if (nfs_chmod_async(nfs, path, mode, chmod_cb, &cb_data) != 0) {
-		printf("nfs_chmod_async failed\n");
+		nfs_set_error(nfs, "nfs_chmod_async failed");
 		return -1;
 	}
 
@@ -767,7 +768,7 @@ int nfs_chmod(struct nfs_context *nfs, const char *path, int mode)
 /*
  * fchmod()
  */
-static void fchmod_cb(int status, struct nfs_context *nfs _U_, void *data, void *private_data)
+static void fchmod_cb(int status, struct nfs_context *nfs, void *data, void *private_data)
 {
 	struct sync_cb_data *cb_data = private_data;
 
@@ -775,7 +776,7 @@ static void fchmod_cb(int status, struct nfs_context *nfs _U_, void *data, void 
 	cb_data->status = status;
 
 	if (status < 0) {
-		printf("fchmod call failed with \"%s\"\n", (char *)data);
+		nfs_set_error(nfs, "fchmod call failed with \"%s\"", (char *)data);
 		return;
 	}
 }
@@ -787,7 +788,7 @@ int nfs_fchmod(struct nfs_context *nfs, struct nfsfh *nfsfh, int mode)
 	cb_data.is_finished = 0;
 
 	if (nfs_fchmod_async(nfs, nfsfh, mode, fchmod_cb, &cb_data) != 0) {
-		printf("nfs_fchmod_async failed\n");
+		nfs_set_error(nfs, "nfs_fchmod_async failed");
 		return -1;
 	}
 
@@ -802,7 +803,7 @@ int nfs_fchmod(struct nfs_context *nfs, struct nfsfh *nfsfh, int mode)
 /*
  * chown()
  */
-static void chown_cb(int status, struct nfs_context *nfs _U_, void *data, void *private_data)
+static void chown_cb(int status, struct nfs_context *nfs, void *data, void *private_data)
 {
 	struct sync_cb_data *cb_data = private_data;
 
@@ -810,7 +811,7 @@ static void chown_cb(int status, struct nfs_context *nfs _U_, void *data, void *
 	cb_data->status = status;
 
 	if (status < 0) {
-		printf("chown call failed with \"%s\"\n", (char *)data);
+		nfs_set_error(nfs, "chown call failed with \"%s\"", (char *)data);
 		return;
 	}
 }
@@ -822,7 +823,7 @@ int nfs_chown(struct nfs_context *nfs, const char *path, int uid, int gid)
 	cb_data.is_finished = 0;
 
 	if (nfs_chown_async(nfs, path, uid, gid, chown_cb, &cb_data) != 0) {
-		printf("nfs_chown_async failed\n");
+		nfs_set_error(nfs, "nfs_chown_async failed");
 		return -1;
 	}
 
@@ -834,7 +835,7 @@ int nfs_chown(struct nfs_context *nfs, const char *path, int uid, int gid)
 /*
  * fchown()
  */
-static void fchown_cb(int status, struct nfs_context *nfs _U_, void *data, void *private_data)
+static void fchown_cb(int status, struct nfs_context *nfs, void *data, void *private_data)
 {
 	struct sync_cb_data *cb_data = private_data;
 
@@ -842,7 +843,7 @@ static void fchown_cb(int status, struct nfs_context *nfs _U_, void *data, void 
 	cb_data->status = status;
 
 	if (status < 0) {
-		printf("fchown call failed with \"%s\"\n", (char *)data);
+		nfs_set_error(nfs, "fchown call failed with \"%s\"", (char *)data);
 		return;
 	}
 }
@@ -854,7 +855,7 @@ int nfs_fchown(struct nfs_context *nfs, struct nfsfh *nfsfh, int uid, int gid)
 	cb_data.is_finished = 0;
 
 	if (nfs_fchown_async(nfs, nfsfh, uid, gid, fchown_cb, &cb_data) != 0) {
-		printf("nfs_fchown_async failed\n");
+		nfs_set_error(nfs, "nfs_fchown_async failed");
 		return -1;
 	}
 
@@ -868,7 +869,7 @@ int nfs_fchown(struct nfs_context *nfs, struct nfsfh *nfsfh, int uid, int gid)
 /*
  * utimes()
  */
-static void utimes_cb(int status, struct nfs_context *nfs _U_, void *data, void *private_data)
+static void utimes_cb(int status, struct nfs_context *nfs, void *data, void *private_data)
 {
 	struct sync_cb_data *cb_data = private_data;
 
@@ -876,7 +877,7 @@ static void utimes_cb(int status, struct nfs_context *nfs _U_, void *data, void 
 	cb_data->status = status;
 
 	if (status < 0) {
-		printf("utimes call failed with \"%s\"\n", (char *)data);
+		nfs_set_error(nfs, "utimes call failed with \"%s\"", (char *)data);
 		return;
 	}
 }
@@ -888,7 +889,7 @@ int nfs_utimes(struct nfs_context *nfs, const char *path, struct timeval *times)
 	cb_data.is_finished = 0;
 
 	if (nfs_utimes_async(nfs, path, times, utimes_cb, &cb_data) != 0) {
-		printf("nfs_utimes_async failed\n");
+		nfs_set_error(nfs, "nfs_utimes_async failed");
 		return -1;
 	}
 
@@ -902,7 +903,7 @@ int nfs_utimes(struct nfs_context *nfs, const char *path, struct timeval *times)
 /*
  * utime()
  */
-static void utime_cb(int status, struct nfs_context *nfs _U_, void *data, void *private_data)
+static void utime_cb(int status, struct nfs_context *nfs, void *data, void *private_data)
 {
 	struct sync_cb_data *cb_data = private_data;
 
@@ -910,7 +911,7 @@ static void utime_cb(int status, struct nfs_context *nfs _U_, void *data, void *
 	cb_data->status = status;
 
 	if (status < 0) {
-		printf("utime call failed with \"%s\"\n", (char *)data);
+		nfs_set_error(nfs, "utime call failed with \"%s\"", (char *)data);
 		return;
 	}
 }
@@ -922,7 +923,7 @@ int nfs_utime(struct nfs_context *nfs, const char *path, struct utimbuf *times)
 	cb_data.is_finished = 0;
 
 	if (nfs_utime_async(nfs, path, times, utime_cb, &cb_data) != 0) {
-		printf("nfs_utimes_async failed\n");
+		nfs_set_error(nfs, "nfs_utimes_async failed");
 		return -1;
 	}
 
@@ -937,7 +938,7 @@ int nfs_utime(struct nfs_context *nfs, const char *path, struct utimbuf *times)
 /*
  * access()
  */
-static void access_cb(int status, struct nfs_context *nfs _U_, void *data, void *private_data)
+static void access_cb(int status, struct nfs_context *nfs, void *data, void *private_data)
 {
 	struct sync_cb_data *cb_data = private_data;
 
@@ -945,7 +946,7 @@ static void access_cb(int status, struct nfs_context *nfs _U_, void *data, void 
 	cb_data->status = status;
 
 	if (status < 0) {
-		printf("access call failed with \"%s\"\n", (char *)data);
+		nfs_set_error(nfs, "access call failed with \"%s\"", (char *)data);
 		return;
 	}
 }
@@ -957,7 +958,7 @@ int nfs_access(struct nfs_context *nfs, const char *path, int mode)
 	cb_data.is_finished = 0;
 
 	if (nfs_access_async(nfs, path, mode, access_cb, &cb_data) != 0) {
-		printf("nfs_access_async failed\n");
+		nfs_set_error(nfs, "nfs_access_async failed");
 		return -1;
 	}
 
@@ -971,7 +972,7 @@ int nfs_access(struct nfs_context *nfs, const char *path, int mode)
 /*
  * symlink()
  */
-static void symlink_cb(int status, struct nfs_context *nfs _U_, void *data, void *private_data)
+static void symlink_cb(int status, struct nfs_context *nfs, void *data, void *private_data)
 {
 	struct sync_cb_data *cb_data = private_data;
 
@@ -979,7 +980,7 @@ static void symlink_cb(int status, struct nfs_context *nfs _U_, void *data, void
 	cb_data->status = status;
 
 	if (status < 0) {
-		printf("symlink call failed with \"%s\"\n", (char *)data);
+		nfs_set_error(nfs, "symlink call failed with \"%s\"", (char *)data);
 		return;
 	}
 }
@@ -991,7 +992,7 @@ int nfs_symlink(struct nfs_context *nfs, const char *oldpath, const char *newpat
 	cb_data.is_finished = 0;
 
 	if (nfs_symlink_async(nfs, oldpath, newpath, symlink_cb, &cb_data) != 0) {
-		printf("nfs_symlink_async failed\n");
+		nfs_set_error(nfs, "nfs_symlink_async failed");
 		return -1;
 	}
 
@@ -1005,7 +1006,7 @@ int nfs_symlink(struct nfs_context *nfs, const char *oldpath, const char *newpat
 /*
  * rename()
  */
-static void rename_cb(int status, struct nfs_context *nfs _U_, void *data, void *private_data)
+static void rename_cb(int status, struct nfs_context *nfs, void *data, void *private_data)
 {
 	struct sync_cb_data *cb_data = private_data;
 
@@ -1013,7 +1014,7 @@ static void rename_cb(int status, struct nfs_context *nfs _U_, void *data, void 
 	cb_data->status = status;
 
 	if (status < 0) {
-		printf("rename call failed with \"%s\"\n", (char *)data);
+		nfs_set_error(nfs, "rename call failed with \"%s\"", (char *)data);
 		return;
 	}
 }
@@ -1025,7 +1026,7 @@ int nfs_rename(struct nfs_context *nfs, const char *oldpath, const char *newpath
 	cb_data.is_finished = 0;
 
 	if (nfs_rename_async(nfs, oldpath, newpath, rename_cb, &cb_data) != 0) {
-		printf("nfs_rename_async failed\n");
+		nfs_set_error(nfs, "nfs_rename_async failed");
 		return -1;
 	}
 
@@ -1039,7 +1040,7 @@ int nfs_rename(struct nfs_context *nfs, const char *oldpath, const char *newpath
 /*
  * link()
  */
-static void link_cb(int status, struct nfs_context *nfs _U_, void *data, void *private_data)
+static void link_cb(int status, struct nfs_context *nfs, void *data, void *private_data)
 {
 	struct sync_cb_data *cb_data = private_data;
 
@@ -1047,7 +1048,7 @@ static void link_cb(int status, struct nfs_context *nfs _U_, void *data, void *p
 	cb_data->status = status;
 
 	if (status < 0) {
-		printf("link call failed with \"%s\"\n", (char *)data);
+		nfs_set_error(nfs, "link call failed with \"%s\"", (char *)data);
 		return;
 	}
 }
@@ -1059,7 +1060,7 @@ int nfs_link(struct nfs_context *nfs, const char *oldpath, const char *newpath)
 	cb_data.is_finished = 0;
 
 	if (nfs_link_async(nfs, oldpath, newpath, link_cb, &cb_data) != 0) {
-		printf("nfs_link_async failed\n");
+		nfs_set_error(nfs, "nfs_link_async failed");
 		return -1;
 	}
 

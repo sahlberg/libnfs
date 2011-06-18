@@ -35,7 +35,6 @@ struct rpc_context *rpc_init_context(void)
 
 	rpc = malloc(sizeof(struct rpc_context));
 	if (rpc == NULL) {
-		printf("Failed to allocate rpc context\n");
 		return NULL;
 	}
 	bzero(rpc, sizeof(struct rpc_context));
@@ -43,14 +42,12 @@ struct rpc_context *rpc_init_context(void)
 	rpc->encodebuflen = 65536;
 	rpc->encodebuf = malloc(rpc->encodebuflen);
 	if (rpc->encodebuf == NULL) {
-		printf("Failed to allocate a buffer for rpc encoding\n");
 		free(rpc);
 		return NULL;
 	}
 
 	rpc->auth = authunix_create_default();
 	if (rpc->auth == NULL) {
-		printf("failed to create authunix\n");
 		free(rpc->encodebuf);
 		free(rpc);
 		return NULL;

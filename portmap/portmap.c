@@ -37,7 +37,7 @@ int rpc_pmap_null_async(struct rpc_context *rpc, rpc_cb cb, void *private_data)
 	if (rpc_queue_pdu(rpc, pdu) != 0) {
 		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for portmap/null call");
 		rpc_free_pdu(rpc, pdu);
-		return -2;
+		return -1;
 	}
 
 	return 0;
@@ -61,13 +61,13 @@ int rpc_pmap_getport_async(struct rpc_context *rpc, int program, int version, rp
 	if (xdr_mapping(&pdu->xdr, &m) == 0) {
 		rpc_set_error(rpc, "XDR error: Failed to encode data for portmap/getport call");
 		rpc_free_pdu(rpc, pdu);
-		return -2;
+		return -1;
 	}
 
 	if (rpc_queue_pdu(rpc, pdu) != 0) {
-		printf("Failed to queue portmap/getport pdu\n");
+		rpc_set_error(rpc, "Failed to queue portmap/getport pdu");
 		rpc_free_pdu(rpc, pdu);
-		return -2;
+		return -1;
 	}
 
 	return 0;

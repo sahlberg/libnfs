@@ -66,8 +66,6 @@ int rpc_connect_async(struct rpc_context *rpc, const char *server, int port, rpc
  */
 int rpc_disconnect(struct rpc_context *rpc, char *error);
 
-void rpc_set_error(struct rpc_context *rpc, char *error_string, ...);
-
 
 /* 
  * PORTMAP FUNCTIONS

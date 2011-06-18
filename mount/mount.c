@@ -38,7 +38,7 @@ int rpc_mount_null_async(struct rpc_context *rpc, rpc_cb cb, void *private_data)
 	if (rpc_queue_pdu(rpc, pdu) != 0) {
 		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for mount/null call");
 		rpc_free_pdu(rpc, pdu);
-		return -2;
+		return -1;
 	}
 
 	return 0;
@@ -57,13 +57,13 @@ int rpc_mount_mnt_async(struct rpc_context *rpc, rpc_cb cb, char *export, void *
 	if (xdr_dirpath(&pdu->xdr, &export) == 0) {
 		rpc_set_error(rpc, "XDR error. Failed to encode mount/mnt call");
 		rpc_free_pdu(rpc, pdu);
-		return -2;
+		return -1;
 	}
 
 	if (rpc_queue_pdu(rpc, pdu) != 0) {
 		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for mount/mnt call");
 		rpc_free_pdu(rpc, pdu);
-		return -2;
+		return -1;
 	}
 
 	return 0;
@@ -75,14 +75,14 @@ int rpc_mount_dump_async(struct rpc_context *rpc, rpc_cb cb, void *private_data)
 
 	pdu = rpc_allocate_pdu(rpc, MOUNT_PROGRAM, MOUNT_V3, MOUNT3_DUMP, cb, private_data, (xdrproc_t)xdr_mountlist, sizeof(mountlist));
 	if (pdu == NULL) {
-		printf("Failed to allocate pdu for mount/dump\n");
+		rpc_set_error(rpc, "Failed to allocate pdu for mount/dump");
 		return -1;
 	}
 
 	if (rpc_queue_pdu(rpc, pdu) != 0) {
-		printf("Failed to queue mount/dump pdu\n");
+		rpc_set_error(rpc, "Failed to queue mount/dump pdu");
 		rpc_free_pdu(rpc, pdu);
-		return -2;
+		return -1;
 	}
 
 	return 0;
@@ -94,20 +94,20 @@ int rpc_mount_umnt_async(struct rpc_context *rpc, rpc_cb cb, char *export, void 
 
 	pdu = rpc_allocate_pdu(rpc, MOUNT_PROGRAM, MOUNT_V3, MOUNT3_UMNT, cb, private_data, (xdrproc_t)xdr_void, 0);
 	if (pdu == NULL) {
-		printf("Failed to allocate pdu for mount/umnt\n");
+		rpc_set_error(rpc, "Failed to allocate pdu for mount/umnt");
 		return -1;
 	}
 
 	if (xdr_dirpath(&pdu->xdr, &export) == 0) {
-		printf("failed to encode dirpath for mount/umnt\n");
+		rpc_set_error(rpc, "failed to encode dirpath for mount/umnt");
 		rpc_free_pdu(rpc, pdu);
-		return -2;
+		return -1;
 	}
 
 	if (rpc_queue_pdu(rpc, pdu) != 0) {
-		printf("Failed to queue mount/umnt pdu\n");
+		rpc_set_error(rpc, "Failed to queue mount/umnt pdu");
 		rpc_free_pdu(rpc, pdu);
-		return -2;
+		return -1;
 	}
 
 	return 0;
@@ -119,14 +119,14 @@ int rpc_mount_umntall_async(struct rpc_context *rpc, rpc_cb cb, void *private_da
 
 	pdu = rpc_allocate_pdu(rpc, MOUNT_PROGRAM, MOUNT_V3, MOUNT3_UMNTALL, cb, private_data, (xdrproc_t)xdr_void, 0);
 	if (pdu == NULL) {
-		printf("Failed to allocate pdu for mount/umntall\n");
+		rpc_set_error(rpc, "Failed to allocate pdu for mount/umntall");
 		return -1;
 	}
 
 	if (rpc_queue_pdu(rpc, pdu) != 0) {
-		printf("Failed to queue mount/umntall pdu\n");
+		rpc_set_error(rpc, "Failed to queue mount/umntall pdu");
 		rpc_free_pdu(rpc, pdu);
-		return -2;
+		return -1;
 	}
 
 	return 0;
@@ -138,14 +138,14 @@ int rpc_mount_export_async(struct rpc_context *rpc, rpc_cb cb, void *private_dat
 
 	pdu = rpc_allocate_pdu(rpc, MOUNT_PROGRAM, MOUNT_V3, MOUNT3_EXPORT, cb, private_data, (xdrproc_t)xdr_exports, sizeof(exports));
 	if (pdu == NULL) {
-		printf("Failed to allocate pdu for mount/export\n");
+		rpc_set_error(rpc, "Failed to allocate pdu for mount/export");
 		return -1;
 	}
 
 	if (rpc_queue_pdu(rpc, pdu) != 0) {
-		printf("Failed to queue mount/export pdu\n");
+		rpc_set_error(rpc, "Failed to queue mount/export pdu");
 		rpc_free_pdu(rpc, pdu);
-		return -2;
+		return -1;
 	}
 
 	return 0;

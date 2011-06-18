@@ -58,12 +58,11 @@ static int rpc_write_to_socket(struct rpc_context *rpc)
 	ssize_t count;
 
 	if (rpc == NULL) {
-		printf("trying to write to socket for NULL context\n");
 		return -1;
 	}
 	if (rpc->fd == -1) {
-		printf("trying to write but not connected\n");
-		return -2;
+		rpc_set_error(rpc, "trying to write but not connected");
+		return -1;
 	}
 
 	while (rpc->outqueue != NULL) {
@@ -74,11 +73,10 @@ static int rpc_write_to_socket(struct rpc_context *rpc)
 		count = write(rpc->fd, rpc->outqueue->outdata.data + rpc->outqueue->written, total - rpc->outqueue->written);
 		if (count == -1) {
 			if (errno == EAGAIN || errno == EWOULDBLOCK) {
-				printf("socket would block, return from write to socket\n");
 				return 0;
 			}
-			printf("Error when writing to socket :%s(%d)\n", strerror(errno), errno);
-			return -3;
+			rpc_set_error(rpc, "Error when writing to socket :%s(%d)", strerror(errno), errno);
+			return -1;
 		}
 
 		rpc->outqueue->written += count;
@@ -105,13 +103,13 @@ static int rpc_read_from_socket(struct rpc_context *rpc)
 	}
 	if (available == 0) {
 		rpc_set_error(rpc, "Socket has been closed");
-		return -2;
+		return -1;
 	}
 	size = rpc->insize - rpc->inpos + available;
 	buf = malloc(size);
 	if (buf == NULL) {
 		rpc_set_error(rpc, "Out of memory: failed to allocate %d bytes for input buffer. Closing socket.", size);
-		return -3;
+		return -1;
 	}
 	if (rpc->insize > rpc->inpos) {
 		memcpy(buf, rpc->inbuf + rpc->inpos, rpc->insize - rpc->inpos);
@@ -129,7 +127,7 @@ static int rpc_read_from_socket(struct rpc_context *rpc)
 		rpc_set_error(rpc, "Read from socket failed, errno:%d. Closing socket.", errno);
 		free(buf);
 		buf = NULL;
-		return -4;
+		return -1;
 	}
 
 	if (rpc->inbuf != NULL) {
@@ -148,7 +146,7 @@ static int rpc_read_from_socket(struct rpc_context *rpc)
 		}
 		if (rpc_process_pdu(rpc, rpc->inbuf + rpc->inpos, count) != 0) {
 			rpc_set_error(rpc, "Invalid/garbage pdu received from server. Closing socket");
-			return -5;
+			return -1;
 		}
 		rpc->inpos += count;
 		if (rpc->inpos == rpc->insize) {
@@ -185,10 +183,9 @@ int rpc_service(struct rpc_context *rpc, int revents)
 		return -1;
 	}
 	if (revents & POLLHUP) {
-		printf("rpc_service: POLLHUP, socket error\n");
 		rpc_set_error(rpc, "Socket failed with POLLHUP");
 		rpc->connect_cb(rpc, RPC_STATUS_ERROR, rpc->error_string, rpc->connect_data);
-		return -2;
+		return -1;
 	}
 
 	if (rpc->is_connected == 0 && rpc->fd != -1 && revents&POLLOUT) {
@@ -215,15 +212,15 @@ int rpc_service(struct rpc_context *rpc, int revents)
 
 	if (revents & POLLOUT && rpc->outqueue != NULL) {
 		if (rpc_write_to_socket(rpc) != 0) {
-			printf("write to socket failed\n");
-			return -3;
+			rpc_set_error(rpc, "write to socket failed");
+			return -1;
 		}
 	}
 
 	if (revents & POLLIN) {
 		if (rpc_read_from_socket(rpc) != 0) {
 			rpc_disconnect(rpc, rpc_get_error(rpc));
-			return -4;
+			return -1;
 		}
 	}
 
@@ -239,7 +236,6 @@ int rpc_connect_async(struct rpc_context *rpc, const char *server, int port, rpc
 
 	if (rpc->fd != -1) {
 		rpc_set_error(rpc, "Trying to connect while already connected");
-		printf("%s\n", rpc->error_string);
 		return -1;
 	}
 
@@ -247,8 +243,7 @@ int rpc_connect_async(struct rpc_context *rpc, const char *server, int port, rpc
 	sin->sin_port   = htons(port);
 	if (inet_pton(AF_INET, server, &sin->sin_addr) != 1) {
 		rpc_set_error(rpc, "Not a valid server ip address");
-		printf("%s\n", rpc->error_string);
-		return -2;
+		return -1;
 	}
 
 	switch (s.ss_family) {
@@ -263,8 +258,7 @@ int rpc_connect_async(struct rpc_context *rpc, const char *server, int port, rpc
 
 	if (rpc->fd == -1) {
 		rpc_set_error(rpc, "Failed to open socket");
-		printf("%s\n", rpc->error_string);
-		return -3;
+		return -1;
 	}
 
 	rpc->connect_cb  = cb;
@@ -274,8 +268,7 @@ int rpc_connect_async(struct rpc_context *rpc, const char *server, int port, rpc
 
 	if (connect(rpc->fd, (struct sockaddr *)&s, socksize) != 0 && errno != EINPROGRESS) {
 		rpc_set_error(rpc, "connect() to server failed");
-		printf("%s\n", rpc->error_string);
-		return -4;
+		return -1;
 	}		
 
 	return 0;
