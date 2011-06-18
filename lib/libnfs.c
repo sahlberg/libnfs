@@ -84,6 +84,19 @@ struct nfs_cb_data {
        int continue_int;
 
        struct nfs_fh3 fh;
+
+       /* for multi-read/write calls. */
+       int error;
+       int cancel;
+       int num_calls;
+       off_t start_offset, max_offset;
+       char *buffer;
+};
+
+struct nfs_mcb_data {
+       struct nfs_cb_data *data;
+       off_t offset;
+       size_t count;
 };
 
 static int nfs_lookup_path_async_internal(struct nfs_context *nfs, struct nfs_cb_data *data, struct nfs_fh3 *fh);
@@ -171,6 +184,11 @@ void free_nfs_cb_data(struct nfs_cb_data *data)
 	if (data->fh.data.data_val != NULL) {
 		free(data->fh.data.data_val);
 		data->fh.data.data_val = NULL;
+	}
+
+	if (data->buffer != NULL) {
+		free(data->buffer);
+		data->buffer = NULL;
 	}
 
 	free(data);
@@ -568,7 +586,6 @@ static int nfs_lookuppath_async(struct nfs_context *nfs, const char *path, nfs_c
 	if (data == NULL) {
 		rpc_set_error(nfs->rpc, "out of memory: failed to allocate nfs_cb_data structure");
 		printf("failed to allocate memory for nfs cb data\n");
-		free_nfs_cb_data(data);
 		return -2;
 	}
 	bzero(data, sizeof(struct nfs_cb_data));
@@ -818,6 +835,64 @@ static void nfs_pread_cb(struct rpc_context *rpc _U_, int status, void *command_
 	free_nfs_cb_data(data);
 }
 
+static void nfs_pread_mcb(struct rpc_context *rpc _U_, int status, void *command_data, void *private_data)
+{
+	struct nfs_mcb_data *mdata = private_data;
+	struct nfs_cb_data *data = mdata->data;
+	struct nfs_context *nfs = data->nfs;
+	READ3res *res;
+
+	data->num_calls--;
+
+	if (status == RPC_STATUS_ERROR) {
+		/* flag the failure but do not invoke callback until we have received all responses */
+		data->error = 1;
+	}
+	if (status == RPC_STATUS_CANCEL) {
+		/* flag the cancellation but do not invoke callback until we have received all responses */
+		data->cancel = 1;
+	}
+
+	/* reassemble the data into the buffer */
+	if (status == RPC_STATUS_SUCCESS) {
+		res = command_data;
+		if (res->status != NFS3_OK) {
+			rpc_set_error(nfs->rpc, "NFS: Read failed with %s(%d)", nfsstat3_to_str(res->status), nfsstat3_to_errno(res->status));
+			data->error = 1;
+		} else {
+			memcpy(&data->buffer[mdata->offset], res->READ3res_u.resok.data.data_val, res->READ3res_u.resok.count);
+			if (data->max_offset < mdata->offset + res->READ3res_u.resok.count) {
+				data->max_offset = mdata->offset + res->READ3res_u.resok.count;
+			}
+		}
+	}
+
+	if (data->num_calls > 0) {
+		/* still waiting for more replies */
+		free(mdata);
+		return;
+	}
+
+
+	if (data->error != 0) {
+		data->cb(-EFAULT, nfs, command_data, data->private_data);
+		free_nfs_cb_data(data);
+		free(mdata);
+		return;
+	}
+	if (data->cancel != 0) {
+		data->cb(-EINTR, nfs, "Command was cancelled", data->private_data);
+		free_nfs_cb_data(data);
+		free(mdata);
+		return;
+	}
+
+	data->nfsfh->offset = data->max_offset;
+	data->cb(data->max_offset - data->start_offset, nfs, data->buffer, data->private_data);
+	free_nfs_cb_data(data);
+	free(mdata);
+}
+
 int nfs_pread_async(struct nfs_context *nfs, struct nfsfh *nfsfh, off_t offset, size_t count, nfs_cb cb, void *private_data)
 {
 	struct nfs_cb_data *data;
@@ -826,7 +901,6 @@ int nfs_pread_async(struct nfs_context *nfs, struct nfsfh *nfsfh, off_t offset, 
 	if (data == NULL) {
 		rpc_set_error(nfs->rpc, "out of memory: failed to allocate nfs_cb_data structure");
 		printf("failed to allocate memory for nfs cb data\n");
-		free_nfs_cb_data(data);
 		return -1;
 	}
 	bzero(data, sizeof(struct nfs_cb_data));
@@ -836,13 +910,63 @@ int nfs_pread_async(struct nfs_context *nfs, struct nfsfh *nfsfh, off_t offset, 
 	data->nfsfh        = nfsfh;
 
 	nfsfh->offset = offset;
-	if (rpc_nfs_read_async(nfs->rpc, nfs_pread_cb, &nfsfh->fh, offset, count, data) != 0) {
-		rpc_set_error(nfs->rpc, "RPC error: Failed to send READ call for %s", data->path);
+
+	if (count <= nfs_get_readmax(nfs)) {
+		if (rpc_nfs_read_async(nfs->rpc, nfs_pread_cb, &nfsfh->fh, offset, count, data) != 0) {
+			rpc_set_error(nfs->rpc, "RPC error: Failed to send READ call for %s", data->path);
+			data->cb(-ENOMEM, nfs, rpc_get_error(nfs->rpc), data->private_data);
+			free_nfs_cb_data(data);
+			return -1;
+		}
+		return 0;
+	}
+
+	/* trying to read more than maximum server read size, we has to chop it up into smaller
+	 * reads and collect into a reassembly buffer.
+	 * we send all reads in parallell so that performance is still good.
+	 */
+	data->start_offset = offset;
+
+	data->buffer = 	malloc(count);
+	if (data->buffer == NULL) {
+		rpc_set_error(nfs->rpc, "Out-Of-Memory: Failed to allocate reassembly buffer for %d bytes", (int)count);
 		data->cb(-ENOMEM, nfs, rpc_get_error(nfs->rpc), data->private_data);
 		free_nfs_cb_data(data);
 		return -1;
 	}
-	return 0;
+
+	while (count > 0) {
+		size_t readcount = count;
+		struct nfs_mcb_data *mdata;
+
+		if (readcount > nfs_get_readmax(nfs)) {
+			readcount = nfs_get_readmax(nfs);
+		}
+
+		mdata = malloc(sizeof(struct nfs_mcb_data));
+		if (mdata == NULL) {
+			rpc_set_error(nfs->rpc, "out of memory: failed to allocate nfs_mcb_data structure");
+			printf("failed to allocate memory for nfs mcb data\n");
+			return -1;
+		}
+		bzero(mdata, sizeof(struct nfs_mcb_data));
+		mdata->data   = data;
+		mdata->offset = offset;
+		mdata->count  = readcount;
+
+		if (rpc_nfs_read_async(nfs->rpc, nfs_pread_mcb, &nfsfh->fh, offset, readcount, mdata) != 0) {
+			rpc_set_error(nfs->rpc, "RPC error: Failed to send READ call for %s", data->path);
+			data->cb(-ENOMEM, nfs, rpc_get_error(nfs->rpc), data->private_data);
+			free(mdata);
+			return -1;
+		}
+
+		count               -= readcount;
+		offset              += readcount;
+		data->num_calls++;
+	 }
+
+	 return 0;
 }
 
 /*
@@ -896,7 +1020,6 @@ int nfs_pwrite_async(struct nfs_context *nfs, struct nfsfh *nfsfh, off_t offset,
 	if (data == NULL) {
 		rpc_set_error(nfs->rpc, "out of memory: failed to allocate nfs_cb_data structure");
 		printf("failed to allocate memory for nfs cb data\n");
-		free_nfs_cb_data(data);
 		return -1;
 	}
 	bzero(data, sizeof(struct nfs_cb_data));
@@ -957,7 +1080,6 @@ int nfs_fstat_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_cb cb, voi
 	if (data == NULL) {
 		rpc_set_error(nfs->rpc, "out of memory: failed to allocate nfs_cb_data structure");
 		printf("failed to allocate memory for nfs cb data\n");
-		free_nfs_cb_data(data);
 		return -1;
 	}
 	bzero(data, sizeof(struct nfs_cb_data));
@@ -1016,7 +1138,6 @@ int nfs_fsync_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_cb cb, voi
 	if (data == NULL) {
 		rpc_set_error(nfs->rpc, "out of memory: failed to allocate nfs_cb_data structure");
 		printf("failed to allocate memory for nfs cb data\n");
-		free_nfs_cb_data(data);
 		return -1;
 	}
 	bzero(data, sizeof(struct nfs_cb_data));
@@ -1077,7 +1198,6 @@ int nfs_ftruncate_async(struct nfs_context *nfs, struct nfsfh *nfsfh, off_t leng
 	if (data == NULL) {
 		rpc_set_error(nfs->rpc, "out of memory: failed to allocate nfs_cb_data structure");
 		printf("failed to allocate memory for nfs cb data\n");
-		free_nfs_cb_data(data);
 		return -1;
 	}
 	bzero(data, sizeof(struct nfs_cb_data));

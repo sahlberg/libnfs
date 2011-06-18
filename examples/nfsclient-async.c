@@ -19,7 +19,7 @@
  */
 
 #define SERVER "10.1.1.27"
-#define EXPORT "/shared"
+#define EXPORT "/VIRTUAL"
 #define NFSFILE "/BOOKS/Classics/Dracula.djvu"
 #define NFSDIR "/BOOKS/Classics/"
 
@@ -138,8 +138,8 @@ void nfs_open_cb(int status, struct nfs_context *nfs, void *data, void *private_
 	nfsfh         = data;
 	client->nfsfh = nfsfh;
 	printf("Got reply from server for open(%s). Handle:%p\n", NFSFILE, data);
-	printf("Read first 16 bytes\n");
-	if (nfs_pread_async(nfs, nfsfh, 0, 16, nfs_read_cb, client) != 0) {
+	printf("Read first 64 bytes\n");
+	if (nfs_pread_async(nfs, nfsfh, 0, 64, nfs_read_cb, client) != 0) {
 		printf("Failed to start async nfs open\n");
 		exit(10);
 	}
