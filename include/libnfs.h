@@ -100,7 +100,7 @@ int nfs_mount_async(struct nfs_context *nfs, const char *server, const char *exp
  *      0 : The operation was successfull.
  * -errno : The command failed.
  */
-int nfs_mount_sync(struct nfs_context *nfs, const char *server, const char *exportname);
+int nfs_mount(struct nfs_context *nfs, const char *server, const char *exportname);
 
 
 
@@ -128,7 +128,7 @@ int nfs_stat_async(struct nfs_context *nfs, const char *path, nfs_cb cb, void *p
  *      0 : The operation was successfull.
  * -errno : The command failed.
  */
-int nfs_stat_sync(struct nfs_context *nfs, const char *path, struct stat *st);
+int nfs_stat(struct nfs_context *nfs, const char *path, struct stat *st);
 
 
 /*
@@ -153,7 +153,7 @@ int nfs_fstat_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_cb cb, voi
  *      0 : The operation was successfull.
  * -errno : The command failed.
  */
-int nfs_fstat_sync(struct nfs_context *nfs, struct nfsfh *nfsfh, struct stat *st);
+int nfs_fstat(struct nfs_context *nfs, struct nfsfh *nfsfh, struct stat *st);
 
 
 
@@ -183,7 +183,7 @@ int nfs_open_async(struct nfs_context *nfs, const char *path, int mode, nfs_cb c
  *      0 : The operation was successfull. *nfsfh is filled in.
  * -errno : The command failed.
  */
-int nfs_open_sync(struct nfs_context *nfs, const char *path, int mode, struct nfsfh **nfsfh);
+int nfs_open(struct nfs_context *nfs, const char *path, int mode, struct nfsfh **nfsfh);
 
 
 
@@ -211,7 +211,7 @@ int nfs_close_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_cb cb, voi
  *      0 : The operation was successfull.
  * -errno : The command failed.
  */
-int nfs_close_sync(struct nfs_context *nfs, struct nfsfh *nfsfh);
+int nfs_close(struct nfs_context *nfs, struct nfsfh *nfsfh);
 
 
 /*
@@ -238,7 +238,7 @@ int nfs_pread_async(struct nfs_context *nfs, struct nfsfh *nfsfh, off_t offset, 
  *    >=0 : numer of bytes read.
  * -errno : An error occured.
  */
-int nfs_pread_sync(struct nfs_context *nfs, struct nfsfh *nfsfh, off_t offset, size_t count, char *buf);
+int nfs_pread(struct nfs_context *nfs, struct nfsfh *nfsfh, off_t offset, size_t count, char *buf);
 
 
 
@@ -266,7 +266,7 @@ int nfs_read_async(struct nfs_context *nfs, struct nfsfh *nfsfh, size_t count, n
  *    >=0 : numer of bytes read.
  * -errno : An error occured.
  */
-int nfs_read_sync(struct nfs_context *nfs, struct nfsfh *nfsfh, size_t count, char *buf);
+int nfs_read(struct nfs_context *nfs, struct nfsfh *nfsfh, size_t count, char *buf);
 
 
 
@@ -294,7 +294,7 @@ int nfs_pwrite_async(struct nfs_context *nfs, struct nfsfh *nfsfh, off_t offset,
  *    >=0 : numer of bytes written.
  * -errno : An error occured.
  */
-int nfs_pwrite_sync(struct nfs_context *nfs, struct nfsfh *nfsfh, off_t offset, size_t count, char *buf);
+int nfs_pwrite(struct nfs_context *nfs, struct nfsfh *nfsfh, off_t offset, size_t count, char *buf);
 
 
 /*
@@ -320,7 +320,7 @@ int nfs_write_async(struct nfs_context *nfs, struct nfsfh *nfsfh, size_t count, 
  *    >=0 : numer of bytes written.
  * -errno : An error occured.
  */
-int nfs_write_sync(struct nfs_context *nfs, struct nfsfh *nfsfh, size_t count, char *buf);
+int nfs_write(struct nfs_context *nfs, struct nfsfh *nfsfh, size_t count, char *buf);
 
 
 /*
@@ -346,7 +346,7 @@ int nfs_lseek_async(struct nfs_context *nfs, struct nfsfh *nfsfh, off_t offset, 
  *    >=0 : numer of bytes read.
  * -errno : An error occured.
  */
-int nfs_lseek_sync(struct nfs_context *nfs, struct nfsfh *nfsfh, off_t offset, int whence, off_t *current_offset);
+int nfs_lseek(struct nfs_context *nfs, struct nfsfh *nfsfh, off_t offset, int whence, off_t *current_offset);
 
 
 /*
@@ -371,7 +371,7 @@ int nfs_fsync_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_cb cb, voi
  *      0 : Success
  * -errno : An error occured.
  */
-int nfs_fsync_sync(struct nfs_context *nfs, struct nfsfh *nfsfh);
+int nfs_fsync(struct nfs_context *nfs, struct nfsfh *nfsfh);
 
 
 
@@ -397,7 +397,7 @@ int nfs_truncate_async(struct nfs_context *nfs, const char *path, off_t length, 
  *      0 : Success
  * -errno : An error occured.
  */
-int nfs_truncate_sync(struct nfs_context *nfs, const char *path, off_t length);
+int nfs_truncate(struct nfs_context *nfs, const char *path, off_t length);
 
 
 
@@ -423,7 +423,7 @@ int nfs_ftruncate_async(struct nfs_context *nfs, struct nfsfh *nfsfh, off_t leng
  *      0 : Success
  * -errno : An error occured.
  */
-int nfs_ftruncate_sync(struct nfs_context *nfs, struct nfsfh *nfsfh, off_t length);
+int nfs_ftruncate(struct nfs_context *nfs, struct nfsfh *nfsfh, off_t length);
 
 
 
@@ -452,7 +452,7 @@ int nfs_mkdir_async(struct nfs_context *nfs, const char *path, nfs_cb cb, void *
  *      0 : Success
  * -errno : An error occured.
  */
-int nfs_mkdir_sync(struct nfs_context *nfs, const char *path);
+int nfs_mkdir(struct nfs_context *nfs, const char *path);
 
 
 
@@ -478,7 +478,7 @@ int nfs_rmdir_async(struct nfs_context *nfs, const char *path, nfs_cb cb, void *
  *      0 : Success
  * -errno : An error occured.
  */
-int nfs_rmdir_sync(struct nfs_context *nfs, const char *path);
+int nfs_rmdir(struct nfs_context *nfs, const char *path);
 
 
 
@@ -506,7 +506,7 @@ int nfs_creat_async(struct nfs_context *nfs, const char *path, int mode, nfs_cb 
  *      0 : Success
  * -errno : An error occured.
  */
-int nfs_creat_sync(struct nfs_context *nfs, const char *path, int mode, struct nfsfh **nfsfh);
+int nfs_creat(struct nfs_context *nfs, const char *path, int mode, struct nfsfh **nfsfh);
 
 
 
@@ -535,7 +535,7 @@ int nfs_unlink_async(struct nfs_context *nfs, const char *path, nfs_cb cb, void 
  *      0 : Success
  * -errno : An error occured.
  */
-int nfs_unlink_sync(struct nfs_context *nfs, const char *path);
+int nfs_unlink(struct nfs_context *nfs, const char *path);
 
 
 
@@ -566,7 +566,7 @@ int nfs_opendir_async(struct nfs_context *nfs, const char *path, nfs_cb cb, void
  *      0 : Success
  * -errno : An error occured.
  */
-int nfs_opendir_sync(struct nfs_context *nfs, const char *path, struct nfsdir **nfsdir);
+int nfs_opendir(struct nfs_context *nfs, const char *path, struct nfsdir **nfsdir);
 
 
 
@@ -618,7 +618,7 @@ int nfs_statvfs_async(struct nfs_context *nfs, const char *path, nfs_cb cb, void
  *      0 : The operation was successfull.
  * -errno : The command failed.
  */
-int nfs_statvfs_sync(struct nfs_context *nfs, const char *path, struct statvfs *svfs);
+int nfs_statvfs(struct nfs_context *nfs, const char *path, struct statvfs *svfs);
 
 
 /*
@@ -645,7 +645,7 @@ int nfs_readlink_async(struct nfs_context *nfs, const char *path, nfs_cb cb, voi
  *      0 : The operation was successfull.
  * -errno : The command failed.
  */
-int nfs_readlink_sync(struct nfs_context *nfs, const char *path, char *buf, int bufsize);
+int nfs_readlink(struct nfs_context *nfs, const char *path, char *buf, int bufsize);
 
 
 
@@ -671,7 +671,7 @@ int nfs_chmod_async(struct nfs_context *nfs, const char *path, int mode, nfs_cb 
  *      0 : The operation was successfull.
  * -errno : The command failed.
  */
-int nfs_chmod_sync(struct nfs_context *nfs, const char *path, int mode);
+int nfs_chmod(struct nfs_context *nfs, const char *path, int mode);
 
 
 
@@ -697,7 +697,7 @@ int nfs_fchmod_async(struct nfs_context *nfs, struct nfsfh *nfsfh, int mode, nfs
  *      0 : The operation was successfull.
  * -errno : The command failed.
  */
-int nfs_fchmod_sync(struct nfs_context *nfs, struct nfsfh *nfsfh, int mode);
+int nfs_fchmod(struct nfs_context *nfs, struct nfsfh *nfsfh, int mode);
 
 
 
@@ -723,7 +723,7 @@ int nfs_chown_async(struct nfs_context *nfs, const char *path, int uid, int gid,
  *      0 : The operation was successfull.
  * -errno : The command failed.
  */
-int nfs_chown_sync(struct nfs_context *nfs, const char *path, int uid, int gid);
+int nfs_chown(struct nfs_context *nfs, const char *path, int uid, int gid);
 
 
 
@@ -749,7 +749,7 @@ int nfs_fchown_async(struct nfs_context *nfs, struct nfsfh *nfsfh, int uid, int 
  *      0 : The operation was successfull.
  * -errno : The command failed.
  */
-int nfs_fchown_sync(struct nfs_context *nfs, struct nfsfh *nfsfh, int uid, int gid);
+int nfs_fchown(struct nfs_context *nfs, struct nfsfh *nfsfh, int uid, int gid);
 
 
 
@@ -776,7 +776,7 @@ int nfs_utimes_async(struct nfs_context *nfs, const char *path, struct timeval *
  *      0 : The operation was successfull.
  * -errno : The command failed.
  */
-int nfs_utimes_sync(struct nfs_context *nfs, const char *path, struct timeval *times);
+int nfs_utimes(struct nfs_context *nfs, const char *path, struct timeval *times);
 
 
 /*
@@ -802,7 +802,7 @@ int nfs_utime_async(struct nfs_context *nfs, const char *path, struct utimbuf *t
  *      0 : The operation was successfull.
  * -errno : The command failed.
  */
-int nfs_utime_sync(struct nfs_context *nfs, const char *path, struct utimbuf *times);
+int nfs_utime(struct nfs_context *nfs, const char *path, struct utimbuf *times);
 
 
 
@@ -829,7 +829,7 @@ int nfs_access_async(struct nfs_context *nfs, const char *path, int mode, nfs_cb
  *      0 : The operation was successfull.
  * -errno : The command failed.
  */
-int nfs_access_sync(struct nfs_context *nfs, const char *path, int mode);
+int nfs_access(struct nfs_context *nfs, const char *path, int mode);
 
 
 
@@ -856,7 +856,7 @@ int nfs_symlink_async(struct nfs_context *nfs, const char *oldpath, const char *
  *      0 : The operation was successfull.
  * -errno : The command failed.
  */
-int nfs_symlink_sync(struct nfs_context *nfs, const char *oldpath, const char *newpath);
+int nfs_symlink(struct nfs_context *nfs, const char *oldpath, const char *newpath);
 
 
 /*
@@ -881,7 +881,7 @@ int nfs_rename_async(struct nfs_context *nfs, const char *oldpath, const char *n
  *      0 : The operation was successfull.
  * -errno : The command failed.
  */
-int nfs_rename_sync(struct nfs_context *nfs, const char *oldpath, const char *newpath);
+int nfs_rename(struct nfs_context *nfs, const char *oldpath, const char *newpath);
 
 
 
@@ -907,7 +907,7 @@ int nfs_link_async(struct nfs_context *nfs, const char *oldpath, const char *new
  *      0 : The operation was successfull.
  * -errno : The command failed.
  */
-int nfs_link_sync(struct nfs_context *nfs, const char *oldpath, const char *newpath);
+int nfs_link(struct nfs_context *nfs, const char *oldpath, const char *newpath);
 
 
 

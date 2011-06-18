@@ -66,7 +66,7 @@ int main(int argc _U_, char *argv[] _U_)
 		exit(10);
 	}
 
-	ret = nfs_mount_sync(nfs, client.server, client.export);
+	ret = nfs_mount(nfs, client.server, client.export);
 	if (ret != 0) {
  		printf("Failed to mount nfs share : %s\n", nfs_get_error(nfs));
 		exit(10);
@@ -74,7 +74,7 @@ int main(int argc _U_, char *argv[] _U_)
 	printf("mounted share successfully\n");
 
 
-	ret = nfs_stat_sync(nfs, NFSFILE, &st);
+	ret = nfs_stat(nfs, NFSFILE, &st);
 	if (ret != 0) {
 		printf("Failed to stat(%s) %s\n", NFSFILE, nfs_get_error(nfs));
 		exit(10);
@@ -83,13 +83,13 @@ int main(int argc _U_, char *argv[] _U_)
 	printf("Size %d\n", (int)st.st_size);
 	printf("Inode %04o\n", (int)st.st_ino);
 
-	ret = nfs_open_sync(nfs, NFSFILE, O_RDONLY, &nfsfh);
+	ret = nfs_open(nfs, NFSFILE, O_RDONLY, &nfsfh);
 	if (ret != 0) {
 		printf("Failed to open(%s) %s\n", NFSFILE, nfs_get_error(nfs));
 		exit(10);
 	}
 
-	ret = nfs_read_sync(nfs, nfsfh, 16, buf);
+	ret = nfs_read(nfs, nfsfh, 16, buf);
 	if (ret < 0) {
 		printf("Failed to pread(%s) %s\n", NFSFILE, nfs_get_error(nfs));
 		exit(10);
@@ -99,7 +99,7 @@ int main(int argc _U_, char *argv[] _U_)
 		printf("%02x ", buf[i]&0xff);
 	}
 	printf("\n");
-	ret = nfs_read_sync(nfs, nfsfh, 16, buf);
+	ret = nfs_read(nfs, nfsfh, 16, buf);
 	if (ret < 0) {
 		printf("Failed to pread(%s) %s\n", NFSFILE, nfs_get_error(nfs));
 		exit(10);
@@ -110,7 +110,7 @@ int main(int argc _U_, char *argv[] _U_)
 	}
 	printf("\n");
 
-	ret = (int)nfs_lseek_sync(nfs, nfsfh, 0, SEEK_CUR, &offset);
+	ret = (int)nfs_lseek(nfs, nfsfh, 0, SEEK_CUR, &offset);
 	if (ret < 0) {
 		printf("Failed to lseek(%s) %s\n", NFSFILE, nfs_get_error(nfs));
 		exit(10);
@@ -118,14 +118,14 @@ int main(int argc _U_, char *argv[] _U_)
 	printf("File position is %d\n", (int)offset);
 
 	printf("seek to end of file\n");
-	ret = (int)nfs_lseek_sync(nfs, nfsfh, 0, SEEK_END, &offset);
+	ret = (int)nfs_lseek(nfs, nfsfh, 0, SEEK_END, &offset);
 	if (ret < 0) {
 		printf("Failed to lseek(%s) %s\n", NFSFILE, nfs_get_error(nfs));
 		exit(10);
 	}
 	printf("File position is %d\n", (int)offset);
 
-	ret = nfs_fstat_sync(nfs, nfsfh, &st);
+	ret = nfs_fstat(nfs, nfsfh, &st);
 	if (ret != 0) {
 		printf("Failed to stat(%s) %s\n", NFSFILE, nfs_get_error(nfs));
 		exit(10);
@@ -135,13 +135,13 @@ int main(int argc _U_, char *argv[] _U_)
 	printf("Inode %04o\n", (int)st.st_ino);
 
 
-	ret = nfs_close_sync(nfs, nfsfh);
+	ret = nfs_close(nfs, nfsfh);
 	if (ret < 0) {
 		printf("Failed to close(%s): %s\n", NFSFILE, nfs_get_error(nfs));
 		exit(10);
 	}
 
-	ret = nfs_opendir_sync(nfs, NFSDIR, &nfsdir);
+	ret = nfs_opendir(nfs, NFSDIR, &nfsdir);
 	if (ret != 0) {
 		printf("Failed to open(%s) %s\n", NFSFILE, nfs_get_error(nfs));
 		exit(10);
@@ -152,29 +152,29 @@ int main(int argc _U_, char *argv[] _U_)
 	nfs_closedir(nfs, nfsdir);
 
 
-	ret = nfs_open_sync(nfs, NFSFILEW, O_WRONLY, &nfsfh);
+	ret = nfs_open(nfs, NFSFILEW, O_WRONLY, &nfsfh);
 	if (ret != 0) {
 		printf("Failed to open(%s) %s\n", NFSFILEW, nfs_get_error(nfs));
 		exit(10);
 	}
-	ret = nfs_pwrite_sync(nfs, nfsfh, 0, 16, buf);
+	ret = nfs_pwrite(nfs, nfsfh, 0, 16, buf);
 	if (ret < 0) {
 		printf("Failed to pwrite(%s) %s\n", NFSFILEW, nfs_get_error(nfs));
 		exit(10);
 	}
-	ret = nfs_fsync_sync(nfs, nfsfh);
+	ret = nfs_fsync(nfs, nfsfh);
 	if (ret < 0) {
 		printf("Failed to fsync(%s) %s\n", NFSFILEW, nfs_get_error(nfs));
 		exit(10);
 	}
-	ret = nfs_close_sync(nfs, nfsfh);
+	ret = nfs_close(nfs, nfsfh);
 	if (ret < 0) {
 		printf("Failed to close(%s) %s\n", NFSFILEW, nfs_get_error(nfs));
 		exit(10);
 	}
 
 
-	ret = nfs_statvfs_sync(nfs, NFSDIR, &svfs);
+	ret = nfs_statvfs(nfs, NFSDIR, &svfs);
 	if (ret < 0) {
 		printf("Failed to statvfs(%s) %s\n", NFSDIR, nfs_get_error(nfs));
 		exit(10);
@@ -182,7 +182,7 @@ int main(int argc _U_, char *argv[] _U_)
 	printf("files %d/%d/%d\n", (int)svfs.f_files, (int)svfs.f_ffree, (int)svfs.f_favail);
 
 
-	ret = nfs_access_sync(nfs, NFSFILE, R_OK);
+	ret = nfs_access(nfs, NFSFILE, R_OK);
 	if (ret != 0) {
 		printf("Failed to access(%s) %s\n", NFSFILE, nfs_get_error(nfs));
 	}
@@ -190,7 +190,7 @@ int main(int argc _U_, char *argv[] _U_)
 	/* become root */
 	nfs_set_auth(nfs, authunix_create("Ronnies-Laptop", 0, 0, 0, NULL));
 
-	ret = nfs_link_sync(nfs, NFSFILE, NFSFILER);
+	ret = nfs_link(nfs, NFSFILE, NFSFILER);
 	if (ret != 0) {
 		printf("Failed to link(%s) %s\n", NFSFILE, nfs_get_error(nfs));
 	}

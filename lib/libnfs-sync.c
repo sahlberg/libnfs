@@ -88,7 +88,7 @@ static void mount_cb(int status, struct nfs_context *nfs _U_, void *data, void *
 	}
 }
 
-int nfs_mount_sync(struct nfs_context *nfs, const char *server, const char *export)
+int nfs_mount(struct nfs_context *nfs, const char *server, const char *export)
 {
 	struct sync_cb_data cb_data;
 
@@ -123,7 +123,7 @@ static void stat_cb(int status, struct nfs_context *nfs _U_, void *data, void *p
 	memcpy(cb_data->return_data, data, sizeof(struct stat));
 }
 
-int nfs_stat_sync(struct nfs_context *nfs, const char *path, struct stat *st)
+int nfs_stat(struct nfs_context *nfs, const char *path, struct stat *st)
 {
 	struct sync_cb_data cb_data;
 
@@ -164,7 +164,7 @@ static void open_cb(int status, struct nfs_context *nfs _U_, void *data, void *p
 	*nfsfh = fh;
 }
 
-int nfs_open_sync(struct nfs_context *nfs, const char *path, int mode, struct nfsfh **nfsfh)
+int nfs_open(struct nfs_context *nfs, const char *path, int mode, struct nfsfh **nfsfh)
 {
 	struct sync_cb_data cb_data;
 
@@ -203,7 +203,7 @@ static void pread_cb(int status, struct nfs_context *nfs _U_, void *data, void *
 	memcpy(buffer, (char *)data, status);
 }
 
-int nfs_pread_sync(struct nfs_context *nfs, struct nfsfh *nfsfh, off_t offset, size_t count, char *buffer)
+int nfs_pread(struct nfs_context *nfs, struct nfsfh *nfsfh, off_t offset, size_t count, char *buffer)
 {
 	struct sync_cb_data cb_data;
 
@@ -223,9 +223,9 @@ int nfs_pread_sync(struct nfs_context *nfs, struct nfsfh *nfsfh, off_t offset, s
 /*
  * read()
  */
-int nfs_read_sync(struct nfs_context *nfs, struct nfsfh *nfsfh, size_t count, char *buffer)
+int nfs_read(struct nfs_context *nfs, struct nfsfh *nfsfh, size_t count, char *buffer)
 {
-	return nfs_pread_sync(nfs, nfsfh, nfs_get_current_offset(nfsfh), count, buffer);
+	return nfs_pread(nfs, nfsfh, nfs_get_current_offset(nfsfh), count, buffer);
 }
 
 /*
@@ -243,7 +243,7 @@ static void close_cb(int status, struct nfs_context *nfs _U_, void *data, void *
 	}
 }
 
-int nfs_close_sync(struct nfs_context *nfs, struct nfsfh *nfsfh)
+int nfs_close(struct nfs_context *nfs, struct nfsfh *nfsfh)
 {
 	struct sync_cb_data cb_data;
 
@@ -265,7 +265,7 @@ int nfs_close_sync(struct nfs_context *nfs, struct nfsfh *nfsfh)
 /*
  * fstat()
  */
-int nfs_fstat_sync(struct nfs_context *nfs, struct nfsfh *nfsfh, struct stat *st)
+int nfs_fstat(struct nfs_context *nfs, struct nfsfh *nfsfh, struct stat *st)
 {
 	struct sync_cb_data cb_data;
 
@@ -298,7 +298,7 @@ static void pwrite_cb(int status, struct nfs_context *nfs _U_, void *data, void 
 	}
 }
 
-int nfs_pwrite_sync(struct nfs_context *nfs, struct nfsfh *nfsfh, off_t offset, size_t count, char *buf)
+int nfs_pwrite(struct nfs_context *nfs, struct nfsfh *nfsfh, off_t offset, size_t count, char *buf)
 {
 	struct sync_cb_data cb_data;
 
@@ -317,9 +317,9 @@ int nfs_pwrite_sync(struct nfs_context *nfs, struct nfsfh *nfsfh, off_t offset, 
 /*
  * write()
  */
-int nfs_write_sync(struct nfs_context *nfs, struct nfsfh *nfsfh, size_t count, char *buf)
+int nfs_write(struct nfs_context *nfs, struct nfsfh *nfsfh, size_t count, char *buf)
 {
-	return nfs_pwrite_sync(nfs, nfsfh, nfs_get_current_offset(nfsfh), count, buf);
+	return nfs_pwrite(nfs, nfsfh, nfs_get_current_offset(nfsfh), count, buf);
 }
 
 
@@ -338,7 +338,7 @@ static void fsync_cb(int status, struct nfs_context *nfs _U_, void *data, void *
 	}
 }
 
-int nfs_fsync_sync(struct nfs_context *nfs, struct nfsfh *nfsfh)
+int nfs_fsync(struct nfs_context *nfs, struct nfsfh *nfsfh)
 {
 	struct sync_cb_data cb_data;
 
@@ -372,7 +372,7 @@ static void ftruncate_cb(int status, struct nfs_context *nfs _U_, void *data, vo
 	}
 }
 
-int nfs_ftruncate_sync(struct nfs_context *nfs, struct nfsfh *nfsfh, off_t length)
+int nfs_ftruncate(struct nfs_context *nfs, struct nfsfh *nfsfh, off_t length)
 {
 	struct sync_cb_data cb_data;
 
@@ -405,7 +405,7 @@ static void truncate_cb(int status, struct nfs_context *nfs _U_, void *data, voi
 	}
 }
 
-int nfs_truncate_sync(struct nfs_context *nfs, const char *path, off_t length)
+int nfs_truncate(struct nfs_context *nfs, const char *path, off_t length)
 {
 	struct sync_cb_data cb_data;
 
@@ -440,7 +440,7 @@ static void mkdir_cb(int status, struct nfs_context *nfs _U_, void *data, void *
 	}
 }
 
-int nfs_mkdir_sync(struct nfs_context *nfs, const char *path)
+int nfs_mkdir(struct nfs_context *nfs, const char *path)
 {
 	struct sync_cb_data cb_data;
 
@@ -475,7 +475,7 @@ static void rmdir_cb(int status, struct nfs_context *nfs _U_, void *data, void *
 	}
 }
 
-int nfs_rmdir_sync(struct nfs_context *nfs, const char *path)
+int nfs_rmdir(struct nfs_context *nfs, const char *path)
 {
 	struct sync_cb_data cb_data;
 
@@ -514,7 +514,7 @@ static void creat_cb(int status, struct nfs_context *nfs _U_, void *data, void *
 	*nfsfh = fh;
 }
 
-int nfs_creat_sync(struct nfs_context *nfs, const char *path, int mode, struct nfsfh **nfsfh)
+int nfs_creat(struct nfs_context *nfs, const char *path, int mode, struct nfsfh **nfsfh)
 {
 	struct sync_cb_data cb_data;
 
@@ -550,7 +550,7 @@ static void unlink_cb(int status, struct nfs_context *nfs _U_, void *data, void 
 	}
 }
 
-int nfs_unlink_sync(struct nfs_context *nfs, const char *path)
+int nfs_unlink(struct nfs_context *nfs, const char *path)
 {
 	struct sync_cb_data cb_data;
 
@@ -589,7 +589,7 @@ static void opendir_cb(int status, struct nfs_context *nfs _U_, void *data, void
 	*nfsdir = dir;
 }
 
-int nfs_opendir_sync(struct nfs_context *nfs, const char *path, struct nfsdir **nfsdir)
+int nfs_opendir(struct nfs_context *nfs, const char *path, struct nfsdir **nfsdir)
 {
 	struct sync_cb_data cb_data;
 
@@ -627,7 +627,7 @@ static void lseek_cb(int status, struct nfs_context *nfs _U_, void *data, void *
 	}
 }
 
-int nfs_lseek_sync(struct nfs_context *nfs, struct nfsfh *nfsfh, off_t offset, int whence, off_t *current_offset)
+int nfs_lseek(struct nfs_context *nfs, struct nfsfh *nfsfh, off_t offset, int whence, off_t *current_offset)
 {
 	struct sync_cb_data cb_data;
 
@@ -664,7 +664,7 @@ static void statvfs_cb(int status, struct nfs_context *nfs _U_, void *data, void
 	memcpy(cb_data->return_data, data, sizeof(struct statvfs));
 }
 
-int nfs_statvfs_sync(struct nfs_context *nfs, const char *path, struct statvfs *svfs)
+int nfs_statvfs(struct nfs_context *nfs, const char *path, struct statvfs *svfs)
 {
 	struct sync_cb_data cb_data;
 
@@ -709,7 +709,7 @@ static void readlink_cb(int status, struct nfs_context *nfs _U_, void *data, voi
 	memcpy(cb_data->return_data, data, strlen(data)+1);
 }
 
-int nfs_readlink_sync(struct nfs_context *nfs, const char *path, char *buf, int bufsize)
+int nfs_readlink(struct nfs_context *nfs, const char *path, char *buf, int bufsize)
 {
 	struct sync_cb_data cb_data;
 
@@ -745,7 +745,7 @@ static void chmod_cb(int status, struct nfs_context *nfs _U_, void *data, void *
 	}
 }
 
-int nfs_chmod_sync(struct nfs_context *nfs, const char *path, int mode)
+int nfs_chmod(struct nfs_context *nfs, const char *path, int mode)
 {
 	struct sync_cb_data cb_data;
 
@@ -780,7 +780,7 @@ static void fchmod_cb(int status, struct nfs_context *nfs _U_, void *data, void 
 	}
 }
 
-int nfs_fchmod_sync(struct nfs_context *nfs, struct nfsfh *nfsfh, int mode)
+int nfs_fchmod(struct nfs_context *nfs, struct nfsfh *nfsfh, int mode)
 {
 	struct sync_cb_data cb_data;
 
@@ -815,7 +815,7 @@ static void chown_cb(int status, struct nfs_context *nfs _U_, void *data, void *
 	}
 }
 
-int nfs_chown_sync(struct nfs_context *nfs, const char *path, int uid, int gid)
+int nfs_chown(struct nfs_context *nfs, const char *path, int uid, int gid)
 {
 	struct sync_cb_data cb_data;
 
@@ -847,7 +847,7 @@ static void fchown_cb(int status, struct nfs_context *nfs _U_, void *data, void 
 	}
 }
 
-int nfs_fchown_sync(struct nfs_context *nfs, struct nfsfh *nfsfh, int uid, int gid)
+int nfs_fchown(struct nfs_context *nfs, struct nfsfh *nfsfh, int uid, int gid)
 {
 	struct sync_cb_data cb_data;
 
@@ -881,7 +881,7 @@ static void utimes_cb(int status, struct nfs_context *nfs _U_, void *data, void 
 	}
 }
 
-int nfs_utimes_sync(struct nfs_context *nfs, const char *path, struct timeval *times)
+int nfs_utimes(struct nfs_context *nfs, const char *path, struct timeval *times)
 {
 	struct sync_cb_data cb_data;
 
@@ -915,7 +915,7 @@ static void utime_cb(int status, struct nfs_context *nfs _U_, void *data, void *
 	}
 }
 
-int nfs_utime_sync(struct nfs_context *nfs, const char *path, struct utimbuf *times)
+int nfs_utime(struct nfs_context *nfs, const char *path, struct utimbuf *times)
 {
 	struct sync_cb_data cb_data;
 
@@ -950,7 +950,7 @@ static void access_cb(int status, struct nfs_context *nfs _U_, void *data, void 
 	}
 }
 
-int nfs_access_sync(struct nfs_context *nfs, const char *path, int mode)
+int nfs_access(struct nfs_context *nfs, const char *path, int mode)
 {
 	struct sync_cb_data cb_data;
 
@@ -984,7 +984,7 @@ static void symlink_cb(int status, struct nfs_context *nfs _U_, void *data, void
 	}
 }
 
-int nfs_symlink_sync(struct nfs_context *nfs, const char *oldpath, const char *newpath)
+int nfs_symlink(struct nfs_context *nfs, const char *oldpath, const char *newpath)
 {
 	struct sync_cb_data cb_data;
 
@@ -1018,7 +1018,7 @@ static void rename_cb(int status, struct nfs_context *nfs _U_, void *data, void 
 	}
 }
 
-int nfs_rename_sync(struct nfs_context *nfs, const char *oldpath, const char *newpath)
+int nfs_rename(struct nfs_context *nfs, const char *oldpath, const char *newpath)
 {
 	struct sync_cb_data cb_data;
 
@@ -1052,7 +1052,7 @@ static void link_cb(int status, struct nfs_context *nfs _U_, void *data, void *p
 	}
 }
 
-int nfs_link_sync(struct nfs_context *nfs, const char *oldpath, const char *newpath)
+int nfs_link(struct nfs_context *nfs, const char *oldpath, const char *newpath)
 {
 	struct sync_cb_data cb_data;
 
