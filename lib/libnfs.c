@@ -855,7 +855,7 @@ static void nfs_pread_mcb(struct rpc_context *rpc _U_, int status, void *command
 			data->error = 1;
 		} else {
 			memcpy(&data->buffer[mdata->offset], res->READ3res_u.resok.data.data_val, res->READ3res_u.resok.count);
-			if (data->max_offset < mdata->offset + res->READ3res_u.resok.count) {
+			if ((unsigned)data->max_offset < mdata->offset + res->READ3res_u.resok.count) {
 				data->max_offset = mdata->offset + res->READ3res_u.resok.count;
 			}
 		}
