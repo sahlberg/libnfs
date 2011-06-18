@@ -133,12 +133,10 @@ struct nfs_context *nfs_init_context(void)
 
 	nfs = malloc(sizeof(struct nfs_context));
 	if (nfs == NULL) {
-		printf("Failed to allocate nfs context\n");
 		return NULL;
 	}
 	nfs->rpc = rpc_init_context();
 	if (nfs->rpc == NULL) {
-		printf("Failed to allocate rpc sub-context\n");
 		free(nfs);
 		return NULL;
 	}
@@ -472,8 +470,7 @@ int nfs_mount_async(struct nfs_context *nfs, const char *server, const char *exp
 
 	data = malloc(sizeof(struct nfs_cb_data));
 	if (data == NULL) {
-		rpc_set_error(nfs->rpc, "out of memory");
-		printf("failed to allocate memory for nfs mount data\n");
+		rpc_set_error(nfs->rpc, "out of memory. failed to allocate memory for nfs mount data");
 		return -1;
 	}
 	bzero(data, sizeof(struct nfs_cb_data));
@@ -484,9 +481,9 @@ int nfs_mount_async(struct nfs_context *nfs, const char *server, const char *exp
 	data->private_data = private_data;
 
 	if (rpc_connect_async(nfs->rpc, server, 111, nfs_mount_1_cb, data) != 0) {
-		printf("Failed to start connection\n");
+		rpc_set_error(nfs->rpc, "Failed to start connection");
 		free_nfs_cb_data(data);
-		return -4;
+		return -1;
 	}
 
 	return 0;
@@ -585,8 +582,7 @@ static int nfs_lookuppath_async(struct nfs_context *nfs, const char *path, nfs_c
 	data = malloc(sizeof(struct nfs_cb_data));
 	if (data == NULL) {
 		rpc_set_error(nfs->rpc, "out of memory: failed to allocate nfs_cb_data structure");
-		printf("failed to allocate memory for nfs cb data\n");
-		return -2;
+		return -1;
 	}
 	bzero(data, sizeof(struct nfs_cb_data));
 	data->nfs                = nfs;
@@ -599,14 +595,12 @@ static int nfs_lookuppath_async(struct nfs_context *nfs, const char *path, nfs_c
 	data->saved_path         = strdup(path);
 	if (data->saved_path == NULL) {
 		rpc_set_error(nfs->rpc, "out of memory: failed to copy path string");
-		printf("failed to allocate memory for path string\n");
 		free_nfs_cb_data(data);
-		return -2;
+		return -1;
 	}
 	data->path = data->saved_path;
 
 	if (nfs_lookup_path_async_internal(nfs, data, &nfs->rootfh) != 0) {
-		printf("failed to lookup path\n");
 		/* return 0 here since the callback will be invoked if there is a failure */
 		return 0;
 	}
@@ -678,7 +672,7 @@ static int nfs_stat_continue_internal(struct nfs_context *nfs, struct nfs_cb_dat
 int nfs_stat_async(struct nfs_context *nfs, const char *path, nfs_cb cb, void *private_data)
 {
 	if (nfs_lookuppath_async(nfs, path, cb, private_data, nfs_stat_continue_internal, NULL, NULL, 0) != 0) {
-		printf("Out of memory: failed to start parsing the path components\n");
+		rpc_set_error(nfs->rpc, "Out of memory: failed to start parsing the path components");
 		return -1;
 	}
 
@@ -791,8 +785,8 @@ static int nfs_open_continue_internal(struct nfs_context *nfs, struct nfs_cb_dat
 int nfs_open_async(struct nfs_context *nfs, const char *path, int mode, nfs_cb cb, void *private_data)
 {
 	if (nfs_lookuppath_async(nfs, path, cb, private_data, nfs_open_continue_internal, NULL, NULL, mode) != 0) {
-		printf("Out of memory: failed to start parsing the path components\n");
-		return -2;
+		rpc_set_error(nfs->rpc, "Out of memory: failed to start parsing the path components");
+		return -1;
 	}
 
 	return 0;
@@ -900,7 +894,6 @@ int nfs_pread_async(struct nfs_context *nfs, struct nfsfh *nfsfh, off_t offset, 
 	data = malloc(sizeof(struct nfs_cb_data));
 	if (data == NULL) {
 		rpc_set_error(nfs->rpc, "out of memory: failed to allocate nfs_cb_data structure");
-		printf("failed to allocate memory for nfs cb data\n");
 		return -1;
 	}
 	bzero(data, sizeof(struct nfs_cb_data));
@@ -946,7 +939,6 @@ int nfs_pread_async(struct nfs_context *nfs, struct nfsfh *nfsfh, off_t offset, 
 		mdata = malloc(sizeof(struct nfs_mcb_data));
 		if (mdata == NULL) {
 			rpc_set_error(nfs->rpc, "out of memory: failed to allocate nfs_mcb_data structure");
-			printf("failed to allocate memory for nfs mcb data\n");
 			return -1;
 		}
 		bzero(mdata, sizeof(struct nfs_mcb_data));
@@ -1019,7 +1011,6 @@ int nfs_pwrite_async(struct nfs_context *nfs, struct nfsfh *nfsfh, off_t offset,
 	data = malloc(sizeof(struct nfs_cb_data));
 	if (data == NULL) {
 		rpc_set_error(nfs->rpc, "out of memory: failed to allocate nfs_cb_data structure");
-		printf("failed to allocate memory for nfs cb data\n");
 		return -1;
 	}
 	bzero(data, sizeof(struct nfs_cb_data));
@@ -1079,7 +1070,6 @@ int nfs_fstat_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_cb cb, voi
 	data = malloc(sizeof(struct nfs_cb_data));
 	if (data == NULL) {
 		rpc_set_error(nfs->rpc, "out of memory: failed to allocate nfs_cb_data structure");
-		printf("failed to allocate memory for nfs cb data\n");
 		return -1;
 	}
 	bzero(data, sizeof(struct nfs_cb_data));
@@ -1137,7 +1127,6 @@ int nfs_fsync_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_cb cb, voi
 	data = malloc(sizeof(struct nfs_cb_data));
 	if (data == NULL) {
 		rpc_set_error(nfs->rpc, "out of memory: failed to allocate nfs_cb_data structure");
-		printf("failed to allocate memory for nfs cb data\n");
 		return -1;
 	}
 	bzero(data, sizeof(struct nfs_cb_data));
@@ -1197,7 +1186,6 @@ int nfs_ftruncate_async(struct nfs_context *nfs, struct nfsfh *nfsfh, off_t leng
 	data = malloc(sizeof(struct nfs_cb_data));
 	if (data == NULL) {
 		rpc_set_error(nfs->rpc, "out of memory: failed to allocate nfs_cb_data structure");
-		printf("failed to allocate memory for nfs cb data\n");
 		return -1;
 	}
 	bzero(data, sizeof(struct nfs_cb_data));
@@ -1249,8 +1237,8 @@ int nfs_truncate_async(struct nfs_context *nfs, const char *path, off_t length, 
 	offset = length;
 
 	if (nfs_lookuppath_async(nfs, path, cb, private_data, nfs_truncate_continue_internal, NULL, NULL, offset) != 0) {
-		printf("Out of memory: failed to start parsing the path components\n");
-		return -2;
+		rpc_set_error(nfs->rpc, "Out of memory: failed to start parsing the path components");
+		return -1;
 	}
 
 	return 0;
@@ -1316,21 +1304,21 @@ int nfs_mkdir_async(struct nfs_context *nfs, const char *path, nfs_cb cb, void *
 
 	new_path = strdup(path);
 	if (new_path == NULL) {
-		printf("Out of memory, failed to allocate mode buffer for path\n");
+		rpc_set_error(nfs->rpc, "Out of memory, failed to allocate mode buffer for path");
 		return -1;
 	}
 
 	ptr = rindex(new_path, '/');
 	if (ptr == NULL) {
-		printf("Invalid path %s\n", path);
-		return -2;
+		rpc_set_error(nfs->rpc, "Invalid path %s", path);
+		return -1;
 	}
 	*ptr = 0;
 
 	/* new_path now points to the parent directory,  and beyond the nul terminateor is the new directory to create */
 	if (nfs_lookuppath_async(nfs, new_path, cb, private_data, nfs_mkdir_continue_internal, new_path, free, 0) != 0) {
-		printf("Out of memory: failed to start parsing the path components\n");
-		return -3;
+		rpc_set_error(nfs->rpc, "Out of memory: failed to start parsing the path component");
+		return -1;
 	}
 
 	return 0;
@@ -1397,21 +1385,21 @@ int nfs_rmdir_async(struct nfs_context *nfs, const char *path, nfs_cb cb, void *
 
 	new_path = strdup(path);
 	if (new_path == NULL) {
-		printf("Out of memory, failed to allocate mode buffer for path\n");
+		rpc_set_error(nfs->rpc, "Out of memory, failed to allocate mode buffer for path");
 		return -1;
 	}
 
 	ptr = rindex(new_path, '/');
 	if (ptr == NULL) {
-		printf("Invalid path %s\n", path);
-		return -2;
+		rpc_set_error(nfs->rpc, "Invalid path %s", path);
+		return -1;
 	}
 	*ptr = 0;
 
 	/* new_path now points to the parent directory,  and beyond the nul terminateor is the new directory to create */
 	if (nfs_lookuppath_async(nfs, new_path, cb, private_data, nfs_rmdir_continue_internal, new_path, free, 0) != 0) {
-		printf("Out of memory: failed to start parsing the path components\n");
-		return -3;
+		rpc_set_error(nfs->rpc, "Out of memory: failed to start parsing the path components");
+		return -1;
 	}
 
 	return 0;
@@ -1529,21 +1517,21 @@ int nfs_creat_async(struct nfs_context *nfs, const char *path, int mode, nfs_cb 
 
 	new_path = strdup(path);
 	if (new_path == NULL) {
-		printf("Out of memory, failed to allocate mode buffer for path\n");
+		rpc_set_error(nfs->rpc, "Out of memory, failed to allocate mode buffer for path");
 		return -1;
 	}
 
 	ptr = rindex(new_path, '/');
 	if (ptr == NULL) {
-		printf("Invalid path %s\n", path);
-		return -2;
+		rpc_set_error(nfs->rpc, "Invalid path %s", path);
+		return -1;
 	}
 	*ptr = 0;
 
 	/* new_path now points to the parent directory,  and beyond the nul terminateor is the new directory to create */
 	if (nfs_lookuppath_async(nfs, new_path, cb, private_data, nfs_creat_continue_internal, new_path, free, mode) != 0) {
-		printf("Out of memory: failed to start parsing the path components\n");
-		return -3;
+		rpc_set_error(nfs->rpc, "Out of memory: failed to start parsing the path components");
+		return -1;
 	}
 
 	return 0;
@@ -1609,21 +1597,21 @@ int nfs_unlink_async(struct nfs_context *nfs, const char *path, nfs_cb cb, void 
 
 	new_path = strdup(path);
 	if (new_path == NULL) {
-		printf("Out of memory, failed to allocate mode buffer for path\n");
+		rpc_set_error(nfs->rpc, "Out of memory, failed to allocate mode buffer for path");
 		return -1;
 	}
 
 	ptr = rindex(new_path, '/');
 	if (ptr == NULL) {
-		printf("Invalid path %s\n", path);
-		return -2;
+		rpc_set_error(nfs->rpc, "Invalid path %s", path);
+		return -1;
 	}
 	*ptr = 0;
 
 	/* new_path now points to the parent directory,  and beyond the nul terminateor is the new directory to create */
 	if (nfs_lookuppath_async(nfs, new_path, cb, private_data, nfs_unlink_continue_internal, new_path, free, 0) != 0) {
-		printf("Out of memory: failed to start parsing the path components\n");
-		return -3;
+		rpc_set_error(nfs->rpc, "Out of memory: failed to start parsing the path components");
+		return -1;
 	}
 
 	return 0;
@@ -1739,14 +1727,14 @@ int nfs_opendir_async(struct nfs_context *nfs, const char *path, nfs_cb cb, void
 
 	nfsdir = malloc(sizeof(struct nfsdir));
 	if (nfsdir == NULL) {
-		printf("failed to allocate buffer for nfsdir\n");
+		rpc_set_error(nfs->rpc, "failed to allocate buffer for nfsdir");
 		return -1;
 	}
 	bzero(nfsdir, sizeof(struct nfsdir));
 
 	if (nfs_lookuppath_async(nfs, path, cb, private_data, nfs_opendir_continue_internal, nfsdir, free, 0) != 0) {
-		printf("Out of memory: failed to start parsing the path components\n");
-		return -2;
+		rpc_set_error(nfs->rpc, "Out of memory: failed to start parsing the path components");
+		return -1;
 	}
 
 	return 0;
@@ -1846,7 +1834,7 @@ int nfs_lseek_async(struct nfs_context *nfs, struct nfsfh *nfsfh, off_t offset, 
 	if (rpc_nfs_getattr_async(nfs->rpc, nfs_lseek_1_cb, &nfsfh->fh, data) != 0) {
 		rpc_set_error(nfs->rpc, "RPC error: Failed to send LSEEK GETATTR call");
 		free(data);
-		return -2;
+		return -1;
 	}
 	return 0;
 }
@@ -1913,7 +1901,7 @@ static int nfs_statvfs_continue_internal(struct nfs_context *nfs, struct nfs_cb_
 int nfs_statvfs_async(struct nfs_context *nfs, const char *path, nfs_cb cb, void *private_data)
 {
 	if (nfs_lookuppath_async(nfs, path, cb, private_data, nfs_statvfs_continue_internal, NULL, NULL, 0) != 0) {
-		printf("Out of memory: failed to start parsing the path components\n");
+		rpc_set_error(nfs->rpc, "Out of memory: failed to start parsing the path components");
 		return -1;
 	}
 
@@ -1970,7 +1958,7 @@ static int nfs_readlink_continue_internal(struct nfs_context *nfs, struct nfs_cb
 int nfs_readlink_async(struct nfs_context *nfs, const char *path, nfs_cb cb, void *private_data)
 {
 	if (nfs_lookuppath_async(nfs, path, cb, private_data, nfs_readlink_continue_internal, NULL, NULL, 0) != 0) {
-		printf("Out of memory: failed to start parsing the path components\n");
+		rpc_set_error(nfs->rpc, "Out of memory: failed to start parsing the path components");
 		return -1;
 	}
 
@@ -2035,7 +2023,7 @@ static int nfs_chmod_continue_internal(struct nfs_context *nfs, struct nfs_cb_da
 int nfs_chmod_async(struct nfs_context *nfs, const char *path, int mode, nfs_cb cb, void *private_data)
 {
 	if (nfs_lookuppath_async(nfs, path, cb, private_data, nfs_chmod_continue_internal, NULL, NULL, mode) != 0) {
-		printf("Out of memory: failed to start parsing the path components\n");
+		rpc_set_error(nfs->rpc, "Out of memory: failed to start parsing the path components");
 		return -1;
 	}
 
@@ -2051,8 +2039,7 @@ int nfs_fchmod_async(struct nfs_context *nfs, struct nfsfh *nfsfh, int mode, nfs
 
 	data = malloc(sizeof(struct nfs_cb_data));
 	if (data == NULL) {
-		rpc_set_error(nfs->rpc, "out of memory");
-		printf("failed to allocate memory for nfs mount data\n");
+		rpc_set_error(nfs->rpc, "out of memory. failed to allocate memory for nfs mount data");
 		return -1;
 	}
 	bzero(data, sizeof(struct nfs_cb_data));
@@ -2149,7 +2136,7 @@ int nfs_chown_async(struct nfs_context *nfs, const char *path, int uid, int gid,
 
 	chown_data = malloc(sizeof(struct nfs_chown_data));
 	if (chown_data == NULL) {
-		printf("Failed to allocate memory for chown data structure\n");
+		rpc_set_error(nfs->rpc, "Failed to allocate memory for chown data structure");
 		return -1;
 	}
 
@@ -2157,7 +2144,7 @@ int nfs_chown_async(struct nfs_context *nfs, const char *path, int uid, int gid,
 	chown_data->gid = gid;
 
 	if (nfs_lookuppath_async(nfs, path, cb, private_data, nfs_chown_continue_internal, chown_data, free, 0) != 0) {
-		printf("Out of memory: failed to start parsing the path components\n");
+		rpc_set_error(nfs->rpc, "Out of memory: failed to start parsing the path components");
 		return -1;
 	}
 
@@ -2175,7 +2162,7 @@ int nfs_fchown_async(struct nfs_context *nfs, struct nfsfh *nfsfh, int uid, int 
 
 	chown_data = malloc(sizeof(struct nfs_chown_data));
 	if (chown_data == NULL) {
-		printf("Failed to allocate memory for chown data structure\n");
+		rpc_set_error(nfs->rpc, "Failed to allocate memory for chown data structure");
 		return -1;
 	}
 
@@ -2185,8 +2172,7 @@ int nfs_fchown_async(struct nfs_context *nfs, struct nfsfh *nfsfh, int uid, int 
 
 	data = malloc(sizeof(struct nfs_cb_data));
 	if (data == NULL) {
-		rpc_set_error(nfs->rpc, "out of memory");
-		printf("failed to allocate memory for fchown data\n");
+		rpc_set_error(nfs->rpc, "out of memory. failed to allocate memory for fchown data");
 		return -1;
 	}
 	bzero(data, sizeof(struct nfs_cb_data));
@@ -2285,7 +2271,7 @@ int nfs_utimes_async(struct nfs_context *nfs, const char *path, struct timeval *
 	if (times != NULL) {
 		new_times = malloc(sizeof(struct timeval)*2);
 		if (new_times == NULL) {
-			printf("Failed to allocate memory for timeval structure\n");
+			rpc_set_error(nfs->rpc, "Failed to allocate memory for timeval structure");
 			return -1;
 		}
 
@@ -2293,7 +2279,7 @@ int nfs_utimes_async(struct nfs_context *nfs, const char *path, struct timeval *
 	}
 
 	if (nfs_lookuppath_async(nfs, path, cb, private_data, nfs_utimes_continue_internal, new_times, free, 0) != 0) {
-		printf("Out of memory: failed to start parsing the path components\n");
+		rpc_set_error(nfs->rpc, "Out of memory: failed to start parsing the path components");
 		return -1;
 	}
 
@@ -2310,7 +2296,7 @@ int nfs_utime_async(struct nfs_context *nfs, const char *path, struct utimbuf *t
 	if (times != NULL) {
 		new_times = malloc(sizeof(struct timeval)*2);
 		if (new_times == NULL) {
-			printf("Failed to allocate memory for timeval structure\n");
+			rpc_set_error(nfs->rpc, "Failed to allocate memory for timeval structure");
 			return -1;
 		}
 
@@ -2321,7 +2307,7 @@ int nfs_utime_async(struct nfs_context *nfs, const char *path, struct utimbuf *t
 	}
 
 	if (nfs_lookuppath_async(nfs, path, cb, private_data, nfs_utimes_continue_internal, new_times, free, 0) != 0) {
-		printf("Out of memory: failed to start parsing the path components\n");
+		rpc_set_error(nfs->rpc, "Out of memory: failed to start parsing the path components");
 		return -1;
 	}
 
@@ -2414,8 +2400,8 @@ static int nfs_access_continue_internal(struct nfs_context *nfs, struct nfs_cb_d
 int nfs_access_async(struct nfs_context *nfs, const char *path, int mode, nfs_cb cb, void *private_data)
 {
 	if (nfs_lookuppath_async(nfs, path, cb, private_data, nfs_access_continue_internal, NULL, NULL, mode) != 0) {
-		printf("Out of memory: failed to start parsing the path components\n");
-		return -2;
+		rpc_set_error(nfs->rpc, "Out of memory: failed to start parsing the path components");
+		return -1;
 	}
 
 	return 0;
@@ -2498,44 +2484,44 @@ int nfs_symlink_async(struct nfs_context *nfs, const char *oldpath, const char *
 
 	symlink_data = malloc(sizeof(struct nfs_symlink_data));
 	if (symlink_data == NULL) {
-		printf("Out of memory, failed to allocate buffer for symlink data\n");
+		rpc_set_error(nfs->rpc, "Out of memory, failed to allocate buffer for symlink data");
 		return -1;
 	}
 	bzero(symlink_data, sizeof(struct nfs_symlink_data));
 
 	symlink_data->oldpath = strdup(oldpath);
 	if (symlink_data->oldpath == NULL) {
-		printf("Out of memory, failed to allocate buffer for oldpath\n");
+		rpc_set_error(nfs->rpc, "Out of memory, failed to allocate buffer for oldpath");
 		free_nfs_symlink_data(symlink_data);
-		return -2;
+		return -1;
 	}
 
 	symlink_data->newpathparent = strdup(newpath);
 	if (symlink_data->newpathparent == NULL) {
-		printf("Out of memory, failed to allocate mode buffer for new path\n");
+		rpc_set_error(nfs->rpc, "Out of memory, failed to allocate mode buffer for new path");
 		free_nfs_symlink_data(symlink_data);
-		return -3;
+		return -1;
 	}
 
 	ptr = rindex(symlink_data->newpathparent, '/');
 	if (ptr == NULL) {
-		printf("Invalid path %s\n", oldpath);
+		rpc_set_error(nfs->rpc, "Invalid path %s", oldpath);
 		free_nfs_symlink_data(symlink_data);
-		return -4;
+		return -1;
 	}
 	*ptr = 0;
 	ptr++;
 
 	symlink_data->newpathobject = strdup(ptr);
 	if (symlink_data->newpathobject == NULL) {
-		printf("Out of memory, failed to allocate mode buffer for new path\n");
+		rpc_set_error(nfs->rpc, "Out of memory, failed to allocate mode buffer for new path");
 		free_nfs_symlink_data(symlink_data);
-		return -5;
+		return -1;
 	}
 
 	if (nfs_lookuppath_async(nfs, symlink_data->newpathparent, cb, private_data, nfs_symlink_continue_internal, symlink_data, free_nfs_symlink_data, 0) != 0) {
-		printf("Out of memory: failed to start parsing the path components\n");
-		return -6;
+		rpc_set_error(nfs->rpc, "Out of memory: failed to start parsing the path components");
+		return -1;
 	}
 
 	return 0;
@@ -2652,22 +2638,22 @@ int nfs_rename_async(struct nfs_context *nfs, const char *oldpath, const char *n
 
 	rename_data = malloc(sizeof(struct nfs_rename_data));
 	if (rename_data == NULL) {
-		printf("Out of memory, failed to allocate buffer for rename data\n");
+		rpc_set_error(nfs->rpc, "Out of memory, failed to allocate buffer for rename data");
 		return -1;
 	}
 	bzero(rename_data, sizeof(struct nfs_rename_data));
 
 	rename_data->oldpath = strdup(oldpath);
 	if (rename_data->oldpath == NULL) {
-		printf("Out of memory, failed to allocate buffer for oldpath\n");
+		rpc_set_error(nfs->rpc, "Out of memory, failed to allocate buffer for oldpath");
 		free_nfs_rename_data(rename_data);
-		return -2;
+		return -1;
 	}
 	ptr = rindex(rename_data->oldpath, '/');
 	if (ptr == NULL) {
-		printf("Invalid path %s\n", oldpath);
+		rpc_set_error(nfs->rpc, "Invalid path %s", oldpath);
 		free_nfs_rename_data(rename_data);
-		return -3;
+		return -1;
 	}
 	*ptr = 0;
 	ptr++;
@@ -2676,15 +2662,15 @@ int nfs_rename_async(struct nfs_context *nfs, const char *oldpath, const char *n
 
 	rename_data->newpath = strdup(newpath);
 	if (rename_data->newpath == NULL) {
-		printf("Out of memory, failed to allocate buffer for newpath\n");
+		rpc_set_error(nfs->rpc, "Out of memory, failed to allocate buffer for newpath");
 		free_nfs_rename_data(rename_data);
-		return -4;
+		return -1;
 	}
 	ptr = rindex(rename_data->newpath, '/');
 	if (ptr == NULL) {
-		printf("Invalid path %s\n", newpath);
+		rpc_set_error(nfs->rpc, "Invalid path %s", newpath);
 		free_nfs_rename_data(rename_data);
-		return -5;
+		return -1;
 	}
 	*ptr = 0;
 	ptr++;
@@ -2692,8 +2678,8 @@ int nfs_rename_async(struct nfs_context *nfs, const char *oldpath, const char *n
 
 
 	if (nfs_lookuppath_async(nfs, rename_data->oldpath, cb, private_data, nfs_rename_continue_1_internal, rename_data, free_nfs_rename_data, 0) != 0) {
-		printf("Out of memory: failed to start parsing the path components\n");
-		return -6;
+		rpc_set_error(nfs->rpc, "Out of memory: failed to start parsing the path components");
+		return -1;
 	}
 
 	return 0;
@@ -2808,29 +2794,29 @@ int nfs_link_async(struct nfs_context *nfs, const char *oldpath, const char *new
 
 	link_data = malloc(sizeof(struct nfs_link_data));
 	if (link_data == NULL) {
-		printf("Out of memory, failed to allocate buffer for link data\n");
+		rpc_set_error(nfs->rpc, "Out of memory, failed to allocate buffer for link data");
 		return -1;
 	}
 	bzero(link_data, sizeof(struct nfs_link_data));
 
 	link_data->oldpath = strdup(oldpath);
 	if (link_data->oldpath == NULL) {
-		printf("Out of memory, failed to allocate buffer for oldpath\n");
+		rpc_set_error(nfs->rpc, "Out of memory, failed to allocate buffer for oldpath");
 		free_nfs_link_data(link_data);
-		return -2;
+		return -1;
 	}
 
 	link_data->newpath = strdup(newpath);
 	if (link_data->newpath == NULL) {
-		printf("Out of memory, failed to allocate buffer for newpath\n");
+		rpc_set_error(nfs->rpc, "Out of memory, failed to allocate buffer for newpath");
 		free_nfs_link_data(link_data);
-		return -4;
+		return -1;
 	}
 	ptr = rindex(link_data->newpath, '/');
 	if (ptr == NULL) {
-		printf("Invalid path %s\n", newpath);
+		rpc_set_error(nfs->rpc, "Invalid path %s", newpath);
 		free_nfs_link_data(link_data);
-		return -5;
+		return -1;
 	}
 	*ptr = 0;
 	ptr++;
@@ -2838,8 +2824,8 @@ int nfs_link_async(struct nfs_context *nfs, const char *oldpath, const char *new
 
 
 	if (nfs_lookuppath_async(nfs, link_data->oldpath, cb, private_data, nfs_link_continue_1_internal, link_data, free_nfs_link_data, 0) != 0) {
-		printf("Out of memory: failed to start parsing the path components\n");
-		return -6;
+		rpc_set_error(nfs->rpc, "Out of memory: failed to start parsing the path components");
+		return -1;
 	}
 
 	return 0;
