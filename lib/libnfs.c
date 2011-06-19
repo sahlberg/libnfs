@@ -3035,3 +3035,8 @@ int mount_getexports_async(struct rpc_context *rpc, const char *server, rpc_cb c
 	return 0;
 }
 
+struct rpc_context *nfs_get_rpc_context(struct nfs_context *nfs)
+{
+	return nfs->rpc;
+}
+

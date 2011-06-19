@@ -84,6 +84,7 @@ void rpc_free_pdu(struct rpc_context *rpc _U_, struct rpc_pdu *pdu)
 	}
 
 	xdr_destroy(&pdu->xdr);
+
 	free(pdu);
 }
 

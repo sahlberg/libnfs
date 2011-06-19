@@ -937,7 +937,17 @@ int nfs_link(struct nfs_context *nfs, const char *oldpath, const char *newpath);
  *          data is the error string.
  */
 int mount_getexports_async(struct rpc_context *rpc, const char *server, rpc_cb cb, void *private_data);
+/*
+ * Sync getexports(<server>)
+ * Function returns
+ *            NULL : something failed
+ *  exports export : a linked list of exported directories
+ * 
+ * returned data must be freed by calling mount_free_export_list(exportnode);
+ */
+struct exportnode *mount_getexports(struct rpc_context *rpc, const char *server);
 
+void mount_free_export_list(struct exportnode *exports);
 
 
 //qqq replace later with lseek(cur, 0)

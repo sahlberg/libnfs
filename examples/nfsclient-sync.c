@@ -35,6 +35,8 @@
 #include <fcntl.h>
 #include "libnfs.h"
 #include <rpc/rpc.h>            /* for authunix_create() */
+#include "libnfs-raw.h"
+#include "libnfs-raw-mount.h"
 
 struct client {
        char *server;
@@ -59,6 +61,21 @@ int main(int argc _U_, char *argv[] _U_)
 	char buf[16];
 	off_t offset;
 	struct statvfs svfs;
+	exports export, tmp;
+	struct rpc_context *mount_context;
+
+	printf("exports on server %s\n", SERVER);
+	mount_context = rpc_init_context();
+	export = mount_getexports(mount_context, SERVER);
+	tmp = export;
+	while (tmp != NULL) {
+	      printf("Export: %s\n", tmp->ex_dir);
+	      tmp = tmp->ex_next;
+	}
+	mount_free_export_list(export);
+	rpc_destroy_context(mount_context);
+
+
 
 	nfs = nfs_init_context();
 	if (nfs == NULL) {
@@ -200,3 +217,4 @@ int main(int argc _U_, char *argv[] _U_)
 	printf("nfsclient finished\n");
 	return 0;
 }
+
