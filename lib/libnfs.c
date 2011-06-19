@@ -857,7 +857,7 @@ static void nfs_pread_mcb(struct rpc_context *rpc _U_, int status, void *command
 			rpc_set_error(nfs->rpc, "NFS: Read failed with %s(%d)", nfsstat3_to_str(res->status), nfsstat3_to_errno(res->status));
 			data->error = 1;
 		} else {
-			memcpy(&data->buffer[mdata->offset], res->READ3res_u.resok.data.data_val, res->READ3res_u.resok.count);
+			memcpy(&data->buffer[mdata->offset - data->start_offset], res->READ3res_u.resok.data.data_val, res->READ3res_u.resok.count);
 			if ((unsigned)data->max_offset < mdata->offset + res->READ3res_u.resok.count) {
 				data->max_offset = mdata->offset + res->READ3res_u.resok.count;
 			}
@@ -869,7 +869,6 @@ static void nfs_pread_mcb(struct rpc_context *rpc _U_, int status, void *command
 		free(mdata);
 		return;
 	}
-
 
 	if (data->error != 0) {
 		data->cb(-EFAULT, nfs, command_data, data->private_data);
@@ -948,7 +947,6 @@ int nfs_pread_async(struct nfs_context *nfs, struct nfsfh *nfsfh, off_t offset, 
 		mdata->data   = data;
 		mdata->offset = offset;
 		mdata->count  = readcount;
-
 		if (rpc_nfs_read_async(nfs->rpc, nfs_pread_mcb, &nfsfh->fh, offset, readcount, mdata) != 0) {
 			rpc_set_error(nfs->rpc, "RPC error: Failed to send READ call for %s", data->path);
 			data->cb(-ENOMEM, nfs, rpc_get_error(nfs->rpc), data->private_data);

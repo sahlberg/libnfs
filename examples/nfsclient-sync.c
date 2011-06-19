@@ -46,6 +46,8 @@ struct client {
 };
 
 
+char buf[2*1024*1024];
+
 int main(int argc _U_, char *argv[] _U_)
 {
 	struct nfs_context *nfs;
@@ -58,7 +60,6 @@ int main(int argc _U_, char *argv[] _U_)
 	client.server = SERVER;
 	client.export = EXPORT;
 	client.is_finished = 0;
-	char buf[16];
 	off_t offset;
 	struct statvfs svfs;
 	exports export, tmp;
@@ -102,6 +103,7 @@ int main(int argc _U_, char *argv[] _U_)
 		exit(10);
 	}
 
+#if 0
 	ret = nfs_read(nfs, nfsfh, 16, buf);
 	if (ret < 0) {
 		printf("Failed to pread(%s) %s\n", NFSFILE, nfs_get_error(nfs));
@@ -112,7 +114,8 @@ int main(int argc _U_, char *argv[] _U_)
 		printf("%02x ", buf[i]&0xff);
 	}
 	printf("\n");
-	ret = nfs_read(nfs, nfsfh, 16, buf);
+#endif
+	ret = nfs_read(nfs, nfsfh, sizeof(buf), buf);
 	if (ret < 0) {
 		printf("Failed to pread(%s) %s\n", NFSFILE, nfs_get_error(nfs));
 		exit(10);

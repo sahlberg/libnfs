@@ -1074,7 +1074,6 @@ void mount_getexports_cb(struct rpc_context *mount_context _U_, int status, void
 	struct sync_cb_data *cb_data = private_data;
 	exports export = *(exports *)data;
 
-	printf("got exports back\n");
 	cb_data->is_finished = 1;
 	cb_data->status = status;
 	cb_data->return_data = NULL;

@@ -94,7 +94,7 @@ static int rpc_read_from_socket(struct rpc_context *rpc)
 {
 	int available;
 	int size;
-	unsigned char *buf;
+	int pdu_size;
 	ssize_t count;
 
 	if (ioctl(rpc->fd, FIONREAD, &available) != 0) {
@@ -105,57 +105,77 @@ static int rpc_read_from_socket(struct rpc_context *rpc)
 		rpc_set_error(rpc, "Socket has been closed");
 		return -1;
 	}
-	size = rpc->insize - rpc->inpos + available;
-	buf = malloc(size);
-	if (buf == NULL) {
-		rpc_set_error(rpc, "Out of memory: failed to allocate %d bytes for input buffer. Closing socket.", size);
-		return -1;
+
+	/* read record marker, 4 bytes at the beginning of every pdu */
+	if (rpc->inbuf == NULL) {
+		rpc->insize = 4;
+		rpc->inbuf = malloc(rpc->insize);
+		if (rpc->inbuf == NULL) {
+			rpc_set_error(rpc, "Failed to allocate buffer for record marker, errno:%d. Closing socket.", errno);
+			return -1;
+		}
 	}
-	if (rpc->insize > rpc->inpos) {
-		memcpy(buf, rpc->inbuf + rpc->inpos, rpc->insize - rpc->inpos);
-		rpc->insize -= rpc->inpos;
-		rpc->inpos   = 0;
+	if (rpc->inpos < 4) {
+		size = 4 - rpc->inpos;
+
+		count = read(rpc->fd, rpc->inbuf + rpc->inpos, size);
+		if (count == -1) {
+			if (errno == EINTR) {
+				return 0;
+			}
+			rpc_set_error(rpc, "Read from socket failed, errno:%d. Closing socket.", errno);
+			return -1;
+		}
+		available  -= count;
+		rpc->inpos += count;
 	}
 
-	count = read(rpc->fd, buf + rpc->insize, available);
+	if (available == 0) {
+		return 0;
+	}
+
+	pdu_size = rpc_get_pdu_size(rpc->inbuf);
+	if (rpc->insize < pdu_size) {
+		unsigned char *buf;
+		
+		buf = malloc(pdu_size);
+		if (buf == NULL) {
+			rpc_set_error(rpc, "Failed to allocate buffer of %d bytes for pdu, errno:%d. Closing socket.", pdu_size, errno);
+			return -1;
+		}
+		memcpy(buf, rpc->inbuf, rpc->insize);
+		free(rpc->inbuf);
+		rpc->inbuf  = buf;
+		rpc->insize = rpc_get_pdu_size(rpc->inbuf);
+	}
+
+	size = available;
+	if (size > rpc->insize - rpc->inpos) {
+		size = rpc->insize - rpc->inpos;
+	}
+
+	count = read(rpc->fd, rpc->inbuf + rpc->inpos, size);
 	if (count == -1) {
 		if (errno == EINTR) {
-			free(buf);
-			buf = NULL;
 			return 0;
 		}
 		rpc_set_error(rpc, "Read from socket failed, errno:%d. Closing socket.", errno);
-		free(buf);
-		buf = NULL;
 		return -1;
 	}
+	available  -= count;
+	rpc->inpos += count;
 
-	if (rpc->inbuf != NULL) {
-		free(rpc->inbuf);
-	}
-	rpc->inbuf   = (char *)buf;
-	rpc->insize += count;
-
-	while (1) {
-		if (rpc->insize - rpc->inpos < 4) {
-			return 0;
-		}
-		count = rpc_get_pdu_size(rpc->inbuf + rpc->inpos);
-		if (rpc->insize + rpc->inpos < count) {
-			return 0;
-		}
-		if (rpc_process_pdu(rpc, rpc->inbuf + rpc->inpos, count) != 0) {
+	if (rpc->inpos == rpc->insize) {
+		if (rpc_process_pdu(rpc, rpc->inbuf, pdu_size) != 0) {
 			rpc_set_error(rpc, "Invalid/garbage pdu received from server. Closing socket");
 			return -1;
 		}
-		rpc->inpos += count;
-		if (rpc->inpos == rpc->insize) {
-			free(rpc->inbuf);
-			rpc->inbuf = NULL;
-			rpc->insize = 0;
-			rpc->inpos = 0;
-		}
+		free(rpc->inbuf);
+		rpc->inbuf  = NULL;
+		rpc->insize = 0;
+		rpc->inpos  = 0;
 	}
+
 	return 0;
 }
 

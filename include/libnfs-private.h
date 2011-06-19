@@ -35,8 +35,8 @@ struct rpc_context {
        struct rpc_pdu *outqueue;
        struct rpc_pdu *waitpdu;
 
-       int insize;
        int inpos;
+       int insize;
        char *inbuf;
 };
 
