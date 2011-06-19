@@ -43,8 +43,6 @@ char *rpc_get_error(struct rpc_context *rpc);
 #define RPC_STATUS_ERROR		1
 #define RPC_STATUS_CANCEL		2
 
-typedef void (*rpc_cb)(struct rpc_context *rpc, int status, void *data, void *private_data);
-
 /*
  * Async connection to the tcp port at server:port.
  * Function returns
@@ -194,13 +192,17 @@ int rpc_mount_umntall_async(struct rpc_context *rpc, rpc_cb cb, void *private_da
 
 /*
  * Call MOUNT/EXPORT
+ * NOTE: You must include 'libnfs-raw-mount.h' to get the definitions of the
+ * returned structures.
+ *
  * Function returns
  *  0 : The call was initiated. The callback will be invoked when the call completes.
  * <0 : An error occured when trying to set up the call. The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
  * RPC_STATUS_SUCCESS : We got a successful response from the mount daemon.
- *                      data is an exports.
+ *                      data is a pointer to an exports pointer:
+ *                      exports export = *(exports *)data;
  * RPC_STATUS_ERROR   : An error occured when trying to contact the mount daemon.
  *                      data is the error string.
  * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.

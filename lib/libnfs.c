@@ -18,6 +18,7 @@
  * High level api to nfs filesystems
  */
 
+#define _GNU_SOURCE
 #include <stdio.h>
 #include <stdarg.h>
 #include <stdlib.h>
@@ -2871,3 +2872,166 @@ void nfs_set_error(struct nfs_context *nfs, char *error_string, ...)
 	nfs->rpc->error_string = str;
         va_end(ap);
 }
+
+
+
+struct mount_cb_data {
+       rpc_cb cb;
+       void *private_data;
+       char *server;
+};
+
+static void free_mount_cb_data(struct mount_cb_data *data)
+{
+	if (data->server != NULL) {
+		free(data->server);
+		data->server = NULL;
+	}
+
+	free(data);
+}
+
+static void mount_export_5_cb(struct rpc_context *rpc, int status, void *command_data, void *private_data)
+{
+	struct mount_cb_data *data = private_data;
+
+	if (status == RPC_STATUS_ERROR) {	
+		data->cb(rpc, -EFAULT, command_data, data->private_data);
+		free_mount_cb_data(data);
+		return;
+	}
+	if (status == RPC_STATUS_CANCEL) {
+		data->cb(rpc, -EINTR, "Command was cancelled", data->private_data);
+		free_mount_cb_data(data);
+		return;
+	}
+
+	data->cb(rpc, 0, command_data, data->private_data);
+	if (rpc_disconnect(rpc, "normal disconnect") != 0) {
+		rpc_set_error(rpc, "Failed to disconnect\n");
+	}
+	free_mount_cb_data(data);
+}
+
+static void mount_export_4_cb(struct rpc_context *rpc, int status, void *command_data, void *private_data)
+{
+	struct mount_cb_data *data = private_data;
+
+	if (status == RPC_STATUS_ERROR) {	
+		data->cb(rpc, -EFAULT, command_data, data->private_data);
+		free_mount_cb_data(data);
+		return;
+	}
+	if (status == RPC_STATUS_CANCEL) {
+		data->cb(rpc, -EINTR, "Command was cancelled", data->private_data);
+		free_mount_cb_data(data);
+		return;
+	}
+
+	if (rpc_mount_export_async(rpc, mount_export_5_cb, data) != 0) {
+		data->cb(rpc, -ENOMEM, command_data, data->private_data);
+		free_mount_cb_data(data);
+		return;
+	}
+}
+
+static void mount_export_3_cb(struct rpc_context *rpc, int status, void *command_data, void *private_data)
+{
+	struct mount_cb_data *data = private_data;
+	uint32_t mount_port;
+
+	if (status == RPC_STATUS_ERROR) {	
+		data->cb(rpc, -EFAULT, command_data, data->private_data);
+		free_mount_cb_data(data);
+		return;
+	}
+	if (status == RPC_STATUS_CANCEL) {
+		data->cb(rpc, -EINTR, "Command was cancelled", data->private_data);
+		free_mount_cb_data(data);
+		return;
+	}
+
+	mount_port = *(uint32_t *)command_data;
+	if (mount_port == 0) {
+		rpc_set_error(rpc, "RPC error. Mount program is not available");
+		data->cb(rpc, -ENOENT, command_data, data->private_data);
+		free_mount_cb_data(data);
+		return;
+	}
+
+	rpc_disconnect(rpc, "normal disconnect");
+	if (rpc_connect_async(rpc, data->server, mount_port, mount_export_4_cb, data) != 0) {
+		data->cb(rpc, -ENOMEM, command_data, data->private_data);
+		free_mount_cb_data(data);
+		return;
+	}
+}
+
+static void mount_export_2_cb(struct rpc_context *rpc, int status, void *command_data, void *private_data)
+{
+	struct mount_cb_data *data = private_data;
+
+	if (status == RPC_STATUS_ERROR) {
+		data->cb(rpc, -EFAULT, command_data, data->private_data);
+		free_mount_cb_data(data);
+		return;
+	}
+	if (status == RPC_STATUS_CANCEL) {
+		data->cb(rpc, -EINTR, "Command was cancelled", data->private_data);
+		free_mount_cb_data(data);
+		return;
+	}
+
+	if (rpc_pmap_getport_async(rpc, MOUNT_PROGRAM, MOUNT_V3, mount_export_3_cb, private_data) != 0) {
+		data->cb(rpc, -ENOMEM, command_data, data->private_data);
+		free_mount_cb_data(data);
+		return;
+	}
+}
+
+static void mount_export_1_cb(struct rpc_context *rpc, int status, void *command_data, void *private_data)
+{
+	struct mount_cb_data *data = private_data;
+
+	if (status == RPC_STATUS_ERROR) {
+		data->cb(rpc, -EFAULT, command_data, data->private_data);
+		free_mount_cb_data(data);
+		return;
+	}
+	if (status == RPC_STATUS_CANCEL) {
+		data->cb(rpc, -EINTR, "Command was cancelled", data->private_data);
+		free_mount_cb_data(data);
+		return;
+	}
+
+	if (rpc_pmap_null_async(rpc, mount_export_2_cb, data) != 0) {
+		data->cb(rpc, -ENOMEM, command_data, data->private_data);
+		free_mount_cb_data(data);
+		return;
+	}
+}
+
+int mount_getexports_async(struct rpc_context *rpc, const char *server, rpc_cb cb, void *private_data)
+{
+	struct mount_cb_data *data;
+
+	data = malloc(sizeof(struct mount_cb_data));
+	if (data == NULL) {
+		return -1;
+	}
+	bzero(data, sizeof(struct mount_cb_data));
+	data->cb           = cb;
+	data->private_data = private_data;
+	data->server       = strdup(server);
+	if (data->server == NULL) {
+		free_mount_cb_data(data);
+		return -1;
+	}	
+	if (rpc_connect_async(rpc, data->server, 111, mount_export_1_cb, data) != 0) {
+		free_mount_cb_data(data);
+		return -1;
+	}
+
+	return 0;
+}
+

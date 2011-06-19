@@ -20,6 +20,7 @@
 #include <stdint.h>
 
 struct nfs_context;
+struct rpc_context;
 
 /*
  * Used for interfacing the async version of the api into an external eventsystem
@@ -46,6 +47,10 @@ char *nfs_get_error(struct nfs_context *nfs);
  */
 typedef void (*nfs_cb)(int err, struct nfs_context *nfs, void *data, void *private_data);
 
+/*
+ * Callback for all ASYNC rpc functions
+ */
+typedef void (*rpc_cb)(struct rpc_context *rpc, int status, void *data, void *private_data);
 
 
 
@@ -908,6 +913,30 @@ int nfs_link_async(struct nfs_context *nfs, const char *oldpath, const char *new
  * -errno : The command failed.
  */
 int nfs_link(struct nfs_context *nfs, const char *oldpath, const char *newpath);
+
+
+/*
+ * GETEXPORTS()
+ */
+/*
+ * Async getexports()
+ * NOTE: You must include 'libnfs-raw-mount.h' to get the definitions of the
+ * returned structures.
+ *
+ * This function will return the list of exports from an NFS server.
+ *
+ * Function returns
+ *  0 : The operation was initiated. Once the operation finishes, the callback will be invoked.
+ * <0 : An error occured when trying to set up the operation. The callback will not be invoked.
+ *
+ * When the callback is invoked, status indicates the result:
+ *      0 : Success.
+ *          data is a pointer to an exports pointer:
+ *          exports export = *(exports *)data;
+ * -errno : An error occured.
+ *          data is the error string.
+ */
+int mount_getexports_async(struct rpc_context *rpc, const char *server, rpc_cb cb, void *private_data);
 
 
 

@@ -190,3 +190,6 @@ int mountstat3_to_errno(int st)
 	}
 	return -ERANGE;
 }
+
+
+

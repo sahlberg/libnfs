@@ -32,6 +32,10 @@
 #include <fcntl.h>
 #include <poll.h>
 #include "libnfs.h"
+#include "libnfs-raw.h"
+#include "libnfs-raw-mount.h"
+
+struct rpc_context *mount_context;
 
 struct client {
        char *server;
@@ -40,6 +44,27 @@ struct client {
        struct nfsfh *nfsfh;
        int is_finished;
 };
+
+void mount_export_cb(struct rpc_context *mount_context, int status, void *data, void *private_data)
+{
+	struct client *client = private_data;
+	exports export = *(exports *)data;
+
+	if (status < 0) {
+		printf("MOUNT/EXPORT failed with \"%s\"\n", rpc_get_error(mount_context));
+		exit(10);
+	}
+
+	printf("Got exports list from server %s\n", client->server);
+	while (export != NULL) {
+	      printf("Export: %s\n", export->ex_dir);
+	      export = export->ex_next;
+	}
+
+	mount_context = NULL;
+
+	client->is_finished = 1;
+}
 
 void nfs_opendir_cb(int status, struct nfs_context *nfs, void *data, void *private_data)
 {
@@ -58,7 +83,11 @@ void nfs_opendir_cb(int status, struct nfs_context *nfs, void *data, void *priva
 	}
 	nfs_closedir(nfs, nfsdir);
 
-	client->is_finished = 1;
+	mount_context = rpc_init_context();
+	if (mount_getexports_async(mount_context, client->server, mount_export_cb, client) != 0) {
+		printf("Failed to start MOUNT/EXPORT\n");
+		exit(10);
+	}
 }
 
 void nfs_close_cb(int status, struct nfs_context *nfs, void *data, void *private_data)
@@ -190,9 +219,9 @@ void nfs_mount_cb(int status, struct nfs_context *nfs, void *data, void *private
 int main(int argc _U_, char *argv[] _U_)
 {
 	struct nfs_context *nfs;
-	struct pollfd pfd;
 	int ret;
 	struct client client;
+	struct pollfd pfds[2]; /* nfs:0  mount:1 */
 
 	client.server = SERVER;
 	client.export = EXPORT;
@@ -211,14 +240,28 @@ int main(int argc _U_, char *argv[] _U_)
 	}
 
 	for (;;) {
-		pfd.fd = nfs_get_fd(nfs);
-		pfd.events = nfs_which_events(nfs);
+		int num_fds;
 
-		if (poll(&pfd, 1, -1) < 0) {
+		pfds[0].fd = nfs_get_fd(nfs);
+		pfds[0].events = nfs_which_events(nfs);
+		num_fds = 1;
+
+		if (mount_context != 0 && rpc_get_fd(mount_context) != -1) {
+			pfds[1].fd = rpc_get_fd(mount_context);
+			pfds[1].events = rpc_which_events(mount_context);
+			num_fds = 2;
+		}
+		if (poll(&pfds[0], 2, -1) < 0) {
 			printf("Poll failed");
 			exit(10);
 		}
-		if (nfs_service(nfs, pfd.revents) < 0) {
+		if (mount_context != NULL) {
+			if (rpc_service(mount_context, pfds[1].revents) < 0) {
+				printf("rpc_service failed\n");
+				break;
+			}
+		}
+		if (nfs_service(nfs, pfds[0].revents) < 0) {
 			printf("nfs_service failed\n");
 			break;
 		}
@@ -228,6 +271,10 @@ int main(int argc _U_, char *argv[] _U_)
 	}
 	
 	nfs_destroy_context(nfs);
+	if (mount_context != NULL) {
+		rpc_destroy_context(mount_context);
+		mount_context = NULL;
+	}
 	printf("nfsclient finished\n");
 	return 0;
 }
