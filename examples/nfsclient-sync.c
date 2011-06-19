@@ -62,19 +62,15 @@ int main(int argc _U_, char *argv[] _U_)
 	off_t offset;
 	struct statvfs svfs;
 	exports export, tmp;
-	struct rpc_context *mount_context;
 
 	printf("exports on server %s\n", SERVER);
-	mount_context = rpc_init_context();
-	export = mount_getexports(mount_context, SERVER);
+	export = mount_getexports(SERVER);
 	tmp = export;
 	while (tmp != NULL) {
 	      printf("Export: %s\n", tmp->ex_dir);
 	      tmp = tmp->ex_next;
 	}
 	mount_free_export_list(export);
-	rpc_destroy_context(mount_context);
-
 
 
 	nfs = nfs_init_context();

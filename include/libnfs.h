@@ -945,7 +945,7 @@ int mount_getexports_async(struct rpc_context *rpc, const char *server, rpc_cb c
  * 
  * returned data must be freed by calling mount_free_export_list(exportnode);
  */
-struct exportnode *mount_getexports(struct rpc_context *rpc, const char *server);
+struct exportnode *mount_getexports(const char *server);
 
 void mount_free_export_list(struct exportnode *exports);
 

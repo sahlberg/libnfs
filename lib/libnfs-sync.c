@@ -1093,19 +1093,23 @@ void mount_getexports_cb(struct rpc_context *mount_context _U_, int status, void
 	}
 }
 
-struct exportnode *mount_getexports(struct rpc_context *rpc, const char *server)
+struct exportnode *mount_getexports(const char *server)
 {
 	struct sync_cb_data cb_data;
+	struct rpc_context *rpc;
+
 
 	cb_data.is_finished = 0;
 	cb_data.return_data = NULL;
 
+	rpc = rpc_init_context();
 	if (mount_getexports_async(rpc, server, mount_getexports_cb, &cb_data) != 0) {
-		rpc_set_error(rpc, "mount_getexports_async failed");
+		rpc_destroy_context(rpc);
 		return NULL;
 	}
 
 	wait_for_reply(rpc, &cb_data);
+	rpc_destroy_context(rpc);
 
 	return cb_data.return_data;
 }
