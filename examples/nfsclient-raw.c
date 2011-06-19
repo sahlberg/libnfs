@@ -44,7 +44,7 @@ struct client {
 void rquota_getquota_cb(struct rpc_context *rpc _U_, int status, void *data, void *private_data)
 {
 	struct client *client = private_data;
-	GETQUOTA1res *res = data;
+//	GETQUOTA1res *res = data;
 
 	if (status == RPC_STATUS_ERROR) {
 		printf("rquota/getquota call failed with \"%s\"\n", (char *)data);
@@ -158,6 +158,33 @@ void mount_mnt_cb(struct rpc_context *rpc, int status, void *data, void *private
 }
 
 
+
+void mount_export_cb(struct rpc_context *rpc, int status, void *data, void *private_data)
+{
+	struct client *client = private_data;
+	exports export = *(exports *)data;
+
+	if (status == RPC_STATUS_ERROR) {
+		printf("mount null call failed with \"%s\"\n", (char *)data);
+		exit(10);
+	}
+	if (status != RPC_STATUS_SUCCESS) {
+		printf("mount null call to server %s failed, status:%d\n", client->server, status);
+		exit(10);
+	}
+
+	printf("Got reply from server for MOUNT/EXPORT procedure.\n");
+	while (export != NULL) {
+	      printf("Export: %s\n", export->ex_dir);
+	      export = export->ex_next;
+	}
+	printf("Send MOUNT/MNT command for %s\n", client->export);
+	if (rpc_mount_mnt_async(rpc, mount_mnt_cb, client->export, client) != 0) {
+		printf("Failed to send mnt request\n");
+		exit(10);
+	}
+}
+
 void mount_null_cb(struct rpc_context *rpc, int status, void *data, void *private_data)
 {
 	struct client *client = private_data;
@@ -172,9 +199,9 @@ void mount_null_cb(struct rpc_context *rpc, int status, void *data, void *privat
 	}
 
 	printf("Got reply from server for MOUNT/NULL procedure.\n");
-	printf("Send MOUNT/MNT command for %s\n", client->export);
-	if (rpc_mount_mnt_async(rpc, mount_mnt_cb, client->export, client) != 0) {
-		printf("Failed to send mnt request\n");
+	printf("Send MOUNT/EXPORT command\n");
+	if (rpc_mount_export_async(rpc, mount_export_cb, client) != 0) {
+		printf("Failed to send export request\n");
 		exit(10);
 	}
 }
@@ -247,7 +274,7 @@ void pmap_getport1_cb(struct rpc_context *rpc, int status, void *data, void *pri
 	printf("GETPORT returned RPC.RQUOTAD on port:%d\n", client->rquota_port);
 	if (client->rquota_port == 0) {
 		printf("RPC.RQUOTAD is not available on server : %s:%d\n", client->server, client->rquota_port);
-		exit(10);
+//		exit(10);
 	}		
 
 	printf("Send getport request asking for MOUNT port\n");
