@@ -859,10 +859,12 @@ static void nfs_pread_mcb(struct rpc_context *rpc _U_, int status, void *command
 		if (res->status != NFS3_OK) {
 			rpc_set_error(nfs->rpc, "NFS: Read failed with %s(%d)", nfsstat3_to_str(res->status), nfsstat3_to_errno(res->status));
 			data->error = 1;
-		} else {
-			memcpy(&data->buffer[mdata->offset - data->start_offset], res->READ3res_u.resok.data.data_val, res->READ3res_u.resok.count);
-			if ((unsigned)data->max_offset < mdata->offset + res->READ3res_u.resok.count) {
-				data->max_offset = mdata->offset + res->READ3res_u.resok.count;
+		} else  {
+			if (res->READ3res_u.resok.count > 0) {
+				memcpy(&data->buffer[mdata->offset - data->start_offset], res->READ3res_u.resok.data.data_val, res->READ3res_u.resok.count);
+				if ((unsigned)data->max_offset < mdata->offset + res->READ3res_u.resok.count) {
+					data->max_offset = mdata->offset + res->READ3res_u.resok.count;
+				}
 			}
 		}
 	}

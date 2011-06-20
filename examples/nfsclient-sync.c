@@ -20,7 +20,7 @@
 
 #define SERVER "10.1.1.27"
 #define EXPORT "/VIRTUAL"
-#define NFSFILE "/BOOKS/Classics/Dracula.djvu"
+#define NFSFILE "/BOOKS/Classics/Dracula.djvu.truncated"
 #define NFSFILER "/BOOKS/Classics/Dracula.djvu.renamed"
 #define NFSFILEW "/BOOKS/Classics/foo"
 #define NFSDIR "/BOOKS/Classics/"
@@ -46,7 +46,7 @@ struct client {
 };
 
 
-char buf[2*1024*1024];
+char buf[5*1024*1024];
 
 int main(int argc _U_, char *argv[] _U_)
 {
