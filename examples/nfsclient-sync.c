@@ -85,7 +85,7 @@ int main(int argc _U_, char *argv[] _U_)
  		printf("Failed to mount nfs share : %s\n", nfs_get_error(nfs));
 		exit(10);
 	}
-	printf("mounted share successfully\n");
+	printf("mounted share successfully %s\n", nfs_get_error(nfs));
 
 
 	ret = nfs_stat(nfs, NFSFILE, &st);

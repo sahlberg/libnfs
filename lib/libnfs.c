@@ -2865,13 +2865,13 @@ size_t nfs_get_writemax(struct nfs_context *nfs)
 void nfs_set_error(struct nfs_context *nfs, char *error_string, ...)
 {
         va_list ap;
-	char *str;
+	char *str = NULL;
 
+        va_start(ap, error_string);
+	vasprintf(&str, error_string, ap);
 	if (nfs->rpc->error_string != NULL) {
 		free(nfs->rpc->error_string);
 	}
-        va_start(ap, error_string);
-	vasprintf(&str, error_string, ap);
 	nfs->rpc->error_string = str;
         va_end(ap);
 }
