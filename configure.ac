@@ -1,93 +1,60 @@
 AC_PREREQ(2.50)
-AC_INIT(libnfs, m4_esyscmd([grep 'Version:' ./packaging/RPM/libnfs.spec.in 2>/dev/null | head -1 | sed -e 's/[ \t]*Version:[ \t]*\([^ \t]*\)[ \t]*.*/\1/' | tr -d '\n']))
-AC_CONFIG_SRCDIR([lib/init.c])
+AC_INIT([libnfs], [1.0.0])
+AC_CONFIG_HEADERS([config.h])
+AM_INIT_AUTOMAKE([foreign])
+AC_CANONICAL_HOST
 
-if test "${libdir}" = '${exec_prefix}/lib'; then
-  case `uname -m` in
-    x86_64|ppc64|powerpc64)
-      libdir='${exec_prefix}/lib64'
-      ;;
-    *)
-      libdir='${exec_prefix}/lib'
-      ;;
-  esac
+# Work around stupid autoconf default cflags. pt 1
+SAVE_CFLAGS="x${CFLAGS}"
+
+AC_PROG_CC
+AC_PROG_LIBTOOL
+
+AM_PROG_CC_C_O
+
+# Work around stupid autoconf default cflags. pt 2
+if test "$SAVE_CFLAGS" = "x"; then
+  CFLAGS=""
 fi
 
-is_solaris="no"
-is_darwin="no"
-install="/usr/bin/install"
-ldconfig="ldconfig"
-
-case `uname` in
-  Linux*)
-    ;;
-  Darwin*)
-    libdir='${exec_prefix}/lib'
-    ldconfig='echo no ldconfig on darwin'
-    is_darwin="yes"
-    ;;
-  AIX*)
-    ;;
-  SunOS)
-    is_solaris="yes"
-    install="ginstall"
-    ldconfig="echo no ldconfig on solaris"
-    LIBS="$LIBS -lsocket -lnsl"
-    ;;
-  *)
-    ;;
-esac
-
-if test "$ac_cv_prog_gcc" = yes; then
-   CFLAGS="$CFLAGS -Wall -Wshadow -Wstrict-prototypes -Wpointer-arith -Wcast-qual -Wcast-align -Wwrite-strings"
+AC_CHECK_PROG([HAVE_RPCGEN], [rpcgen], [yes], [no])
+if test x$HAVE_RPCGEN != xyes; then
+  AC_MSG_ERROR([Can not find required program])
 fi
 
-LOGDIR='${localstatedir}/log'
+# option: logdir
 AC_ARG_WITH([logdir],
-	[  --with-logdir=DIR       path to log directory [[LOCALSTATEDIR/log]]],
-	LOGDIR=$withval)
-if test ! -z "$LOGDIR"; then
-  if test "$LOGDIR" = "yes" -o "$LOGDIR" = "no"; then
-    AC_MSG_ERROR([--with-logdir must specify a path])
-  fi
-fi
+	    [AC_HELP_STRING([--with-logdir=DIR],
+                            [path to log directory [[LOCALSTATEDIR/log]]])],
+            [LOGDIR=$withval],
+            [LOGDIR='${localstatedir}/log'])
+
+#if test ! -d "$LOGDIR"; then
+#  AC_MSG_ERROR([--with-logdir must specify a path])
+#fi
 AC_SUBST(LOGDIR)
 
-AC_ARG_WITH([examples],
-              [  --without-examples  Disable build of examples],
-	      [ENABLE_EXAMPLES="no"],
-	      [ENABLE_EXAMPLES="yes"]
-	      )
-AC_SUBST(ENABLE_EXAMPLES)
+#option: examples
+AC_ARG_ENABLE([examples],
+              [AC_HELP_STRING([--enable-examples],
+                              [Build example programs])],
+	      [ENABLE_EXAMPLES=$enableval],
+	      [ENABLE_EXAMPLES="no"])
+AM_CONDITIONAL(EXAMPLES, [test x$ENABLE_EXAMPLES = xyes])
+AM_COND_IF(EXAMPLES,
+           [MAYBE_EXAMPLES="examples"]
+           [config_examples="examples/Makefile"])
+AC_SUBST(MAYBE_EXAMPLES)
 
-AC_ARG_WITH([ldconfig],
-	    [  --without-ldconfig  Disable call of ldconfig on make install],
-	    [ldconfig='echo ldconfig disabled'])
+#output
+AC_CONFIG_FILES([Makefile]
+                [include/Makefile]
+                [lib/Makefile]
+                [mount/Makefile]
+                [nfs/Makefile]
+                [portmap/Makefile]
+                [rquota/Makefile]
+                [examples/Makefile]
+               )
 
-if test x"$cross_compiling" = xyes; then
-  ldconfig='echo crosscompiling: ldconfig disabled'
-fi
-
-AC_CONFIG_HEADER(config.h)
-
-EXTRA_OBJ=""
-
-#AC_CHECK_HEADERS(sched.h)
-#AC_CHECK_FUNCS(mlockall)
-
-AC_CACHE_CHECK([for sin_len in sock],libnfs_cv_HAVE_SOCK_SIN_LEN,[
-AC_TRY_COMPILE([#include <sys/types.h>
-#include <sys/socket.h>
-#include <netinet/in.h>],
-[struct sockaddr_in sock; sock.sin_len = sizeof(sock);],
-libnfs_cv_HAVE_SOCK_SIN_LEN=yes,libnfs_cv_HAVE_SOCK_SIN_LEN=no)])
-if test x"$libnfs_cv_HAVE_SOCK_SIN_LEN" = x"yes"; then
-    AC_DEFINE(HAVE_SOCK_SIN_LEN,1,[Whether the sockaddr_in struct has a sin_len property])
-fi
-AC_SUBST(libdir)
-AC_SUBST(install)
-AC_SUBST(ldconfig)
-AC_SUBST(is_darwin)
-#AC_SUBST(LIBNFS_LDFLAGS)
-
-AC_OUTPUT(Makefile)
+AC_OUTPUT
