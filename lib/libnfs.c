@@ -889,7 +889,11 @@ static void nfs_pread_mcb(struct rpc_context *rpc _U_, int status, void *command
 	}
 
 	data->nfsfh->offset = data->max_offset;
-	data->cb(data->max_offset - data->start_offset, nfs, data->buffer, data->private_data);
+	if (data->max_offset - data->start_offset >= 0) {
+		data->cb(data->max_offset - data->start_offset, nfs, data->buffer, data->private_data);
+	} else {
+		data->cb(0, nfs, data->buffer, data->private_data);
+	}
 	free_nfs_cb_data(data);
 	free(mdata);
 }
