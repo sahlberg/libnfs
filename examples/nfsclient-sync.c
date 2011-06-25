@@ -25,6 +25,7 @@
 #define NFSFILEW "/BOOKS/Classics/foo"
 #define NFSDIR "/BOOKS/Classics/"
 
+#define _GNU_SOURCE
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
@@ -46,7 +47,7 @@ struct client {
 };
 
 
-char buf[5*1024*1024];
+char buf[3*1024*1024+337];
 
 int main(int argc _U_, char *argv[] _U_)
 {
@@ -129,6 +130,36 @@ int main(int argc _U_, char *argv[] _U_)
 		printf("%02x ", buf[i]&0xff);
 	}
 	printf("\n");
+	ret = nfs_read(nfs, nfsfh, sizeof(buf), buf);
+	if (ret < 0) {
+		printf("Failed to pread(%s) %s\n", NFSFILE, nfs_get_error(nfs));
+		exit(10);
+	}
+	printf("read %d bytes\n", ret);
+	ret = nfs_read(nfs, nfsfh, sizeof(buf), buf);
+	if (ret < 0) {
+		printf("Failed to pread(%s) %s\n", NFSFILE, nfs_get_error(nfs));
+		exit(10);
+	}
+	printf("read %d bytes\n", ret);
+	ret = nfs_read(nfs, nfsfh, sizeof(buf), buf);
+	if (ret < 0) {
+		printf("Failed to pread(%s) %s\n", NFSFILE, nfs_get_error(nfs));
+		exit(10);
+	}
+	printf("read %d bytes\n", ret);
+	ret = nfs_read(nfs, nfsfh, sizeof(buf), buf);
+	if (ret < 0) {
+		printf("Failed to pread(%s) %s\n", NFSFILE, nfs_get_error(nfs));
+		exit(10);
+	}
+	printf("read %d bytes\n", ret);
+	ret = nfs_read(nfs, nfsfh, sizeof(buf), buf);
+	if (ret < 0) {
+		printf("Failed to pread(%s) %s\n", NFSFILE, nfs_get_error(nfs));
+		exit(10);
+	}
+	printf("read %d bytes\n", ret);
 
 	ret = (int)nfs_lseek(nfs, nfsfh, 0, SEEK_CUR, &offset);
 	if (ret < 0) {
@@ -167,7 +198,26 @@ int main(int argc _U_, char *argv[] _U_)
 		exit(10);
 	}
 	while((nfsdirent = nfs_readdir(nfs, nfsdir)) != NULL) {
-		printf("Inode:%d Name:%s\n", (int)nfsdirent->inode, nfsdirent->name);
+		char *filename = NULL;
+		printf("Inode:%d Name:%s ", (int)nfsdirent->inode, nfsdirent->name);
+		asprintf(&filename, "%s/%s", NFSDIR, nfsdirent->name);
+		ret = nfs_open(nfs, filename, O_RDONLY, &nfsfh);
+		free(filename);
+		if (ret != 0) {
+			printf("Failed to open(%s) %s\n", filename, nfs_get_error(nfs));
+			exit(10);
+		}
+		ret = nfs_read(nfs, nfsfh, sizeof(buf), buf);
+		if (ret < 0) {
+			printf("Error reading file\n");
+			exit(10);
+		}
+		printf("Read %d bytes\n", ret);
+		ret = nfs_close(nfs, nfsfh);
+		if (ret < 0) {
+			printf("Failed to close(%s): %s\n", NFSFILE, nfs_get_error(nfs));
+			exit(10);
+		}
 	}
 	nfs_closedir(nfs, nfsdir);
 
