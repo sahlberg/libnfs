@@ -1069,7 +1069,7 @@ int nfs_link(struct nfs_context *nfs, const char *oldpath, const char *newpath)
 	return cb_data.status;
 }
 
-void mount_getexports_cb(struct rpc_context *mount_context _U_, int status, void *data, void *private_data)
+void mount_getexports_cb(struct rpc_context *mount_context, int status, void *data, void *private_data)
 {
 	struct sync_cb_data *cb_data = private_data;
 	exports export = *(exports *)data;
@@ -1077,6 +1077,11 @@ void mount_getexports_cb(struct rpc_context *mount_context _U_, int status, void
 	cb_data->is_finished = 1;
 	cb_data->status = status;
 	cb_data->return_data = NULL;
+
+	if (status != 0) {
+		rpc_set_error(mount_context, "mount/export call failed with \"%s\"", (char *)data);
+		return;
+	}
 
 	while (export != NULL) {
 		exports new_export;

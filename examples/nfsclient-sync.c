@@ -64,15 +64,19 @@ int main(int argc _U_, char *argv[] _U_)
 	struct statvfs svfs;
 	exports export, tmp;
 
-	printf("exports on server %s\n", SERVER);
 	export = mount_getexports(SERVER);
-	tmp = export;
-	while (tmp != NULL) {
-	      printf("Export: %s\n", tmp->ex_dir);
-	      tmp = tmp->ex_next;
-	}
-	mount_free_export_list(export);
+	if (export != NULL) {
+		printf("exports on server %s\n", SERVER);
+		tmp = export;
+		while (tmp != NULL) {
+		      printf("Export: %s\n", tmp->ex_dir);
+		      tmp = tmp->ex_next;
+		}
 
+		mount_free_export_list(export);
+	} else {
+		printf("no exports on server %s\n", SERVER);
+	}	
 
 	nfs = nfs_init_context();
 	if (nfs == NULL) {
