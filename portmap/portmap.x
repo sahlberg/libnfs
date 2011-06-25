@@ -18,6 +18,10 @@ struct call_args {
        opaque args<>;
 };
 
+struct call_result {
+	unsigned int port;
+	opaque res<>;
+};
 
 program PMAP_PROGRAM {
 	version PMAP_V2 {
@@ -32,6 +36,9 @@ program PMAP_PROGRAM {
 
             	unsigned int
             	PMAP_GETPORT(mapping)   = 3;
+
+		call_result
+		PMAP_CALLIT(call_args)  = 5;
 	} = 2;
 } = 100000;
 
