@@ -889,11 +889,8 @@ static void nfs_pread_mcb(struct rpc_context *rpc _U_, int status, void *command
 	}
 
 	data->nfsfh->offset = data->max_offset;
-	if (data->max_offset - data->start_offset >= 0) {
-		data->cb(data->max_offset - data->start_offset, nfs, data->buffer, data->private_data);
-	} else {
-		data->cb(0, nfs, data->buffer, data->private_data);
-	}
+	data->cb(data->max_offset - data->start_offset, nfs, data->buffer, data->private_data);
+
 	free_nfs_cb_data(data);
 	free(mdata);
 }
@@ -929,6 +926,7 @@ int nfs_pread_async(struct nfs_context *nfs, struct nfsfh *nfsfh, off_t offset, 
 	 * reads and collect into a reassembly buffer.
 	 * we send all reads in parallell so that performance is still good.
 	 */
+	data->max_offset = offset;
 	data->start_offset = offset;
 
 	data->buffer = 	malloc(count);
