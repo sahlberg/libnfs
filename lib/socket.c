@@ -111,6 +111,29 @@ static int rpc_read_from_socket(struct rpc_context *rpc)
 		return -1;
 	}
 
+	if (rpc->is_udp) {
+		char *buf;
+		socklen_t socklen = sizeof(rpc->udp_src);
+
+		buf = malloc(available);
+		if (buf == NULL) {
+			rpc_set_error(rpc, "Failed to malloc buffer for recvfrom");
+			return -1;
+		}
+		count = recvfrom(rpc->fd, buf, available, MSG_DONTWAIT, (struct sockaddr *)&rpc->udp_src, &socklen);
+		if (count < 0) {
+			rpc_set_error(rpc, "Failed recvfrom: %s", strerror(errno));
+			free(buf);
+		}
+		if (rpc_process_pdu(rpc, buf, count) != 0) {
+			rpc_set_error(rpc, "Invalid/garbage pdu received from server. Ignoring PDU");
+			free(buf);
+			return -1;
+		}
+		free(buf);
+		return 0;
+	}
+
 	/* read record marker, 4 bytes at the beginning of every pdu */
 	if (rpc->inbuf == NULL) {
 		rpc->insize = 4;
