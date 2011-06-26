@@ -73,3 +73,4 @@ void nfs_set_error(struct nfs_context *nfs, char *error_string, ...);
 
 struct rpc_context *nfs_get_rpc_context(struct nfs_context *nfs);
 
+struct rpc_context *rpc_init_udp_context(void);

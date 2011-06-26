@@ -59,6 +59,18 @@ struct rpc_context *rpc_init_context(void)
 }
 
 
+struct rpc_context *rpc_init_udp_context(void)
+{
+	struct rpc_context *rpc;
+
+	rpc = rpc_init_context();
+	if (rpc != NULL) {
+		rpc->is_udp = 1;
+	}
+	
+	return rpc;
+}
+
 void rpc_set_auth(struct rpc_context *rpc, struct AUTH *auth)
 {
 	if (rpc->auth != NULL) {
