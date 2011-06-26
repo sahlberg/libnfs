@@ -287,6 +287,11 @@ int rpc_connect_async(struct rpc_context *rpc, const char *server, int port, rpc
 		return -1;
 	}
 
+	if (rpc->is_udp != 0) {
+		rpc_set_error(rpc, "Trying to connect on UDP socket");
+		return -1;
+	}
+
 	sin->sin_family = AF_INET;
 	sin->sin_port   = htons(port);
 	if (inet_pton(AF_INET, server, &sin->sin_addr) != 1) {
