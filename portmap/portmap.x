@@ -26,7 +26,7 @@ struct pmap_call_result {
 program PMAP_PROGRAM {
 	version PMAP_V2 {
         	void
-		PMAP_NULL(void)         = 0;
+		PMAP_NULL(void)              = 0;
 
 		bool
             	PMAP_SET(pmap_mapping)       = 1;
