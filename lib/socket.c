@@ -388,3 +388,37 @@ int rpc_bind_udp(struct rpc_context *rpc, char *addr, int port)
 	return 0;
 }
 
+int rpc_set_udp_destination(struct rpc_context *rpc, char *addr, int port, int is_broadcast)
+{
+	struct addrinfo *ai = NULL;
+	char service[6];
+
+	if (rpc->is_udp == 0) {
+		rpc_set_error(rpc, "Can not set destination sockaddr. Not UDP context");
+		return -1;
+	}
+
+	snprintf(service, 6, "%d", port);
+	if (getaddrinfo(addr, service, NULL, &ai) != 0) {
+		rpc_set_error(rpc, "Invalid address:%s. "
+			"Can not resolv into IPv4/v6 structure.");
+		return -1;
+ 	}
+
+	if (rpc->udp_dest) {
+		free(rpc->udp_dest);
+		rpc->udp_dest = NULL;
+	}
+	rpc->udp_dest = malloc(ai->ai_addrlen);
+	if (rpc->udp_dest == NULL) {
+		rpc_set_error(rpc, "Out of memory. Failed to allocate sockaddr structure");
+		return -1;
+	}
+	memcpy(rpc->udp_dest, ai->ai_addr, ai->ai_addrlen);
+	freeaddrinfo(ai);
+
+	rpc->is_broadcast = is_broadcast;
+	setsockopt(rpc->fd, SOL_SOCKET, SO_BROADCAST, &is_broadcast, sizeof(is_broadcast));
+
+	return 0;
+}
