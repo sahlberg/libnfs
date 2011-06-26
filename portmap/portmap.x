@@ -11,14 +11,14 @@ struct pmap_mapping {
        unsigned int port;
 };
 
-struct call_args {
+struct pmap_call_args {
        unsigned int prog;
        unsigned int vers;
        unsigned int proc;
        opaque args<>;
 };
 
-struct call_result {
+struct pmap_call_result {
 	unsigned int port;
 	opaque res<>;
 };
@@ -37,8 +37,8 @@ program PMAP_PROGRAM {
             	unsigned int
             	PMAP_GETPORT(pmap_mapping)   = 3;
 
-		call_result
-		PMAP_CALLIT(call_args)  = 5;
+		pmap_call_result
+		PMAP_CALLIT(pmap_call_args)  = 5;
 	} = 2;
 } = 100000;
 
