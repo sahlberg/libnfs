@@ -48,7 +48,9 @@ struct rpc_pdu *rpc_allocate_pdu(struct rpc_context *rpc, int program, int versi
 	pdu->xdr_decode_bufsize = xdr_decode_bufsize;
 
 	xdrmem_create(&pdu->xdr, rpc->encodebuf, rpc->encodebuflen, XDR_ENCODE);
-	xdr_setpos(&pdu->xdr, 4); /* skip past the record marker */
+	if (rpc->is_udp == 0) {
+		xdr_setpos(&pdu->xdr, 4); /* skip past the record marker */
+	}
 
 	bzero(&msg, sizeof(struct rpc_msg));
 	msg.rm_xid = pdu->xid;
