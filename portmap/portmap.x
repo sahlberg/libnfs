@@ -4,7 +4,7 @@
 
 const PMAP_PORT = 111;      /* portmapper port number */
 
-struct mapping {
+struct pmap_mapping {
        unsigned int prog;
        unsigned int vers;
        unsigned int prot;
@@ -29,13 +29,13 @@ program PMAP_PROGRAM {
 		PMAP_NULL(void)         = 0;
 
 		bool
-            	PMAP_SET(mapping)       = 1;
+            	PMAP_SET(pmap_mapping)       = 1;
 
             	bool
-            	PMAP_UNSET(mapping)     = 2;
+            	PMAP_UNSET(pmap_mapping)     = 2;
 
             	unsigned int
-            	PMAP_GETPORT(mapping)   = 3;
+            	PMAP_GETPORT(pmap_mapping)   = 3;
 
 		call_result
 		PMAP_CALLIT(call_args)  = 5;
