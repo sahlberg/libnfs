@@ -38,6 +38,9 @@ struct rpc_context {
        int inpos;
        int insize;
        char *inbuf;
+
+       /* special fields for UDP, which can sometimes be BROADCASTed */
+       int is_udp;
 };
 
 struct rpc_pdu {
