@@ -18,6 +18,7 @@
 #include <stdio.h>
 #include <strings.h>
 #include <stdlib.h>
+#include <errno.h>
 #include <rpc/rpc.h>
 #include <rpc/xdr.h>
 #include <rpc/rpc_msg.h>
@@ -96,6 +97,17 @@ int rpc_queue_pdu(struct rpc_context *rpc, struct rpc_pdu *pdu)
 	int size, recordmarker;
 
 	size = xdr_getpos(&pdu->xdr);
+
+	/* for udp we dont queue, we just send it straight away */
+	if (rpc->is_udp != 0) {
+		if (sendto(rpc->fd, rpc->encodebuf, size, MSG_DONTWAIT, rpc->udp_dest, sizeof(struct sockaddr_in)) < 0) {
+			rpc_set_error(rpc, "Sendto failed with errno %s", strerror(errno));
+			rpc_free_pdu(rpc, pdu);
+			return -1;
+		}
+		SLIST_ADD_END(&rpc->waitpdu, pdu);
+		return 0;
+	}
 
 	/* write recordmarker */
 	xdr_setpos(&pdu->xdr, 0);
@@ -198,10 +210,12 @@ int rpc_process_pdu(struct rpc_context *rpc, char *buf, int size)
 	bzero(&xdr, sizeof(XDR));
 
 	xdrmem_create(&xdr, buf, size, XDR_DECODE);
-	if (xdr_int(&xdr, &recordmarker) == 0) {
-		rpc_set_error(rpc, "xdr_int reading recordmarker failed");
-		xdr_destroy(&xdr);
-		return -1;
+	if (rpc->is_udp == 0) {
+		if (xdr_int(&xdr, &recordmarker) == 0) {
+			rpc_set_error(rpc, "xdr_int reading recordmarker failed");
+			xdr_destroy(&xdr);
+			return -1;
+		}
 	}
 	pos = xdr_getpos(&xdr);
 	if (xdr_int(&xdr, (int *)&xid) == 0) {
@@ -215,12 +229,16 @@ int rpc_process_pdu(struct rpc_context *rpc, char *buf, int size)
 		if (pdu->xid != xid) {
 			continue;
 		}
-		SLIST_REMOVE(&rpc->waitpdu, pdu);
+		if (rpc->is_udp == 0 || rpc->is_broadcast == 0) {
+			SLIST_REMOVE(&rpc->waitpdu, pdu);
+		}
 		if (rpc_process_reply(rpc, pdu, &xdr) != 0) {
 			rpc_set_error(rpc, "rpc_procdess_reply failed");
 		}
 		xdr_destroy(&xdr);
-		rpc_free_pdu(rpc, pdu);
+		if (rpc->is_udp == 0 || rpc->is_broadcast == 0) {
+			rpc_free_pdu(rpc, pdu);
+		}
 		return 0;
 	}
 	rpc_set_error(rpc, "No matching pdu found for xid:%d", xid);
