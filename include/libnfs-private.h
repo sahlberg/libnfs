@@ -41,6 +41,7 @@ struct rpc_context {
 
        /* special fields for UDP, which can sometimes be BROADCASTed */
        int is_udp;
+       struct sockaddr *udp_dest;
        int is_broadcast;
 };
 
