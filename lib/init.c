@@ -148,6 +148,11 @@ void rpc_destroy_context(struct rpc_context *rpc)
 		rpc->error_string = NULL;
 	}
 
+	if (rpc->udp_dest != NULL) {
+		free(rpc->udp_dest);
+		rpc->udp_dest = NULL;
+	}
+
 	free(rpc);
 }
 
