@@ -26,6 +26,9 @@
 #include <rpc/xdr.h>
 #include <arpa/inet.h>
 #include <sys/ioctl.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netdb.h>
 #include "libnfs.h"
 #include "libnfs-raw.h"
 #include "libnfs-private.h"
@@ -340,3 +343,48 @@ int rpc_disconnect(struct rpc_context *rpc, char *error)
 
 	return 0;
 }
+
+
+int rpc_bind_udp(struct rpc_context *rpc, char *addr, int port)
+{
+	struct addrinfo *ai = NULL;
+	char service[6];
+
+	if (rpc->is_udp == 0) {
+		rpc_set_error(rpc, "Cant not bind UDP. Not UDP context");
+		return -1;
+	}
+
+	snprintf(service, 6, "%d", port);
+	if (getaddrinfo(addr, service, NULL, &ai) != 0) {
+		rpc_set_error(rpc, "Invalid address:%s. "
+			"Can not resolv into IPv4/v6 structure.");
+		return -1;
+ 	}
+
+	switch(ai->ai_family) {
+	case AF_INET:
+		rpc->fd = socket(ai->ai_family, SOCK_DGRAM, 0);
+		if (rpc->fd == -1) {
+			rpc_set_error(rpc, "Failed to create UDP socket: %s", strerror(errno)); 
+			freeaddrinfo(ai);
+			return -1;
+		}
+
+		if (bind(rpc->fd, (struct sockaddr *)ai->ai_addr, sizeof(struct sockaddr_in)) != 0) {
+			rpc_set_error(rpc, "Failed to bind to UDP socket: %s",strerror(errno)); 
+			freeaddrinfo(ai);
+			return -1;
+		}
+		break;
+	default:
+		rpc_set_error(rpc, "Can not handle UPD sockets of family %d yet", ai->ai_family);
+		freeaddrinfo(ai);
+		return -1;
+	}
+
+	freeaddrinfo(ai);
+
+	return 0;
+}
+
