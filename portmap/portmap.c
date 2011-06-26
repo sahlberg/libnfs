@@ -72,3 +72,34 @@ int rpc_pmap_getport_async(struct rpc_context *rpc, int program, int version, rp
 
 	return 0;
 }
+
+int rpc_pmap_callit_async(struct rpc_context *rpc, int program, int version, int procedure, const char *data, int datalen, rpc_cb cb, void *private_data)
+{
+	struct rpc_pdu *pdu;
+	struct pmap_call_args ca;
+
+	pdu = rpc_allocate_pdu(rpc, PMAP_PROGRAM, PMAP_V2, PMAP_CALLIT, cb, private_data, (xdrproc_t)xdr_pmap_call_result, sizeof(pmap_call_result));
+	if (pdu == NULL) {
+		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu for portmap/callit call");
+		return -1;
+	}
+
+	ca.prog = program;
+	ca.vers = version;
+	ca.proc = procedure;
+	ca.args.args_len = datalen;
+	ca.args.args_val = data;
+
+	if (xdr_pmap_call_args(&pdu->xdr, &ca) == 0) {
+		rpc_set_error(rpc, "XDR error: Failed to encode data for portmap/callit call");
+		rpc_free_pdu(rpc, pdu);
+		return -1;
+	}
+
+	if (rpc_queue_pdu(rpc, pdu) != 0) {
+		rpc_set_error(rpc, "Failed to queue portmap/callit pdu: %s", rpc_get_error(rpc));
+		return -1;
+	}
+
+	return 0;
+}
