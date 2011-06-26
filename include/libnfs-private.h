@@ -80,3 +80,5 @@ struct rpc_context *nfs_get_rpc_context(struct nfs_context *nfs);
 int rpc_bind_udp(struct rpc_context *rpc, char *addr, int port);
 int rpc_set_udp_destination(struct rpc_context *rpc, char *addr, int port, int is_broadcast);
 struct rpc_context *rpc_init_udp_context(void);
+struct sockaddr *rpc_get_recv_sockaddr(struct rpc_context *rpc);
+
