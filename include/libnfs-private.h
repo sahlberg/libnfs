@@ -33,6 +33,7 @@ struct rpc_context {
        int encodebuflen;
 
        struct rpc_pdu *outqueue;
+       struct sockaddr_storage udp_src;
        struct rpc_pdu *waitpdu;
 
        int inpos;
