@@ -50,10 +50,10 @@ AC_ARG_ENABLE([examples],
                               [Build example programs])],
 	      [ENABLE_EXAMPLES=$enableval],
 	      [ENABLE_EXAMPLES="no"])
-AM_CONDITIONAL(EXAMPLES, [test x$ENABLE_EXAMPLES = xyes])
-AM_COND_IF(EXAMPLES,
-           [MAYBE_EXAMPLES="examples"]
-           [config_examples="examples/Makefile"])
+
+if test x$ENABLE_EXAMPLES = xyes; then
+  MAYBE_EXAMPLES="examples"
+fi
 AC_SUBST(MAYBE_EXAMPLES)
 
 #output
