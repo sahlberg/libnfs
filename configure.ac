@@ -22,18 +22,6 @@ if test x$HAVE_RPCGEN != xyes; then
   AC_MSG_ERROR([Can not find required program])
 fi
 
-# option: logdir
-AC_ARG_WITH([logdir],
-	    [AC_HELP_STRING([--with-logdir=DIR],
-                            [path to log directory [[LOCALSTATEDIR/log]]])],
-            [LOGDIR=$withval],
-            [LOGDIR='${localstatedir}/log'])
-
-#if test ! -d "$LOGDIR"; then
-#  AC_MSG_ERROR([--with-logdir must specify a path])
-#fi
-AC_SUBST(LOGDIR)
-
 #option: examples
 AC_ARG_ENABLE([examples],
               [AC_HELP_STRING([--enable-examples],
