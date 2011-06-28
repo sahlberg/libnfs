@@ -14,7 +14,7 @@ libnfs_la_SOURCES = \
 $(nfs_GENERATED) : nfs-stamp
 nfs-stamp : nfs.x
 	rm -f $(nfs_GENERATED)
-	rpcgen -h $< > libnfs-raw-nfs.h
-	rpcgen -c $< | sed -e "s/#include \".*nfs.h\"/#include \"libnfs-raw-nfs.h\"/" > libnfs-raw-nfs.c
+	rpcgen -h @RPCGENFLAGS@ $< > libnfs-raw-nfs.h
+	rpcgen -c @RPCGENFLAGS@ $< | sed -e "s/#include \".*nfs.h\"/#include \"libnfs-raw-nfs.h\"/" > libnfs-raw-nfs.c
 	touch nfs-stamp
 	

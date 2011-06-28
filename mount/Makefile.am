@@ -14,7 +14,7 @@ libmount_la_SOURCES = \
 $(mount_GENERATED) : mount-stamp
 mount-stamp : mount.x
 	rm -f $(mount_GENERATED)
-	rpcgen -h $< > libnfs-raw-mount.h
-	rpcgen -c $< | sed -e "s/#include \".*mount.h\"/#include \"libnfs-raw-mount.h\"/" > libnfs-raw-mount.c
+	rpcgen -h @RPCGENFLAGS@ $< > libnfs-raw-mount.h
+	rpcgen -c @RPCGENFLAGS@ $< | sed -e "s/#include \".*mount.h\"/#include \"libnfs-raw-mount.h\"/" > libnfs-raw-mount.c
 	touch mount-stamp
 	
