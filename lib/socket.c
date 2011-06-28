@@ -15,6 +15,9 @@
    along with this program; if not, see <http://www.gnu.org/licenses/>.
 */
 
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -25,6 +28,9 @@
 #include <rpc/rpc.h>
 #include <rpc/xdr.h>
 #include <arpa/inet.h>
+#ifdef HAVE_SYS_FILIO_H
+#include <sys/filio.h>
+#endif
 #include <sys/ioctl.h>
 #include "libnfs.h"
 #include "libnfs-raw.h"

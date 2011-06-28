@@ -4,16 +4,6 @@ AC_CONFIG_HEADERS([config.h])
 AM_INIT_AUTOMAKE([foreign])
 AC_CANONICAL_HOST
 
-case $host in
-  *darwin*)
-    RPCGENFLAGS=-DU_INT64_PLATTFORM_TYPE="u_int64_t"
-    ;;
-  *)
-    ;;
-esac
-
-AC_SUBST(RPCGENFLAGS)
-
 # Work around stupid autoconf default cflags. pt 1
 SAVE_CFLAGS="x${CFLAGS}"
 
@@ -55,6 +45,19 @@ if test x$ENABLE_EXAMPLES = xyes; then
   MAYBE_EXAMPLES="examples"
 fi
 AC_SUBST(MAYBE_EXAMPLES)
+
+case $host in
+  *darwin*)
+    RPCGENFLAGS=-DU_INT64_PLATTFORM_TYPE="u_int64_t"
+    ;;
+  *solaris*)
+    AC_CHECK_HEADERS([sys/filio.h])
+    ;;
+  *)
+    ;;
+esac
+
+AC_SUBST(RPCGENFLAGS)
 
 #output
 AC_CONFIG_FILES([Makefile]
