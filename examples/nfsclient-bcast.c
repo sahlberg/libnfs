@@ -25,6 +25,8 @@
 #include <poll.h>
 #include <errno.h>
 #include <sys/socket.h>
+#include <sys/ioctl.h>
+#include <net/if.h>
 #include <netdb.h>
 #include "libnfs.h"
 #include "libnfs-raw.h"
@@ -61,6 +63,8 @@ int main(int argc _U_, char *argv[] _U_)
 {
 	struct rpc_context *rpc;
 	struct pollfd pfd;
+	struct ifconf ifc;
+	int i, size;
 	
 	rpc = rpc_init_udp_context();
 	if (rpc == NULL) {
@@ -73,24 +77,63 @@ int main(int argc _U_, char *argv[] _U_)
 		exit(10);
 	}
 
-	if (rpc_set_udp_destination(rpc, "10.1.1.255", 111, 1) < 0) {
-		printf("failed to set udp destination %s\n", rpc_get_error(rpc));
-		exit(10);
-	}
 
-	if (rpc_pmap_callit_async(rpc, 100005, 2, 0, NULL, 0, pm_cb, NULL) < 0) {
-		printf("Failed to set up callit function\n");
-		exit(10);
-	}
-	if (rpc_set_udp_destination(rpc, "10.9.2.255", 111, 1) < 0) {
-		printf("failed to set udp destination %s\n", rpc_get_error(rpc));
-		exit(10);
-	}
+	/* get list of all interfaces */
+	size = sizeof(struct ifreq);
+	ifc.ifc_buf = NULL;
+	ifc.ifc_len = size;
 
-	if (rpc_pmap_callit_async(rpc, 100005, 2, 0, NULL, 0, pm_cb, NULL) < 0) {
-		printf("Failed to set up callit function\n");
-		exit(10);
+	while (ifc.ifc_len == size) {
+		size *= 2;
+
+		free(ifc.ifc_buf);	
+		ifc.ifc_len = size;
+		ifc.ifc_buf = malloc(size);
+		if (ioctl(rpc_get_fd(rpc), SIOCGIFCONF, (caddr_t)&ifc) < 0) {
+			printf("ioctl SIOCGIFCONF failed\n");
+			exit(10);
+		}
+	}	
+
+	for (i=0; i<ifc.ifc_len / sizeof(struct ifconf); i++) {
+		char bcdd[16];
+
+		if (ifc.ifc_req[i].ifr_addr.sa_family != AF_INET) {
+			continue;
+		}
+		if (ioctl(rpc_get_fd(rpc), SIOCGIFFLAGS, &ifc.ifc_req[i]) < 0) {
+			printf("ioctl DRBADDR failed\n");
+			exit(10);
+		}
+		if (!(ifc.ifc_req[i].ifr_flags & IFF_UP)) {
+			continue;
+		}
+		if (ifc.ifc_req[i].ifr_flags & IFF_LOOPBACK) {
+			continue;
+		}
+		if (!(ifc.ifc_req[i].ifr_flags & IFF_BROADCAST)) {
+			continue;
+		}
+		if (ioctl(rpc_get_fd(rpc), SIOCGIFBRDADDR, &ifc.ifc_req[i]) < 0) {
+			printf("ioctl DRBADDR failed\n");
+			exit(10);
+		}
+		if (getnameinfo(&ifc.ifc_req[i].ifr_broadaddr, sizeof(struct sockaddr_in), &bcdd[0], sizeof(bcdd), NULL, 0, NI_NUMERICHOST) < 0) {
+			printf("getnameinfo failed\n");
+			exit(10);
+		}
+		if (rpc_set_udp_destination(rpc, bcdd, 111, 1) < 0) {
+			printf("failed to set udp destination %s\n", rpc_get_error(rpc));
+			exit(10);
+		}
+
+		if (rpc_pmap_callit_async(rpc, MOUNT_PROGRAM, 2, 0, NULL, 0, pm_cb, NULL) < 0) {
+			printf("Failed to set up callit function\n");
+			exit(10);
+		}
 	}
+	free(ifc.ifc_buf);	
+
 
 	alarm(3);
 
@@ -107,7 +150,7 @@ int main(int argc _U_, char *argv[] _U_)
 			break;
 		}
 	}
-	
+
 	rpc_destroy_context(rpc);
 	rpc=NULL;
 	printf("nfsclient finished\n");
