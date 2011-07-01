@@ -35,7 +35,7 @@ nfs/libnfs-raw-nfs.o nfs/nfs.o \
 rquota/libnfs-raw-rquota.o rquota/rquota.o
 
 ifeq ("$(ENABLE_EXAMPLES)","yes")
-	EXAMPLES=bin/nfsclient-raw bin/nfsclient-async bin/nfsclient-sync
+	EXAMPLES=bin/nfsclient-raw bin/nfsclient-async bin/nfsclient-sync bin/nfsclient-bcast
 endif
 
 all: $(LIBNFS_SO) $(EXAMPLES)
@@ -51,6 +51,10 @@ bin/nfsclient-sync: examples/nfsclient-sync.c $(LIBNFS_A)
 bin/nfsclient-raw: examples/nfsclient-raw.c $(LIBNFS_A)
 	mkdir -p bin
 	$(CC) $(CFLAGS) -o $@ examples/nfsclient-raw.c $(LIBNFS_A) $(LIBS)
+
+bin/nfsclient-bcast: examples/nfsclient-bcast.c $(LIBNFS_A)
+	mkdir -p bin
+	$(CC) $(CFLAGS) -o $@ examples/nfsclient-bcast.c $(LIBNFS_A) $(LIBS)
 
 $(LIBNFS_A): $(LIBNFS_OBJS) $(LIB_OBJS)
 	@echo Creating library $@
