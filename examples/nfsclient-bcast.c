@@ -26,6 +26,7 @@
 #include <errno.h>
 #include <sys/socket.h>
 #include <sys/ioctl.h>
+#include <sys/time.h>
 #include <net/if.h>
 #include <netdb.h>
 #include "libnfs.h"
@@ -40,6 +41,9 @@ void pm_cb(struct rpc_context *rpc _U_, int status, void *data, void *private_da
 	struct sockaddr *sin;
 	char hostdd[16];
 
+	if (status == RPC_STATUS_CANCEL) {
+		return;
+	}
 	if (status != 0) {
 		printf("callback for CALLIT failed\n");
 		exit(10);
@@ -65,6 +69,7 @@ int main(int argc _U_, char *argv[] _U_)
 	struct pollfd pfd;
 	struct ifconf ifc;
 	int i, size;
+	struct timeval tv_start, tv_current;
 	
 	rpc = rpc_init_udp_context();
 	if (rpc == NULL) {
@@ -134,17 +139,26 @@ int main(int argc _U_, char *argv[] _U_)
 	}
 	free(ifc.ifc_buf);	
 
-
-	alarm(3);
-
+	gettimeofday(&tv_start, NULL);
 	for(;;) {
+		int mpt;
+
 		pfd.fd = rpc_get_fd(rpc);
 		pfd.events = rpc_which_events(rpc);
 
-		if (poll(&pfd, 1, -1) < 0) {
+		gettimeofday(&tv_current, NULL);
+		mpt = 1000
+		-    (tv_current.tv_sec *1000 + tv_current.tv_usec / 1000)
+		+    (tv_start.tv_sec *1000 + tv_start.tv_usec / 1000);
+
+		if (poll(&pfd, 1, mpt) < 0) {
 			printf("Poll failed");
 			exit(10);
 		}
+		if (pfd.revents == 0) {
+			break;
+		}
+		
 		if (rpc_service(rpc, pfd.revents) < 0) {
 			printf("rpc_service failed with %s\n", rpc_get_error(rpc));
 			break;
@@ -153,6 +167,5 @@ int main(int argc _U_, char *argv[] _U_)
 
 	rpc_destroy_context(rpc);
 	rpc=NULL;
-	printf("nfsclient finished\n");
 	return 0;
 }
