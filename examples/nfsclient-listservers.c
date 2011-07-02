@@ -30,10 +30,6 @@
 #include <net/if.h>
 #include <netdb.h>
 #include "libnfs.h"
-#include "libnfs-raw.h"
-#include "libnfs-raw-mount.h"
-#include "libnfs-raw-portmap.h"
-#include "libnfs-private.h"
 
 
 int main(int argc _U_, char *argv[] _U_)

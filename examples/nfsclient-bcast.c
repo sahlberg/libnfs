@@ -33,7 +33,6 @@
 #include "libnfs-raw.h"
 #include "libnfs-raw-mount.h"
 #include "libnfs-raw-portmap.h"
-#include "libnfs-private.h"
 
 struct nfs_list_data {
        int status;
