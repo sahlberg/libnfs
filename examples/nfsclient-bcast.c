@@ -35,32 +35,74 @@
 #include "libnfs-raw-portmap.h"
 #include "libnfs-private.h"
 
-void pm_cb(struct rpc_context *rpc _U_, int status, void *data, void *private_data _U_)
+struct nfs_server_list {
+       struct nfs_server_list *next;
+       char *addr;
+};
+
+struct nfs_list_data {
+       int status;
+       struct nfs_server_list *srvrs;
+};
+
+void free_nfs_srvr_list(struct nfs_server_list *srv)
+{
+	while (srv != NULL) {
+		struct nfs_server_list *next = srv->next;
+
+		free(srv->addr);
+		free(srv);
+		srv = next;
+	}
+}	     
+
+void pm_cb(struct rpc_context *rpc, int status, void *data, void *private_data _U_)
 {
 	pmap_call_result *res = (pmap_call_result *)data;
+	struct nfs_list_data *srv_data = private_data;
 	struct sockaddr *sin;
 	char hostdd[16];
+	struct nfs_server_list *srvr;
 
 	if (status == RPC_STATUS_CANCEL) {
 		return;
 	}
 	if (status != 0) {
-		printf("callback for CALLIT failed\n");
-		exit(10);
+		srv_data->status = -1;
+		return;
 	}
 
 	sin = rpc_get_recv_sockaddr(rpc);
 	if (sin == NULL) {
-		printf("failed to get sockaddr for received pdu\n");
-		exit(10);
+		rpc_set_error(rpc, "failed to get sockaddr in CALLIT callback");
+		srv_data->status = -1;
+		return;
 	}
 
 	if (getnameinfo(sin, sizeof(struct sockaddr_in), &hostdd[0], sizeof(hostdd), NULL, 0, NI_NUMERICHOST) < 0) {
-		printf("getnameinfo failed\n");
-		exit(10);
+		rpc_set_error(rpc, "getnameinfo failed in CALLIT callback");
+		srv_data->status = -1;
+		return;
 	}
 
-	printf("NFS server at %s\n", hostdd);
+	
+	srvr = malloc(sizeof(struct nfs_server_list));
+	if (srvr == NULL) {
+		rpc_set_error(rpc, "Malloc failed when allocating server structure");	
+		srv_data->status = -1;
+		return;
+	}
+
+	srvr->addr = strdup(hostdd);
+	if (srvr->addr == NULL) {
+		rpc_set_error(rpc, "Strdup failed when allocating server structure");
+		free(srvr);
+		srv_data->status = -1;
+		return;
+	}
+
+	srvr->next = srv_data->srvrs;
+	srv_data->srvrs = srvr;
 }
 
 int main(int argc _U_, char *argv[] _U_)
@@ -70,6 +112,8 @@ int main(int argc _U_, char *argv[] _U_)
 	struct ifconf ifc;
 	int i, size;
 	struct timeval tv_start, tv_current;
+	struct nfs_list_data data = {0, NULL};
+	struct nfs_server_list *srvr;
 	
 	rpc = rpc_init_udp_context();
 	if (rpc == NULL) {
@@ -132,7 +176,7 @@ int main(int argc _U_, char *argv[] _U_)
 			exit(10);
 		}
 
-		if (rpc_pmap_callit_async(rpc, MOUNT_PROGRAM, 2, 0, NULL, 0, pm_cb, NULL) < 0) {
+		if (rpc_pmap_callit_async(rpc, MOUNT_PROGRAM, 2, 0, NULL, 0, pm_cb, &data) < 0) {
 			printf("Failed to set up callit function\n");
 			exit(10);
 		}
@@ -164,6 +208,11 @@ int main(int argc _U_, char *argv[] _U_)
 			break;
 		}
 	}
+
+	for (srvr=data.srvrs; srvr; srvr = srvr->next) {
+		printf("NFS SERVER @ %s\n", srvr->addr);
+	}
+	free_nfs_srvr_list(data.srvrs);
 
 	rpc_destroy_context(rpc);
 	rpc=NULL;
