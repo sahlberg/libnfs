@@ -311,7 +311,7 @@ int rpc_connect_async(struct rpc_context *rpc, const char *server, int port, rpc
 	switch (s.ss_family) {
 	case AF_INET:
 		socksize = sizeof(struct sockaddr_in);
-#ifdef HAVE_SOCK_SIN_LEN
+#ifdef HAVE_SOCKADDR_LEN
 		sin->sin_len = socksize;
 #endif
 		rpc->fd = socket(AF_INET, SOCK_STREAM, 0);

@@ -51,6 +51,16 @@ esac
 
 AC_SUBST(RPCGENFLAGS)
 
+# check for SA_LEN
+dnl Check if sockaddr data structure includes a "sa_len"
+AC_CHECK_MEMBER([struct sockaddr.sa_len],
+                [ AC_DEFINE(HAVE_SOCKADDR_LEN,1,[Whether sockaddr struct has sa_len]) ],
+                [],
+                [
+#include <sys/types.h>
+#include <sys/socket.h>
+])
+
 #output
 AC_CONFIG_FILES([Makefile]
                 [include/Makefile]
