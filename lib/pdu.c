@@ -149,6 +149,9 @@ static int rpc_process_reply(struct rpc_context *rpc, struct rpc_pdu *pdu, XDR *
 	bzero(&msg, sizeof(struct rpc_msg));
 	msg.acpted_rply.ar_verf = _null_auth;
 	if (pdu->xdr_decode_bufsize > 0) {
+		if (pdu->xdr_decode_buf != NULL) {
+			free(pdu->xdr_decode_buf);
+		}
 		pdu->xdr_decode_buf = malloc(pdu->xdr_decode_bufsize);
 		if (pdu->xdr_decode_buf == NULL) {
 			rpc_set_error(rpc, "xdr_replymsg failed in portmap_getport_reply");
