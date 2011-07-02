@@ -25,10 +25,13 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/statvfs.h>
+#include <sys/ioctl.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <errno.h>
 #include <poll.h>
+#include <net/if.h>
+#include <netdb.h>
 #include "libnfs.h"
 #include "libnfs-raw.h"
 #include "libnfs-raw-mount.h"
@@ -1129,3 +1132,187 @@ void mount_free_export_list(struct exportnode *exports)
 	}
 }
 
+
+
+
+void free_nfs_srvr_list(struct nfs_server_list *srv)
+{
+	while (srv != NULL) {
+		struct nfs_server_list *next = srv->next;
+
+		free(srv->addr);
+		free(srv);
+		srv = next;
+	}
+}	     
+
+struct nfs_list_data {
+       int status;
+       struct nfs_server_list *srvrs;
+};
+
+void callit_cb(struct rpc_context *rpc, int status, void *data _U_, void *private_data)
+{
+	struct nfs_list_data *srv_data = private_data;
+	struct sockaddr *sin;
+	char hostdd[16];
+	struct nfs_server_list *srvr;
+
+	if (status == RPC_STATUS_CANCEL) {
+		return;
+	}
+	if (status != 0) {
+		srv_data->status = -1;
+		return;
+	}
+
+	sin = rpc_get_recv_sockaddr(rpc);
+	if (sin == NULL) {
+		rpc_set_error(rpc, "failed to get sockaddr in CALLIT callback");
+		srv_data->status = -1;
+		return;
+	}
+
+	if (getnameinfo(sin, sizeof(struct sockaddr_in), &hostdd[0], sizeof(hostdd), NULL, 0, NI_NUMERICHOST) < 0) {
+		rpc_set_error(rpc, "getnameinfo failed in CALLIT callback");
+		srv_data->status = -1;
+		return;
+	}
+
+	
+	srvr = malloc(sizeof(struct nfs_server_list));
+	if (srvr == NULL) {
+		rpc_set_error(rpc, "Malloc failed when allocating server structure");	
+		srv_data->status = -1;
+		return;
+	}
+
+	srvr->addr = strdup(hostdd);
+	if (srvr->addr == NULL) {
+		rpc_set_error(rpc, "Strdup failed when allocating server structure");
+		free(srvr);
+		srv_data->status = -1;
+		return;
+	}
+
+	srvr->next = srv_data->srvrs;
+	srv_data->srvrs = srvr;
+}
+
+struct nfs_server_list *nfs_find_local_servers(void)
+{
+	struct rpc_context *rpc;
+	struct nfs_list_data data = {0, NULL};
+	struct timeval tv_start, tv_current;
+	struct ifconf ifc;
+	int i, size;
+	struct pollfd pfd;
+
+	rpc = rpc_init_udp_context();
+	if (rpc == NULL) {
+		return NULL;
+	}
+
+	if (rpc_bind_udp(rpc, "0.0.0.0", 0) < 0) {
+		rpc_destroy_context(rpc);
+		return NULL;
+	}
+
+
+	/* get list of all interfaces */
+	size = sizeof(struct ifreq);
+	ifc.ifc_buf = NULL;
+	ifc.ifc_len = size;
+
+	while (ifc.ifc_len == size) {
+		size *= 2;
+
+		free(ifc.ifc_buf);	
+		ifc.ifc_len = size;
+		ifc.ifc_buf = malloc(size);
+		if (ioctl(rpc_get_fd(rpc), SIOCGIFCONF, (caddr_t)&ifc) < 0) {
+			rpc_destroy_context(rpc);
+			free(ifc.ifc_buf);	
+			return NULL;
+		}
+	}	
+
+	for (i = 0; (unsigned)i < ifc.ifc_len / sizeof(struct ifconf); i++) {
+		char bcdd[16];
+
+		if (ifc.ifc_req[i].ifr_addr.sa_family != AF_INET) {
+			continue;
+		}
+		if (ioctl(rpc_get_fd(rpc), SIOCGIFFLAGS, &ifc.ifc_req[i]) < 0) {
+			rpc_destroy_context(rpc);
+			free(ifc.ifc_buf);	
+			return NULL;
+		}
+		if (!(ifc.ifc_req[i].ifr_flags & IFF_UP)) {
+			continue;
+		}
+		if (ifc.ifc_req[i].ifr_flags & IFF_LOOPBACK) {
+			continue;
+		}
+		if (!(ifc.ifc_req[i].ifr_flags & IFF_BROADCAST)) {
+			continue;
+		}
+		if (ioctl(rpc_get_fd(rpc), SIOCGIFBRDADDR, &ifc.ifc_req[i]) < 0) {
+			rpc_destroy_context(rpc);
+			free(ifc.ifc_buf);	
+			return NULL;
+		}
+		if (getnameinfo(&ifc.ifc_req[i].ifr_broadaddr, sizeof(struct sockaddr_in), &bcdd[0], sizeof(bcdd), NULL, 0, NI_NUMERICHOST) < 0) {
+			rpc_destroy_context(rpc);
+			free(ifc.ifc_buf);	
+			return NULL;
+		}
+		if (rpc_set_udp_destination(rpc, bcdd, 111, 1) < 0) {
+			rpc_destroy_context(rpc);
+			free(ifc.ifc_buf);	
+			return NULL;
+		}
+
+		if (rpc_pmap_callit_async(rpc, MOUNT_PROGRAM, 2, 0, NULL, 0, callit_cb, &data) < 0) {
+			rpc_destroy_context(rpc);
+			free(ifc.ifc_buf);	
+			return NULL;
+		}
+	}
+	free(ifc.ifc_buf);	
+
+	gettimeofday(&tv_start, NULL);
+	for(;;) {
+		int mpt;
+
+		pfd.fd = rpc_get_fd(rpc);
+		pfd.events = rpc_which_events(rpc);
+
+		gettimeofday(&tv_current, NULL);
+		mpt = 1000
+		-    (tv_current.tv_sec *1000 + tv_current.tv_usec / 1000)
+		+    (tv_start.tv_sec *1000 + tv_start.tv_usec / 1000);
+
+		if (poll(&pfd, 1, mpt) < 0) {
+			free_nfs_srvr_list(data.srvrs);
+			rpc_destroy_context(rpc);
+			return NULL;
+		}
+		if (pfd.revents == 0) {
+			break;
+		}
+		
+		if (rpc_service(rpc, pfd.revents) < 0) {
+			break;
+		}
+	}
+
+	rpc_destroy_context(rpc);
+
+	if (data.status != 0) {
+		free_nfs_srvr_list(data.srvrs);
+		return NULL;
+	}
+
+	return data.srvrs;
+}

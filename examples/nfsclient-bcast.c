@@ -35,11 +35,6 @@
 #include "libnfs-raw-portmap.h"
 #include "libnfs-private.h"
 
-struct nfs_server_list {
-       struct nfs_server_list *next;
-       char *addr;
-};
-
 struct nfs_list_data {
        int status;
        struct nfs_server_list *srvrs;
@@ -56,9 +51,8 @@ void free_nfs_srvr_list(struct nfs_server_list *srv)
 	}
 }	     
 
-void pm_cb(struct rpc_context *rpc, int status, void *data, void *private_data _U_)
+void pm_cb(struct rpc_context *rpc, int status, void *data _U_, void *private_data)
 {
-	pmap_call_result *res = (pmap_call_result *)data;
 	struct nfs_list_data *srv_data = private_data;
 	struct sockaddr *sin;
 	char hostdd[16];
@@ -144,7 +138,7 @@ int main(int argc _U_, char *argv[] _U_)
 		}
 	}	
 
-	for (i=0; i<ifc.ifc_len / sizeof(struct ifconf); i++) {
+	for (i = 0; (unsigned)i < ifc.ifc_len / sizeof(struct ifconf); i++) {
 		char bcdd[16];
 
 		if (ifc.ifc_req[i].ifr_addr.sa_family != AF_INET) {
