@@ -30,6 +30,7 @@
 #include <fcntl.h>
 #include <errno.h>
 #include <poll.h>
+#include <sys/socket.h>
 #include <net/if.h>
 #include <netdb.h>
 #include "libnfs.h"
