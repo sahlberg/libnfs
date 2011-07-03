@@ -157,12 +157,10 @@ int main(int argc _U_, char *argv[] _U_)
 			continue;
 		}
 		if (ioctl(rpc_get_fd(rpc), SIOCGIFBRDADDR, &ifc.ifc_req[i]) < 0) {
-			printf("ioctl DRBADDR failed\n");
-			exit(10);
+			continue;
 		}
 		if (getnameinfo(&ifc.ifc_req[i].ifr_broadaddr, sizeof(struct sockaddr_in), &bcdd[0], sizeof(bcdd), NULL, 0, NI_NUMERICHOST) < 0) {
-			printf("getnameinfo failed\n");
-			exit(10);
+			continue;
 		}
 		if (rpc_set_udp_destination(rpc, bcdd, 111, 1) < 0) {
 			printf("failed to set udp destination %s\n", rpc_get_error(rpc));

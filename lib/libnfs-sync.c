@@ -1259,14 +1259,10 @@ struct nfs_server_list *nfs_find_local_servers(void)
 			continue;
 		}
 		if (ioctl(rpc_get_fd(rpc), SIOCGIFBRDADDR, &ifc.ifc_req[i]) < 0) {
-			rpc_destroy_context(rpc);
-			free(ifc.ifc_buf);	
-			return NULL;
+			continue;
 		}
 		if (getnameinfo(&ifc.ifc_req[i].ifr_broadaddr, sizeof(struct sockaddr_in), &bcdd[0], sizeof(bcdd), NULL, 0, NI_NUMERICHOST) < 0) {
-			rpc_destroy_context(rpc);
-			free(ifc.ifc_buf);	
-			return NULL;
+			continue;
 		}
 		if (rpc_set_udp_destination(rpc, bcdd, 111, 1) < 0) {
 			rpc_destroy_context(rpc);
