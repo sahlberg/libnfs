@@ -9,7 +9,7 @@ CLEANFILES = $(nfs_GENERATED) nfs-stamp
 libnfs_la_CPPFLAGS = -I$(abs_top_srcdir)/include
 libnfs_la_SOURCES = \
 	$(nfs_SOURCES_GENERATED) \
-	nfs.c
+	nfs.c nfsacl.c
 
 $(nfs_GENERATED) : nfs-stamp
 nfs-stamp : nfs.x

@@ -671,3 +671,41 @@ int rpc_rquota2_getquota_async(struct rpc_context *rpc, rpc_cb cb, char *export,
  *                     data is NULL.
  */
 int rpc_rquota2_getactivequota_async(struct rpc_context *rpc, rpc_cb cb, char *export, int type, int uid, void *private_data);
+
+
+
+/*
+ * Call NFSACL/NULL
+ * Call the NULL procedure for the NFSACL
+ *
+ * Function returns
+ *  0 : The call was initiated. The callback will be invoked when the call completes.
+ * <0 : An error occured when trying to set up the call. The callback will not be invoked.
+ *
+ * When the callback is invoked, status indicates the result:
+ * RPC_STATUS_SUCCESS : We got a successful response from the rquota daemon.
+ *                      data is NULL
+ * RPC_STATUS_ERROR   : An error occured when trying to contact the rquota daemon.
+ *                      data is the error string.
+ * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
+ *                     data is NULL.
+ */
+int rpc_nfsacl_null_async(struct rpc_context *rpc, rpc_cb cb, void *private_data);
+
+/*
+ * Call NFSACL/GETACL
+ *
+ * Function returns
+ *  0 : The call was initiated. The callback will be invoked when the call completes.
+ * <0 : An error occured when trying to set up the call. The callback will not be invoked.
+ *
+ * When the callback is invoked, status indicates the result:
+ * RPC_STATUS_SUCCESS : We got a successful response from the rquota daemon.
+ *                      data is a GETACL3res pointer
+ * RPC_STATUS_ERROR   : An error occured when trying to contact the rquota daemon.
+ *                      data is the error string.
+ * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
+ *                     data is NULL.
+ */
+int rpc_nfsacl_getacl_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh, uint32_t mask, void *private_data);
+

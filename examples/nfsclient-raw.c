@@ -76,6 +76,54 @@ void rquota_connect_cb(struct rpc_context *rpc, int status, void *data _U_, void
 	}
 }
 
+void acl_getacl_cb(struct rpc_context *rpc _U_, int status, void *data, void *private_data)
+{
+	struct client *client = private_data;
+	GETACL3res *res = data;
+
+	printf("Got NFSACL/GETACL reply\n");
+
+	if (status == RPC_STATUS_SUCCESS) {
+		printf("Got an ACL :  ACL status:%d\n", res->status);
+		if (res->status == NFS3_OK) {
+			int i;
+			printf("ACL MASK 0x%08x\n", res->GETACL3res_u.resok.mask);
+			printf("NUM ACE %d\n", res->GETACL3res_u.resok.ace_count);
+			for (i=0; i<res->GETACL3res_u.resok.ace.ace_len; i++) {
+				printf("Type:0x%08x\n", res->GETACL3res_u.resok.ace.ace_val[i].type);
+				printf("ID:%d\n", res->GETACL3res_u.resok.ace.ace_val[i].id);
+				printf("Perm:0x%08x\n", res->GETACL3res_u.resok.ace.ace_val[i].perm);
+			}
+		}
+	}
+
+	printf("Disconnect socket from nfs server\n");
+	if (rpc_disconnect(rpc, "normal disconnect") != 0) {
+		printf("Failed to disconnect socket to nfs\n");
+		exit(10);
+	}
+
+	printf("Connect to RPC.RQUOTAD on %s:%d\n", client->server, client->rquota_port);
+	if (rpc_connect_async(rpc, client->server, client->rquota_port, rquota_connect_cb, client) != 0) {
+		printf("Failed to start connection\n");
+		exit(10);
+	}
+}
+
+void acl_null_cb(struct rpc_context *rpc _U_, int status, void *data, void *private_data)
+{
+	struct client *client = private_data;
+
+	printf("Got NFSACL/NULL reply\n");
+	printf("Get ACL for root handle\n");
+
+	if (rpc_nfsacl_getacl_async(rpc, acl_getacl_cb, &client->rootfh, NFSACL_MASK_ACL_ENTRY|NFSACL_MASK_ACL_COUNT|NFSACL_MASK_ACL_DEFAULT_ENTRY|NFSACL_MASK_ACL_DEFAULT_COUNT, client) != 0) {
+		printf("Failed to send getacl request\n");
+		exit(10);
+	}
+
+}
+
 void nfs_fsinfo_cb(struct rpc_context *rpc _U_, int status, void *data, void *private_data)
 {
 	struct client *client = private_data;
@@ -94,15 +142,9 @@ void nfs_fsinfo_cb(struct rpc_context *rpc _U_, int status, void *data, void *pr
 	printf("Read Max:%d\n", (int)res->FSINFO3res_u.resok.rtmax);
 	printf("Write Max:%d\n", (int)res->FSINFO3res_u.resok.wtmax);
 
-	printf("Disconnect socket from nfs server\n");
-	if (rpc_disconnect(rpc, "normal disconnect") != 0) {
-		printf("Failed to disconnect socket to nfs\n");
-		exit(10);
-	}
-
-	printf("Connect to RPC.RQUOTAD on %s:%d\n", client->server, client->rquota_port);
-	if (rpc_connect_async(rpc, client->server, client->rquota_port, rquota_connect_cb, client) != 0) {
-		printf("Failed to start connection\n");
+	printf("Send NFSACL/NULL request\n");
+	if (rpc_nfsacl_null_async(rpc, acl_null_cb, client) != 0) {
+		printf("Failed to send acl/null request\n");
 		exit(10);
 	}
 }

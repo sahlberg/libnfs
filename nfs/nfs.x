@@ -1,4 +1,4 @@
-/* copied from rfc 1813 */
+/* NFS part from rfc 1813, NFSACL part is from wireshark sources */
 
 const NFS3_FHSIZE    = 64;    /* Maximum bytes in a V3 file handle */
 const NFS3_WRITEVERFSIZE = 8;
@@ -846,3 +846,70 @@ program NFS_PROGRAM {
 		NFS3_COMMIT(COMMIT3args)           = 21;
 	} = 3;
 } = 100003;
+
+
+
+/* NFS ACL definitions based on wireshark souces and network traces */
+/* NFSACL interface. Uses same port/process as NFS */
+
+enum nfsacl_type {
+     NFSACL_TYPE_USER_OBJ	   = 0x0001,
+     NFSACL_TYPE_USER		   = 0x0002,
+     NFSACL_TYPE_GROUP_OBJ	   = 0x0004,
+     NFSACL_TYPE_GROUP		   = 0x0008,
+     NFSACL_TYPE_CLASS_OBJ	   = 0x0010,
+     NFSACL_TYPE_CLASS		   = 0x0020,
+     NFSACL_TYPE_DEFAULT	   = 0x1000,
+     NFSACL_TYPE_DEFAULT_USER_OBJ  = 0x1001, 
+     NFSACL_TYPE_DEFAULT_USER      = 0x1002,
+     NFSACL_TYPE_DEFAULT_GROUP_OBJ = 0x1004,
+     NFSACL_TYPE_DEFAULT_GROUP     = 0x1008,
+     NFSACL_TYPE_DEFAULT_CLASS_OBJ = 0x1010,
+     NFSACL_TYPE_DEFAULT_OTHER_OBJ = 0x1020
+};
+
+const NFSACL_PERM_READ  = 0x04;
+const NFSACL_PERM_WRITE = 0x02;
+const NFSACL_PERM_EXEC  = 0x01;
+
+struct nfsacl_ace {
+       enum nfsacl_type type;
+       uint32_t id;
+       uint32_t perm;
+};
+
+const NFSACL_MASK_ACL_ENTRY         = 0x0001;
+const NFSACL_MASK_ACL_COUNT         = 0x0002;
+const NFSACL_MASK_ACL_DEFAULT_ENTRY = 0x0004;
+const NFSACL_MASK_ACL_DEFAULT_COUNT = 0x0008;
+
+struct GETACL3args {
+	nfs_fh3     dir;
+	uint32	    mask;
+};
+
+struct GETACL3resok {
+	post_op_attr   attr;
+	uint32_t       mask;
+	uint32_t       ace_count;
+	struct nfsacl_ace ace<>;
+	uint32_t       default_ace_count;
+	struct nfsacl_ace default_ace<>;
+};
+
+union GETACL3res switch (nfsstat3 status) {
+case NFS3_OK:
+     GETACL3resok   resok;
+default:
+     void;
+};
+
+program NFSACL_PROGRAM {
+	version NFSACL_V3 {
+		void
+		NFSACL3_NULL(void)                    = 0;
+
+		GETACL3res
+		NFSACL3_GETACL(GETACL3args)           = 1;
+	} = 3;
+} = 100227;
