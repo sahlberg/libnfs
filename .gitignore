@@ -11,6 +11,8 @@ Makefile
 examples/nfsclient-raw
 examples/nfsclient-sync
 examples/nfsclient-async
+examples/nfsclient-bcast
+examples/nfsclient-listservers
 aclocal.m4
 autom4te.cache/
 compile
