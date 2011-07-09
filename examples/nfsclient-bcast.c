@@ -31,6 +31,7 @@
 #include <netdb.h>
 #include "libnfs.h"
 #include "libnfs-raw.h"
+#include "libnfs-private.h"
 #include "libnfs-raw-mount.h"
 #include "libnfs-raw-portmap.h"
 
@@ -103,10 +104,11 @@ int main(int argc _U_, char *argv[] _U_)
 	struct rpc_context *rpc;
 	struct pollfd pfd;
 	struct ifconf ifc;
-	int i, size;
+	int size;
 	struct timeval tv_start, tv_current;
 	struct nfs_list_data data = {0, NULL};
 	struct nfs_server_list *srvr;
+	char *ptr;
 	
 	rpc = rpc_init_udp_context();
 	if (rpc == NULL) {
@@ -131,35 +133,48 @@ int main(int argc _U_, char *argv[] _U_)
 		free(ifc.ifc_buf);	
 		ifc.ifc_len = size;
 		ifc.ifc_buf = malloc(size);
+		memset(ifc.ifc_buf, 0, size);
 		if (ioctl(rpc_get_fd(rpc), SIOCGIFCONF, (caddr_t)&ifc) < 0) {
 			printf("ioctl SIOCGIFCONF failed\n");
 			exit(10);
 		}
 	}	
 
-	for (i = 0; (unsigned)i < ifc.ifc_len / sizeof(struct ifconf); i++) {
+	for (ptr =(char *)ifc.ifc_buf; ptr < ((char *)ifc.ifc_buf) + ifc.ifc_len; ) {
+		struct ifreq *ifr;
 		char bcdd[16];
 
-		if (ifc.ifc_req[i].ifr_addr.sa_family != AF_INET) {
+		ifr = (struct ifreq *)ptr;
+#if HAVE_SOCKADDR_LEN
+		if (ifr->ifr_addr.sa_len > sizeof(struct sockaddr)) {
+			ptr += sizeof(ifr->ifr_name) + ifr->ifr_addr.sa_len;
+		} else {
+			ptr += sizeof(ifr->ifr_name) + sizeof(struct sockaddr);
+		}
+#else
+		ptr += sizeof(struct ifreq);
+#endif
+
+		if (ifr->ifr_addr.sa_family != AF_INET) {
 			continue;
 		}
-		if (ioctl(rpc_get_fd(rpc), SIOCGIFFLAGS, &ifc.ifc_req[i]) < 0) {
+		if (ioctl(rpc_get_fd(rpc), SIOCGIFFLAGS, ifr) < 0) {
 			printf("ioctl DRBADDR failed\n");
 			exit(10);
 		}
-		if (!(ifc.ifc_req[i].ifr_flags & IFF_UP)) {
+		if (!(ifr->ifr_flags & IFF_UP)) {
 			continue;
 		}
-		if (ifc.ifc_req[i].ifr_flags & IFF_LOOPBACK) {
+		if (ifr->ifr_flags & IFF_LOOPBACK) {
 			continue;
 		}
-		if (!(ifc.ifc_req[i].ifr_flags & IFF_BROADCAST)) {
+		if (!(ifr->ifr_flags & IFF_BROADCAST)) {
 			continue;
 		}
-		if (ioctl(rpc_get_fd(rpc), SIOCGIFBRDADDR, &ifc.ifc_req[i]) < 0) {
+		if (ioctl(rpc_get_fd(rpc), SIOCGIFBRDADDR, ifr) < 0) {
 			continue;
 		}
-		if (getnameinfo(&ifc.ifc_req[i].ifr_broadaddr, sizeof(struct sockaddr_in), &bcdd[0], sizeof(bcdd), NULL, 0, NI_NUMERICHOST) < 0) {
+		if (getnameinfo(&ifr->ifr_broadaddr, sizeof(struct sockaddr_in), &bcdd[0], sizeof(bcdd), NULL, 0, NI_NUMERICHOST) < 0) {
 			continue;
 		}
 		if (rpc_set_udp_destination(rpc, bcdd, 111, 1) < 0) {
