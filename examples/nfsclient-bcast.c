@@ -18,6 +18,7 @@
 /* Example program using the lowlevel raw broadcast interface.
  */
 
+#include "config.h"
 #include <stdio.h>
 #include <unistd.h>
 #include <stdlib.h>
@@ -145,7 +146,7 @@ int main(int argc _U_, char *argv[] _U_)
 		char bcdd[16];
 
 		ifr = (struct ifreq *)ptr;
-#if HAVE_SOCKADDR_LEN
+#ifdef HAVE_SOCKADDR_LEN
 		if (ifr->ifr_addr.sa_len > sizeof(struct sockaddr)) {
 			ptr += sizeof(ifr->ifr_name) + ifr->ifr_addr.sa_len;
 		} else {

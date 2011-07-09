@@ -18,6 +18,7 @@
  * High level api to nfs filesystems
  */
 
+#include "config.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -1245,7 +1246,7 @@ struct nfs_server_list *nfs_find_local_servers(void)
 		char bcdd[16];
 
 		ifr = (struct ifreq *)ptr;
-#if HAVE_SOCKADDR_LEN
+#ifdef HAVE_SOCKADDR_LEN
 		if (ifr->ifr_addr.sa_len > sizeof(struct sockaddr)) {
 			ptr += sizeof(ifr->ifr_name) + ifr->ifr_addr.sa_len;
 		} else {
