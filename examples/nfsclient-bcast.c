@@ -32,7 +32,6 @@
 #include <netdb.h>
 #include "libnfs.h"
 #include "libnfs-raw.h"
-#include "libnfs-private.h"
 #include "libnfs-raw-mount.h"
 #include "libnfs-raw-portmap.h"
 
@@ -128,7 +127,7 @@ int main(int argc _U_, char *argv[] _U_)
 	ifc.ifc_buf = NULL;
 	ifc.ifc_len = size;
 
-	while (ifc.ifc_len == size) {
+	while(ifc.ifc_len > (size - sizeof(struct ifreq))) {
 		size *= 2;
 
 		free(ifc.ifc_buf);	
