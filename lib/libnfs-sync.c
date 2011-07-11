@@ -1227,7 +1227,7 @@ struct nfs_server_list *nfs_find_local_servers(void)
 	ifc.ifc_buf = NULL;
 	ifc.ifc_len = size;
 
-	while (ifc.ifc_len == size) {
+	while(ifc.ifc_len > (size - sizeof(struct ifreq))) {
 		size *= 2;
 
 		free(ifc.ifc_buf);	
