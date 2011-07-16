@@ -1180,8 +1180,14 @@ void callit_cb(struct rpc_context *rpc, int status, void *data _U_, void *privat
 		srv_data->status = -1;
 		return;
 	}
-
 	
+	/* check for dupes */
+	for (srvr = srv_data->srvrs; srvr; srvr = srvr->next) {
+		if (!strcmp(hostdd, srvr->addr)) {
+			return 0;
+		}
+	}
+
 	srvr = malloc(sizeof(struct nfs_server_list));
 	if (srvr == NULL) {
 		rpc_set_error(rpc, "Malloc failed when allocating server structure");	
@@ -1259,7 +1265,7 @@ struct nfs_server_list *nfs_find_local_servers(void)
 	struct nfs_list_data data = {0, NULL};
 	struct timeval tv_start, tv_current;
 	struct ifconf ifc;
-	int size;
+	int size, loop;
 	struct pollfd pfd;
 
 	rpc = rpc_init_udp_context();
@@ -1292,35 +1298,37 @@ struct nfs_server_list *nfs_find_local_servers(void)
 		}
 	}	
 
-	if (send_nfsd_probes(rpc, &ifc, &data) != 0) {
-		rpc_destroy_context(rpc);
-		free(ifc.ifc_buf);	
-		return NULL;
-	}
-
-	gettimeofday(&tv_start, NULL);
-	for(;;) {
-		int mpt;
-
-		pfd.fd = rpc_get_fd(rpc);
-		pfd.events = rpc_which_events(rpc);
-
-		gettimeofday(&tv_current, NULL);
-		mpt = 1000
-		-    (tv_current.tv_sec *1000 + tv_current.tv_usec / 1000)
-		+    (tv_start.tv_sec *1000 + tv_start.tv_usec / 1000);
-
-		if (poll(&pfd, 1, mpt) < 0) {
-			free_nfs_srvr_list(data.srvrs);
+	for (loop=0; loop<3; loop++) {
+		if (send_nfsd_probes(rpc, &ifc, &data) != 0) {
 			rpc_destroy_context(rpc);
+			free(ifc.ifc_buf);	
 			return NULL;
 		}
-		if (pfd.revents == 0) {
-			break;
-		}
+
+		gettimeofday(&tv_start, NULL);
+		for(;;) {
+			int mpt;
+
+			pfd.fd = rpc_get_fd(rpc);
+			pfd.events = rpc_which_events(rpc);
+
+			gettimeofday(&tv_current, NULL);
+			mpt = 1000
+			-    (tv_current.tv_sec *1000 + tv_current.tv_usec / 1000)
+			+    (tv_start.tv_sec *1000 + tv_start.tv_usec / 1000);
+
+			if (poll(&pfd, 1, mpt) < 0) {
+				free_nfs_srvr_list(data.srvrs);
+				rpc_destroy_context(rpc);
+				return NULL;
+			}
+			if (pfd.revents == 0) {
+				break;
+			}
 		
-		if (rpc_service(rpc, pfd.revents) < 0) {
-			break;
+			if (rpc_service(rpc, pfd.revents) < 0) {
+				break;
+			}
 		}
 	}
 
