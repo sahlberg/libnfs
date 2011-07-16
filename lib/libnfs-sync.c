@@ -1201,6 +1201,58 @@ void callit_cb(struct rpc_context *rpc, int status, void *data _U_, void *privat
 	srv_data->srvrs = srvr;
 }
 
+static int send_nfsd_probes(struct rpc_context *rpc, struct ifconf *ifc, struct nfs_list_data *data)
+{
+	char *ptr;
+
+	for (ptr =(char *)(ifc->ifc_buf); ptr < (char *)(ifc->ifc_buf) + ifc->ifc_len; ) {
+		struct ifreq *ifr;
+		char bcdd[16];
+
+		ifr = (struct ifreq *)ptr;
+#ifdef HAVE_SOCKADDR_LEN
+		if (ifr->ifr_addr.sa_len > sizeof(struct sockaddr)) {
+			ptr += sizeof(ifr->ifr_name) + ifr->ifr_addr.sa_len;
+		} else {
+			ptr += sizeof(ifr->ifr_name) + sizeof(struct sockaddr);
+		}
+#else
+		ptr += sizeof(struct ifreq);
+#endif
+
+		if (ifr->ifr_addr.sa_family != AF_INET) {
+			continue;
+		}
+		if (ioctl(rpc_get_fd(rpc), SIOCGIFFLAGS, ifr) < 0) {
+			return -1;
+		}
+		if (!(ifr->ifr_flags & IFF_UP)) {
+			continue;
+		}
+		if (ifr->ifr_flags & IFF_LOOPBACK) {
+			continue;
+		}
+		if (!(ifr->ifr_flags & IFF_BROADCAST)) {
+			continue;
+		}
+		if (ioctl(rpc_get_fd(rpc), SIOCGIFBRDADDR, ifr) < 0) {
+			continue;
+		}
+		if (getnameinfo(&ifr->ifr_broadaddr, sizeof(struct sockaddr_in), &bcdd[0], sizeof(bcdd), NULL, 0, NI_NUMERICHOST) < 0) {
+			continue;
+		}
+		if (rpc_set_udp_destination(rpc, bcdd, 111, 1) < 0) {
+			return -1;
+		}
+
+		if (rpc_pmap_callit_async(rpc, MOUNT_PROGRAM, 2, 0, NULL, 0, callit_cb, data) < 0) {
+			return -1;
+		}
+	}
+
+	return 0;
+}
+
 struct nfs_server_list *nfs_find_local_servers(void)
 {
 	struct rpc_context *rpc;
@@ -1209,7 +1261,6 @@ struct nfs_server_list *nfs_find_local_servers(void)
 	struct ifconf ifc;
 	int size;
 	struct pollfd pfd;
-	char *ptr;
 
 	rpc = rpc_init_udp_context();
 	if (rpc == NULL) {
@@ -1241,57 +1292,11 @@ struct nfs_server_list *nfs_find_local_servers(void)
 		}
 	}	
 
-	for (ptr =(char *)ifc.ifc_buf; ptr < ((char *)ifc.ifc_buf) + ifc.ifc_len; ) {
-		struct ifreq *ifr;
-		char bcdd[16];
-
-		ifr = (struct ifreq *)ptr;
-#ifdef HAVE_SOCKADDR_LEN
-		if (ifr->ifr_addr.sa_len > sizeof(struct sockaddr)) {
-			ptr += sizeof(ifr->ifr_name) + ifr->ifr_addr.sa_len;
-		} else {
-			ptr += sizeof(ifr->ifr_name) + sizeof(struct sockaddr);
-		}
-#else
-		ptr += sizeof(struct ifreq);
-#endif
-
-		if (ifr->ifr_addr.sa_family != AF_INET) {
-			continue;
-		}
-		if (ioctl(rpc_get_fd(rpc), SIOCGIFFLAGS, ifr) < 0) {
-			rpc_destroy_context(rpc);
-			free(ifc.ifc_buf);	
-			return NULL;
-		}
-		if (!(ifr->ifr_flags & IFF_UP)) {
-			continue;
-		}
-		if (ifr->ifr_flags & IFF_LOOPBACK) {
-			continue;
-		}
-		if (!(ifr->ifr_flags & IFF_BROADCAST)) {
-			continue;
-		}
-		if (ioctl(rpc_get_fd(rpc), SIOCGIFBRDADDR, ifr) < 0) {
-			continue;
-		}
-		if (getnameinfo(&ifr->ifr_broadaddr, sizeof(struct sockaddr_in), &bcdd[0], sizeof(bcdd), NULL, 0, NI_NUMERICHOST) < 0) {
-			continue;
-		}
-		if (rpc_set_udp_destination(rpc, bcdd, 111, 1) < 0) {
-			rpc_destroy_context(rpc);
-			free(ifc.ifc_buf);	
-			return NULL;
-		}
-
-		if (rpc_pmap_callit_async(rpc, MOUNT_PROGRAM, 2, 0, NULL, 0, callit_cb, &data) < 0) {
-			rpc_destroy_context(rpc);
-			free(ifc.ifc_buf);	
-			return NULL;
-		}
+	if (send_nfsd_probes(rpc, &ifc, &data) != 0) {
+		rpc_destroy_context(rpc);
+		free(ifc.ifc_buf);	
+		return NULL;
 	}
-	free(ifc.ifc_buf);	
 
 	gettimeofday(&tv_start, NULL);
 	for(;;) {
@@ -1319,6 +1324,7 @@ struct nfs_server_list *nfs_find_local_servers(void)
 		}
 	}
 
+	free(ifc.ifc_buf);	
 	rpc_destroy_context(rpc);
 
 	if (data.status != 0) {
