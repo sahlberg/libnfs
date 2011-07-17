@@ -34,6 +34,12 @@ if test x$ENABLE_EXAMPLES = xyes; then
 fi
 AC_SUBST(MAYBE_EXAMPLES)
 
+AC_ARG_ENABLE(tirpc,
+  	[AC_HELP_STRING([--enable-tirpc],
+  			[enable use of TI-RPC @<:@default=no@:>@])],
+  	enable_tirpc=$enableval,
+	enable_tirpc='no')
+
 case $host in
   *darwin*)
     RPCGENFLAGS=-DU_INT64_PLATTFORM_TYPE="u_int64_t"
@@ -60,6 +66,12 @@ AC_CHECK_MEMBER([struct sockaddr.sa_len],
 #include <sys/types.h>
 #include <sys/socket.h>
 ])
+
+echo "Use TI-RPC: $enable_tirpc"
+if test "$enable_tirpc" = "yes"; then
+	CFLAGS="${CFLAGS} -I /usr/include/tirpc"
+	LDFLAGS="${LDFLAGS} -ltirpc"
+fi
 
 #output
 AC_CONFIG_FILES([Makefile]
