@@ -44,6 +44,9 @@ case $host in
   *darwin*)
     RPCGENFLAGS=-DU_INT64_PLATTFORM_TYPE="u_int64_t"
     ;;
+  *cygwin*)
+    RPCGENFLAGS=-DU_INT64_PLATTFORM_TYPE="u_int64_t"
+    ;;
   *solaris*)
     AC_CHECK_HEADERS([sys/filio.h])
     if test x$ENABLE_EXAMPLES = xyes; then
