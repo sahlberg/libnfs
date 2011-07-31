@@ -147,6 +147,9 @@ struct nfs_context *nfs_init_context(void)
 	nfs->server = NULL;
 	nfs->export = NULL;
 
+	nfs->rootfh.data.data_len = 0;
+	nfs->rootfh.data.data_val = NULL;
+
 	return nfs;
 }
 
