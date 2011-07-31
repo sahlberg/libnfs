@@ -40,6 +40,8 @@
 #include "libnfs-private.h"
 #include "slist.h"
 
+static int rpc_disconnect_requeue(struct rpc_context *rpc);
+
 static void set_nonblocking(int fd)
 {
 	unsigned v;
@@ -267,16 +269,16 @@ int rpc_service(struct rpc_context *rpc, int revents)
 		return 0;
 	}
 
-	if (revents & POLLOUT && rpc->outqueue != NULL) {
-		if (rpc_write_to_socket(rpc) != 0) {
-			rpc_set_error(rpc, "write to socket failed");
-			return -1;
+	if (revents & POLLIN) {
+		if (rpc_read_from_socket(rpc) != 0) {
+			rpc_disconnect_requeue(rpc);
+			return 0;
 		}
 	}
 
-	if (revents & POLLIN) {
-		if (rpc_read_from_socket(rpc) != 0) {
-			rpc_disconnect(rpc, rpc_get_error(rpc));
+	if (revents & POLLOUT && rpc->outqueue != NULL) {
+		if (rpc_write_to_socket(rpc) != 0) {
+			rpc_set_error(rpc, "write to socket failed");
 			return -1;
 		}
 	}
@@ -346,6 +348,29 @@ int rpc_disconnect(struct rpc_context *rpc, char *error)
 	rpc->is_connected = 0;
 
 	rpc_error_all_pdus(rpc, error);
+
+	return 0;
+}
+
+/* disconnect but do not error all PDUs, just move pdus in-flight back to the outqueue */
+static int rpc_disconnect_requeue(struct rpc_context *rpc)
+{
+	struct rpc_pdu *pdu;
+
+	if (rpc->fd != -1) {
+		close(rpc->fd);
+	}
+	rpc->fd  = -1;
+
+	rpc->is_connected = 0;
+
+	/* socket is closed so we will not get any replies to any commands
+	 * in flight. Move them all over from the waitpdu queue back to the out queue
+	 */
+	for (pdu=rpc->waitpdu; pdu; pdu=pdu->next) {
+		SLIST_REMOVE(&rpc->waitpdu, pdu);
+		SLIST_ADD(&rpc->outqueue, pdu);
+	}
 
 	return 0;
 }

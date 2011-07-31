@@ -75,6 +75,8 @@ void rpc_set_error(struct rpc_context *rpc, char *error_string, ...);
 void nfs_set_error(struct nfs_context *nfs, char *error_string, ...);
 
 struct rpc_context *nfs_get_rpc_context(struct nfs_context *nfs);
+const char *nfs_get_server(struct nfs_context *nfs);
+const char *nfs_get_export(struct nfs_context *nfs);
 
 /* we dont want to expose UDP to normal applications/users  this is private to libnfs to use exclusively for broadcast RPC */
 int rpc_bind_udp(struct rpc_context *rpc, char *addr, int port);

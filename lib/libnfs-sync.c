@@ -53,13 +53,10 @@ static void wait_for_reply(struct rpc_context *rpc, struct sync_cb_data *cb_data
 {
 	struct pollfd pfd;
 
-	for (;;) {
-		if (cb_data->is_finished) {
-			break;
-		}
+	while (!cb_data->is_finished) {
+
 		pfd.fd = rpc_get_fd(rpc);
 		pfd.events = rpc_which_events(rpc);
-
 		if (poll(&pfd, 1, -1) < 0) {
 			rpc_set_error(rpc, "Poll failed");
 			cb_data->status = -EIO;
@@ -69,6 +66,44 @@ static void wait_for_reply(struct rpc_context *rpc, struct sync_cb_data *cb_data
 			rpc_set_error(rpc, "rpc_service failed");
 			cb_data->status = -EIO;
 			break;
+		}
+		if (rpc_get_fd(rpc) == -1) {
+			rpc_set_error(rpc, "Socket closed\n");
+			break;
+		}
+	}
+}
+
+static void wait_for_nfs_reply(struct nfs_context *nfs, struct sync_cb_data *cb_data)
+{
+	struct pollfd pfd;
+
+	while (!cb_data->is_finished) {
+
+		pfd.fd = nfs_get_fd(nfs);
+		pfd.events = nfs_which_events(nfs);
+		if (poll(&pfd, 1, -1) < 0) {
+			nfs_set_error(nfs, "Poll failed");
+			cb_data->status = -EIO;
+			break;
+		}
+		if (nfs_service(nfs, pfd.revents) < 0) {
+			nfs_set_error(nfs, "nfs_service failed");
+			cb_data->status = -EIO;
+			break;
+		}
+		if (nfs_get_fd(nfs) == -1) {
+			char *server = strdup(nfs_get_server(nfs));
+			char *export = strdup(nfs_get_export(nfs));
+
+			if (nfs_mount(nfs, server, export) != 0) {
+				nfs_set_error(nfs, "Failed to reconnect to nfs server %s", nfs_get_error(nfs));
+				free(server);
+				free(export);
+				break;
+			}
+			free(server);
+			free(export);
 		}
 	}
 }
@@ -105,7 +140,7 @@ int nfs_mount(struct nfs_context *nfs, const char *server, const char *export)
 		return -1;
 	}
 
-	wait_for_reply(nfs_get_rpc_context(nfs), &cb_data);
+	wait_for_nfs_reply(nfs, &cb_data);
 
 	return cb_data.status;
 }
@@ -141,7 +176,7 @@ int nfs_stat(struct nfs_context *nfs, const char *path, struct stat *st)
 		return -1;
 	}
 
-	wait_for_reply(nfs_get_rpc_context(nfs), &cb_data);
+	wait_for_nfs_reply(nfs, &cb_data);
 
 	return cb_data.status;
 }
@@ -182,7 +217,7 @@ int nfs_open(struct nfs_context *nfs, const char *path, int mode, struct nfsfh *
 		return -1;
 	}
 
-	wait_for_reply(nfs_get_rpc_context(nfs), &cb_data);
+	wait_for_nfs_reply(nfs, &cb_data);
 
 	return cb_data.status;
 }
@@ -221,7 +256,7 @@ int nfs_pread(struct nfs_context *nfs, struct nfsfh *nfsfh, off_t offset, size_t
 		return -1;
 	}
 
-	wait_for_reply(nfs_get_rpc_context(nfs), &cb_data);
+	wait_for_nfs_reply(nfs, &cb_data);
 
 	return cb_data.status;
 }
@@ -260,7 +295,7 @@ int nfs_close(struct nfs_context *nfs, struct nfsfh *nfsfh)
 		return -1;
 	}
 
-	wait_for_reply(nfs_get_rpc_context(nfs), &cb_data);
+	wait_for_nfs_reply(nfs, &cb_data);
 
 	return cb_data.status;
 }
@@ -283,7 +318,7 @@ int nfs_fstat(struct nfs_context *nfs, struct nfsfh *nfsfh, struct stat *st)
 		return -1;
 	}
 
-	wait_for_reply(nfs_get_rpc_context(nfs), &cb_data);
+	wait_for_nfs_reply(nfs, &cb_data);
 
 	return cb_data.status;
 }
@@ -315,7 +350,7 @@ int nfs_pwrite(struct nfs_context *nfs, struct nfsfh *nfsfh, off_t offset, size_
 		return -1;
 	}
 
-	wait_for_reply(nfs_get_rpc_context(nfs), &cb_data);
+	wait_for_nfs_reply(nfs, &cb_data);
 
 	return cb_data.status;
 }
@@ -355,7 +390,7 @@ int nfs_fsync(struct nfs_context *nfs, struct nfsfh *nfsfh)
 		return -1;
 	}
 
-	wait_for_reply(nfs_get_rpc_context(nfs), &cb_data);
+	wait_for_nfs_reply(nfs, &cb_data);
 
 	return cb_data.status;
 }
@@ -389,7 +424,7 @@ int nfs_ftruncate(struct nfs_context *nfs, struct nfsfh *nfsfh, off_t length)
 		return -1;
 	}
 
-	wait_for_reply(nfs_get_rpc_context(nfs), &cb_data);
+	wait_for_nfs_reply(nfs, &cb_data);
 
 	return cb_data.status;
 }
@@ -422,7 +457,7 @@ int nfs_truncate(struct nfs_context *nfs, const char *path, off_t length)
 		return -1;
 	}
 
-	wait_for_reply(nfs_get_rpc_context(nfs), &cb_data);
+	wait_for_nfs_reply(nfs, &cb_data);
 
 	return cb_data.status;
 }
@@ -457,7 +492,7 @@ int nfs_mkdir(struct nfs_context *nfs, const char *path)
 		return -1;
 	}
 
-	wait_for_reply(nfs_get_rpc_context(nfs), &cb_data);
+	wait_for_nfs_reply(nfs, &cb_data);
 
 	return cb_data.status;
 }
@@ -492,7 +527,7 @@ int nfs_rmdir(struct nfs_context *nfs, const char *path)
 		return -1;
 	}
 
-	wait_for_reply(nfs_get_rpc_context(nfs), &cb_data);
+	wait_for_nfs_reply(nfs, &cb_data);
 
 	return cb_data.status;
 }
@@ -532,7 +567,7 @@ int nfs_creat(struct nfs_context *nfs, const char *path, int mode, struct nfsfh 
 		return -1;
 	}
 
-	wait_for_reply(nfs_get_rpc_context(nfs), &cb_data);
+	wait_for_nfs_reply(nfs, &cb_data);
 
 	return cb_data.status;
 }
@@ -567,7 +602,7 @@ int nfs_unlink(struct nfs_context *nfs, const char *path)
 		return -1;
 	}
 
-	wait_for_reply(nfs_get_rpc_context(nfs), &cb_data);
+	wait_for_nfs_reply(nfs, &cb_data);
 
 	return cb_data.status;
 }
@@ -607,7 +642,7 @@ int nfs_opendir(struct nfs_context *nfs, const char *path, struct nfsdir **nfsdi
 		return -1;
 	}
 
-	wait_for_reply(nfs_get_rpc_context(nfs), &cb_data);
+	wait_for_nfs_reply(nfs, &cb_data);
 
 	return cb_data.status;
 }
@@ -645,7 +680,7 @@ int nfs_lseek(struct nfs_context *nfs, struct nfsfh *nfsfh, off_t offset, int wh
 		return -1;
 	}
 
-	wait_for_reply(nfs_get_rpc_context(nfs), &cb_data);
+	wait_for_nfs_reply(nfs, &cb_data);
 
 	return cb_data.status;
 }
@@ -682,7 +717,7 @@ int nfs_statvfs(struct nfs_context *nfs, const char *path, struct statvfs *svfs)
 		return -1;
 	}
 
-	wait_for_reply(nfs_get_rpc_context(nfs), &cb_data);
+	wait_for_nfs_reply(nfs, &cb_data);
 
 	return cb_data.status;
 }
@@ -728,7 +763,7 @@ int nfs_readlink(struct nfs_context *nfs, const char *path, char *buf, int bufsi
 		return -1;
 	}
 
-	wait_for_reply(nfs_get_rpc_context(nfs), &cb_data);
+	wait_for_nfs_reply(nfs, &cb_data);
 
 	return cb_data.status;
 }
@@ -762,7 +797,7 @@ int nfs_chmod(struct nfs_context *nfs, const char *path, int mode)
 		return -1;
 	}
 
-	wait_for_reply(nfs_get_rpc_context(nfs), &cb_data);
+	wait_for_nfs_reply(nfs, &cb_data);
 
 	return cb_data.status;
 }
@@ -797,7 +832,7 @@ int nfs_fchmod(struct nfs_context *nfs, struct nfsfh *nfsfh, int mode)
 		return -1;
 	}
 
-	wait_for_reply(nfs_get_rpc_context(nfs), &cb_data);
+	wait_for_nfs_reply(nfs, &cb_data);
 
 	return cb_data.status;
 }
@@ -832,7 +867,7 @@ int nfs_chown(struct nfs_context *nfs, const char *path, int uid, int gid)
 		return -1;
 	}
 
-	wait_for_reply(nfs_get_rpc_context(nfs), &cb_data);
+	wait_for_nfs_reply(nfs, &cb_data);
 
 	return cb_data.status;
 }
@@ -864,7 +899,7 @@ int nfs_fchown(struct nfs_context *nfs, struct nfsfh *nfsfh, int uid, int gid)
 		return -1;
 	}
 
-	wait_for_reply(nfs_get_rpc_context(nfs), &cb_data);
+	wait_for_nfs_reply(nfs, &cb_data);
 
 	return cb_data.status;
 }
@@ -898,7 +933,7 @@ int nfs_utimes(struct nfs_context *nfs, const char *path, struct timeval *times)
 		return -1;
 	}
 
-	wait_for_reply(nfs_get_rpc_context(nfs), &cb_data);
+	wait_for_nfs_reply(nfs, &cb_data);
 
 	return cb_data.status;
 }
@@ -932,7 +967,7 @@ int nfs_utime(struct nfs_context *nfs, const char *path, struct utimbuf *times)
 		return -1;
 	}
 
-	wait_for_reply(nfs_get_rpc_context(nfs), &cb_data);
+	wait_for_nfs_reply(nfs, &cb_data);
 
 	return cb_data.status;
 }
@@ -967,7 +1002,7 @@ int nfs_access(struct nfs_context *nfs, const char *path, int mode)
 		return -1;
 	}
 
-	wait_for_reply(nfs_get_rpc_context(nfs), &cb_data);
+	wait_for_nfs_reply(nfs, &cb_data);
 
 	return cb_data.status;
 }
@@ -1001,7 +1036,7 @@ int nfs_symlink(struct nfs_context *nfs, const char *oldpath, const char *newpat
 		return -1;
 	}
 
-	wait_for_reply(nfs_get_rpc_context(nfs), &cb_data);
+	wait_for_nfs_reply(nfs, &cb_data);
 
 	return cb_data.status;
 }
@@ -1035,7 +1070,7 @@ int nfs_rename(struct nfs_context *nfs, const char *oldpath, const char *newpath
 		return -1;
 	}
 
-	wait_for_reply(nfs_get_rpc_context(nfs), &cb_data);
+	wait_for_nfs_reply(nfs, &cb_data);
 
 	return cb_data.status;
 }
@@ -1069,7 +1104,7 @@ int nfs_link(struct nfs_context *nfs, const char *oldpath, const char *newpath)
 		return -1;
 	}
 
-	wait_for_reply(nfs_get_rpc_context(nfs), &cb_data);
+	wait_for_nfs_reply(nfs, &cb_data);
 
 	return cb_data.status;
 }

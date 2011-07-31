@@ -144,6 +144,9 @@ struct nfs_context *nfs_init_context(void)
 		return NULL;
 	}
 
+	nfs->server = NULL;
+	nfs->export = NULL;
+
 	return nfs;
 }
 
@@ -470,6 +473,7 @@ static void nfs_mount_1_cb(struct rpc_context *rpc, int status, void *command_da
 int nfs_mount_async(struct nfs_context *nfs, const char *server, const char *export, nfs_cb cb, void *private_data)
 {
 	struct nfs_cb_data *data;
+	char *new_server, *new_export;
 
 	data = malloc(sizeof(struct nfs_cb_data));
 	if (data == NULL) {
@@ -477,8 +481,18 @@ int nfs_mount_async(struct nfs_context *nfs, const char *server, const char *exp
 		return -1;
 	}
 	bzero(data, sizeof(struct nfs_cb_data));
-	nfs->server        = strdup(server);
-	nfs->export        = strdup(export);
+	new_server = strdup(server);
+	new_export = strdup(export);
+	if (nfs->server != NULL) {
+		free(nfs->server);
+		nfs->server = NULL;
+	}
+	nfs->server        = new_server;
+	if (nfs->export != NULL) {
+		free(nfs->export);
+		nfs->export = NULL;
+	}
+	nfs->export        = new_export;
 	data->nfs          = nfs;
 	data->cb           = cb;
 	data->private_data = private_data;
@@ -3045,3 +3059,10 @@ struct rpc_context *nfs_get_rpc_context(struct nfs_context *nfs)
 	return nfs->rpc;
 }
 
+const char *nfs_get_server(struct nfs_context *nfs) {
+	return nfs->server;
+}
+
+const char *nfs_get_export(struct nfs_context *nfs) {
+	return nfs->export;
+}
