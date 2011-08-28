@@ -19,17 +19,27 @@
  */
 
 #define _GNU_SOURCE
+
+#if defined(WIN32)
+#include <winsock2.h>
+#define DllExport
+#define O_SYNC 0
+typedef int uid_t;
+typedef int gid_t;
+#else
+#include <strings.h>
+#include <sys/statvfs.h>
+#include <utime.h>
+#include <unistd.h>
+#endif
+
 #include <stdio.h>
 #include <stdarg.h>
 #include <stdlib.h>
 #include <string.h>
-#include <strings.h>
 #include <errno.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <sys/statvfs.h>
-#include <utime.h>
-#include <unistd.h>
 #include <fcntl.h>
 #include "libnfs.h"
 #include "libnfs-raw.h"

@@ -15,26 +15,35 @@
    along with this program; if not, see <http://www.gnu.org/licenses/>.
 */
 
+#if defined(WIN32)
+#include <winsock2.h>
+#include <ws2tcpip.h>
+#include <basetsd.h>
+#define ssize_t SSIZE_T
+#define MSG_DONTWAIT 0
+#else
+#include <unistd.h>
+#include <poll.h>
+#include <arpa/inet.h>
+#include <sys/ioctl.h>
+#include <sys/socket.h>
+#include <netdb.h>
+#endif
+
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
 #include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h>
 #include <fcntl.h>
-#include <poll.h>
 #include <string.h>
 #include <errno.h>
 #include <rpc/rpc.h>
 #include <rpc/xdr.h>
-#include <arpa/inet.h>
 #ifdef HAVE_SYS_FILIO_H
 #include <sys/filio.h>
 #endif
-#include <sys/ioctl.h>
 #include <sys/types.h>
-#include <sys/socket.h>
-#include <netdb.h>
 #include "libnfs.h"
 #include "libnfs-raw.h"
 #include "libnfs-private.h"
@@ -44,9 +53,12 @@ static int rpc_disconnect_requeue(struct rpc_context *rpc);
 
 static void set_nonblocking(int fd)
 {
+#if defined(WIN32)
+#else
 	unsigned v;
 	v = fcntl(fd, F_GETFL, 0);
         fcntl(fd, F_SETFL, v | O_NONBLOCK);
+#endif
 }
 
 int rpc_get_fd(struct rpc_context *rpc)
@@ -86,7 +98,11 @@ static int rpc_write_to_socket(struct rpc_context *rpc)
 
 		total = rpc->outqueue->outdata.size;
 
+#if defined(WIN32)
+		count = send(rpc->fd, rpc->outqueue->outdata.data + rpc->outqueue->written, total - rpc->outqueue->written, 0);
+#else
 		count = write(rpc->fd, rpc->outqueue->outdata.data + rpc->outqueue->written, total - rpc->outqueue->written);
+#endif
 		if (count == -1) {
 			if (errno == EAGAIN || errno == EWOULDBLOCK) {
 				return 0;
@@ -113,7 +129,11 @@ static int rpc_read_from_socket(struct rpc_context *rpc)
 	int pdu_size;
 	ssize_t count;
 
+#if defined(WIN32)
+	if (ioctlsocket(rpc->fd, FIONREAD, &available) != 0) {
+#else
 	if (ioctl(rpc->fd, FIONREAD, &available) != 0) {
+#endif
 		rpc_set_error(rpc, "Ioctl FIONREAD returned error : %d. Closing socket.", errno);
 		return -1;
 	}
@@ -157,7 +177,11 @@ static int rpc_read_from_socket(struct rpc_context *rpc)
 	if (rpc->inpos < 4) {
 		size = 4 - rpc->inpos;
 
+#if defined(WIN32)
+		count = recv(rpc->fd, rpc->inbuf + rpc->inpos, size, 0);
+#else
 		count = read(rpc->fd, rpc->inbuf + rpc->inpos, size);
+#endif
 		if (count == -1) {
 			if (errno == EINTR) {
 				return 0;
@@ -193,7 +217,11 @@ static int rpc_read_from_socket(struct rpc_context *rpc)
 		size = rpc->insize - rpc->inpos;
 	}
 
+#if defined(WIN32)
+	count = recv(rpc->fd, rpc->inbuf + rpc->inpos, size, 0);
+#else
 	count = read(rpc->fd, rpc->inbuf + rpc->inpos, size);
+#endif
 	if (count == -1) {
 		if (errno == EINTR) {
 			return 0;
@@ -316,7 +344,7 @@ int rpc_connect_async(struct rpc_context *rpc, const char *server, int port, rpc
 #ifdef HAVE_SOCKADDR_LEN
 		sin->sin_len = socksize;
 #endif
-		rpc->fd = socket(AF_INET, SOCK_STREAM, 0);
+		rpc->fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 		break;
 	}
 
@@ -341,7 +369,11 @@ int rpc_connect_async(struct rpc_context *rpc, const char *server, int port, rpc
 int rpc_disconnect(struct rpc_context *rpc, char *error)
 {
 	if (rpc->fd != -1) {
+#if defined(WIN32)
+		closesocket(rpc->fd);
+#else
 		close(rpc->fd);
+#endif
 	}
 	rpc->fd  = -1;
 
@@ -358,7 +390,11 @@ static int rpc_disconnect_requeue(struct rpc_context *rpc)
 	struct rpc_pdu *pdu;
 
 	if (rpc->fd != -1) {
+#if defined(WIN32)
+		closesocket(rpc->fd);
+#else
 		close(rpc->fd);
+#endif
 	}
 	rpc->fd  = -1;
 
@@ -386,7 +422,7 @@ int rpc_bind_udp(struct rpc_context *rpc, char *addr, int port)
 		return -1;
 	}
 
-	snprintf(service, 6, "%d", port);
+	sprintf(service, "%d", port);
 	if (getaddrinfo(addr, service, NULL, &ai) != 0) {
 		rpc_set_error(rpc, "Invalid address:%s. "
 			"Can not resolv into IPv4/v6 structure.");
@@ -429,7 +465,7 @@ int rpc_set_udp_destination(struct rpc_context *rpc, char *addr, int port, int i
 		return -1;
 	}
 
-	snprintf(service, 6, "%d", port);
+	sprintf(service, "%d", port);
 	if (getaddrinfo(addr, service, NULL, &ai) != 0) {
 		rpc_set_error(rpc, "Invalid address:%s. "
 			"Can not resolv into IPv4/v6 structure.");
