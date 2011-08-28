@@ -107,7 +107,7 @@ static int nfs_lookup_path_async_internal(struct nfs_context *nfs, struct nfs_cb
 
 void nfs_set_auth(struct nfs_context *nfs, struct AUTH *auth)
 {
-	return rpc_set_auth(nfs->rpc, auth);
+	rpc_set_auth(nfs->rpc, auth);
 }
 
 int nfs_get_fd(struct nfs_context *nfs)
