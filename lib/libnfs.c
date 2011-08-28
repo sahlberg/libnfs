@@ -3081,3 +3081,35 @@ const char *nfs_get_server(struct nfs_context *nfs) {
 const char *nfs_get_export(struct nfs_context *nfs) {
 	return nfs->export;
 }
+
+
+#if defined(WIN32)
+int poll(struct pollfd *fds, int nfsd, int timeout)
+{
+	fd_set rfds, wfds, efds;
+	int ret;
+
+	FD_ZERO(&rfds);
+	FD_ZERO(&wfds);
+	FD_ZERO(&efds);
+	if (fds->events & POLLIN) {
+		FD_SET(fds->fd, &rfds);
+	}
+	if (fds->events & POLLOUT) {
+		FD_SET(fds->fd, &wfds);
+	}
+	FD_SET(fds->fd, &efds);
+	select(fds->fd + 1, &rfds, &wfds, &efds, NULL);
+	fds->revents = 0;
+	if (FD_ISSET(fds->fd, &rfds)) {
+		fds->revents |= POLLIN;
+	}
+	if (FD_ISSET(fds->fd, &wfds)) {
+		fds->revents |= POLLOUT;
+	}
+	if (FD_ISSET(fds->fd, &efds)) {
+		fds->revents |= POLLHUP;
+	}
+}
+#endif
+
