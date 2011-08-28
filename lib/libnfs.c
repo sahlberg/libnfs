@@ -557,7 +557,7 @@ static int nfs_lookup_path_async_internal(struct nfs_context *nfs, struct nfs_cb
 	}
 
 	path = data->path;
-	str = index(path, '/');
+	str = strchr(path, '/');
 	if (str != NULL) {
 		*str = 0;
 		data->path = str+1;
@@ -1333,7 +1333,7 @@ int nfs_mkdir_async(struct nfs_context *nfs, const char *path, nfs_cb cb, void *
 		return -1;
 	}
 
-	ptr = rindex(new_path, '/');
+	ptr = strrchr(new_path, '/');
 	if (ptr == NULL) {
 		rpc_set_error(nfs->rpc, "Invalid path %s", path);
 		return -1;
@@ -1414,7 +1414,7 @@ int nfs_rmdir_async(struct nfs_context *nfs, const char *path, nfs_cb cb, void *
 		return -1;
 	}
 
-	ptr = rindex(new_path, '/');
+	ptr = strrchr(new_path, '/');
 	if (ptr == NULL) {
 		rpc_set_error(nfs->rpc, "Invalid path %s", path);
 		return -1;
@@ -1546,7 +1546,7 @@ int nfs_creat_async(struct nfs_context *nfs, const char *path, int mode, nfs_cb 
 		return -1;
 	}
 
-	ptr = rindex(new_path, '/');
+	ptr = strrchr(new_path, '/');
 	if (ptr == NULL) {
 		rpc_set_error(nfs->rpc, "Invalid path %s", path);
 		return -1;
@@ -1626,7 +1626,7 @@ int nfs_unlink_async(struct nfs_context *nfs, const char *path, nfs_cb cb, void 
 		return -1;
 	}
 
-	ptr = rindex(new_path, '/');
+	ptr = strrchr(new_path, '/');
 	if (ptr == NULL) {
 		rpc_set_error(nfs->rpc, "Invalid path %s", path);
 		return -1;
@@ -2528,7 +2528,7 @@ int nfs_symlink_async(struct nfs_context *nfs, const char *oldpath, const char *
 		return -1;
 	}
 
-	ptr = rindex(symlink_data->newpathparent, '/');
+	ptr = strrchr(symlink_data->newpathparent, '/');
 	if (ptr == NULL) {
 		rpc_set_error(nfs->rpc, "Invalid path %s", oldpath);
 		free_nfs_symlink_data(symlink_data);
@@ -2674,7 +2674,7 @@ int nfs_rename_async(struct nfs_context *nfs, const char *oldpath, const char *n
 		free_nfs_rename_data(rename_data);
 		return -1;
 	}
-	ptr = rindex(rename_data->oldpath, '/');
+	ptr = strrchr(rename_data->oldpath, '/');
 	if (ptr == NULL) {
 		rpc_set_error(nfs->rpc, "Invalid path %s", oldpath);
 		free_nfs_rename_data(rename_data);
@@ -2691,7 +2691,7 @@ int nfs_rename_async(struct nfs_context *nfs, const char *oldpath, const char *n
 		free_nfs_rename_data(rename_data);
 		return -1;
 	}
-	ptr = rindex(rename_data->newpath, '/');
+	ptr = strrchr(rename_data->newpath, '/');
 	if (ptr == NULL) {
 		rpc_set_error(nfs->rpc, "Invalid path %s", newpath);
 		free_nfs_rename_data(rename_data);
@@ -2837,7 +2837,7 @@ int nfs_link_async(struct nfs_context *nfs, const char *oldpath, const char *new
 		free_nfs_link_data(link_data);
 		return -1;
 	}
-	ptr = rindex(link_data->newpath, '/');
+	ptr = strrchr(link_data->newpath, '/');
 	if (ptr == NULL) {
 		rpc_set_error(nfs->rpc, "Invalid path %s", newpath);
 		free_nfs_link_data(link_data);
