@@ -1656,7 +1656,7 @@ static void nfs_opendir_cb(struct rpc_context *rpc _U_, int status, void *comman
 	READDIR3res *res;
 	struct nfs_cb_data *data = private_data;
 	struct nfs_context *nfs = data->nfs;
-	struct nfsdir *nfsdir = data->continue_data;;
+	struct nfsdir *nfsdir = data->continue_data;
 	struct entry3 *entry;
 	uint64_t cookie;
 	
