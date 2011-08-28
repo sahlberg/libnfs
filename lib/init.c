@@ -16,11 +16,17 @@
 */
 
 #define _GNU_SOURCE
+
+#if defined(WIN32)
+#include <winsock2.h>
+#else
+#include <unistd.h>
+#include <strings.h>
+#endif
+
 #include <stdio.h>
 #include <stdarg.h>
-#include <unistd.h>
 #include <string.h>
-#include <strings.h>
 #include <stdlib.h>
 #include <rpc/rpc.h>
 #include <rpc/xdr.h>
@@ -46,7 +52,11 @@ struct rpc_context *rpc_init_context(void)
 		return NULL;
 	}
 
-	rpc->auth = authunix_create_default();
+#if defined(WIN32)
+	rpc->auth = authunix_create("LibNFS", 65535, 65535, 0, NULL);
+#else
+ 	rpc->auth = authunix_create_default();
+#endif
 	if (rpc->auth == NULL) {
 		free(rpc->encodebuf);
 		free(rpc);
@@ -135,7 +145,11 @@ void rpc_destroy_context(struct rpc_context *rpc)
 	rpc->auth =NULL;
 
 	if (rpc->fd != -1) {
-		close(rpc->fd);
+#if defined(WIN32)
+		closesocket(rpc->fd);
+#else
+ 		close(rpc->fd);
+#endif
 	}
 
 	if (rpc->encodebuf != NULL) {

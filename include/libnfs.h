@@ -22,6 +22,29 @@
 struct nfs_context;
 struct rpc_context;
 
+#if defined(WIN32)
+struct statvfs {
+	uint32_t	f_bsize;
+	uint32_t	f_frsize;
+	uint64_t	f_blocks;
+	uint64_t	f_bfree;
+	uint64_t	f_bavail;
+	uint32_t	f_files;
+	uint32_t	f_ffree;
+	uint32_t	f_favail;
+	uint32_t	f_fsid;	
+	uint32_t	f_flag;
+	uint32_t	f_namemax;
+};
+struct utimbuf {
+	time_t actime;
+	time_t modtime;
+};
+#define R_OK	4
+#define W_OK	2
+#define X_OK	1
+#endif
+
 /*
  * Used for interfacing the async version of the api into an external eventsystem
  */

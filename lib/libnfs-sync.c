@@ -18,22 +18,31 @@
  * High level api to nfs filesystems
  */
 
+#if defined (WIN32)
+#include <winsock2.h>
+#define DllExport
+#else
+#include <strings.h>
+#include <unistd.h>
+#include <sys/statvfs.h>
+#include <poll.h>
+#include <sys/ioctl.h>
+#include <netdb.h>
+#include <sys/socket.h>
+#include <net/if.h>
+#endif
+
+#ifdef HAVE_CONFIG_H
 #include "config.h"
+#endif
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <strings.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <sys/statvfs.h>
-#include <sys/ioctl.h>
-#include <unistd.h>
 #include <fcntl.h>
 #include <errno.h>
-#include <poll.h>
-#include <sys/socket.h>
-#include <net/if.h>
-#include <netdb.h>
 #include "libnfs.h"
 #include "libnfs-raw.h"
 #include "libnfs-raw-mount.h"
@@ -1171,7 +1180,7 @@ void mount_free_export_list(struct exportnode *exports)
 
 
 
-
+#if !defined(WIN32)
 void free_nfs_srvr_list(struct nfs_server_list *srv)
 {
 	while (srv != NULL) {
@@ -1377,3 +1386,4 @@ struct nfs_server_list *nfs_find_local_servers(void)
 
 	return data.srvrs;
 }
+#endif

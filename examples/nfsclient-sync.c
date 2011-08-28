@@ -26,13 +26,22 @@
 #define NFSDIR "/BOOKS/Classics/"
 
 #define _GNU_SOURCE
+
+#if defined(WIN32)
+#include <winsock2.h>
+typedef int off_t;
+#pragma comment(lib, "ws2_32.lib")
+WSADATA wsaData;
+#else
+#include <sys/statvfs.h>
+#include <unistd.h>
+#endif
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <sys/statvfs.h>
-#include <unistd.h>
 #include <fcntl.h>
 #include "libnfs.h"
 #include <rpc/rpc.h>            /* for authunix_create() */
@@ -53,18 +62,25 @@ int main(int argc _U_, char *argv[] _U_)
 {
 	struct nfs_context *nfs;
 	int i, ret;
+	off_t offset;
 	struct client client;
 	struct stat st;
 	struct nfsfh  *nfsfh;
 	struct nfsdir *nfsdir;
 	struct nfsdirent *nfsdirent;
-	client.server = SERVER;
-	client.export = EXPORT;
-	client.is_finished = 0;
-	off_t offset;
 	struct statvfs svfs;
 	exports export, tmp;
 
+#if defined(WIN32)
+	if (WSAStartup(MAKEWORD(2,2), &wsaData) != 0) {
+		printf("Failed to start Winsock2\n");
+		exit(10);
+	}
+#endif
+
+	client.server = SERVER;
+	client.export = EXPORT;
+	client.is_finished = 0;
 	export = mount_getexports(SERVER);
 	if (export != NULL) {
 		printf("exports on server %s\n", SERVER);
@@ -198,11 +214,10 @@ int main(int argc _U_, char *argv[] _U_)
 		exit(10);
 	}
 	while((nfsdirent = nfs_readdir(nfs, nfsdir)) != NULL) {
-		char *filename = NULL;
+	  char filename[1024];
 		printf("Inode:%d Name:%s ", (int)nfsdirent->inode, nfsdirent->name);
-		asprintf(&filename, "%s/%s", NFSDIR, nfsdirent->name);
+		sprintf(&filename, "%s/%s", NFSDIR, nfsdirent->name);
 		ret = nfs_open(nfs, filename, O_RDONLY, &nfsfh);
-		free(filename);
 		if (ret != 0) {
 			printf("Failed to open(%s) %s\n", filename, nfs_get_error(nfs));
 			exit(10);
