@@ -99,8 +99,8 @@ void rpc_set_error(struct rpc_context *rpc, char *error_string, ...)
 		free(rpc->error_string);
 	}
         va_start(ap, error_string);
-	vasprintf(&str, error_string, ap);
-	rpc->error_string = str;
+	//	vasprintf(&str, error_string, ap);
+	//	rpc->error_string = str;
         va_end(ap);
 }
 
