@@ -1219,7 +1219,7 @@ void callit_cb(struct rpc_context *rpc, int status, void *data _U_, void *privat
 	/* check for dupes */
 	for (srvr = srv_data->srvrs; srvr; srvr = srvr->next) {
 		if (!strcmp(hostdd, srvr->addr)) {
-			return 0;
+			return;
 		}
 	}
 
