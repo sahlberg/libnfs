@@ -671,8 +671,10 @@ static void nfs_stat_1_cb(struct rpc_context *rpc _U_, int status, void *command
         st.st_gid     = res->GETATTR3res_u.resok.obj_attributes.gid;
         st.st_rdev    = 0;
         st.st_size    = res->GETATTR3res_u.resok.obj_attributes.size;
+#if !defined(WIN32)
         st.st_blksize = 4096;
         st.st_blocks  = res->GETATTR3res_u.resok.obj_attributes.size / 4096;
+#endif
         st.st_atime   = res->GETATTR3res_u.resok.obj_attributes.atime.seconds;
         st.st_mtime   = res->GETATTR3res_u.resok.obj_attributes.mtime.seconds;
         st.st_ctime   = res->GETATTR3res_u.resok.obj_attributes.ctime.seconds;
