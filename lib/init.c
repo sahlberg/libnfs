@@ -1,10 +1,7 @@
 /*
    Copyright (C) 2010 by Ronnie Sahlberg <ronniesahlberg@gmail.com>
 
-   This program is free software; you can redistribute it and/or modify
-   it under the terms of the GNU Lesser General Public License as published by
-   the Free Software Foundation; either version 2.1 of the License, or
-   (at your option) any later version.
+
 
    This program is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -99,8 +96,13 @@ void rpc_set_error(struct rpc_context *rpc, char *error_string, ...)
 		free(rpc->error_string);
 	}
         va_start(ap, error_string);
-	//	vasprintf(&str, error_string, ap);
-	//	rpc->error_string = str;
+#if defined (WIN32)
+	str = malloc(1024);
+	vsnprintf(str, 1024, error_string, ap);
+#else
+	vasprintf(&str, error_string, ap);
+#endif
+	rpc->error_string = str;
         va_end(ap);
 }
 
