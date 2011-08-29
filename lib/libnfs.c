@@ -2899,16 +2899,12 @@ void nfs_set_error(struct nfs_context *nfs, char *error_string, ...)
 	char *str = NULL;
 
         va_start(ap, error_string);
-#if defined (WIN32)
 	str = malloc(1024);
 	vsnprintf(str, 1024, error_string, ap);
-#else
-	vasprintf(&str, error_string, ap);
-#endif
 	if (nfs->rpc->error_string != NULL) {
 		free(nfs->rpc->error_string);
 	}
-	fs->rpc->error_string = str;
+	nfs->rpc->error_string = str;
         va_end(ap);
 }
 

@@ -90,19 +90,13 @@ void rpc_set_auth(struct rpc_context *rpc, struct AUTH *auth)
 void rpc_set_error(struct rpc_context *rpc, char *error_string, ...)
 {
         va_list ap;
-	char *str;
 
 	if (rpc->error_string != NULL) {
 		free(rpc->error_string);
 	}
         va_start(ap, error_string);
-#if defined (WIN32)
-	str = malloc(1024);
-	vsnprintf(str, 1024, error_string, ap);
-#else
-	vasprintf(&str, error_string, ap);
-#endif
-	rpc->error_string = str;
+	rpc->error_string = malloc(1024);
+	vsnprintf(rpc->error_string, 1024, error_string, ap);
         va_end(ap);
 }
 
