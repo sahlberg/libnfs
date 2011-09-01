@@ -49,6 +49,7 @@ case $host in
     ;;
   *solaris*)
     AC_CHECK_HEADERS([sys/filio.h])
+    AC_CHECK_HEADERS([sys/sockio.h])
     if test x$ENABLE_EXAMPLES = xyes; then
       AC_CHECK_LIB([socket], [main], , [AC_MSG_ERROR([Can not find required library])])
       AC_CHECK_LIB([nsl],    [main], , [AC_MSG_ERROR([Can not find required library])])

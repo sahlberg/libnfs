@@ -44,6 +44,7 @@ Cygwin: - tested under 64bit win2k8.
 MacOSX: - tested with SDK 10.4 (under Snow Leopard) - should also work with later SDKs and 64Bit
 iOS:    - tested with iOS SDK 4.2 - running on iOS 4.3.x
 FreeBSD:- tested with 8.2
+OpenSolaris
 
 
 Cygwin

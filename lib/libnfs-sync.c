@@ -34,6 +34,9 @@
 #include <sys/socket.h>
 #include <net/if.h>
 #include <netdb.h>
+#ifdef HAVE_SYS_SOCKIO_H
+#include <sys/sockio.h>
+#endif
 #include "libnfs.h"
 #include "libnfs-raw.h"
 #include "libnfs-raw-mount.h"
