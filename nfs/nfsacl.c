@@ -14,6 +14,11 @@
    You should have received a copy of the GNU Lesser General Public License
    along with this program; if not, see <http://www.gnu.org/licenses/>.
 */
+#ifdef WIN32
+#include "win32_compat.h"
+#else
+#include <sys/stat.h>
+#endif/*WIN32*/
 
 #if defined(WIN32)
 #include <winsock2.h>
@@ -21,7 +26,6 @@
 
 #include <stdio.h>
 #include <errno.h>
-#include <sys/stat.h>
 #include <string.h>
 #include <rpc/rpc.h>
 #include <rpc/xdr.h>

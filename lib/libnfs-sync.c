@@ -17,9 +17,8 @@
 /*
  * High level api to nfs filesystems
  */
-
-#if defined (WIN32)
-#include <winsock2.h>
+#ifdef WIN32
+#include "win32_compat.h"
 #define DllExport
 #else
 #include <strings.h>
@@ -43,9 +42,13 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <errno.h>
+
 #ifdef HAVE_SYS_SOCKIO_H
 #include <sys/sockio.h>
 #endif
+
+#include <fcntl.h>
+#include <errno.h>
 #include "libnfs.h"
 #include "libnfs-raw.h"
 #include "libnfs-raw-mount.h"
@@ -713,8 +716,11 @@ static void statvfs_cb(int status, struct nfs_context *nfs, void *data, void *pr
 		nfs_set_error(nfs, "statvfs call failed with \"%s\"", (char *)data);
 		return;
 	}
-
+#ifndef WIN32
 	memcpy(cb_data->return_data, data, sizeof(struct statvfs));
+#else
+  cb_data->return_data=NULL;
+#endif/**/
 }
 
 int nfs_statvfs(struct nfs_context *nfs, const char *path, struct statvfs *svfs)
@@ -1254,6 +1260,7 @@ void callit_cb(struct rpc_context *rpc, int status, void *data _U_, void *privat
 	srv_data->srvrs = srvr;
 }
 
+#ifndef WIN32
 static int send_nfsd_probes(struct rpc_context *rpc, struct ifconf *ifc, struct nfs_list_data *data)
 {
 	char *ptr;
@@ -1305,11 +1312,13 @@ static int send_nfsd_probes(struct rpc_context *rpc, struct ifconf *ifc, struct 
 
 	return 0;
 }
+#endif/*WIN32 TODO implement this with win32api FIXME*/
 
 struct nfs_server_list *nfs_find_local_servers(void)
 {
 	struct rpc_context *rpc;
 	struct nfs_list_data data = {0, NULL};
+#ifndef WIN32
 	struct timeval tv_start, tv_current;
 	struct ifconf ifc;
 	int size, loop;
@@ -1386,7 +1395,7 @@ struct nfs_server_list *nfs_find_local_servers(void)
 		free_nfs_srvr_list(data.srvrs);
 		return NULL;
 	}
-
+#endif/*WIN32 - FIXME redef it when send_nfsd_probes is implemented for win32*/
 	return data.srvrs;
 }
 #endif

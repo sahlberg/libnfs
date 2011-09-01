@@ -17,7 +17,14 @@
 
 /* Example program using the highlevel sync interface
  */
-
+#ifdef WIN32
+#include "win32_compat.h"
+#else
+#include <fcntl.h>
+#include <sys/stat.h>
+#include <sys/statvfs.h>
+#endif
+ 
 #define SERVER "10.1.1.27"
 #define EXPORT "/VIRTUAL"
 #define NFSFILE "/BOOKS/Classics/Dracula.djvu.truncated"
@@ -28,8 +35,6 @@
 #define _GNU_SOURCE
 
 #if defined(WIN32)
-#include <winsock2.h>
-typedef int off_t;
 #pragma comment(lib, "ws2_32.lib")
 WSADATA wsaData;
 #else

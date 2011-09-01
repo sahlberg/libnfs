@@ -14,13 +14,14 @@
    You should have received a copy of the GNU Lesser General Public License
    along with this program; if not, see <http://www.gnu.org/licenses/>.
 */
-
-#if defined(WIN32)
-#include <winsock2.h>
+#ifdef WIN32
+#include "win32_compat.h"
+#ifndef MSG_DONTWAIT
 #define MSG_DONTWAIT 0
+#endif
 #else
 #include <strings.h>
-#endif
+#endif/*WIN32*/
 
 #include <stdio.h>
 #include <stdlib.h>

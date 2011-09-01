@@ -19,13 +19,17 @@
  * This allow accurate control of the exact commands that are being used.
  */
 
+#ifdef WIN32
+#include "win32_compat.h"
+#else
+#include <poll.h>
+#endif
 #define SERVER "10.1.1.27"
 #define EXPORT "/shared"
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <poll.h>
 #include "libnfs.h"
 #include "libnfs-raw.h"
 #include "libnfs-raw-mount.h"

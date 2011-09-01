@@ -12,14 +12,13 @@
    along with this program; if not, see <http://www.gnu.org/licenses/>.
 */
 
-#define _GNU_SOURCE
-
-#if defined(WIN32)
-#include <winsock2.h>
+#ifdef WIN32
+#include "win32_compat.h"
 #else
 #include <unistd.h>
 #include <strings.h>
-#endif
+#endif/*WIN32*/
+#define _GNU_SOURCE
 
 #include <stdio.h>
 #include <stdarg.h>

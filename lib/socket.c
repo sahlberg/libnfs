@@ -14,6 +14,16 @@
    You should have received a copy of the GNU Lesser General Public License
    along with this program; if not, see <http://www.gnu.org/licenses/>.
 */
+#ifdef WIN32
+#include "win32_compat.h"
+#else
+#include <unistd.h>
+#include <poll.h>
+#include <arpa/inet.h>
+#include <sys/ioctl.h>
+#include <sys/socket.h>
+#include <netdb.h>
+#endif/*WIN32*/
 
 #if defined(WIN32)
 #include <winsock2.h>
@@ -61,7 +71,7 @@ static void set_nonblocking(int fd)
 	unsigned v;
 	v = fcntl(fd, F_GETFL, 0);
         fcntl(fd, F_SETFL, v | O_NONBLOCK);
-#endif
+#endif //FIXME
 }
 
 int rpc_get_fd(struct rpc_context *rpc)
@@ -140,6 +150,7 @@ static int rpc_read_from_socket(struct rpc_context *rpc)
 		rpc_set_error(rpc, "Ioctl FIONREAD returned error : %d. Closing socket.", errno);
 		return -1;
 	}
+
 	if (available == 0) {
 		rpc_set_error(rpc, "Socket has been closed");
 		return -1;
@@ -254,7 +265,7 @@ static int rpc_read_from_socket(struct rpc_context *rpc)
 int rpc_service(struct rpc_context *rpc, int revents)
 {
 	if (revents & POLLERR) {
-		int err = 0;
+		char err = 0;
 		socklen_t err_size = sizeof(err);
 
 		if (getsockopt(rpc->fd, SOL_SOCKET, SO_ERROR,

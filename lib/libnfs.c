@@ -17,21 +17,17 @@
 /*
  * High level api to nfs filesystems
  */
-
-#define _GNU_SOURCE
-
-#if defined(WIN32)
-#include <winsock2.h>
+#ifdef WIN32
+#include "win32_compat.h"
 #define DllExport
-#define O_SYNC 0
-typedef int uid_t;
-typedef int gid_t;
 #else
 #include <strings.h>
 #include <sys/statvfs.h>
 #include <utime.h>
 #include <unistd.h>
-#endif
+#endif/*WIN32*/
+
+#define _GNU_SOURCE
 
 #include <stdio.h>
 #include <stdarg.h>
@@ -681,10 +677,10 @@ static void nfs_stat_1_cb(struct rpc_context *rpc _U_, int status, void *command
         st.st_gid     = res->GETATTR3res_u.resok.obj_attributes.gid;
         st.st_rdev    = 0;
         st.st_size    = res->GETATTR3res_u.resok.obj_attributes.size;
-#if !defined(WIN32)
+#ifndef WIN32
         st.st_blksize = 4096;
         st.st_blocks  = res->GETATTR3res_u.resok.obj_attributes.size / 4096;
-#endif
+#endif//WIN32        
         st.st_atime   = res->GETATTR3res_u.resok.obj_attributes.atime.seconds;
         st.st_mtime   = res->GETATTR3res_u.resok.obj_attributes.mtime.seconds;
         st.st_ctime   = res->GETATTR3res_u.resok.obj_attributes.ctime.seconds;
@@ -1900,7 +1896,9 @@ static void nfs_statvfs_1_cb(struct rpc_context *rpc _U_, int status, void *comm
 	FSSTAT3res *res;
 	struct nfs_cb_data *data = private_data;
 	struct nfs_context *nfs = data->nfs;
+#ifndef WIN32
 	struct statvfs svfs;
+#endif/*WIN32*/
 
 	if (status == RPC_STATUS_ERROR) {
 		data->cb(-EFAULT, nfs, command_data, data->private_data);
@@ -1921,6 +1919,7 @@ static void nfs_statvfs_1_cb(struct rpc_context *rpc _U_, int status, void *comm
 		return;
 	}
 
+#ifndef WIN32
 	svfs.f_bsize   = 4096;
 	svfs.f_frsize  = 4096;
 	svfs.f_blocks  = res->FSSTAT3res_u.resok.tbytes/4096;
@@ -1934,6 +1933,9 @@ static void nfs_statvfs_1_cb(struct rpc_context *rpc _U_, int status, void *comm
 	svfs.f_namemax = 256;
 
 	data->cb(0, nfs, &svfs, data->private_data);
+#else
+  data->cb(0, nfs,NULL, data->private_data);  
+#endif/*WIN32*/
 	free_nfs_cb_data(data);
 }
 
@@ -2918,7 +2920,7 @@ void nfs_set_error(struct nfs_context *nfs, char *error_string, ...)
 		free(nfs->rpc->error_string);
 	}
 	nfs->rpc->error_string = str;
-        va_end(ap);
+    va_end(ap);
 }
 
 

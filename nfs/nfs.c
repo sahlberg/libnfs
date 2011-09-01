@@ -15,22 +15,14 @@
    along with this program; if not, see <http://www.gnu.org/licenses/>.
 */
 
-#if defined(WIN32)
-#include <winsock2.h>
-#define S_IRUSR 0000400
-#define S_IWUSR 0000200
-#define S_IXUSR 0000100
-#define S_IRGRP 0000040
-#define S_IWGRP 0000020
-#define S_IXGRP 0000010
-#define S_IROTH 0000004
-#define S_IWOTH 0000002
-#define S_IXOTH 0000001
-#endif
+#ifdef WIN32
+#include "win32_compat.h"
+#else
+#include <sys/stat.h>
+#endif/*WIN32*/
 
 #include <stdio.h>
 #include <errno.h>
-#include <sys/stat.h>
 #include <string.h>
 #include <rpc/rpc.h>
 #include <rpc/xdr.h>
@@ -39,7 +31,9 @@
 #include "libnfs-private.h"
 #include "libnfs-raw-nfs.h"
 
-
+#ifdef WIN32
+#define bzero(a,b) memset((a),(0),(b))
+#endif/*WIN32*/
 
 char *nfsstat3_to_str(int error)
 {

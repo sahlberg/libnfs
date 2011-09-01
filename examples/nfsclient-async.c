@@ -17,7 +17,14 @@
 
 /* Example program using the highlevel async interface.
  */
-
+#ifdef WIN32
+#include "win32_compat.h"
+#else
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <poll.h>
+#endif
+ 
 #define SERVER "10.1.1.27"
 #define EXPORT "/VIRTUAL"
 #define NFSFILE "/BOOKS/Classics/Dracula.djvu"
@@ -27,10 +34,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <sys/types.h>
-#include <sys/stat.h>
 #include <unistd.h>
-#include <fcntl.h>
-#include <poll.h>
 #include "libnfs.h"
 #include "libnfs-raw.h"
 #include "libnfs-raw-mount.h"
