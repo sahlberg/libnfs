@@ -373,8 +373,12 @@ int rpc_connect_async(struct rpc_context *rpc, const char *server, int port, rpc
 	rpc->connect_data = private_data;
 
 	set_nonblocking(rpc->fd);
-
-	if (connect(rpc->fd, (struct sockaddr *)&s, socksize) != 0 && errno != EINPROGRESS) {
+#if defined(WIN32)
+	if (connect(rpc->fd, (struct sockaddr *)&s, socksize) == 0 && GetLastError() != WSAEINPROGRESS   )
+#else
+	if (connect(rpc->fd, (struct sockaddr *)&s, socksize) != 0 && errno != EINPROGRESS) 
+#endif
+	{
 		rpc_set_error(rpc, "connect() to server failed");
 		return -1;
 	}		
