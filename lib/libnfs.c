@@ -1651,13 +1651,13 @@ int nfs_unlink_async(struct nfs_context *nfs, const char *path, nfs_cb cb, void 
  */
 static void nfs_opendir_cb(struct rpc_context *rpc _U_, int status, void *command_data, void *private_data)
 {
-	READDIR3res *res;
+	READDIRPLUS3res *res;
 	struct nfs_cb_data *data = private_data;
 	struct nfs_context *nfs = data->nfs;
 	struct nfsdir *nfsdir = data->continue_data;;
-	struct entry3 *entry;
+	struct entryplus3 *entry;
 	uint64_t cookie;
-	
+
 	if (status == RPC_STATUS_ERROR) {
 		data->cb(-EFAULT, nfs, command_data, data->private_data);
 		nfs_free_nfsdir(nfsdir);
@@ -1683,7 +1683,7 @@ static void nfs_opendir_cb(struct rpc_context *rpc _U_, int status, void *comman
 		return;
 	}
 
-	entry =res->READDIR3res_u.resok.reply.entries;
+	entry =res->READDIRPLUS3res_u.resok.reply.entries;
 	while (entry != NULL) {
 		struct nfsdirent *nfsdirent;
 
@@ -1712,9 +1712,9 @@ static void nfs_opendir_cb(struct rpc_context *rpc _U_, int status, void *comman
 		entry  = entry->nextentry;
 	}
 
-	if (res->READDIR3res_u.resok.reply.eof == 0) {
-	     	if (rpc_nfs_readdir_async(nfs->rpc, nfs_opendir_cb, &data->fh, cookie, res->READDIR3res_u.resok.cookieverf, 20000, data) != 0) {
-			rpc_set_error(nfs->rpc, "RPC error: Failed to send READDIR call for %s", data->path);
+	if (res->READDIRPLUS3res_u.resok.reply.eof == 0) {
+	     	if (rpc_nfs_readdirplus_async(nfs->rpc, nfs_opendir_cb, &data->fh, cookie, res->READDIRPLUS3res_u.resok.cookieverf, 8192, data) != 0) {
+			rpc_set_error(nfs->rpc, "RPC error: Failed to send READDIRPLUS call for %s", data->path);
 			data->cb(-ENOMEM, nfs, rpc_get_error(nfs->rpc), data->private_data);
 			nfs_free_nfsdir(nfsdir);
 			data->continue_data = NULL;
@@ -1737,8 +1737,8 @@ static int nfs_opendir_continue_internal(struct nfs_context *nfs, struct nfs_cb_
 	cookieverf3 cv;
 
 	bzero(cv, sizeof(cookieverf3));
-	if (rpc_nfs_readdir_async(nfs->rpc, nfs_opendir_cb, &data->fh, 0, (char *)&cv, 20000, data) != 0) {
-		rpc_set_error(nfs->rpc, "RPC error: Failed to send READDIR call for %s", data->path);
+	if (rpc_nfs_readdirplus_async(nfs->rpc, nfs_opendir_cb, &data->fh, 0, (char *)&cv, 8192, data) != 0) {
+		rpc_set_error(nfs->rpc, "RPC error: Failed to send READDIRPLUS call for %s", data->path);
 		data->cb(-ENOMEM, nfs, rpc_get_error(nfs->rpc), data->private_data);
 		free_nfs_cb_data(data);
 		return -1;

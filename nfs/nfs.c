@@ -476,7 +476,6 @@ int rpc_nfs_remove_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh,
 	return 0;
 }
 
-
 int rpc_nfs_readdir_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh, uint64_t cookie, char *cookieverf, int count, void *private_data)
 {
 	struct rpc_pdu *pdu;
@@ -503,6 +502,40 @@ int rpc_nfs_readdir_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh
 
 	if (rpc_queue_pdu(rpc, pdu) != 0) {
 		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for nfs/readdir call");
+		rpc_free_pdu(rpc, pdu);
+		return -3;
+	}
+
+	return 0;
+}
+
+int rpc_nfs_readdirplus_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh, uint64_t cookie, char *cookieverf, int count, void *private_data)
+{
+	struct rpc_pdu *pdu;
+	READDIRPLUS3args args;
+
+	pdu = rpc_allocate_pdu(rpc, NFS_PROGRAM, NFS_V3, NFS3_READDIRPLUS, cb, private_data, (xdrproc_t)xdr_READDIRPLUS3res, sizeof(READDIRPLUS3res));
+	if (pdu == NULL) {
+		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu for nfs/readdirplus call");
+		return -1;
+	}
+
+	bzero(&args, sizeof(READDIRPLUS3args));
+	args.dir.data.data_len = fh->data.data_len;
+	args.dir.data.data_val = fh->data.data_val;
+	args.cookie = cookie;
+	memcpy(&args.cookieverf, cookieverf, sizeof(cookieverf3)); 
+	args.dircount = count;
+	args.maxcount = count;
+
+	if (xdr_READDIRPLUS3args(&pdu->xdr, &args) == 0) {
+		rpc_set_error(rpc, "XDR error: Failed to encode READDIRPLUS3args");
+		rpc_free_pdu(rpc, pdu);
+		return -2;
+	}
+
+	if (rpc_queue_pdu(rpc, pdu) != 0) {
+		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for nfs/readdirplus call");
 		rpc_free_pdu(rpc, pdu);
 		return -3;
 	}
