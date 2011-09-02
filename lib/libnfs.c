@@ -1705,6 +1705,19 @@ static void nfs_opendir_cb(struct rpc_context *rpc _U_, int status, void *comman
 			return;
 		}
 		nfsdirent->inode = entry->fileid;
+		if (entry->name_attributes.attributes_follow) {
+			nfsdirent->type = entry->name_attributes.post_op_attr_u.attributes.type;
+			nfsdirent->mode = entry->name_attributes.post_op_attr_u.attributes.mode;
+			nfsdirent->size = entry->name_attributes.post_op_attr_u.attributes.size;
+
+			nfsdirent->atime.tv_sec  = entry->name_attributes.post_op_attr_u.attributes.atime.seconds;
+			nfsdirent->atime.tv_usec = entry->name_attributes.post_op_attr_u.attributes.atime.nseconds/1000;
+			nfsdirent->mtime.tv_sec  = entry->name_attributes.post_op_attr_u.attributes.mtime.seconds;
+			nfsdirent->mtime.tv_usec = entry->name_attributes.post_op_attr_u.attributes.mtime.nseconds/1000;
+			nfsdirent->ctime.tv_sec  = entry->name_attributes.post_op_attr_u.attributes.ctime.seconds;
+			nfsdirent->ctime.tv_usec = entry->name_attributes.post_op_attr_u.attributes.ctime.nseconds/1000;
+		}
+
 		nfsdirent->next  = nfsdir->entries;
 		nfsdir->entries  = nfsdirent;
 
