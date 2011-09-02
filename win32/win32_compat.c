@@ -48,10 +48,25 @@ static int dummy ATTRIBUTE((unused));
 int win32_inet_pton(int af, const char * src, void * dst)
 {
    int temp = sizeof(struct sockaddr_in);
-   char *srcNonConst = (char *)malloc(strlen(src)+1);
-   strncpy(srcNonConst,src,strlen(src));
-   WSAStringToAddress(srcNonConst,af,NULL,(LPSOCKADDR)dst,&temp);
-   return temp;
+   int ret = -1;
+   int len = strlen(src) + 1;
+   wchar_t *srcNonConst = (wchar_t *)malloc(len);
+   memset(srcNonConst, 0, len);
+   MultiByteToWideChar(CP_ACP, NULL, src, -1, srcNonConst, len);
+
+   if( WSAStringToAddress(srcNonConst,af,NULL,(LPSOCKADDR)dst,&temp) == 0 )
+   {
+	   ret = 1;
+   }
+   else
+   {
+		if(	WSAGetLastError() == WSAEINVAL )
+		{
+			ret = -1;
+		}
+   }
+   //free(srcNonConst);
+   return ret;
 }
 
 /* 
