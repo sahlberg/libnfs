@@ -66,9 +66,11 @@ static int rpc_disconnect_requeue(struct rpc_context *rpc);
 
 static void set_nonblocking(int fd)
 {
+	int v = 0;
 #if defined(WIN32)
+	long nonblocking=1;
+	v = ioctlsocket(fd, FIONBIO,&nonblocking);
 #else
-	unsigned v;
 	v = fcntl(fd, F_GETFL, 0);
         fcntl(fd, F_SETFL, v | O_NONBLOCK);
 #endif //FIXME
