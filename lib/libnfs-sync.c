@@ -43,10 +43,6 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <errno.h>
-#include <poll.h>
-#include <sys/socket.h>
-#include <net/if.h>
-#include <netdb.h>
 #ifdef HAVE_SYS_SOCKIO_H
 #include <sys/sockio.h>
 #endif
