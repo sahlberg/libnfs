@@ -483,7 +483,7 @@ int nfs_mount_async(struct nfs_context *nfs, const char *server, const char *exp
 		rpc_set_error(nfs->rpc, "out of memory. failed to allocate memory for nfs mount data");
 		return -1;
 	}
-	bzero(data, sizeof(struct nfs_cb_data));
+	bzero((char *)data, sizeof(struct nfs_cb_data));
 	new_server = strdup(server);
 	new_export = strdup(export);
 	if (nfs->server != NULL) {
@@ -604,7 +604,7 @@ static int nfs_lookuppath_async(struct nfs_context *nfs, const char *path, nfs_c
 		rpc_set_error(nfs->rpc, "out of memory: failed to allocate nfs_cb_data structure");
 		return -1;
 	}
-	bzero(data, sizeof(struct nfs_cb_data));
+	bzero((char *)data, sizeof(struct nfs_cb_data));
 	data->nfs                = nfs;
 	data->cb                 = cb;
 	data->continue_cb        = continue_cb;
@@ -767,7 +767,7 @@ static void nfs_open_cb(struct rpc_context *rpc _U_, int status, void *command_d
 		free_nfs_cb_data(data);
 		return;
 	}
-	bzero(nfsfh, sizeof(struct nfsfh));
+	bzero((char *)nfsfh, sizeof(struct nfsfh));
 
 	if (data->continue_int & O_SYNC) {
 		nfsfh->is_sync = 1;
@@ -921,7 +921,7 @@ int nfs_pread_async(struct nfs_context *nfs, struct nfsfh *nfsfh, off_t offset, 
 		rpc_set_error(nfs->rpc, "out of memory: failed to allocate nfs_cb_data structure");
 		return -1;
 	}
-	bzero(data, sizeof(struct nfs_cb_data));
+	bzero((char *)data, sizeof(struct nfs_cb_data));
 	data->nfs          = nfs;
 	data->cb           = cb;
 	data->private_data = private_data;
@@ -967,7 +967,7 @@ int nfs_pread_async(struct nfs_context *nfs, struct nfsfh *nfsfh, off_t offset, 
 			rpc_set_error(nfs->rpc, "out of memory: failed to allocate nfs_mcb_data structure");
 			return -1;
 		}
-		bzero(mdata, sizeof(struct nfs_mcb_data));
+		bzero((char *)mdata, sizeof(struct nfs_mcb_data));
 		mdata->data   = data;
 		mdata->offset = offset;
 		mdata->count  = readcount;
@@ -1038,7 +1038,7 @@ int nfs_pwrite_async(struct nfs_context *nfs, struct nfsfh *nfsfh, off_t offset,
 		rpc_set_error(nfs->rpc, "out of memory: failed to allocate nfs_cb_data structure");
 		return -1;
 	}
-	bzero(data, sizeof(struct nfs_cb_data));
+	bzero((char *)data, sizeof(struct nfs_cb_data));
 	data->nfs          = nfs;
 	data->cb           = cb;
 	data->private_data = private_data;
@@ -1097,7 +1097,7 @@ int nfs_fstat_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_cb cb, voi
 		rpc_set_error(nfs->rpc, "out of memory: failed to allocate nfs_cb_data structure");
 		return -1;
 	}
-	bzero(data, sizeof(struct nfs_cb_data));
+	bzero((char *)data, sizeof(struct nfs_cb_data));
 	data->nfs          = nfs;
 	data->cb           = cb;
 	data->private_data = private_data;
@@ -1154,7 +1154,7 @@ int nfs_fsync_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_cb cb, voi
 		rpc_set_error(nfs->rpc, "out of memory: failed to allocate nfs_cb_data structure");
 		return -1;
 	}
-	bzero(data, sizeof(struct nfs_cb_data));
+	bzero((char *)data, sizeof(struct nfs_cb_data));
 	data->nfs          = nfs;
 	data->cb           = cb;
 	data->private_data = private_data;
@@ -1213,12 +1213,12 @@ int nfs_ftruncate_async(struct nfs_context *nfs, struct nfsfh *nfsfh, off_t leng
 		rpc_set_error(nfs->rpc, "out of memory: failed to allocate nfs_cb_data structure");
 		return -1;
 	}
-	bzero(data, sizeof(struct nfs_cb_data));
+	bzero((char *)data, sizeof(struct nfs_cb_data));
 	data->nfs          = nfs;
 	data->cb           = cb;
 	data->private_data = private_data;
 
-	bzero(&args, sizeof(SETATTR3args));
+	bzero((char *)&args, sizeof(SETATTR3args));
 	args.object.data.data_len = nfsfh->fh.data.data_len;
 	args.object.data.data_val = nfsfh->fh.data.data_val;
 	args.new_attributes.size.set_it = 1;
@@ -1471,7 +1471,7 @@ static void nfs_create_2_cb(struct rpc_context *rpc _U_, int status, void *comma
 		free_nfs_cb_data(data);
 		return;
 	}
-	bzero(nfsfh, sizeof(struct nfsfh));
+	bzero((char *)nfsfh, sizeof(struct nfsfh));
 
 	/* steal the filehandle */
 	nfsfh->fh.data.data_len = data->fh.data.data_len;
@@ -1695,7 +1695,7 @@ static void nfs_opendir_cb(struct rpc_context *rpc _U_, int status, void *comman
 			free_nfs_cb_data(data);
 			return;
 		}
-		bzero(nfsdirent, sizeof(struct nfsdirent));
+		bzero((char *)nfsdirent, sizeof(struct nfsdirent));
 		nfsdirent->name = strdup(entry->name);
 		if (nfsdirent->name == NULL) {
 			data->cb(-ENOMEM, nfs, "Failed to allocate dirent->name", data->private_data);
@@ -1749,7 +1749,7 @@ static int nfs_opendir_continue_internal(struct nfs_context *nfs, struct nfs_cb_
 {
 	cookieverf3 cv;
 
-	bzero(cv, sizeof(cookieverf3));
+	bzero((char *)cv, sizeof(cookieverf3));
 	if (rpc_nfs_readdirplus_async(nfs->rpc, nfs_opendir_cb, &data->fh, 0, (char *)&cv, 8192, data) != 0) {
 		rpc_set_error(nfs->rpc, "RPC error: Failed to send READDIRPLUS call for %s", data->path);
 		data->cb(-ENOMEM, nfs, rpc_get_error(nfs->rpc), data->private_data);
@@ -1768,7 +1768,7 @@ int nfs_opendir_async(struct nfs_context *nfs, const char *path, nfs_cb cb, void
 		rpc_set_error(nfs->rpc, "failed to allocate buffer for nfsdir");
 		return -1;
 	}
-	bzero(nfsdir, sizeof(struct nfsdir));
+	bzero((char *)nfsdir, sizeof(struct nfsdir));
 
 	if (nfs_lookuppath_async(nfs, path, cb, private_data, nfs_opendir_continue_internal, nfsdir, free, 0) != 0) {
 		rpc_set_error(nfs->rpc, "Out of memory: failed to start parsing the path components");
@@ -2042,7 +2042,7 @@ static int nfs_chmod_continue_internal(struct nfs_context *nfs, struct nfs_cb_da
 {
 	SETATTR3args args;
 
-	bzero(&args, sizeof(SETATTR3args));
+	bzero((char *)&args, sizeof(SETATTR3args));
 	args.object.data.data_len = data->fh.data.data_len;
 	args.object.data.data_val = data->fh.data.data_val;
 	args.new_attributes.mode.set_it = 1;
@@ -2080,7 +2080,7 @@ int nfs_fchmod_async(struct nfs_context *nfs, struct nfsfh *nfsfh, int mode, nfs
 		rpc_set_error(nfs->rpc, "out of memory. failed to allocate memory for nfs mount data");
 		return -1;
 	}
-	bzero(data, sizeof(struct nfs_cb_data));
+	bzero((char *)data, sizeof(struct nfs_cb_data));
 	data->nfs          = nfs;
 	data->cb           = cb;
 	data->private_data = private_data;
@@ -2146,7 +2146,7 @@ static int nfs_chown_continue_internal(struct nfs_context *nfs, struct nfs_cb_da
 	SETATTR3args args;
 	struct nfs_chown_data *chown_data = data->continue_data;
 
-	bzero(&args, sizeof(SETATTR3args));
+	bzero((char *)&args, sizeof(SETATTR3args));
 	args.object.data.data_len = data->fh.data.data_len;
 	args.object.data.data_val = data->fh.data.data_val;
 	if (chown_data->uid != (uid_t)-1) {
@@ -2213,7 +2213,7 @@ int nfs_fchown_async(struct nfs_context *nfs, struct nfsfh *nfsfh, int uid, int 
 		rpc_set_error(nfs->rpc, "out of memory. failed to allocate memory for fchown data");
 		return -1;
 	}
-	bzero(data, sizeof(struct nfs_cb_data));
+	bzero((char *)data, sizeof(struct nfs_cb_data));
 	data->nfs           = nfs;
 	data->cb            = cb;
 	data->private_data  = private_data;
@@ -2277,7 +2277,7 @@ static int nfs_utimes_continue_internal(struct nfs_context *nfs, struct nfs_cb_d
 	SETATTR3args args;
 	struct timeval *utimes_data = data->continue_data;
 
-	bzero(&args, sizeof(SETATTR3args));
+	bzero((char *)&args, sizeof(SETATTR3args));
 	args.object.data.data_len = data->fh.data.data_len;
 	args.object.data.data_val = data->fh.data.data_val;
 	if (utimes_data != NULL) {
@@ -2525,7 +2525,7 @@ int nfs_symlink_async(struct nfs_context *nfs, const char *oldpath, const char *
 		rpc_set_error(nfs->rpc, "Out of memory, failed to allocate buffer for symlink data");
 		return -1;
 	}
-	bzero(symlink_data, sizeof(struct nfs_symlink_data));
+	bzero((char *)symlink_data, sizeof(struct nfs_symlink_data));
 
 	symlink_data->oldpath = strdup(oldpath);
 	if (symlink_data->oldpath == NULL) {
@@ -2679,7 +2679,7 @@ int nfs_rename_async(struct nfs_context *nfs, const char *oldpath, const char *n
 		rpc_set_error(nfs->rpc, "Out of memory, failed to allocate buffer for rename data");
 		return -1;
 	}
-	bzero(rename_data, sizeof(struct nfs_rename_data));
+	bzero((char *)rename_data, sizeof(struct nfs_rename_data));
 
 	rename_data->oldpath = strdup(oldpath);
 	if (rename_data->oldpath == NULL) {
@@ -2835,7 +2835,7 @@ int nfs_link_async(struct nfs_context *nfs, const char *oldpath, const char *new
 		rpc_set_error(nfs->rpc, "Out of memory, failed to allocate buffer for link data");
 		return -1;
 	}
-	bzero(link_data, sizeof(struct nfs_link_data));
+	bzero((char *)link_data, sizeof(struct nfs_link_data));
 
 	link_data->oldpath = strdup(oldpath);
 	if (link_data->oldpath == NULL) {
@@ -3054,7 +3054,7 @@ int mount_getexports_async(struct rpc_context *rpc, const char *server, rpc_cb c
 	if (data == NULL) {
 		return -1;
 	}
-	bzero(data, sizeof(struct mount_cb_data));
+	bzero((char *)data, sizeof(struct mount_cb_data));
 	data->cb           = cb;
 	data->private_data = private_data;
 	data->server       = strdup(server);

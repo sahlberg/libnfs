@@ -37,7 +37,7 @@ struct rpc_context *rpc_init_context(void)
 	if (rpc == NULL) {
 		return NULL;
 	}
-	bzero(rpc, sizeof(struct rpc_context));
+	bzero((char *)rpc, sizeof(struct rpc_context));
 
 	rpc->encodebuflen = 65536;
 	rpc->encodebuf = malloc(rpc->encodebuflen);
