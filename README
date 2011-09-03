@@ -45,6 +45,7 @@ MacOSX: - tested with SDK 10.4 (under Snow Leopard) - should also work with late
 iOS:    - tested with iOS SDK 4.2 - running on iOS 4.3.x
 FreeBSD:- tested with 8.2
 OpenSolaris
+Windows:- tested on Windows 7 using Visual Studio 10
 
 
 Cygwin
