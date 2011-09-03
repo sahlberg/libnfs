@@ -363,7 +363,7 @@ int rpc_nfs_mkdir_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh, 
 		return -1;
 	}
 
-	bzero(&args, sizeof(MKDIR3args));
+	bzero((char *)&args, sizeof(MKDIR3args));
 	args.where.dir.data.data_len = fh->data.data_len;
 	args.where.dir.data.data_val = fh->data.data_val;
 	args.where.name = dir;
@@ -399,7 +399,7 @@ int rpc_nfs_rmdir_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh, 
 		return -1;
 	}
 
-	bzero(&args, sizeof(RMDIR3args));
+	bzero((char *)&args, sizeof(RMDIR3args));
 	args.object.dir.data.data_len = fh->data.data_len;
 	args.object.dir.data.data_val = fh->data.data_val;
 	args.object.name = dir;
@@ -432,7 +432,7 @@ int rpc_nfs_create_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh,
 		return -1;
 	}
 
-	bzero(&args, sizeof(CREATE3args));
+	bzero((char *)&args, sizeof(CREATE3args));
 	args.where.dir.data.data_len = fh->data.data_len;
 	args.where.dir.data.data_val = fh->data.data_val;
 	args.where.name = file;
@@ -469,7 +469,7 @@ int rpc_nfs_remove_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh,
 		return -1;
 	}
 
-	bzero(&args, sizeof(REMOVE3args));
+	bzero((char *)&args, sizeof(REMOVE3args));
 	args.object.dir.data.data_len = fh->data.data_len;
 	args.object.dir.data.data_val = fh->data.data_val;
 	args.object.name = file;
@@ -500,7 +500,7 @@ int rpc_nfs_readdir_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh
 		return -1;
 	}
 
-	bzero(&args, sizeof(READDIR3args));
+	bzero((char *)&args, sizeof(READDIR3args));
 	args.dir.data.data_len = fh->data.data_len;
 	args.dir.data.data_val = fh->data.data_val;
 	args.cookie = cookie;
@@ -533,7 +533,7 @@ int rpc_nfs_readdirplus_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3
 		return -1;
 	}
 
-	bzero(&args, sizeof(READDIRPLUS3args));
+	bzero((char *)&args, sizeof(READDIRPLUS3args));
 	args.dir.data.data_len = fh->data.data_len;
 	args.dir.data.data_val = fh->data.data_val;
 	args.cookie = cookie;
@@ -655,7 +655,7 @@ int rpc_nfs_symlink_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh
 		return -1;
 	}
 
-	bzero(&args, sizeof(SYMLINK3args));
+	bzero((char *)&args, sizeof(SYMLINK3args));
 	args.where.dir.data.data_len = fh->data.data_len;
 	args.where.dir.data.data_val = fh->data.data_val;
 	args.where.name = newname;
@@ -692,7 +692,7 @@ int rpc_nfs_rename_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *old
 		return -1;
 	}
 
-	bzero(&args, sizeof(RENAME3args));
+	bzero((char *)&args, sizeof(RENAME3args));
 	args.from.dir.data.data_len = olddir->data.data_len;
 	args.from.dir.data.data_val = olddir->data.data_val;
 	args.from.name = oldname;
@@ -729,7 +729,7 @@ int rpc_nfs_link_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *file,
 		return -1;
 	}
 
-	bzero(&args, sizeof(LINK3args));
+	bzero((char *)&args, sizeof(LINK3args));
 	args.file.data.data_len = file->data.data_len;
 	args.file.data.data_val = file->data.data_val;
 	args.link.dir.data.data_len = newdir->data.data_len;
