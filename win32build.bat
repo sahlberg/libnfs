@@ -67,7 +67,7 @@ cl /I. /Iinclude /I%RPCINCLUDE% /Imount /Infs -Zi -Od -c -DWIN32 -D_WIN32_WINNT=
 rem
 rem create a linklibrary/dll
 rem
-lib /out:lib\libnfs.lib /def:lib\libnfs.def nfs\nfs.obj nfs\nfsacl.obj nfs\libnfs-raw-nfs.obj rquota\rquota.obj rquota\libnfs-raw-rquota.obj mount\mount.obj mount\libnfs-raw-mount.obj portmap\portmap.obj portmap\libnfs-raw-portmap.obj lib\init.obj lib\pdu.obj lib\socket.obj lib\libnfs.obj lib\libnfs-sync.obj
+lib /out:lib\libnfs.lib /def:lib\libnfs-win32.def nfs\nfs.obj nfs\nfsacl.obj nfs\libnfs-raw-nfs.obj rquota\rquota.obj rquota\libnfs-raw-rquota.obj mount\mount.obj mount\libnfs-raw-mount.obj portmap\portmap.obj portmap\libnfs-raw-portmap.obj lib\init.obj lib\pdu.obj lib\socket.obj lib\libnfs.obj lib\libnfs-sync.obj
 
 link /DLL /out:lib\libnfs.dll /DEBUG /DEBUGTYPE:cv lib\libnfs.exp nfs\nfs.obj nfs\nfsacl.obj nfs\libnfs-raw-nfs.obj rquota\rquota.obj rquota\libnfs-raw-rquota.obj mount\mount.obj mount\libnfs-raw-mount.obj portmap\portmap.obj portmap\libnfs-raw-portmap.obj lib\init.obj lib\pdu.obj lib\socket.obj lib\libnfs.obj lib\libnfs-sync.obj %RPCLIB% ws2_32.lib
 
