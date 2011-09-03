@@ -47,7 +47,7 @@ struct rpc_pdu *rpc_allocate_pdu(struct rpc_context *rpc, int program, int versi
 		rpc_set_error(rpc, "Out of memory: Failed to allocate pdu structure");
 		return NULL;
 	}
-	bzero((char *)pdu, sizeof(struct rpc_pdu));
+	memset(pdu, 0, sizeof(struct rpc_pdu));
 	pdu->xid                = rpc->xid++;
 	pdu->cb                 = cb;
 	pdu->private_data       = private_data;
@@ -59,7 +59,7 @@ struct rpc_pdu *rpc_allocate_pdu(struct rpc_context *rpc, int program, int versi
 		xdr_setpos(&pdu->xdr, 4); /* skip past the record marker */
 	}
 
-	bzero((char *)&msg, sizeof(struct rpc_msg));
+	memset(&msg, 0, sizeof(struct rpc_msg));
 	msg.rm_xid = pdu->xid;
         msg.rm_direction = CALL;
 	msg.rm_call.cb_rpcvers = RPC_MSG_VERSION;
@@ -152,7 +152,7 @@ static int rpc_process_reply(struct rpc_context *rpc, struct rpc_pdu *pdu, XDR *
 {
 	struct rpc_msg msg;
 
-	bzero((char *)&msg, sizeof(struct rpc_msg));
+	memset(&msg, 0, sizeof(struct rpc_msg));
 	msg.acpted_rply.ar_verf = _null_auth;
 	if (pdu->xdr_decode_bufsize > 0) {
 		if (pdu->xdr_decode_buf != NULL) {
@@ -164,7 +164,7 @@ static int rpc_process_reply(struct rpc_context *rpc, struct rpc_pdu *pdu, XDR *
 			pdu->cb(rpc, RPC_STATUS_ERROR, "Failed to allocate buffer for decoding of XDR reply", pdu->private_data);
 			return 0;
 		}
-		bzero((char *)pdu->xdr_decode_buf, pdu->xdr_decode_bufsize);
+		memset(pdu->xdr_decode_buf, 0, pdu->xdr_decode_bufsize);
 	}
 	msg.acpted_rply.ar_results.where = pdu->xdr_decode_buf;
 	msg.acpted_rply.ar_results.proc  = pdu->xdr_decode_fn;
@@ -216,7 +216,7 @@ int rpc_process_pdu(struct rpc_context *rpc, char *buf, int size)
 	int pos, recordmarker;
 	unsigned int xid;
 
-	bzero((char *)&xdr, sizeof(XDR));
+	memset(&xdr, 0, sizeof(XDR));
 
 	xdrmem_create(&xdr, buf, size, XDR_DECODE);
 	if (rpc->is_udp == 0) {
