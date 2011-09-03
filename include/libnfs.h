@@ -22,24 +22,53 @@
 struct nfs_context;
 struct rpc_context;
 
+#if defined(WIN32)
+#define EXTERN __declspec( dllexport )
+#else
+#define EXTERN 
+#endif
+
+#if defined(WIN32)
+struct statvfs {
+	uint32_t	f_bsize;
+	uint32_t	f_frsize;
+	uint64_t	f_blocks;
+	uint64_t	f_bfree;
+	uint64_t	f_bavail;
+	uint32_t	f_files;
+	uint32_t	f_ffree;
+	uint32_t	f_favail;
+	uint32_t	f_fsid;	
+	uint32_t	f_flag;
+	uint32_t	f_namemax;
+};
+struct utimbuf {
+	time_t actime;
+	time_t modtime;
+};
+#define R_OK	4
+#define W_OK	2
+#define X_OK	1
+#endif
+
 /*
  * Used for interfacing the async version of the api into an external eventsystem
  */
-int nfs_get_fd(struct nfs_context *nfs);
-int nfs_which_events(struct nfs_context *nfs);
-int nfs_service(struct nfs_context *nfs, int revents);
+EXTERN int nfs_get_fd(struct nfs_context *nfs);
+EXTERN int nfs_which_events(struct nfs_context *nfs);
+EXTERN int nfs_service(struct nfs_context *nfs, int revents);
 
 /*
  * Used if you need different credentials than the default for the current user.
  */
 struct AUTH;
-void nfs_set_auth(struct nfs_context *nfs, struct AUTH *auth);
+EXTERN void nfs_set_auth(struct nfs_context *nfs, struct AUTH *auth);
 
 
 /*
  * When an operation failed, this function can extract a detailed error string.
  */
-char *nfs_get_error(struct nfs_context *nfs);
+EXTERN char *nfs_get_error(struct nfs_context *nfs);
 
 
 /*
@@ -63,11 +92,11 @@ typedef void (*rpc_cb)(struct rpc_context *rpc, int status, void *data, void *pr
  *  NULL : Failed to create a context.
  *  *nfs : A pointer to an nfs context.
  */
-struct nfs_context *nfs_init_context(void);
+EXTERN struct nfs_context *nfs_init_context(void);
 /*
  * Destroy an nfs context.
  */
-void nfs_destroy_context(struct nfs_context *nfs);
+EXTERN void nfs_destroy_context(struct nfs_context *nfs);
 
 
 struct nfsfh;
@@ -75,12 +104,12 @@ struct nfsfh;
 /*
  * Get the maximum supported READ3 size by the server
  */
-size_t nfs_get_readmax(struct nfs_context *nfs);
+EXTERN size_t nfs_get_readmax(struct nfs_context *nfs);
 
 /*
  * Get the maximum supported WRITE3 size by the server
  */
-size_t nfs_get_writemax(struct nfs_context *nfs);
+EXTERN size_t nfs_get_writemax(struct nfs_context *nfs);
 
 
 /*
@@ -98,14 +127,14 @@ size_t nfs_get_writemax(struct nfs_context *nfs);
  * -errno : An error occured.
  *          data is the error string.
  */
-int nfs_mount_async(struct nfs_context *nfs, const char *server, const char *exportname, nfs_cb cb, void *private_data);
+EXTERN int nfs_mount_async(struct nfs_context *nfs, const char *server, const char *exportname, nfs_cb cb, void *private_data);
 /*
  * Sync nfs mount.
  * Function returns
  *      0 : The operation was successfull.
  * -errno : The command failed.
  */
-int nfs_mount(struct nfs_context *nfs, const char *server, const char *exportname);
+EXTERN int nfs_mount(struct nfs_context *nfs, const char *server, const char *exportname);
 
 
 
@@ -126,14 +155,14 @@ int nfs_mount(struct nfs_context *nfs, const char *server, const char *exportnam
  *          data is the error string.
  */
 struct stat;
-int nfs_stat_async(struct nfs_context *nfs, const char *path, nfs_cb cb, void *private_data);
+EXTERN int nfs_stat_async(struct nfs_context *nfs, const char *path, nfs_cb cb, void *private_data);
 /*
  * Sync stat(<filename>)
  * Function returns
  *      0 : The operation was successfull.
  * -errno : The command failed.
  */
-int nfs_stat(struct nfs_context *nfs, const char *path, struct stat *st);
+EXTERN int nfs_stat(struct nfs_context *nfs, const char *path, struct stat *st);
 
 
 /*
@@ -151,14 +180,14 @@ int nfs_stat(struct nfs_context *nfs, const char *path, struct stat *st);
  * -errno : An error occured.
  *          data is the error string.
  */
-int nfs_fstat_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_cb cb, void *private_data);
+EXTERN int nfs_fstat_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_cb cb, void *private_data);
 /*
  * Sync fstat(nfsfh *)
  * Function returns
  *      0 : The operation was successfull.
  * -errno : The command failed.
  */
-int nfs_fstat(struct nfs_context *nfs, struct nfsfh *nfsfh, struct stat *st);
+EXTERN int nfs_fstat(struct nfs_context *nfs, struct nfsfh *nfsfh, struct stat *st);
 
 
 
@@ -181,14 +210,14 @@ int nfs_fstat(struct nfs_context *nfs, struct nfsfh *nfsfh, struct stat *st);
  * -errno : An error occured.
  *          data is the error string.
  */
-int nfs_open_async(struct nfs_context *nfs, const char *path, int mode, nfs_cb cb, void *private_data);
+EXTERN int nfs_open_async(struct nfs_context *nfs, const char *path, int mode, nfs_cb cb, void *private_data);
 /*
  * Sync stat(<filename>)
  * Function returns
  *      0 : The operation was successfull. *nfsfh is filled in.
  * -errno : The command failed.
  */
-int nfs_open(struct nfs_context *nfs, const char *path, int mode, struct nfsfh **nfsfh);
+EXTERN int nfs_open(struct nfs_context *nfs, const char *path, int mode, struct nfsfh **nfsfh);
 
 
 
@@ -209,14 +238,14 @@ int nfs_open(struct nfs_context *nfs, const char *path, int mode, struct nfsfh *
  * -errno : An error occured.
  *          data is the error string.
  */
-int nfs_close_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_cb cb, void *private_data);
+EXTERN int nfs_close_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_cb cb, void *private_data);
 /*
  * Sync close(nfsfh)
  * Function returns
  *      0 : The operation was successfull.
  * -errno : The command failed.
  */
-int nfs_close(struct nfs_context *nfs, struct nfsfh *nfsfh);
+EXTERN int nfs_close(struct nfs_context *nfs, struct nfsfh *nfsfh);
 
 
 /*
@@ -236,14 +265,14 @@ int nfs_close(struct nfs_context *nfs, struct nfsfh *nfsfh);
  * -errno : An error occured.
  *          data is the error string.
  */
-int nfs_pread_async(struct nfs_context *nfs, struct nfsfh *nfsfh, off_t offset, size_t count, nfs_cb cb, void *private_data);
+EXTERN int nfs_pread_async(struct nfs_context *nfs, struct nfsfh *nfsfh, off_t offset, size_t count, nfs_cb cb, void *private_data);
 /*
  * Sync pread()
  * Function returns
  *    >=0 : numer of bytes read.
  * -errno : An error occured.
  */
-int nfs_pread(struct nfs_context *nfs, struct nfsfh *nfsfh, off_t offset, size_t count, char *buf);
+EXTERN int nfs_pread(struct nfs_context *nfs, struct nfsfh *nfsfh, off_t offset, size_t count, char *buf);
 
 
 
@@ -264,14 +293,14 @@ int nfs_pread(struct nfs_context *nfs, struct nfsfh *nfsfh, off_t offset, size_t
  * -errno : An error occured.
  *          data is the error string.
  */
-int nfs_read_async(struct nfs_context *nfs, struct nfsfh *nfsfh, size_t count, nfs_cb cb, void *private_data);
+EXTERN int nfs_read_async(struct nfs_context *nfs, struct nfsfh *nfsfh, size_t count, nfs_cb cb, void *private_data);
 /*
  * Sync read()
  * Function returns
  *    >=0 : numer of bytes read.
  * -errno : An error occured.
  */
-int nfs_read(struct nfs_context *nfs, struct nfsfh *nfsfh, size_t count, char *buf);
+EXTERN int nfs_read(struct nfs_context *nfs, struct nfsfh *nfsfh, size_t count, char *buf);
 
 
 
@@ -292,14 +321,14 @@ int nfs_read(struct nfs_context *nfs, struct nfsfh *nfsfh, size_t count, char *b
  * -errno : An error occured.
  *          data is the error string.
  */
-int nfs_pwrite_async(struct nfs_context *nfs, struct nfsfh *nfsfh, off_t offset, size_t count, char *buf, nfs_cb cb, void *private_data);
+EXTERN int nfs_pwrite_async(struct nfs_context *nfs, struct nfsfh *nfsfh, off_t offset, size_t count, char *buf, nfs_cb cb, void *private_data);
 /*
  * Sync pwrite()
  * Function returns
  *    >=0 : numer of bytes written.
  * -errno : An error occured.
  */
-int nfs_pwrite(struct nfs_context *nfs, struct nfsfh *nfsfh, off_t offset, size_t count, char *buf);
+EXTERN int nfs_pwrite(struct nfs_context *nfs, struct nfsfh *nfsfh, off_t offset, size_t count, char *buf);
 
 
 /*
@@ -318,14 +347,14 @@ int nfs_pwrite(struct nfs_context *nfs, struct nfsfh *nfsfh, off_t offset, size_
  * -errno : An error occured.
  *          data is the error string.
  */
-int nfs_write_async(struct nfs_context *nfs, struct nfsfh *nfsfh, size_t count, char *buf, nfs_cb cb, void *private_data);
+EXTERN int nfs_write_async(struct nfs_context *nfs, struct nfsfh *nfsfh, size_t count, char *buf, nfs_cb cb, void *private_data);
 /*
  * Sync write()
  * Function returns
  *    >=0 : numer of bytes written.
  * -errno : An error occured.
  */
-int nfs_write(struct nfs_context *nfs, struct nfsfh *nfsfh, size_t count, char *buf);
+EXTERN int nfs_write(struct nfs_context *nfs, struct nfsfh *nfsfh, size_t count, char *buf);
 
 
 /*
@@ -344,14 +373,14 @@ int nfs_write(struct nfs_context *nfs, struct nfsfh *nfsfh, size_t count, char *
  * -errno : An error occured.
  *          data is the error string.
  */
-int nfs_lseek_async(struct nfs_context *nfs, struct nfsfh *nfsfh, off_t offset, int whence, nfs_cb cb, void *private_data);
+EXTERN int nfs_lseek_async(struct nfs_context *nfs, struct nfsfh *nfsfh, off_t offset, int whence, nfs_cb cb, void *private_data);
 /*
  * Sync lseek()
  * Function returns
  *    >=0 : numer of bytes read.
  * -errno : An error occured.
  */
-int nfs_lseek(struct nfs_context *nfs, struct nfsfh *nfsfh, off_t offset, int whence, off_t *current_offset);
+EXTERN int nfs_lseek(struct nfs_context *nfs, struct nfsfh *nfsfh, off_t offset, int whence, off_t *current_offset);
 
 
 /*
@@ -369,14 +398,14 @@ int nfs_lseek(struct nfs_context *nfs, struct nfsfh *nfsfh, off_t offset, int wh
  * -errno : An error occured.
  *          data is the error string.
  */
-int nfs_fsync_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_cb cb, void *private_data);
+EXTERN int nfs_fsync_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_cb cb, void *private_data);
 /*
  * Sync fsync()
  * Function returns
  *      0 : Success
  * -errno : An error occured.
  */
-int nfs_fsync(struct nfs_context *nfs, struct nfsfh *nfsfh);
+EXTERN int nfs_fsync(struct nfs_context *nfs, struct nfsfh *nfsfh);
 
 
 
@@ -395,14 +424,14 @@ int nfs_fsync(struct nfs_context *nfs, struct nfsfh *nfsfh);
  * -errno : An error occured.
  *          data is the error string.
  */
-int nfs_truncate_async(struct nfs_context *nfs, const char *path, off_t length, nfs_cb cb, void *private_data);
+EXTERN int nfs_truncate_async(struct nfs_context *nfs, const char *path, off_t length, nfs_cb cb, void *private_data);
 /*
  * Sync truncate()
  * Function returns
  *      0 : Success
  * -errno : An error occured.
  */
-int nfs_truncate(struct nfs_context *nfs, const char *path, off_t length);
+EXTERN int nfs_truncate(struct nfs_context *nfs, const char *path, off_t length);
 
 
 
@@ -421,14 +450,14 @@ int nfs_truncate(struct nfs_context *nfs, const char *path, off_t length);
  * -errno : An error occured.
  *          data is the error string.
  */
-int nfs_ftruncate_async(struct nfs_context *nfs, struct nfsfh *nfsfh, off_t length, nfs_cb cb, void *private_data);
+EXTERN int nfs_ftruncate_async(struct nfs_context *nfs, struct nfsfh *nfsfh, off_t length, nfs_cb cb, void *private_data);
 /*
  * Sync ftruncate()
  * Function returns
  *      0 : Success
  * -errno : An error occured.
  */
-int nfs_ftruncate(struct nfs_context *nfs, struct nfsfh *nfsfh, off_t length);
+EXTERN int nfs_ftruncate(struct nfs_context *nfs, struct nfsfh *nfsfh, off_t length);
 
 
 
@@ -450,14 +479,14 @@ int nfs_ftruncate(struct nfs_context *nfs, struct nfsfh *nfsfh, off_t length);
  * -errno : An error occured.
  *          data is the error string.
  */
-int nfs_mkdir_async(struct nfs_context *nfs, const char *path, nfs_cb cb, void *private_data);
+EXTERN int nfs_mkdir_async(struct nfs_context *nfs, const char *path, nfs_cb cb, void *private_data);
 /*
  * Sync mkdir()
  * Function returns
  *      0 : Success
  * -errno : An error occured.
  */
-int nfs_mkdir(struct nfs_context *nfs, const char *path);
+EXTERN int nfs_mkdir(struct nfs_context *nfs, const char *path);
 
 
 
@@ -476,14 +505,14 @@ int nfs_mkdir(struct nfs_context *nfs, const char *path);
  * -errno : An error occured.
  *          data is the error string.
  */
-int nfs_rmdir_async(struct nfs_context *nfs, const char *path, nfs_cb cb, void *private_data);
+EXTERN int nfs_rmdir_async(struct nfs_context *nfs, const char *path, nfs_cb cb, void *private_data);
 /*
  * Sync rmdir()
  * Function returns
  *      0 : Success
  * -errno : An error occured.
  */
-int nfs_rmdir(struct nfs_context *nfs, const char *path);
+EXTERN int nfs_rmdir(struct nfs_context *nfs, const char *path);
 
 
 
@@ -504,14 +533,14 @@ int nfs_rmdir(struct nfs_context *nfs, const char *path);
  * -errno : An error occured.
  *          data is the error string.
  */
-int nfs_creat_async(struct nfs_context *nfs, const char *path, int mode, nfs_cb cb, void *private_data);
+EXTERN int nfs_creat_async(struct nfs_context *nfs, const char *path, int mode, nfs_cb cb, void *private_data);
 /*
  * Sync creat()
  * Function returns
  *      0 : Success
  * -errno : An error occured.
  */
-int nfs_creat(struct nfs_context *nfs, const char *path, int mode, struct nfsfh **nfsfh);
+EXTERN int nfs_creat(struct nfs_context *nfs, const char *path, int mode, struct nfsfh **nfsfh);
 
 
 
@@ -533,14 +562,14 @@ int nfs_creat(struct nfs_context *nfs, const char *path, int mode, struct nfsfh 
  * -errno : An error occured.
  *          data is the error string.
  */
-int nfs_unlink_async(struct nfs_context *nfs, const char *path, nfs_cb cb, void *private_data);
+EXTERN int nfs_unlink_async(struct nfs_context *nfs, const char *path, nfs_cb cb, void *private_data);
 /*
  * Sync unlink()
  * Function returns
  *      0 : Success
  * -errno : An error occured.
  */
-int nfs_unlink(struct nfs_context *nfs, const char *path);
+EXTERN int nfs_unlink(struct nfs_context *nfs, const char *path);
 
 
 
@@ -564,14 +593,14 @@ struct nfsdir;
  * -errno : An error occured.
  *          data is the error string.
  */
-int nfs_opendir_async(struct nfs_context *nfs, const char *path, nfs_cb cb, void *private_data);
+EXTERN int nfs_opendir_async(struct nfs_context *nfs, const char *path, nfs_cb cb, void *private_data);
 /*
  * Sync opendir()
  * Function returns
  *      0 : Success
  * -errno : An error occured.
  */
-int nfs_opendir(struct nfs_context *nfs, const char *path, struct nfsdir **nfsdir);
+EXTERN int nfs_opendir(struct nfs_context *nfs, const char *path, struct nfsdir **nfsdir);
 
 
 
@@ -594,7 +623,7 @@ struct nfsdirent  {
 /*
  * nfs_readdir() never blocks, so no special sync/async versions are available
  */
-struct nfsdirent *nfs_readdir(struct nfs_context *nfs, struct nfsdir *nfsdir);
+EXTERN struct nfsdirent *nfs_readdir(struct nfs_context *nfs, struct nfsdir *nfsdir);
 
 
 
@@ -604,7 +633,7 @@ struct nfsdirent *nfs_readdir(struct nfs_context *nfs, struct nfsdir *nfsdir);
 /*
  * nfs_closedir() never blocks, so no special sync/async versions are available
  */
-void nfs_closedir(struct nfs_context *nfs, struct nfsdir *nfsdir);
+EXTERN void nfs_closedir(struct nfs_context *nfs, struct nfsdir *nfsdir);
 
 
 
@@ -624,14 +653,14 @@ void nfs_closedir(struct nfs_context *nfs, struct nfsdir *nfsdir);
  *          data is the error string.
  */
 struct statvfs;
-int nfs_statvfs_async(struct nfs_context *nfs, const char *path, nfs_cb cb, void *private_data);
+EXTERN int nfs_statvfs_async(struct nfs_context *nfs, const char *path, nfs_cb cb, void *private_data);
 /*
  * Sync statvfs(<dirname>)
  * Function returns
  *      0 : The operation was successfull.
  * -errno : The command failed.
  */
-int nfs_statvfs(struct nfs_context *nfs, const char *path, struct statvfs *svfs);
+EXTERN int nfs_statvfs(struct nfs_context *nfs, const char *path, struct statvfs *svfs);
 
 
 /*
@@ -651,14 +680,14 @@ int nfs_statvfs(struct nfs_context *nfs, const char *path, struct statvfs *svfs)
  *          data is the error string.
  */
 struct statvfs;
-int nfs_readlink_async(struct nfs_context *nfs, const char *path, nfs_cb cb, void *private_data);
+EXTERN int nfs_readlink_async(struct nfs_context *nfs, const char *path, nfs_cb cb, void *private_data);
 /*
  * Sync readlink(<name>)
  * Function returns
  *      0 : The operation was successfull.
  * -errno : The command failed.
  */
-int nfs_readlink(struct nfs_context *nfs, const char *path, char *buf, int bufsize);
+EXTERN int nfs_readlink(struct nfs_context *nfs, const char *path, char *buf, int bufsize);
 
 
 
@@ -677,14 +706,14 @@ int nfs_readlink(struct nfs_context *nfs, const char *path, char *buf, int bufsi
  * -errno : An error occured.
  *          data is the error string.
  */
-int nfs_chmod_async(struct nfs_context *nfs, const char *path, int mode, nfs_cb cb, void *private_data);
+EXTERN int nfs_chmod_async(struct nfs_context *nfs, const char *path, int mode, nfs_cb cb, void *private_data);
 /*
  * Sync chmod(<name>)
  * Function returns
  *      0 : The operation was successfull.
  * -errno : The command failed.
  */
-int nfs_chmod(struct nfs_context *nfs, const char *path, int mode);
+EXTERN int nfs_chmod(struct nfs_context *nfs, const char *path, int mode);
 
 
 
@@ -703,14 +732,14 @@ int nfs_chmod(struct nfs_context *nfs, const char *path, int mode);
  * -errno : An error occured.
  *          data is the error string.
  */
-int nfs_fchmod_async(struct nfs_context *nfs, struct nfsfh *nfsfh, int mode, nfs_cb cb, void *private_data);
+EXTERN int nfs_fchmod_async(struct nfs_context *nfs, struct nfsfh *nfsfh, int mode, nfs_cb cb, void *private_data);
 /*
  * Sync fchmod(<handle>)
  * Function returns
  *      0 : The operation was successfull.
  * -errno : The command failed.
  */
-int nfs_fchmod(struct nfs_context *nfs, struct nfsfh *nfsfh, int mode);
+EXTERN int nfs_fchmod(struct nfs_context *nfs, struct nfsfh *nfsfh, int mode);
 
 
 
@@ -729,14 +758,14 @@ int nfs_fchmod(struct nfs_context *nfs, struct nfsfh *nfsfh, int mode);
  * -errno : An error occured.
  *          data is the error string.
  */
-int nfs_chown_async(struct nfs_context *nfs, const char *path, int uid, int gid, nfs_cb cb, void *private_data);
+EXTERN int nfs_chown_async(struct nfs_context *nfs, const char *path, int uid, int gid, nfs_cb cb, void *private_data);
 /*
  * Sync chown(<name>)
  * Function returns
  *      0 : The operation was successfull.
  * -errno : The command failed.
  */
-int nfs_chown(struct nfs_context *nfs, const char *path, int uid, int gid);
+EXTERN int nfs_chown(struct nfs_context *nfs, const char *path, int uid, int gid);
 
 
 
@@ -755,14 +784,14 @@ int nfs_chown(struct nfs_context *nfs, const char *path, int uid, int gid);
  * -errno : An error occured.
  *          data is the error string.
  */
-int nfs_fchown_async(struct nfs_context *nfs, struct nfsfh *nfsfh, int uid, int gid, nfs_cb cb, void *private_data);
+EXTERN int nfs_fchown_async(struct nfs_context *nfs, struct nfsfh *nfsfh, int uid, int gid, nfs_cb cb, void *private_data);
 /*
  * Sync fchown(<handle>)
  * Function returns
  *      0 : The operation was successfull.
  * -errno : The command failed.
  */
-int nfs_fchown(struct nfs_context *nfs, struct nfsfh *nfsfh, int uid, int gid);
+EXTERN int nfs_fchown(struct nfs_context *nfs, struct nfsfh *nfsfh, int uid, int gid);
 
 
 
@@ -782,14 +811,14 @@ int nfs_fchown(struct nfs_context *nfs, struct nfsfh *nfsfh, int uid, int gid);
  * -errno : An error occured.
  *          data is the error string.
  */
-int nfs_utimes_async(struct nfs_context *nfs, const char *path, struct timeval *times, nfs_cb cb, void *private_data);
+EXTERN int nfs_utimes_async(struct nfs_context *nfs, const char *path, struct timeval *times, nfs_cb cb, void *private_data);
 /*
  * Sync utimes(<path>)
  * Function returns
  *      0 : The operation was successfull.
  * -errno : The command failed.
  */
-int nfs_utimes(struct nfs_context *nfs, const char *path, struct timeval *times);
+EXTERN int nfs_utimes(struct nfs_context *nfs, const char *path, struct timeval *times);
 
 
 /*
@@ -808,14 +837,14 @@ int nfs_utimes(struct nfs_context *nfs, const char *path, struct timeval *times)
  *          data is the error string.
  */
 struct utimbuf;
-int nfs_utime_async(struct nfs_context *nfs, const char *path, struct utimbuf *times, nfs_cb cb, void *private_data);
+EXTERN int nfs_utime_async(struct nfs_context *nfs, const char *path, struct utimbuf *times, nfs_cb cb, void *private_data);
 /*
  * Sync utime(<path>)
  * Function returns
  *      0 : The operation was successfull.
  * -errno : The command failed.
  */
-int nfs_utime(struct nfs_context *nfs, const char *path, struct utimbuf *times);
+EXTERN int nfs_utime(struct nfs_context *nfs, const char *path, struct utimbuf *times);
 
 
 
@@ -835,14 +864,14 @@ int nfs_utime(struct nfs_context *nfs, const char *path, struct utimbuf *times);
  * -errno : An error occured.
  *          data is the error string.
  */
-int nfs_access_async(struct nfs_context *nfs, const char *path, int mode, nfs_cb cb, void *private_data);
+EXTERN int nfs_access_async(struct nfs_context *nfs, const char *path, int mode, nfs_cb cb, void *private_data);
 /*
  * Sync access(<path>)
  * Function returns
  *      0 : The operation was successfull.
  * -errno : The command failed.
  */
-int nfs_access(struct nfs_context *nfs, const char *path, int mode);
+EXTERN int nfs_access(struct nfs_context *nfs, const char *path, int mode);
 
 
 
@@ -862,14 +891,14 @@ int nfs_access(struct nfs_context *nfs, const char *path, int mode);
  * -errno : An error occured.
  *          data is the error string.
  */
-int nfs_symlink_async(struct nfs_context *nfs, const char *oldpath, const char *newpath, nfs_cb cb, void *private_data);
+EXTERN int nfs_symlink_async(struct nfs_context *nfs, const char *oldpath, const char *newpath, nfs_cb cb, void *private_data);
 /*
  * Sync symlink(<path>)
  * Function returns
  *      0 : The operation was successfull.
  * -errno : The command failed.
  */
-int nfs_symlink(struct nfs_context *nfs, const char *oldpath, const char *newpath);
+EXTERN int nfs_symlink(struct nfs_context *nfs, const char *oldpath, const char *newpath);
 
 
 /*
@@ -887,14 +916,14 @@ int nfs_symlink(struct nfs_context *nfs, const char *oldpath, const char *newpat
  * -errno : An error occured.
  *          data is the error string.
  */
-int nfs_rename_async(struct nfs_context *nfs, const char *oldpath, const char *newpath, nfs_cb cb, void *private_data);
+EXTERN int nfs_rename_async(struct nfs_context *nfs, const char *oldpath, const char *newpath, nfs_cb cb, void *private_data);
 /*
  * Sync rename(<oldpath>, <newpath>)
  * Function returns
  *      0 : The operation was successfull.
  * -errno : The command failed.
  */
-int nfs_rename(struct nfs_context *nfs, const char *oldpath, const char *newpath);
+EXTERN int nfs_rename(struct nfs_context *nfs, const char *oldpath, const char *newpath);
 
 
 
@@ -913,14 +942,14 @@ int nfs_rename(struct nfs_context *nfs, const char *oldpath, const char *newpath
  * -errno : An error occured.
  *          data is the error string.
  */
-int nfs_link_async(struct nfs_context *nfs, const char *oldpath, const char *newpath, nfs_cb cb, void *private_data);
+EXTERN int nfs_link_async(struct nfs_context *nfs, const char *oldpath, const char *newpath, nfs_cb cb, void *private_data);
 /*
  * Sync link(<oldpath>, <newpath>)
  * Function returns
  *      0 : The operation was successfull.
  * -errno : The command failed.
  */
-int nfs_link(struct nfs_context *nfs, const char *oldpath, const char *newpath);
+EXTERN int nfs_link(struct nfs_context *nfs, const char *oldpath, const char *newpath);
 
 
 /*
@@ -944,7 +973,7 @@ int nfs_link(struct nfs_context *nfs, const char *oldpath, const char *newpath);
  * -errno : An error occured.
  *          data is the error string.
  */
-int mount_getexports_async(struct rpc_context *rpc, const char *server, rpc_cb cb, void *private_data);
+EXTERN int mount_getexports_async(struct rpc_context *rpc, const char *server, rpc_cb cb, void *private_data);
 /*
  * Sync getexports(<server>)
  * Function returns
@@ -953,9 +982,9 @@ int mount_getexports_async(struct rpc_context *rpc, const char *server, rpc_cb c
  * 
  * returned data must be freed by calling mount_free_export_list(exportnode);
  */
-struct exportnode *mount_getexports(const char *server);
+EXTERN struct exportnode *mount_getexports(const char *server);
 
-void mount_free_export_list(struct exportnode *exports);
+EXTERN void mount_free_export_list(struct exportnode *exports);
 
 
 //qqq replace later with lseek(cur, 0)

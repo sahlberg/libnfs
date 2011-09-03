@@ -19,17 +19,27 @@
  */
 
 #define _GNU_SOURCE
+
+#if defined(WIN32)
+#include <winsock2.h>
+#define DllExport
+#define O_SYNC 0
+typedef int uid_t;
+typedef int gid_t;
+#else
+#include <strings.h>
+#include <sys/statvfs.h>
+#include <utime.h>
+#include <unistd.h>
+#endif
+
 #include <stdio.h>
 #include <stdarg.h>
 #include <stdlib.h>
 #include <string.h>
-#include <strings.h>
 #include <errno.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <sys/statvfs.h>
-#include <utime.h>
-#include <unistd.h>
 #include <fcntl.h>
 #include "libnfs.h"
 #include "libnfs-raw.h"
@@ -671,8 +681,10 @@ static void nfs_stat_1_cb(struct rpc_context *rpc _U_, int status, void *command
         st.st_gid     = res->GETATTR3res_u.resok.obj_attributes.gid;
         st.st_rdev    = 0;
         st.st_size    = res->GETATTR3res_u.resok.obj_attributes.size;
+#if !defined(WIN32)
         st.st_blksize = 4096;
         st.st_blocks  = res->GETATTR3res_u.resok.obj_attributes.size / 4096;
+#endif
         st.st_atime   = res->GETATTR3res_u.resok.obj_attributes.atime.seconds;
         st.st_mtime   = res->GETATTR3res_u.resok.obj_attributes.mtime.seconds;
         st.st_ctime   = res->GETATTR3res_u.resok.obj_attributes.ctime.seconds;
@@ -1654,7 +1666,7 @@ static void nfs_opendir_cb(struct rpc_context *rpc _U_, int status, void *comman
 	READDIRPLUS3res *res;
 	struct nfs_cb_data *data = private_data;
 	struct nfs_context *nfs = data->nfs;
-	struct nfsdir *nfsdir = data->continue_data;;
+	struct nfsdir *nfsdir = data->continue_data;
 	struct entryplus3 *entry;
 	uint64_t cookie;
 
@@ -2900,7 +2912,8 @@ void nfs_set_error(struct nfs_context *nfs, char *error_string, ...)
 	char *str = NULL;
 
         va_start(ap, error_string);
-	vasprintf(&str, error_string, ap);
+	str = malloc(1024);
+	vsnprintf(str, 1024, error_string, ap);
 	if (nfs->rpc->error_string != NULL) {
 		free(nfs->rpc->error_string);
 	}
@@ -3082,3 +3095,36 @@ const char *nfs_get_server(struct nfs_context *nfs) {
 const char *nfs_get_export(struct nfs_context *nfs) {
 	return nfs->export;
 }
+
+
+#if defined(WIN32)
+int poll(struct pollfd *fds, int nfsd, int timeout)
+{
+	fd_set rfds, wfds, efds;
+	int ret;
+
+	FD_ZERO(&rfds);
+	FD_ZERO(&wfds);
+	FD_ZERO(&efds);
+	if (fds->events & POLLIN) {
+		FD_SET(fds->fd, &rfds);
+	}
+	if (fds->events & POLLOUT) {
+		FD_SET(fds->fd, &wfds);
+	}
+	FD_SET(fds->fd, &efds);
+	select(fds->fd + 1, &rfds, &wfds, &efds, NULL);
+	fds->revents = 0;
+	if (FD_ISSET(fds->fd, &rfds)) {
+		fds->revents |= POLLIN;
+	}
+	if (FD_ISSET(fds->fd, &wfds)) {
+		fds->revents |= POLLOUT;
+	}
+	if (FD_ISSET(fds->fd, &efds)) {
+		fds->revents |= POLLHUP;
+	}
+	return 1;
+}
+#endif
+

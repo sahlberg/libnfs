@@ -15,8 +15,14 @@
    along with this program; if not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <stdio.h>
+#if defined(WIN32)
+#include <winsock2.h>
+#define MSG_DONTWAIT 0
+#else
 #include <strings.h>
+#endif
+
+#include <stdio.h>
 #include <stdlib.h>
 #include <errno.h>
 #include <rpc/rpc.h>

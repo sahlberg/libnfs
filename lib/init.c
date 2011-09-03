@@ -1,10 +1,7 @@
 /*
    Copyright (C) 2010 by Ronnie Sahlberg <ronniesahlberg@gmail.com>
 
-   This program is free software; you can redistribute it and/or modify
-   it under the terms of the GNU Lesser General Public License as published by
-   the Free Software Foundation; either version 2.1 of the License, or
-   (at your option) any later version.
+
 
    This program is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -16,11 +13,17 @@
 */
 
 #define _GNU_SOURCE
+
+#if defined(WIN32)
+#include <winsock2.h>
+#else
+#include <unistd.h>
+#include <strings.h>
+#endif
+
 #include <stdio.h>
 #include <stdarg.h>
-#include <unistd.h>
 #include <string.h>
-#include <strings.h>
 #include <stdlib.h>
 #include <rpc/rpc.h>
 #include <rpc/xdr.h>
@@ -46,7 +49,11 @@ struct rpc_context *rpc_init_context(void)
 		return NULL;
 	}
 
-	rpc->auth = authunix_create_default();
+#if defined(WIN32)
+	rpc->auth = authunix_create("LibNFS", 65535, 65535, 0, NULL);
+#else
+ 	rpc->auth = authunix_create_default();
+#endif
 	if (rpc->auth == NULL) {
 		free(rpc->encodebuf);
 		free(rpc);
@@ -83,14 +90,13 @@ void rpc_set_auth(struct rpc_context *rpc, struct AUTH *auth)
 void rpc_set_error(struct rpc_context *rpc, char *error_string, ...)
 {
         va_list ap;
-	char *str;
 
 	if (rpc->error_string != NULL) {
 		free(rpc->error_string);
 	}
         va_start(ap, error_string);
-	vasprintf(&str, error_string, ap);
-	rpc->error_string = str;
+	rpc->error_string = malloc(1024);
+	vsnprintf(rpc->error_string, 1024, error_string, ap);
         va_end(ap);
 }
 
@@ -135,7 +141,11 @@ void rpc_destroy_context(struct rpc_context *rpc)
 	rpc->auth =NULL;
 
 	if (rpc->fd != -1) {
-		close(rpc->fd);
+#if defined(WIN32)
+		closesocket(rpc->fd);
+#else
+ 		close(rpc->fd);
+#endif
 	}
 
 	if (rpc->encodebuf != NULL) {
