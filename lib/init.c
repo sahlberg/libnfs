@@ -83,7 +83,7 @@ void rpc_set_auth(struct rpc_context *rpc, struct AUTH *auth)
 	if (rpc->auth != NULL) {
 		auth_destroy(rpc->auth);
 	}
-	rpc->auth = auth;
+	rpc->auth = (AUTH *)auth;
 }
 
 

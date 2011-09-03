@@ -258,7 +258,7 @@ int rpc_service(struct rpc_context *rpc, int revents)
 		socklen_t err_size = sizeof(err);
 
 		if (getsockopt(rpc->fd, SOL_SOCKET, SO_ERROR,
-				&err, &err_size) != 0 || err != 0) {
+				(char *)&err, &err_size) != 0 || err != 0) {
 			if (err == 0) {
 				err = errno;
 			}
@@ -283,7 +283,7 @@ int rpc_service(struct rpc_context *rpc, int revents)
 		socklen_t err_size = sizeof(err);
 
 		if (getsockopt(rpc->fd, SOL_SOCKET, SO_ERROR,
-				&err, &err_size) != 0 || err != 0) {
+				(char *)&err, &err_size) != 0 || err != 0) {
 			if (err == 0) {
 				err = errno;
 			}
@@ -488,7 +488,7 @@ int rpc_set_udp_destination(struct rpc_context *rpc, char *addr, int port, int i
 	freeaddrinfo(ai);
 
 	rpc->is_broadcast = is_broadcast;
-	setsockopt(rpc->fd, SOL_SOCKET, SO_BROADCAST, &is_broadcast, sizeof(is_broadcast));
+	setsockopt(rpc->fd, SOL_SOCKET, SO_BROADCAST, (char *)&is_broadcast, sizeof(is_broadcast));
 
 	return 0;
 }
