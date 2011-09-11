@@ -37,6 +37,7 @@ int rpc_get_fd(struct rpc_context *rpc);
 int rpc_which_events(struct rpc_context *rpc);
 int rpc_service(struct rpc_context *rpc, int revents);
 char *rpc_get_error(struct rpc_context *rpc);
+int rpc_queue_length(struct rpc_context *rpc);
 
 
 #define RPC_STATUS_SUCCESS	   	0

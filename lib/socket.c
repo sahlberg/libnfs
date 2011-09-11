@@ -315,7 +315,7 @@ int rpc_service(struct rpc_context *rpc, int revents)
 
 	if (revents & POLLIN) {
 		if (rpc_read_from_socket(rpc) != 0) {
-			rpc_disconnect_requeue(rpc);
+		  	rpc_disconnect_requeue(rpc);
 			return 0;
 		}
 	}
@@ -513,4 +513,18 @@ int rpc_set_udp_destination(struct rpc_context *rpc, char *addr, int port, int i
 struct sockaddr *rpc_get_recv_sockaddr(struct rpc_context *rpc)
 {
 	return (struct sockaddr *)&rpc->udp_src;
+}
+
+int rpc_queue_length(struct rpc_context *rpc)
+{
+	int i=0;
+	struct rpc_pdu *pdu;
+
+	for(pdu = rpc->outqueue; pdu; pdu = pdu->next) {
+		i++;
+	}
+	for(pdu = rpc->waitpdu; pdu; pdu = pdu->next) {
+		i++;
+	}
+	return i;
 }

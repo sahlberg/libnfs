@@ -121,6 +121,11 @@ int nfs_get_fd(struct nfs_context *nfs)
 	return rpc_get_fd(nfs->rpc);
 }
 
+int nfs_queue_length(struct nfs_context *nfs)
+{
+	return rpc_queue_length(nfs->rpc);
+}
+
 int nfs_which_events(struct nfs_context *nfs)
 {
 	return rpc_which_events(nfs->rpc);

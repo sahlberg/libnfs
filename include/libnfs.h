@@ -57,6 +57,7 @@ struct utimbuf {
 EXTERN int nfs_get_fd(struct nfs_context *nfs);
 EXTERN int nfs_which_events(struct nfs_context *nfs);
 EXTERN int nfs_service(struct nfs_context *nfs, int revents);
+EXTERN int nfs_queue_length(struct nfs_context *nfs);
 
 /*
  * Used if you need different credentials than the default for the current user.
