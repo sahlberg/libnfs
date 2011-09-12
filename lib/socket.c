@@ -25,21 +25,6 @@
 #include <netdb.h>
 #endif/*WIN32*/
 
-#if defined(WIN32)
-#include <winsock2.h>
-#include <ws2tcpip.h>
-#include <basetsd.h>
-#define ssize_t SSIZE_T
-#define MSG_DONTWAIT 0
-#else
-#include <unistd.h>
-#include <poll.h>
-#include <arpa/inet.h>
-#include <sys/ioctl.h>
-#include <sys/socket.h>
-#include <netdb.h>
-#endif
-
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
@@ -61,6 +46,12 @@
 #include "libnfs-raw.h"
 #include "libnfs-private.h"
 #include "slist.h"
+
+#ifdef WIN32
+//has to be included after stdlib!!
+#include "win32_errnowrapper.h"
+#endif
+
 
 static int rpc_disconnect_requeue(struct rpc_context *rpc);
 
@@ -267,7 +258,11 @@ static int rpc_read_from_socket(struct rpc_context *rpc)
 int rpc_service(struct rpc_context *rpc, int revents)
 {
 	if (revents & POLLERR) {
+#ifdef WIN32
 		char err = 0;
+#else
+		int err = 0;
+#endif
 		socklen_t err_size = sizeof(err);
 
 		if (getsockopt(rpc->fd, SOL_SOCKET, SO_ERROR,
@@ -414,7 +409,7 @@ int rpc_connect_async(struct rpc_context *rpc, const char *server, int port, rpc
 	set_nonblocking(rpc->fd);
 
 #if defined(WIN32)
-	if (connect(rpc->fd, (struct sockaddr *)&s, socksize) == 0 && GetLastError() != WSAEINPROGRESS   )
+	if (connect(rpc->fd, (struct sockaddr *)&s, socksize) == 0 && errno != EINPROGRESS   )
 #else
 	if (connect(rpc->fd, (struct sockaddr *)&s, socksize) != 0 && errno != EINPROGRESS) 
 #endif

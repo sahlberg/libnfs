@@ -41,7 +41,6 @@ static int dummy ATTRIBUTE((unused));
 #undef inet_aton
 #undef gettimeofday
 #undef stat
-#define bzero(a,b) memset((a),(0),(b))
 #define assert(a)
 
 /* Windows needs this header file for the implementation of inet_aton() */
