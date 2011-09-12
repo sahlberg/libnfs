@@ -221,7 +221,7 @@ int main(int argc _U_, char *argv[] _U_)
 	while((nfsdirent = nfs_readdir(nfs, nfsdir)) != NULL) {
 	  char filename[1024];
 		printf("Inode:%d Name:%s ", (int)nfsdirent->inode, nfsdirent->name);
-		sprintf(&filename, "%s/%s", NFSDIR, nfsdirent->name);
+		sprintf(filename, "%s/%s", NFSDIR, nfsdirent->name);
 		ret = nfs_open(nfs, filename, O_RDONLY, &nfsfh);
 		if (ret != 0) {
 			printf("Failed to open(%s) %s\n", filename, nfs_get_error(nfs));
@@ -230,7 +230,6 @@ int main(int argc _U_, char *argv[] _U_)
 		ret = nfs_read(nfs, nfsfh, sizeof(buf), buf);
 		if (ret < 0) {
 			printf("Error reading file\n");
-			exit(10);
 		}
 		printf("Read %d bytes\n", ret);
 		ret = nfs_close(nfs, nfsfh);
