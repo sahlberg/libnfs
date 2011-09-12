@@ -330,7 +330,6 @@ int rpc_service(struct rpc_context *rpc, int revents)
 	return 0;
 }
 
-
 int rpc_connect_async(struct rpc_context *rpc, const char *server, int port, rpc_cb cb, void *private_data)
 {
 	struct sockaddr_storage s;
@@ -372,7 +371,49 @@ int rpc_connect_async(struct rpc_context *rpc, const char *server, int port, rpc
 	rpc->connect_cb  = cb;
 	rpc->connect_data = private_data;
 
+
+#if !defined(WIN32)
+	/* Some systems allow you to set capabilities on an executable
+	 * to allow the file to be executed with privilege to bind to
+	 * privileged system ports, even if the user is not root.
+	 *
+	 * Opportunistically try to bind the socket to a low numbered
+	 * system port in the hope that the user is either root or the
+	 * executable has the CAP_NET_BIND_SERVICE.
+	 *
+	 * As soon as we fail the bind() with EACCES we know we will never
+	 * be able to bind to a system port so we terminate the loop.
+	 *
+	 * On linux, use
+	 *    sudo setcap 'cap_net_bind_service=+ep' /path/executable
+	 * to make the executable able to bind to a system port.
+	 */
+	if (1) {
+		int port;
+		int one = 1;
+
+		setsockopt(rpc->fd, SOL_SOCKET, SO_REUSEADDR, (char *)&one, sizeof(one));
+
+		for (port = 200; port < 500; port++) {
+			struct sockaddr_in sin;
+
+			printf("try port %d\n", port);
+			memset(&sin, 0, sizeof(sin));
+			sin.sin_port        = htons(port);
+			sin.sin_family      = AF_INET;
+			sin.sin_addr.s_addr = 0;
+
+			if (bind(rpc->fd, (struct sockaddr *)&sin, sizeof(struct sockaddr_in)) != 0 && errno != EACCES) {
+				/* we didnt get EACCES, so try again */
+				continue;
+			}
+			break;
+		}
+	}
+#endif
+
 	set_nonblocking(rpc->fd);
+
 #if defined(WIN32)
 	if (connect(rpc->fd, (struct sockaddr *)&s, socksize) == 0 && GetLastError() != WSAEINPROGRESS   )
 #else
