@@ -397,7 +397,6 @@ int rpc_connect_async(struct rpc_context *rpc, const char *server, int port, rpc
 		for (port = 200; port < 500; port++) {
 			struct sockaddr_in sin;
 
-			printf("try port %d\n", port);
 			memset(&sin, 0, sizeof(sin));
 			sin.sin_port        = htons(port);
 			sin.sin_family      = AF_INET;
