@@ -61,6 +61,21 @@ struct client {
 };
 
 
+void PrintServerList()
+{
+  struct nfs_server_list *srvrs;
+  struct nfs_server_list *srv;
+
+  srvrs = nfs_find_local_servers();
+
+  for (srv=srvrs; srv; srv = srv->next)
+  {
+      printf("Found nfs server: %s\n", srv->addr);
+
+  }
+  free_nfs_srvr_list(srvrs);
+}
+
 char buf[3*1024*1024+337];
 
 int main(int argc _U_, char *argv[] _U_)
@@ -86,6 +101,9 @@ int main(int argc _U_, char *argv[] _U_)
 	client.server = SERVER;
 	client.export = EXPORT;
 	client.is_finished = 0;
+
+  PrintServerList();
+
 	export = mount_getexports(SERVER);
 	if (export != NULL) {
 		printf("exports on server %s\n", SERVER);
