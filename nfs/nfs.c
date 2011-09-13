@@ -31,10 +31,6 @@
 #include "libnfs-private.h"
 #include "libnfs-raw-nfs.h"
 
-#ifdef WIN32
-#define bzero(a,b) memset((a),(0),(b))
-#endif/*WIN32*/
-
 char *nfsstat3_to_str(int error)
 {
 	switch (error) {

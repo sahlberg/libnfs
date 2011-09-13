@@ -4,8 +4,7 @@ package should work with some effort.
 
 
 1. checkout git://github.com/Memphiz/oncrpc-win32.git project (branch hyper!)
-2. build oncrpc-win32 project (see README.win32 in the projects dir)
-3. checkout libnfs (branch win32)
-4. adapt oncrpc-win32 path in win32/win32build.bat
-4. build libnfs with cd win32;win32build.bat
-5. copy lib/libnfs.dll and <oncrpc-win32-path>/win32/bin/liboncrpc.dll to the dir where the executable is...
+2. build oncrpc-win32 project (see README.libnfs in the projects dir)
+3. checkout libnfs ("parallel" to oncrpc-win32)
+4. load vs2010 project from win32/libnfs/libnfs.sln
+5. build libnfs and nfsclient-sync

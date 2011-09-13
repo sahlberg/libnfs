@@ -47,8 +47,6 @@
 #include <sys/sockio.h>
 #endif
 
-#include <fcntl.h>
-#include <errno.h>
 #include "libnfs.h"
 #include "libnfs-raw.h"
 #include "libnfs-raw-mount.h"
@@ -716,11 +714,8 @@ static void statvfs_cb(int status, struct nfs_context *nfs, void *data, void *pr
 		nfs_set_error(nfs, "statvfs call failed with \"%s\"", (char *)data);
 		return;
 	}
-#ifndef WIN32
+
 	memcpy(cb_data->return_data, data, sizeof(struct statvfs));
-#else
-  cb_data->return_data=NULL;
-#endif/**/
 }
 
 int nfs_statvfs(struct nfs_context *nfs, const char *path, struct statvfs *svfs)
@@ -1189,7 +1184,6 @@ void mount_free_export_list(struct exportnode *exports)
 
 
 
-#if !defined(WIN32)
 void free_nfs_srvr_list(struct nfs_server_list *srv)
 {
 	while (srv != NULL) {
@@ -1260,7 +1254,138 @@ void callit_cb(struct rpc_context *rpc, int status, void *data _U_, void *privat
 	srv_data->srvrs = srvr;
 }
 
-#ifndef WIN32
+#ifdef WIN32
+
+static int send_nfsd_probes(struct rpc_context *rpc, INTERFACE_INFO *InterfaceList, int numIfs, struct nfs_list_data *data)
+{
+  int i=0;
+
+  for(i = 0; i < numIfs; i++) 
+  {
+    SOCKADDR *pAddress;
+    char bcdd[16];
+    unsigned long nFlags = 0;
+
+    pAddress = (SOCKADDR *) & (InterfaceList[i].iiBroadcastAddress);
+
+    if(pAddress->sa_family != AF_INET)
+      continue;
+		
+    nFlags = InterfaceList[i].iiFlags;
+
+    if (!(nFlags & IFF_UP)) 
+    {
+      continue;
+    }
+
+    if (nFlags & IFF_LOOPBACK) 
+    {
+      continue;
+    }
+
+    if (!(nFlags & IFF_BROADCAST)) 
+    {
+      continue;
+    }
+
+    if (getnameinfo(pAddress, sizeof(struct sockaddr_in), &bcdd[0], sizeof(bcdd), NULL, 0, NI_NUMERICHOST) < 0) 
+    {
+      continue;
+    }
+
+    if (rpc_set_udp_destination(rpc, bcdd, 111, 1) < 0) 
+    {
+      return -1;
+    }
+
+    if (rpc_pmap_callit_async(rpc, MOUNT_PROGRAM, 2, 0, NULL, 0, callit_cb, data) < 0) 
+    {
+      return -1;
+    }
+  }
+  return 0;
+}
+
+struct nfs_server_list *nfs_find_local_servers(void)
+{
+  struct rpc_context *rpc;
+  struct nfs_list_data data = {0, NULL};
+  struct timeval tv_start, tv_current;
+  int loop;
+  struct pollfd pfd;
+  INTERFACE_INFO InterfaceList[20];
+  unsigned long nBytesReturned;
+  int nNumInterfaces = 0;
+
+  rpc = rpc_init_udp_context();
+  if (rpc == NULL) 
+  {
+    return NULL;
+  }
+
+  if (rpc_bind_udp(rpc, "0.0.0.0", 0) < 0) 
+  {
+    rpc_destroy_context(rpc);
+    return NULL;
+  }
+
+  if (WSAIoctl(rpc_get_fd(rpc), SIO_GET_INTERFACE_LIST, 0, 0, &InterfaceList, sizeof(InterfaceList), &nBytesReturned, 0, 0) == SOCKET_ERROR) 
+  {
+    return NULL;
+  }
+
+  nNumInterfaces = nBytesReturned / sizeof(INTERFACE_INFO);
+
+  for (loop=0; loop<3; loop++) 
+  {
+    if (send_nfsd_probes(rpc, InterfaceList, nNumInterfaces, &data) != 0) 
+    {
+      rpc_destroy_context(rpc);
+      return NULL;
+    }
+
+    win32_gettimeofday(&tv_start, NULL);
+    for(;;) 
+    {
+      int mpt;
+
+      pfd.fd = rpc_get_fd(rpc);
+      pfd.events = rpc_which_events(rpc);
+
+      win32_gettimeofday(&tv_current, NULL);
+      mpt = 1000
+      -    (tv_current.tv_sec *1000 + tv_current.tv_usec / 1000)
+      +    (tv_start.tv_sec *1000 + tv_start.tv_usec / 1000);
+
+      if (poll(&pfd, 1, mpt) < 0) 
+      {
+        free_nfs_srvr_list(data.srvrs);
+        rpc_destroy_context(rpc);
+        return NULL;
+      }
+      if (pfd.revents == 0) 
+      {
+        break;
+      }
+		
+      if (rpc_service(rpc, pfd.revents) < 0) 
+      {
+        break;
+      }
+    }
+  }
+
+  rpc_destroy_context(rpc);
+
+  if (data.status != 0) 
+  {
+    free_nfs_srvr_list(data.srvrs);
+    return NULL;
+  }
+  return data.srvrs;
+}
+#else
+
 static int send_nfsd_probes(struct rpc_context *rpc, struct ifconf *ifc, struct nfs_list_data *data)
 {
 	char *ptr;
@@ -1312,13 +1437,11 @@ static int send_nfsd_probes(struct rpc_context *rpc, struct ifconf *ifc, struct 
 
 	return 0;
 }
-#endif/*WIN32 TODO implement this with win32api FIXME*/
 
 struct nfs_server_list *nfs_find_local_servers(void)
 {
 	struct rpc_context *rpc;
 	struct nfs_list_data data = {0, NULL};
-#ifndef WIN32
 	struct timeval tv_start, tv_current;
 	struct ifconf ifc;
 	int size, loop;
@@ -1395,7 +1518,6 @@ struct nfs_server_list *nfs_find_local_servers(void)
 		free_nfs_srvr_list(data.srvrs);
 		return NULL;
 	}
-#endif/*WIN32 - FIXME redef it when send_nfsd_probes is implemented for win32*/
 	return data.srvrs;
 }
-#endif
+#endif//WIN32

@@ -18,10 +18,6 @@
 #include "win32_compat.h"
 #endif/*WIN32*/
 
-#if defined(WIN32)
-#include <winsock2.h>
-#endif
-
 #include <stdio.h>
 #include <errno.h>
 #include <sys/stat.h>

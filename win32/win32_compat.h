@@ -29,6 +29,7 @@ THE SOFTWARE.
 
 #include <winsock2.h>
 #include <ws2tcpip.h>
+#include <Ws2ipdef.h>
 #include <basetsd.h>
 #include <io.h>
 #include <sys/stat.h>
@@ -36,7 +37,6 @@ THE SOFTWARE.
 typedef int uid_t;
 typedef int gid_t;
 typedef int socklen_t;
-
 
 #define S_IRUSR 0000400
 #define S_IWUSR 0000200
@@ -74,11 +74,10 @@ struct pollfd {
 
 /* Wrapper macros to call misc. functions win32 is missing */
 #define poll(x, y, z)        win32_poll(x, y, z)
-#define inet_aton(x, y)      win32_inet_aton(x, y)
 #define inet_pton(x,y,z)     win32_inet_pton(x,y,z)
-int     win32_inet_aton(const char *, struct in_addr *);
 int     win32_inet_pton(int af, const char * src, void * dst);
-int     win32_poll(struct pollfd *fds, int nfsd, int timeout);
+int     win32_poll(struct pollfd *fds, unsigned int nfsd, int timeout);
+int     win32_gettimeofday(struct timeval *tv, struct timezone *tz);
 
 #endif//win32_COMPAT_H_
 #endif//WIN32

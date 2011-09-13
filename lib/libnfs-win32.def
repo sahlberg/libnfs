@@ -3,6 +3,8 @@ EXPORTS
 mount_free_export_list
 mount_getexports
 mount_getexports_async
+nfs_find_local_servers
+free_nfs_srvr_list
 nfs_access
 nfs_access_async
 nfs_chmod
