@@ -88,4 +88,4 @@ AC_CONFIG_FILES([Makefile]
                 [examples/Makefile]
                )
 
-AC_OUTPUT
+AC_OUTPUT([libnfs.pc])
