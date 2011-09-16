@@ -91,6 +91,7 @@ development libraries for LibNFS
 %{_includedir}/nfsc/libnfs-raw-rquota.h
 %{_libdir}/libnfs.a
 %{_libdir}/libnfs.la
+%{_libdir}/pkgconfig/libnfs.pc
 
 %changelog
 * Sun Jul 31 2011 : Version 1.0
