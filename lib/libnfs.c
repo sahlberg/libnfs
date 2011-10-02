@@ -1758,20 +1758,89 @@ int nfs_unlink_async(struct nfs_context *nfs, const char *path, nfs_cb cb, void 
 
 
 
-
-
 /*
  * Async opendir()
  */
-static void nfs_opendir_cb(struct rpc_context *rpc _U_, int status, void *command_data, void *private_data)
+
+/* ReadDirPlus Emulation Callback data */
+struct rdpe_cb_data {
+	int getattrcount;
+	int status;
+	struct nfs_cb_data *data;
+};
+
+/* ReadDirPlus Emulation LOOKUP Callback data */
+struct rdpe_lookup_cb_data {
+	struct rdpe_cb_data *rdpe_cb_data;
+	struct nfsdirent *nfsdirent;
+};
+
+/* Workaround for servers lacking READDIRPLUS, use READDIR instead and a GETATTR-loop */
+static void nfs_opendir3_cb(struct rpc_context *rpc _U_, int status, void *command_data, void *private_data)
 {
-	READDIRPLUS3res *res;
+	LOOKUP3res *res = command_data;
+	struct rdpe_lookup_cb_data *rdpe_lookup_cb_data = private_data;
+	struct rdpe_cb_data *rdpe_cb_data = rdpe_lookup_cb_data->rdpe_cb_data;
+	struct nfs_cb_data *data = rdpe_cb_data->data;
+	struct nfsdir *nfsdir = data->continue_data;
+	struct nfs_context *nfs = data->nfs;
+	struct nfsdirent *nfsdirent = rdpe_lookup_cb_data->nfsdirent;
+
+	free(rdpe_lookup_cb_data);
+
+	rdpe_cb_data->getattrcount--;
+
+	if (status == RPC_STATUS_ERROR) {
+		rdpe_cb_data->status = RPC_STATUS_ERROR;
+	}
+	if (status == RPC_STATUS_CANCEL) {
+		rdpe_cb_data->status = RPC_STATUS_CANCEL;
+	}
+	if (status == RPC_STATUS_SUCCESS && res->status != NFS3_OK) {
+		rdpe_cb_data->status = RPC_STATUS_ERROR;
+	}
+	if (status == RPC_STATUS_SUCCESS && res->status == NFS3_OK) {
+		if (res->LOOKUP3res_u.resok.obj_attributes.attributes_follow) {
+			fattr3 *attributes = &res->LOOKUP3res_u.resok.obj_attributes.post_op_attr_u.attributes;
+
+			nfsdirent->type = attributes->type;
+			nfsdirent->mode = attributes->mode;
+			nfsdirent->size = attributes->size;
+
+			nfsdirent->atime.tv_sec  = attributes->atime.seconds;
+			nfsdirent->atime.tv_usec = attributes->atime.nseconds/1000;
+			nfsdirent->mtime.tv_sec  = attributes->mtime.seconds;
+			nfsdirent->mtime.tv_usec = attributes->mtime.nseconds/1000;
+			nfsdirent->ctime.tv_sec  = attributes->ctime.seconds;
+			nfsdirent->ctime.tv_usec = attributes->ctime.nseconds/1000;
+		}
+	}
+
+	if (rdpe_cb_data->getattrcount == 0) {
+		if (rdpe_cb_data->status != RPC_STATUS_SUCCESS) {
+			data->cb(-ENOMEM, nfs, rpc_get_error(nfs->rpc), data->private_data);
+			nfs_free_nfsdir(nfsdir);
+		} else {
+			data->cb(0, nfs, nfsdir, data->private_data);
+		}
+		free(rdpe_cb_data);
+
+		data->continue_data = NULL;
+		free_nfs_cb_data(data);
+	}
+}
+
+static void nfs_opendir2_cb(struct rpc_context *rpc _U_, int status, void *command_data, void *private_data)
+{
+	READDIR3res *res = command_data;
 	struct nfs_cb_data *data = private_data;
 	struct nfs_context *nfs = data->nfs;
 	struct nfsdir *nfsdir = data->continue_data;
-	struct entryplus3 *entry;
+	struct nfsdirent *nfsdirent;
+	struct entry3 *entry;
 	uint64_t cookie;
-
+	struct rdpe_cb_data *rdpe_cb_data;
+	
 	if (status == RPC_STATUS_ERROR) {
 		data->cb(-EFAULT, nfs, command_data, data->private_data);
 		nfs_free_nfsdir(nfsdir);
@@ -1779,6 +1848,7 @@ static void nfs_opendir_cb(struct rpc_context *rpc _U_, int status, void *comman
 		free_nfs_cb_data(data);
 		return;
 	}
+
 	if (status == RPC_STATUS_CANCEL) {
 		data->cb(-EINTR, nfs, "Command was cancelled", data->private_data);
 		nfs_free_nfsdir(nfsdir);
@@ -1787,9 +1857,128 @@ static void nfs_opendir_cb(struct rpc_context *rpc _U_, int status, void *comman
 		return;
 	}
 
-	res = command_data;
 	if (res->status != NFS3_OK) {
 		rpc_set_error(nfs->rpc, "NFS: READDIR of %s failed with %s(%d)", data->saved_path, nfsstat3_to_str(res->status), nfsstat3_to_errno(res->status));
+		data->cb(nfsstat3_to_errno(res->status), nfs, rpc_get_error(nfs->rpc), data->private_data);
+		nfs_free_nfsdir(nfsdir);
+		data->continue_data = NULL;
+		free_nfs_cb_data(data);
+		return;
+	}
+
+	entry =res->READDIR3res_u.resok.reply.entries;
+	while (entry != NULL) {
+		nfsdirent = malloc(sizeof(struct nfsdirent));
+		if (nfsdirent == NULL) {
+			data->cb(-ENOMEM, nfs, "Failed to allocate dirent", data->private_data);
+			nfs_free_nfsdir(nfsdir);
+			data->continue_data = NULL;
+			free_nfs_cb_data(data);
+			return;
+		}
+		memset(nfsdirent, 0, sizeof(struct nfsdirent));
+		nfsdirent->name = strdup(entry->name);
+		if (nfsdirent->name == NULL) {
+			data->cb(-ENOMEM, nfs, "Failed to allocate dirent->name", data->private_data);
+			nfs_free_nfsdir(nfsdir);
+			data->continue_data = NULL;
+			free_nfs_cb_data(data);
+			return;
+		}
+		nfsdirent->inode = entry->fileid;
+
+		nfsdirent->next  = nfsdir->entries;
+		nfsdir->entries  = nfsdirent;
+
+		cookie = entry->cookie;
+		entry  = entry->nextentry;
+	}
+
+	if (res->READDIR3res_u.resok.reply.eof == 0) {
+	     	if (rpc_nfs_readdir_async(nfs->rpc, nfs_opendir2_cb, &data->fh, cookie, res->READDIR3res_u.resok.cookieverf, 8192, data) != 0) {
+			rpc_set_error(nfs->rpc, "RPC error: Failed to send READDIR call for %s", data->path);
+			data->cb(-ENOMEM, nfs, rpc_get_error(nfs->rpc), data->private_data);
+			nfs_free_nfsdir(nfsdir);
+			data->continue_data = NULL;
+			free_nfs_cb_data(data);
+			return;
+		}
+		return;
+	}
+
+	/* steal the dirhandle */
+	nfsdir->current = nfsdir->entries;
+
+	rdpe_cb_data = malloc(sizeof(struct rdpe_cb_data));
+	rdpe_cb_data->getattrcount = 0;
+	rdpe_cb_data->status = RPC_STATUS_SUCCESS;
+	rdpe_cb_data->data = data;
+	for (nfsdirent = nfsdir->entries; nfsdirent; nfsdirent = nfsdirent->next) {
+		struct rdpe_lookup_cb_data *rdpe_lookup_cb_data;
+
+		rdpe_lookup_cb_data = malloc(sizeof(struct rdpe_lookup_cb_data));
+		rdpe_lookup_cb_data->rdpe_cb_data = rdpe_cb_data;
+		rdpe_lookup_cb_data->nfsdirent = nfsdirent;
+
+		if (rpc_nfs_lookup_async(nfs->rpc, nfs_opendir3_cb, &data->fh, nfsdirent->name, rdpe_lookup_cb_data) != 0) {
+			rpc_set_error(nfs->rpc, "RPC error: Failed to send READDIR LOOKUP call");
+
+			/* if we have already commands in flight, we cant just stop, we have to wait for the
+		 	 * commands in flight to complete
+		 	 */
+			if (rdpe_cb_data->getattrcount > 0) {
+				rdpe_cb_data->status = RPC_STATUS_ERROR;
+				free(rdpe_lookup_cb_data);
+				return;
+			}
+
+			data->cb(-ENOMEM, nfs, rpc_get_error(nfs->rpc), data->private_data);
+			nfs_free_nfsdir(nfsdir);
+			data->continue_data = NULL;
+			free_nfs_cb_data(data);
+			free(rdpe_lookup_cb_data);
+			free(rdpe_cb_data);
+			return;
+		}
+		rdpe_cb_data->getattrcount++;
+	}
+}
+
+
+static void nfs_opendir_cb(struct rpc_context *rpc _U_, int status, void *command_data, void *private_data)
+{
+	READDIRPLUS3res *res = command_data;
+	struct nfs_cb_data *data = private_data;
+	struct nfs_context *nfs = data->nfs;
+	struct nfsdir *nfsdir = data->continue_data;
+	struct entryplus3 *entry;
+	uint64_t cookie;
+	
+
+	if (status == RPC_STATUS_ERROR || (status == RPC_STATUS_SUCCESS && res->status == NFS3ERR_NOTSUPP) ){
+		cookieverf3 cv;
+
+		if (rpc_nfs_readdir_async(nfs->rpc, nfs_opendir2_cb, &data->fh, 0, (char *)&cv, 8192, data) != 0) {
+			rpc_set_error(nfs->rpc, "RPC error: Failed to send READDIR call for %s", data->path);
+			data->cb(-ENOMEM, nfs, rpc_get_error(nfs->rpc), data->private_data);
+			nfs_free_nfsdir(nfsdir);
+			data->continue_data = NULL;
+			free_nfs_cb_data(data);
+			return;
+		}
+		return;
+	}
+
+	if (status == RPC_STATUS_CANCEL) {
+		data->cb(-EINTR, nfs, "Command was cancelled", data->private_data);
+		nfs_free_nfsdir(nfsdir);
+		data->continue_data = NULL;
+		free_nfs_cb_data(data);
+		return;
+	}
+
+	if (res->status != NFS3_OK) {
+		rpc_set_error(nfs->rpc, "NFS: READDIRPLUS of %s failed with %s(%d)", data->saved_path, nfsstat3_to_str(res->status), nfsstat3_to_errno(res->status));
 		data->cb(nfsstat3_to_errno(res->status), nfs, rpc_get_error(nfs->rpc), data->private_data);
 		nfs_free_nfsdir(nfsdir);
 		data->continue_data = NULL;
