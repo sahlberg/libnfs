@@ -352,6 +352,8 @@ static void nfs_mount_6_cb(struct rpc_context *rpc, int status, void *command_da
 		free_nfs_cb_data(data);
 		return;
 	}
+	/* NFS TCP connections we want to autoreconnect after sessions are torn down (due to inactivity or error) */
+	rpc_set_autoreconnect(rpc);
 }
 
 
@@ -499,12 +501,10 @@ int nfs_mount_async(struct nfs_context *nfs, const char *server, const char *exp
 	new_export = strdup(export);
 	if (nfs->server != NULL) {
 		free(nfs->server);
-		nfs->server = NULL;
 	}
 	nfs->server        = new_server;
 	if (nfs->export != NULL) {
 		free(nfs->export);
-		nfs->export = NULL;
 	}
 	nfs->export        = new_export;
 	data->nfs          = nfs;

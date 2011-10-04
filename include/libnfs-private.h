@@ -45,6 +45,10 @@ struct rpc_context {
        int is_udp;
        struct sockaddr *udp_dest;
        int is_broadcast;
+
+       /* track the address we connect to so we can auto-reconnect on session failure */
+       struct sockaddr_storage s;
+       int auto_reconnect;
 };
 
 struct rpc_pdu {
@@ -84,4 +88,7 @@ int rpc_bind_udp(struct rpc_context *rpc, char *addr, int port);
 int rpc_set_udp_destination(struct rpc_context *rpc, char *addr, int port, int is_broadcast);
 struct rpc_context *rpc_init_udp_context(void);
 struct sockaddr *rpc_get_recv_sockaddr(struct rpc_context *rpc);
+
+void rpc_set_autoreconnect(struct rpc_context *rpc);
+void rpc_unset_autoreconnect(struct rpc_context *rpc);
 

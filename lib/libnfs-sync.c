@@ -105,19 +105,6 @@ static void wait_for_nfs_reply(struct nfs_context *nfs, struct sync_cb_data *cb_
 			cb_data->status = -EIO;
 			break;
 		}
-		if (nfs_get_fd(nfs) == -1) {
-			char *server = strdup(nfs_get_server(nfs));
-			char *export = strdup(nfs_get_export(nfs));
-
-			if (nfs_mount(nfs, server, export) != 0) {
-				nfs_set_error(nfs, "Failed to reconnect to nfs server %s", nfs_get_error(nfs));
-				free(server);
-				free(export);
-				break;
-			}
-			free(server);
-			free(export);
-		}
 	}
 }
 
