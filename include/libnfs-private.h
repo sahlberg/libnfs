@@ -17,6 +17,12 @@
 #include <rpc/xdr.h>
 #include <rpc/auth.h>
 
+struct rpc_fragment {
+	struct rpc_fragment *next;
+	size_t size;
+	char *data;
+};
+
 struct rpc_context {
 	int fd;
 	int is_connected;
@@ -49,6 +55,9 @@ struct rpc_context {
        /* track the address we connect to so we can auto-reconnect on session failure */
        struct sockaddr_storage s;
        int auto_reconnect;
+
+	/* fragment reassembly */
+	struct rpc_fragment *fragments;
 };
 
 struct rpc_pdu {
@@ -91,4 +100,7 @@ struct sockaddr *rpc_get_recv_sockaddr(struct rpc_context *rpc);
 
 void rpc_set_autoreconnect(struct rpc_context *rpc);
 void rpc_unset_autoreconnect(struct rpc_context *rpc);
+
+int rpc_add_fragment(struct rpc_context *rpc, char *data, size_t size);
+void rpc_free_all_fragments(struct rpc_context *rpc);
 

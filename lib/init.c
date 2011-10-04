@@ -120,6 +120,44 @@ void rpc_error_all_pdus(struct rpc_context *rpc, char *error)
 	}
 }
 
+static void rpc_free_fragment(struct rpc_fragment *fragment)
+{
+	if (fragment->data != NULL) {
+		free(fragment->data);
+	}
+	free(fragment);
+}
+
+void rpc_free_all_fragments(struct rpc_context *rpc)
+{
+	while (rpc->fragments != NULL) {
+	      struct rpc_fragment *fragment = rpc->fragments;
+
+	      SLIST_REMOVE(&rpc->fragments, fragment);
+	      rpc_free_fragment(fragment);
+	}
+}
+
+int rpc_add_fragment(struct rpc_context *rpc, char *data, size_t size)
+{
+	struct rpc_fragment *fragment;
+
+	fragment = malloc(sizeof(struct rpc_fragment));
+	if (fragment == NULL) {
+		return -1;
+	}
+
+	fragment->size = size;
+	fragment->data = malloc(fragment->size);
+	if(fragment->data == NULL) {
+		free(fragment);
+		return -1;
+	}
+
+	memcpy(fragment->data, data, fragment->size);
+	SLIST_ADD_END(&rpc->fragments, fragment);
+	return 0;
+}
 
 void rpc_destroy_context(struct rpc_context *rpc)
 {
@@ -135,6 +173,8 @@ void rpc_destroy_context(struct rpc_context *rpc)
 		SLIST_REMOVE(&rpc->waitpdu, pdu);
 		rpc_free_pdu(rpc, pdu);
 	}
+
+	rpc_free_all_fragments(rpc);
 
 	auth_destroy(rpc->auth);
 	rpc->auth =NULL;
