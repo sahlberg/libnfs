@@ -111,7 +111,7 @@ struct nfs_mcb_data {
 static int nfs_lookup_path_async_internal(struct nfs_context *nfs, struct nfs_cb_data *data, struct nfs_fh3 *fh);
 
 
-void nfs_set_auth(struct nfs_context *nfs, struct AUTH *auth)
+void nfs_set_auth(struct nfs_context *nfs, AUTH *auth)
 {
 	rpc_set_auth(nfs->rpc, auth);
 }
