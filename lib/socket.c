@@ -278,12 +278,16 @@ int rpc_service(struct rpc_context *rpc, int revents)
 			rpc_set_error(rpc, "rpc_service: POLLERR, "
 						"Unknown socket error.");
 		}
-		rpc->connect_cb(rpc, RPC_STATUS_ERROR, rpc->error_string, rpc->connect_data);
+		if (rpc->connect_cb != NULL) {
+			rpc->connect_cb(rpc, RPC_STATUS_ERROR, rpc->error_string, rpc->connect_data);
+		}
 		return -1;
 	}
 	if (revents & POLLHUP) {
 		rpc_set_error(rpc, "Socket failed with POLLHUP");
-		rpc->connect_cb(rpc, RPC_STATUS_ERROR, rpc->error_string, rpc->connect_data);
+		if (rpc->connect_cb != NULL) {
+			rpc->connect_cb(rpc, RPC_STATUS_ERROR, rpc->error_string, rpc->connect_data);
+		}
 		return -1;
 	}
 
@@ -299,13 +303,17 @@ int rpc_service(struct rpc_context *rpc, int revents)
 			rpc_set_error(rpc, "rpc_service: socket error "
 				  	"%s(%d) while connecting.",
 					strerror(err), err);
-			rpc->connect_cb(rpc, RPC_STATUS_ERROR,
+			if (rpc->connect_cb != NULL) {
+				rpc->connect_cb(rpc, RPC_STATUS_ERROR,
 					NULL, rpc->connect_data);
+			}
 			return -1;
 		}
 
 		rpc->is_connected = 1;
-		rpc->connect_cb(rpc, RPC_STATUS_SUCCESS, NULL, rpc->connect_data);
+		if (rpc->connect_cb != NULL) {
+			rpc->connect_cb(rpc, RPC_STATUS_SUCCESS, NULL, rpc->connect_data);
+		}
 		return 0;
 	}
 
@@ -480,6 +488,7 @@ static void reconnect_cb(struct rpc_context *rpc, int status, void *data _U_, vo
 	}
 
 	rpc->is_connected = 1;
+	rpc->connect_cb   = NULL;
 }
 
 /* disconnect but do not error all PDUs, just move pdus in-flight back to the outqueue and reconnect */
