@@ -20,6 +20,8 @@
  * protocol as well as the XDR encoded/decoded structures.
  */
 #include <stdint.h>
+#include <rpc/rpc.h>
+#include <rpc/auth.h>
 
 struct rpc_data {
        int size;
@@ -30,8 +32,7 @@ struct rpc_context;
 struct rpc_context *rpc_init_context(void);
 void rpc_destroy_context(struct rpc_context *rpc);
 
-struct AUTH;
-void rpc_set_auth(struct rpc_context *rpc, struct AUTH *auth);
+void rpc_set_auth(struct rpc_context *rpc, AUTH *auth);
 
 int rpc_get_fd(struct rpc_context *rpc);
 int rpc_which_events(struct rpc_context *rpc);
