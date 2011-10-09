@@ -24,6 +24,12 @@
 struct nfs_context;
 struct rpc_context;
 
+//on osx struct AUTH is anonym typedef
+//forward declare struct AUTH in that case
+#ifndef struct AUTH
+struct AUTH;
+#endif
+
 #if defined(WIN32)
 #define EXTERN __declspec( dllexport )
 #else
