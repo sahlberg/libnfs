@@ -132,6 +132,7 @@ static void mount_cb(int status, struct nfs_context *nfs, void *data, void *priv
 int nfs_mount(struct nfs_context *nfs, const char *server, const char *export)
 {
 	struct sync_cb_data cb_data;
+	struct rpc_context *rpc = nfs_get_rpc_context(nfs);
 
 	cb_data.is_finished = 0;
 
@@ -141,6 +142,9 @@ int nfs_mount(struct nfs_context *nfs, const char *server, const char *export)
 	}
 
 	wait_for_nfs_reply(nfs, &cb_data);
+
+	/* Dont want any more callbacks even if the socket is closed */
+	rpc->connect_cb = NULL;
 
 	return cb_data.status;
 }
