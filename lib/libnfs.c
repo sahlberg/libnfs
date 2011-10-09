@@ -292,6 +292,9 @@ static void nfs_mount_7_cb(struct rpc_context *rpc, int status, void *command_da
 	struct nfs_cb_data *data = private_data;
 	struct nfs_context *nfs = data->nfs;
 
+	/* Dont want any more callbacks even if the socket is closed */
+	rpc->connect_cb = NULL;
+
 	if (status == RPC_STATUS_ERROR) {
 		data->cb(-EFAULT, nfs, command_data, data->private_data);
 		free_nfs_cb_data(data);
@@ -385,6 +388,9 @@ static void nfs_mount_4_cb(struct rpc_context *rpc, int status, void *command_da
 	struct nfs_cb_data *data = private_data;
 	struct nfs_context *nfs = data->nfs;
 
+	/* Dont want any more callbacks even if the socket is closed */
+	rpc->connect_cb = NULL;
+
 	if (status == RPC_STATUS_ERROR) {
 		data->cb(-EFAULT, nfs, command_data, data->private_data);
 		free_nfs_cb_data(data);
@@ -464,6 +470,9 @@ static void nfs_mount_1_cb(struct rpc_context *rpc, int status, void *command_da
 {
 	struct nfs_cb_data *data = private_data;
 	struct nfs_context *nfs = data->nfs;
+
+	/* Dont want any more callbacks even if the socket is closed */
+	rpc->connect_cb = NULL;
 
 	if (status == RPC_STATUS_ERROR) {
 		data->cb(-EFAULT, nfs, command_data, data->private_data);
@@ -3260,6 +3269,9 @@ static void mount_export_4_cb(struct rpc_context *rpc, int status, void *command
 {
 	struct mount_cb_data *data = private_data;
 
+	/* Dont want any more callbacks even if the socket is closed */
+	rpc->connect_cb = NULL;
+
 	if (status == RPC_STATUS_ERROR) {	
 		data->cb(rpc, -EFAULT, command_data, data->private_data);
 		free_mount_cb_data(data);
@@ -3335,6 +3347,9 @@ static void mount_export_2_cb(struct rpc_context *rpc, int status, void *command
 static void mount_export_1_cb(struct rpc_context *rpc, int status, void *command_data, void *private_data)
 {
 	struct mount_cb_data *data = private_data;
+
+	/* Dont want any more callbacks even if the socket is closed */
+	rpc->connect_cb = NULL;
 
 	if (status == RPC_STATUS_ERROR) {
 		data->cb(rpc, -EFAULT, command_data, data->private_data);
