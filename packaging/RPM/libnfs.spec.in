@@ -94,5 +94,10 @@ development libraries for LibNFS
 %{_libdir}/pkgconfig/libnfs.pc
 
 %changelog
+* Sun Nov 27 2011 : Version 1.1
+ - Fix definition and use of AUTH
+ - Only call the "connect" callback if non-NULL
+ - make sure the callback for connect is only invoked once for the sync api
+ - make file offset bits 64 bits always
 * Sun Jul 31 2011 : Version 1.0
  - Initial version
