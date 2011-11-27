@@ -90,7 +90,7 @@ int rpc_which_events(struct rpc_context *rpc)
 
 static int rpc_write_to_socket(struct rpc_context *rpc)
 {
-	ssize_t count;
+	int64_t count;
 
 	if (rpc == NULL) {
 		return -1;
@@ -101,7 +101,7 @@ static int rpc_write_to_socket(struct rpc_context *rpc)
 	}
 
 	while (rpc->outqueue != NULL) {
-		ssize_t total;
+		int64_t total;
 
 		total = rpc->outqueue->outdata.size;
 
@@ -134,7 +134,7 @@ static int rpc_read_from_socket(struct rpc_context *rpc)
 	int available;
 	int size;
 	int pdu_size;
-	ssize_t count;
+	int64_t count;
 
 #if defined(WIN32)
 	if (ioctlsocket(rpc->fd, FIONREAD, &available) != 0) {

@@ -19,7 +19,7 @@
 
 struct rpc_fragment {
 	struct rpc_fragment *next;
-	size_t size;
+	uint64_t size;
 	char *data;
 };
 
@@ -101,6 +101,6 @@ struct sockaddr *rpc_get_recv_sockaddr(struct rpc_context *rpc);
 void rpc_set_autoreconnect(struct rpc_context *rpc);
 void rpc_unset_autoreconnect(struct rpc_context *rpc);
 
-int rpc_add_fragment(struct rpc_context *rpc, char *data, size_t size);
+int rpc_add_fragment(struct rpc_context *rpc, char *data, uint64_t size);
 void rpc_free_all_fragments(struct rpc_context *rpc);
 

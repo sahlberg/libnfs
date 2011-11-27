@@ -82,7 +82,7 @@ int main(int argc _U_, char *argv[] _U_)
 {
 	struct nfs_context *nfs;
 	int i, ret;
-	off_t offset;
+	uint64_t offset;
 	struct client client;
 	struct stat st;
 	struct nfsfh  *nfsfh;

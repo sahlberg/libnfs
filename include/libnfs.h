@@ -106,12 +106,12 @@ struct nfsfh;
 /*
  * Get the maximum supported READ3 size by the server
  */
-EXTERN size_t nfs_get_readmax(struct nfs_context *nfs);
+EXTERN uint64_t nfs_get_readmax(struct nfs_context *nfs);
 
 /*
  * Get the maximum supported WRITE3 size by the server
  */
-EXTERN size_t nfs_get_writemax(struct nfs_context *nfs);
+EXTERN uint64_t nfs_get_writemax(struct nfs_context *nfs);
 
 
 /*
@@ -267,14 +267,14 @@ EXTERN int nfs_close(struct nfs_context *nfs, struct nfsfh *nfsfh);
  * -errno : An error occured.
  *          data is the error string.
  */
-EXTERN int nfs_pread_async(struct nfs_context *nfs, struct nfsfh *nfsfh, off_t offset, size_t count, nfs_cb cb, void *private_data);
+EXTERN int nfs_pread_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t offset, uint64_t count, nfs_cb cb, void *private_data);
 /*
  * Sync pread()
  * Function returns
  *    >=0 : numer of bytes read.
  * -errno : An error occured.
  */
-EXTERN int nfs_pread(struct nfs_context *nfs, struct nfsfh *nfsfh, off_t offset, size_t count, char *buf);
+EXTERN int nfs_pread(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t offset, uint64_t count, char *buf);
 
 
 
@@ -295,14 +295,14 @@ EXTERN int nfs_pread(struct nfs_context *nfs, struct nfsfh *nfsfh, off_t offset,
  * -errno : An error occured.
  *          data is the error string.
  */
-EXTERN int nfs_read_async(struct nfs_context *nfs, struct nfsfh *nfsfh, size_t count, nfs_cb cb, void *private_data);
+EXTERN int nfs_read_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t count, nfs_cb cb, void *private_data);
 /*
  * Sync read()
  * Function returns
  *    >=0 : numer of bytes read.
  * -errno : An error occured.
  */
-EXTERN int nfs_read(struct nfs_context *nfs, struct nfsfh *nfsfh, size_t count, char *buf);
+EXTERN int nfs_read(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t count, char *buf);
 
 
 
@@ -323,14 +323,14 @@ EXTERN int nfs_read(struct nfs_context *nfs, struct nfsfh *nfsfh, size_t count, 
  * -errno : An error occured.
  *          data is the error string.
  */
-EXTERN int nfs_pwrite_async(struct nfs_context *nfs, struct nfsfh *nfsfh, off_t offset, size_t count, char *buf, nfs_cb cb, void *private_data);
+EXTERN int nfs_pwrite_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t offset, uint64_t count, char *buf, nfs_cb cb, void *private_data);
 /*
  * Sync pwrite()
  * Function returns
  *    >=0 : numer of bytes written.
  * -errno : An error occured.
  */
-EXTERN int nfs_pwrite(struct nfs_context *nfs, struct nfsfh *nfsfh, off_t offset, size_t count, char *buf);
+EXTERN int nfs_pwrite(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t offset, uint64_t count, char *buf);
 
 
 /*
@@ -349,14 +349,14 @@ EXTERN int nfs_pwrite(struct nfs_context *nfs, struct nfsfh *nfsfh, off_t offset
  * -errno : An error occured.
  *          data is the error string.
  */
-EXTERN int nfs_write_async(struct nfs_context *nfs, struct nfsfh *nfsfh, size_t count, char *buf, nfs_cb cb, void *private_data);
+EXTERN int nfs_write_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t count, char *buf, nfs_cb cb, void *private_data);
 /*
  * Sync write()
  * Function returns
  *    >=0 : numer of bytes written.
  * -errno : An error occured.
  */
-EXTERN int nfs_write(struct nfs_context *nfs, struct nfsfh *nfsfh, size_t count, char *buf);
+EXTERN int nfs_write(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t count, char *buf);
 
 
 /*
@@ -371,18 +371,18 @@ EXTERN int nfs_write(struct nfs_context *nfs, struct nfsfh *nfsfh, size_t count,
  *
  * When the callback is invoked, status indicates the result:
  *    >=0 : Success.
- *          data is off_t * for the current position.
+ *          data is uint64_t * for the current position.
  * -errno : An error occured.
  *          data is the error string.
  */
-EXTERN int nfs_lseek_async(struct nfs_context *nfs, struct nfsfh *nfsfh, off_t offset, int whence, nfs_cb cb, void *private_data);
+EXTERN int nfs_lseek_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t offset, int whence, nfs_cb cb, void *private_data);
 /*
  * Sync lseek()
  * Function returns
  *    >=0 : numer of bytes read.
  * -errno : An error occured.
  */
-EXTERN int nfs_lseek(struct nfs_context *nfs, struct nfsfh *nfsfh, off_t offset, int whence, off_t *current_offset);
+EXTERN int nfs_lseek(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t offset, int whence, uint64_t *current_offset);
 
 
 /*
@@ -426,14 +426,14 @@ EXTERN int nfs_fsync(struct nfs_context *nfs, struct nfsfh *nfsfh);
  * -errno : An error occured.
  *          data is the error string.
  */
-EXTERN int nfs_truncate_async(struct nfs_context *nfs, const char *path, off_t length, nfs_cb cb, void *private_data);
+EXTERN int nfs_truncate_async(struct nfs_context *nfs, const char *path, uint64_t length, nfs_cb cb, void *private_data);
 /*
  * Sync truncate()
  * Function returns
  *      0 : Success
  * -errno : An error occured.
  */
-EXTERN int nfs_truncate(struct nfs_context *nfs, const char *path, off_t length);
+EXTERN int nfs_truncate(struct nfs_context *nfs, const char *path, uint64_t length);
 
 
 
@@ -452,14 +452,14 @@ EXTERN int nfs_truncate(struct nfs_context *nfs, const char *path, off_t length)
  * -errno : An error occured.
  *          data is the error string.
  */
-EXTERN int nfs_ftruncate_async(struct nfs_context *nfs, struct nfsfh *nfsfh, off_t length, nfs_cb cb, void *private_data);
+EXTERN int nfs_ftruncate_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t length, nfs_cb cb, void *private_data);
 /*
  * Sync ftruncate()
  * Function returns
  *      0 : Success
  * -errno : An error occured.
  */
-EXTERN int nfs_ftruncate(struct nfs_context *nfs, struct nfsfh *nfsfh, off_t length);
+EXTERN int nfs_ftruncate(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t length);
 
 
 
@@ -1013,7 +1013,7 @@ EXTERN void mount_free_export_list(struct exportnode *exports);
 
 
 //qqq replace later with lseek(cur, 0)
-off_t nfs_get_current_offset(struct nfsfh *nfsfh);
+uint64_t nfs_get_current_offset(struct nfsfh *nfsfh);
 
 
 

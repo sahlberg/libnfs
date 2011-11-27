@@ -51,7 +51,7 @@ struct nfsdir {
 struct nfsfh {
        struct nfs_fh3 fh;
        int is_sync;
-       off_t offset;
+       uint64_t offset;
 };
 
 struct nfs_context {
@@ -59,8 +59,8 @@ struct nfs_context {
        char *server;
        char *export;
        struct nfs_fh3 rootfh;
-       size_t readmax;
-       size_t writemax;
+       uint64_t readmax;
+       uint64_t writemax;
 };
 
 void nfs_free_nfsdir(struct nfsdir *nfsdir)
@@ -98,14 +98,14 @@ struct nfs_cb_data {
        int error;
        int cancel;
        int num_calls;
-       off_t start_offset, max_offset;
+       uint64_t start_offset, max_offset;
        char *buffer;
 };
 
 struct nfs_mcb_data {
        struct nfs_cb_data *data;
-       off_t offset;
-       size_t count;
+       uint64_t offset;
+       uint64_t count;
 };
 
 static int nfs_lookup_path_async_internal(struct nfs_context *nfs, struct nfs_cb_data *data, struct nfs_fh3 *fh);
@@ -934,7 +934,7 @@ static void nfs_pread_mcb(struct rpc_context *rpc _U_, int status, void *command
 	free(mdata);
 }
 
-int nfs_pread_async(struct nfs_context *nfs, struct nfsfh *nfsfh, off_t offset, size_t count, nfs_cb cb, void *private_data)
+int nfs_pread_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t offset, uint64_t count, nfs_cb cb, void *private_data)
 {
 	struct nfs_cb_data *data;
 
@@ -977,7 +977,7 @@ int nfs_pread_async(struct nfs_context *nfs, struct nfsfh *nfsfh, off_t offset, 
 	}
 
 	while (count > 0) {
-		size_t readcount = count;
+		uint64_t readcount = count;
 		struct nfs_mcb_data *mdata;
 
 		if (readcount > nfs_get_readmax(nfs)) {
@@ -1011,7 +1011,7 @@ int nfs_pread_async(struct nfs_context *nfs, struct nfsfh *nfsfh, off_t offset, 
 /*
  * Async read()
  */
-int nfs_read_async(struct nfs_context *nfs, struct nfsfh *nfsfh, size_t count, nfs_cb cb, void *private_data)
+int nfs_read_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t count, nfs_cb cb, void *private_data)
 {
 	return nfs_pread_async(nfs, nfsfh, nfsfh->offset, count, cb, private_data);
 }
@@ -1110,7 +1110,7 @@ static void nfs_pwrite_mcb(struct rpc_context *rpc _U_, int status, void *comman
 }
 
 
-int nfs_pwrite_async(struct nfs_context *nfs, struct nfsfh *nfsfh, off_t offset, size_t count, char *buf, nfs_cb cb, void *private_data)
+int nfs_pwrite_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t offset, uint64_t count, char *buf, nfs_cb cb, void *private_data)
 {
 	struct nfs_cb_data *data;
 
@@ -1145,7 +1145,7 @@ int nfs_pwrite_async(struct nfs_context *nfs, struct nfsfh *nfsfh, off_t offset,
 	data->start_offset = offset;
 
 	while (count > 0) {
-		size_t writecount = count;
+		uint64_t writecount = count;
 		struct nfs_mcb_data *mdata;
 
 		if (writecount > nfs_get_writemax(nfs)) {
@@ -1180,7 +1180,7 @@ int nfs_pwrite_async(struct nfs_context *nfs, struct nfsfh *nfsfh, off_t offset,
 /*
  * Async write()
  */
-int nfs_write_async(struct nfs_context *nfs, struct nfsfh *nfsfh, size_t count, char *buf, nfs_cb cb, void *private_data)
+int nfs_write_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t count, char *buf, nfs_cb cb, void *private_data)
 {
 	return nfs_pwrite_async(nfs, nfsfh, nfsfh->offset, count, buf, cb, private_data);
 }
@@ -1326,7 +1326,7 @@ static void nfs_ftruncate_cb(struct rpc_context *rpc _U_, int status, void *comm
 	free_nfs_cb_data(data);
 }
 
-int nfs_ftruncate_async(struct nfs_context *nfs, struct nfsfh *nfsfh, off_t length, nfs_cb cb, void *private_data)
+int nfs_ftruncate_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t length, nfs_cb cb, void *private_data)
 {
 	struct nfs_cb_data *data;
 	SETATTR3args args;
@@ -1362,7 +1362,7 @@ int nfs_ftruncate_async(struct nfs_context *nfs, struct nfsfh *nfsfh, off_t leng
  */
 static int nfs_truncate_continue_internal(struct nfs_context *nfs, struct nfs_cb_data *data)
 {
-	off_t offset = data->continue_int;
+	uint64_t offset = data->continue_int;
 	struct nfsfh nfsfh;
 
 	nfsfh.fh.data.data_val = data->fh.data.data_val;
@@ -1378,9 +1378,9 @@ static int nfs_truncate_continue_internal(struct nfs_context *nfs, struct nfs_cb
 	return 0;
 }
 
-int nfs_truncate_async(struct nfs_context *nfs, const char *path, off_t length, nfs_cb cb, void *private_data)
+int nfs_truncate_async(struct nfs_context *nfs, const char *path, uint64_t length, nfs_cb cb, void *private_data)
 {
-	off_t offset;
+	uint64_t offset;
 
 	offset = length;
 
@@ -2222,7 +2222,7 @@ void nfs_closedir(struct nfs_context *nfs _U_, struct nfsdir *nfsdir)
 struct lseek_cb_data {
        struct nfs_context *nfs;
        struct nfsfh *nfsfh;
-       off_t offset;
+       uint64_t offset;
        nfs_cb cb;
        void *private_data;
 };
@@ -2257,7 +2257,7 @@ static void nfs_lseek_1_cb(struct rpc_context *rpc _U_, int status, void *comman
 	free(data);
 }
 
-int nfs_lseek_async(struct nfs_context *nfs, struct nfsfh *nfsfh, off_t offset, int whence, nfs_cb cb, void *private_data)
+int nfs_lseek_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t offset, int whence, nfs_cb cb, void *private_data)
 {
 	struct lseek_cb_data *data;
 
@@ -3286,7 +3286,7 @@ int nfs_link_async(struct nfs_context *nfs, const char *oldpath, const char *new
 
 
 //qqq replace later with lseek()
-off_t nfs_get_current_offset(struct nfsfh *nfsfh)
+uint64_t nfs_get_current_offset(struct nfsfh *nfsfh)
 {
 	return nfsfh->offset;
 }
@@ -3296,7 +3296,7 @@ off_t nfs_get_current_offset(struct nfsfh *nfsfh)
 /*
  * Get the maximum supported READ3 size by the server
  */
-size_t nfs_get_readmax(struct nfs_context *nfs)
+uint64_t nfs_get_readmax(struct nfs_context *nfs)
 {
 	return nfs->readmax;
 }
@@ -3304,7 +3304,7 @@ size_t nfs_get_readmax(struct nfs_context *nfs)
 /*
  * Get the maximum supported WRITE3 size by the server
  */
-size_t nfs_get_writemax(struct nfs_context *nfs)
+uint64_t nfs_get_writemax(struct nfs_context *nfs)
 {
 	/* Some XDR libraries can not marshall PDUs bigger than this */
         if (nfs->writemax < 32768) {
