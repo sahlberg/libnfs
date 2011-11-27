@@ -816,7 +816,8 @@ program NFS_PROGRAM {
 		SYMLINK3res
 		NFS3_SYMLINK(SYMLINK3args)         = 10;
 
-/*		MKNOD3res NFSPROC3_MKNOD(MKNOD3args)             = 11;*/
+		MKNOD3res
+		NFS3_MKNOD(MKNOD3args)             = 11;
 
 		REMOVE3res
 		NFS3_REMOVE(REMOVE3args)           = 12;

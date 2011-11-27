@@ -447,6 +447,66 @@ int rpc_nfs_create_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh,
 
 
 
+int rpc_nfs_mknod_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh, char *file, int mode, int major, int minor, void *private_data)
+{
+	struct rpc_pdu *pdu;
+	MKNOD3args args;
+
+	pdu = rpc_allocate_pdu(rpc, NFS_PROGRAM, NFS_V3, NFS3_MKNOD, cb, private_data, (xdrproc_t)xdr_MKNOD3res, sizeof(MKNOD3res));
+	if (pdu == NULL) {
+		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu for nfs/mknod call");
+		return -1;
+	}
+
+	memset(&args, 0, sizeof(MKNOD3args));
+	args.where.dir.data.data_len = fh->data.data_len;
+	args.where.dir.data.data_val = fh->data.data_val;
+	args.where.name = file;
+	switch (mode & S_IFMT) {
+	case S_IFCHR:
+		args.what.type = NF3CHR;
+		args.what.mknoddata3_u.chr_device.dev_attributes.mode.set_it = 1;
+		args.what.mknoddata3_u.chr_device.dev_attributes.mode.set_mode3_u.mode = mode & (S_IRUSR|S_IWUSR|S_IXUSR|S_IRGRP|S_IWGRP|S_IXGRP|S_IROTH|S_IWOTH|S_IXOTH);
+		args.what.mknoddata3_u.chr_device.spec.specdata1 = major;
+		args.what.mknoddata3_u.chr_device.spec.specdata2 = minor;
+		break;
+	case S_IFBLK:
+		args.what.type = NF3BLK;
+		args.what.mknoddata3_u.blk_device.dev_attributes.mode.set_it = 1;
+		args.what.mknoddata3_u.blk_device.dev_attributes.mode.set_mode3_u.mode = mode & (S_IRUSR|S_IWUSR|S_IXUSR|S_IRGRP|S_IWGRP|S_IXGRP|S_IROTH|S_IWOTH|S_IXOTH);
+		args.what.mknoddata3_u.blk_device.spec.specdata1 = major;
+		args.what.mknoddata3_u.blk_device.spec.specdata2 = minor;
+	case S_IFSOCK:
+		args.what.type = NF3SOCK;
+		args.what.mknoddata3_u.sock_attributes.mode.set_it = 1;
+		args.what.mknoddata3_u.sock_attributes.mode.set_mode3_u.mode = mode & (S_IRUSR|S_IWUSR|S_IXUSR|S_IRGRP|S_IWGRP|S_IXGRP|S_IROTH|S_IWOTH|S_IXOTH);
+		break;
+	case S_IFIFO:
+		args.what.type = NF3FIFO;
+		args.what.mknoddata3_u.pipe_attributes.mode.set_it = 1;
+		args.what.mknoddata3_u.pipe_attributes.mode.set_mode3_u.mode = mode & (S_IRUSR|S_IWUSR|S_IXUSR|S_IRGRP|S_IWGRP|S_IXGRP|S_IROTH|S_IWOTH|S_IXOTH);
+		break;
+	default:
+		rpc_set_error(rpc, "Invalid file type for nfs/mknod call");
+		rpc_free_pdu(rpc, pdu);
+		return -1;
+	}
+
+	if (xdr_MKNOD3args(&pdu->xdr, &args) == 0) {
+		rpc_set_error(rpc, "XDR error: Failed to encode MKNOD3args");
+		rpc_free_pdu(rpc, pdu);
+		return -2;
+	}
+
+	if (rpc_queue_pdu(rpc, pdu) != 0) {
+		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for nfs/mknod call");
+		rpc_free_pdu(rpc, pdu);
+		return -3;
+	}
+
+	return 0;
+}
+
 
 int rpc_nfs_remove_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh, char *file, void *private_data)
 {

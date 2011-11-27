@@ -38,6 +38,8 @@ nfs_lseek
 nfs_lseek_async
 nfs_mkdir
 nfs_mkdir_async
+nfs_mknod
+nfs_mknod_async
 nfs_mount
 nfs_mount_async
 nfs_open

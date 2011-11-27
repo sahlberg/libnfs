@@ -1766,6 +1766,109 @@ int nfs_unlink_async(struct nfs_context *nfs, const char *path, nfs_cb cb, void 
 }
 
 
+/*
+ * Async mknod()
+ */
+struct mknod_cb_data {
+       char *path;
+       int mode;
+       int major;
+       int minor;
+};
+
+static void free_mknod_cb_data(void *ptr)
+{
+	struct mknod_cb_data *data = ptr;
+
+	free(data->path);
+	free(data);
+}
+
+static void nfs_mknod_cb(struct rpc_context *rpc _U_, int status, void *command_data, void *private_data)
+{
+	MKNOD3res *res;
+	struct nfs_cb_data *data = private_data;
+	struct nfs_context *nfs = data->nfs;
+	char *str = data->continue_data;
+	
+	str = &str[strlen(str) + 1];
+
+	if (status == RPC_STATUS_ERROR) {
+		data->cb(-EFAULT, nfs, command_data, data->private_data);
+		free_nfs_cb_data(data);
+		return;
+	}
+	if (status == RPC_STATUS_CANCEL) {
+		data->cb(-EINTR, nfs, "Command was cancelled", data->private_data);
+		free_nfs_cb_data(data);
+		return;
+	}
+
+	res = command_data;
+	if (res->status != NFS3_OK) {
+		rpc_set_error(nfs->rpc, "NFS: MKNOD of %s/%s failed with %s(%d)", data->saved_path, str, nfsstat3_to_str(res->status), nfsstat3_to_errno(res->status));
+		data->cb(nfsstat3_to_errno(res->status), nfs, rpc_get_error(nfs->rpc), data->private_data);
+		free_nfs_cb_data(data);
+		return;
+	}
+
+	data->cb(0, nfs, NULL, data->private_data);
+	free_nfs_cb_data(data);
+}
+
+static int nfs_mknod_continue_internal(struct nfs_context *nfs, struct nfs_cb_data *data)
+{
+	struct mknod_cb_data *cb_data = data->continue_data;
+	char *str = cb_data->path;
+	
+	str = &str[strlen(str) + 1];
+
+	if (rpc_nfs_mknod_async(nfs->rpc, nfs_mknod_cb, &data->fh, str, cb_data->mode, cb_data->major, cb_data->minor, data) != 0) {
+		data->cb(-ENOMEM, nfs, rpc_get_error(nfs->rpc), data->private_data);
+		free_nfs_cb_data(data);
+		return -1;
+	}
+	return 0;
+}
+
+int nfs_mknod_async(struct nfs_context *nfs, const char *path, int mode, int dev, nfs_cb cb, void *private_data)
+{
+	char *ptr;
+	struct mknod_cb_data *cb_data;
+
+	cb_data = malloc(sizeof(struct mknod_cb_data));
+	if (cb_data == NULL) {
+		rpc_set_error(nfs->rpc, "Out of memory, failed to allocate mode buffer for cb data");
+		return -1;
+	}
+
+	cb_data->path = strdup(path);
+	if (cb_data->path == NULL) {
+		rpc_set_error(nfs->rpc, "Out of memory, failed to allocate mode buffer for path");
+		free(cb_data);		
+		return -1;
+	}
+
+	ptr = strrchr(cb_data->path, '/');
+	if (ptr == NULL) {
+		rpc_set_error(nfs->rpc, "Invalid path %s", path);
+		return -1;
+	}
+	*ptr = 0;
+
+	cb_data->mode = mode;
+	cb_data->major = major(dev);
+	cb_data->minor = minor(dev);
+
+	/* data->path now points to the parent directory,  and beyond the nul terminateor is the new directory to create */
+	if (nfs_lookuppath_async(nfs, cb_data->path, cb, private_data, nfs_mknod_continue_internal, cb_data, free_mknod_cb_data, 0) != 0) {
+		rpc_set_error(nfs->rpc, "Out of memory: failed to start parsing the path components");
+		free_mknod_cb_data(cb_data);
+		return -1;
+	}
+
+	return 0;
+}
 
 /*
  * Async opendir()

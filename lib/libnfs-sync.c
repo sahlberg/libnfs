@@ -576,7 +576,37 @@ int nfs_creat(struct nfs_context *nfs, const char *path, int mode, struct nfsfh 
 	return cb_data.status;
 }
 
+/*
+ * mknod()
+ */
+static void mknod_cb(int status, struct nfs_context *nfs, void *data, void *private_data)
+{
+	struct sync_cb_data *cb_data = private_data;
 
+	cb_data->is_finished = 1;
+	cb_data->status = status;
+
+	if (status < 0) {
+		nfs_set_error(nfs, "mknod call failed with \"%s\"", (char *)data);
+		return;
+	}
+}
+
+int nfs_mknod(struct nfs_context *nfs, const char *path, int mode, int dev)
+{
+	struct sync_cb_data cb_data;
+
+	cb_data.is_finished = 0;
+
+	if (nfs_mknod_async(nfs, path, mode, dev, mknod_cb, &cb_data) != 0) {
+		nfs_set_error(nfs, "nfs_creat_async failed");
+		return -1;
+	}
+
+	wait_for_nfs_reply(nfs, &cb_data);
+
+	return cb_data.status;
+}
 
 
 /*
