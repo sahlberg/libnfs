@@ -686,6 +686,9 @@ static void nfs_stat_1_cb(struct rpc_context *rpc _U_, int status, void *command
 	if (res->GETATTR3res_u.resok.obj_attributes.type == NF3DIR) {
 		st.st_mode |= S_IFDIR ;
 	}
+	if (res->GETATTR3res_u.resok.obj_attributes.type == NF3REG) {
+		st.st_mode |= S_IFREG ;
+	}
         st.st_nlink   = res->GETATTR3res_u.resok.obj_attributes.nlink;
         st.st_uid     = res->GETATTR3res_u.resok.obj_attributes.uid;
         st.st_gid     = res->GETATTR3res_u.resok.obj_attributes.gid;
