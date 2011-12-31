@@ -102,7 +102,7 @@ int rpc_pmap_null_async(struct rpc_context *rpc, rpc_cb cb, void *private_data);
  * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
  *                     data is NULL.
  */
-int rpc_pmap_getport_async(struct rpc_context *rpc, int program, int version, rpc_cb cb, void *private_data);
+int rpc_pmap_getport_async(struct rpc_context *rpc, int program, int version, int protocol, rpc_cb cb, void *private_data);
 
 
 /*

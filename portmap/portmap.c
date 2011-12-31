@@ -46,7 +46,7 @@ int rpc_pmap_null_async(struct rpc_context *rpc, rpc_cb cb, void *private_data)
 	return 0;
 }
 
-int rpc_pmap_getport_async(struct rpc_context *rpc, int program, int version, rpc_cb cb, void *private_data)
+int rpc_pmap_getport_async(struct rpc_context *rpc, int program, int version, int protocol, rpc_cb cb, void *private_data)
 {
 	struct rpc_pdu *pdu;
 	struct pmap_mapping m;
@@ -59,7 +59,7 @@ int rpc_pmap_getport_async(struct rpc_context *rpc, int program, int version, rp
 
 	m.prog = program;
 	m.vers = version;
-	m.prot = IPPROTO_TCP;
+	m.prot = protocol;
 	m.port = 0;
 	if (xdr_pmap_mapping(&pdu->xdr, &m) == 0) {
 		rpc_set_error(rpc, "XDR error: Failed to encode data for portmap/getport call");
