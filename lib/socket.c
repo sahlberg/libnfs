@@ -411,7 +411,7 @@ static int rpc_connect_sockaddr_async(struct rpc_context *rpc, struct sockaddr_s
 	if (connect(rpc->fd, (struct sockaddr *)s, socksize) != 0 && errno != EINPROGRESS) 
 #endif
 	{
-		rpc_set_error(rpc, "connect() to server failed");
+	  rpc_set_error(rpc, "connect() to server failed. %s(%d)", strerror(errno), errno);
 		return -1;
 	}		
 
