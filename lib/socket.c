@@ -381,13 +381,16 @@ static int rpc_connect_sockaddr_async(struct rpc_context *rpc, struct sockaddr_s
 	 * to make the executable able to bind to a system port.
 	 */
 	if (1) {
-		int port;
+		static int port = 200;
+		int i;
 		int one = 1;
 
 		setsockopt(rpc->fd, SOL_SOCKET, SO_REUSEADDR, (char *)&one, sizeof(one));
 
-		for (port = 200; port < 500; port++) {
+		for (i = 0; i < 500; i++) {
 			struct sockaddr_in sin;
+
+			if(++port > 700) port = 200;
 
 			memset(&sin, 0, sizeof(sin));
 			sin.sin_port        = htons(port);
