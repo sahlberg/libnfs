@@ -340,7 +340,7 @@ int rpc_nfs_access_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh,
  *
  * When the callback is invoked, status indicates the result:
  * RPC_STATUS_SUCCESS : We got a successful response from the nfs daemon.
- *                      data is ACCESS3res
+ *                      data is READ3res
  * RPC_STATUS_ERROR   : An error occured when trying to contact the nfs daemon.
  *                      data is the error string.
  * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
