@@ -1649,10 +1649,20 @@ static void nfs_creat_1_cb(struct rpc_context *rpc _U_, int status, void *comman
 static int nfs_creat_continue_internal(struct nfs_context *nfs, struct nfs_cb_data *data)
 {
 	char *str = data->continue_data;
-	
+	CREATE3args args;
+
 	str = &str[strlen(str) + 1];
 
-	if (rpc_nfs_create_async(nfs->rpc, nfs_creat_1_cb, &data->fh, str, data->continue_int, data) != 0) {
+
+	memset(&args, 0, sizeof(CREATE3args));
+	args.where.dir.data.data_len = data->fh.data.data_len;
+	args.where.dir.data.data_val = data->fh.data.data_val;
+	args.where.name = str;
+	args.how.mode = UNCHECKED;
+	args.how.createhow3_u.obj_attributes.mode.set_it = 1;
+	args.how.createhow3_u.obj_attributes.mode.set_mode3_u.mode = data->continue_int;
+
+	if (rpc_nfs_create_async(nfs->rpc, nfs_creat_1_cb, &args, data) != 0) {
 		rpc_set_error(nfs->rpc, "RPC error: Failed to send CREATE call for %s/%s", data->path, str);
 		data->cb(-ENOMEM, nfs, rpc_get_error(nfs->rpc), data->private_data);
 		free_nfs_cb_data(data);

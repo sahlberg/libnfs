@@ -411,24 +411,15 @@ int rpc_nfs_rmdir_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh, 
 
 
 
-int rpc_nfs_create_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh, char *file, int mode, void *private_data)
+int rpc_nfs_create_async(struct rpc_context *rpc, rpc_cb cb, CREATE3args *args, void *private_data)
 {
 	struct rpc_pdu *pdu;
-	CREATE3args args;
 
 	pdu = rpc_allocate_pdu(rpc, NFS_PROGRAM, NFS_V3, NFS3_CREATE, cb, private_data, (xdrproc_t)xdr_CREATE3res, sizeof(CREATE3res));
 	if (pdu == NULL) {
 		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu for nfs/create call");
 		return -1;
 	}
-
-	memset(&args, 0, sizeof(CREATE3args));
-	args.where.dir.data.data_len = fh->data.data_len;
-	args.where.dir.data.data_val = fh->data.data_val;
-	args.where.name = file;
-	args.how.mode = UNCHECKED;
-	args.how.createhow3_u.obj_attributes.mode.set_it = 1;
-	args.how.createhow3_u.obj_attributes.mode.set_mode3_u.mode = mode;
 
 	if (xdr_CREATE3args(&pdu->xdr, &args) == 0) {
 		rpc_set_error(rpc, "XDR error: Failed to encode CREATE3args");
