@@ -342,10 +342,9 @@ int rpc_nfs_setattr_async(struct rpc_context *rpc, rpc_cb cb, SETATTR3args *args
 
 
 
-int rpc_nfs_mkdir_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh, char *dir, void *private_data)
+int rpc_nfs_mkdir_async(struct rpc_context *rpc, rpc_cb cb, MKDIR3args *args, void *private_data)
 {
 	struct rpc_pdu *pdu;
-	MKDIR3args args;
 
 	pdu = rpc_allocate_pdu(rpc, NFS_PROGRAM, NFS_V3, NFS3_MKDIR, cb, private_data, (xdrproc_t)xdr_MKDIR3res, sizeof(MKDIR3res));
 	if (pdu == NULL) {
@@ -353,14 +352,7 @@ int rpc_nfs_mkdir_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh, 
 		return -1;
 	}
 
-	memset(&args, 0, sizeof(MKDIR3args));
-	args.where.dir.data.data_len = fh->data.data_len;
-	args.where.dir.data.data_val = fh->data.data_val;
-	args.where.name = dir;
-	args.attributes.mode.set_it = 1;
-	args.attributes.mode.set_mode3_u.mode = 0755;
-
-	if (xdr_MKDIR3args(&pdu->xdr, &args) == 0) {
+	if (xdr_MKDIR3args(&pdu->xdr, args) == 0) {
 		rpc_set_error(rpc, "XDR error: Failed to encode MKDIR3args");
 		rpc_free_pdu(rpc, pdu);
 		return -2;

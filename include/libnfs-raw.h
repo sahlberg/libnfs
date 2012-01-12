@@ -414,7 +414,8 @@ int rpc_nfs_setattr_async(struct rpc_context *rpc, rpc_cb cb, struct SETATTR3arg
  * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
  *                     data is NULL.
  */
-int rpc_nfs_mkdir_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh, char *dir, void *private_data);
+struct MKDIR3args;
+int rpc_nfs_mkdir_async(struct rpc_context *rpc, rpc_cb cb, struct MKDIR3args *args, void *private_data);
 
 
 
