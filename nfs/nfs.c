@@ -421,7 +421,7 @@ int rpc_nfs_create_async(struct rpc_context *rpc, rpc_cb cb, CREATE3args *args, 
 		return -1;
 	}
 
-	if (xdr_CREATE3args(&pdu->xdr, &args) == 0) {
+	if (xdr_CREATE3args(&pdu->xdr, args) == 0) {
 		rpc_set_error(rpc, "XDR error: Failed to encode CREATE3args");
 		rpc_free_pdu(rpc, pdu);
 		return -2;
