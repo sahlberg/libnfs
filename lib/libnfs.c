@@ -2420,7 +2420,12 @@ static void nfs_readlink_1_cb(struct rpc_context *rpc _U_, int status, void *com
 
 static int nfs_readlink_continue_internal(struct nfs_context *nfs, struct nfs_cb_data *data)
 {
-	if (rpc_nfs_readlink_async(nfs->rpc, nfs_readlink_1_cb, &data->fh, data) != 0) {
+	READLINK3args args;
+
+	args.symlink.data.data_len = data->fh.data.data_len; 
+	args.symlink.data.data_val = data->fh.data.data_val; 
+
+	if (rpc_nfs_readlink_async(nfs->rpc, nfs_readlink_1_cb, &args, data) != 0) {
 		rpc_set_error(nfs->rpc, "RPC error: Failed to send READLINK call for %s", data->path);
 		data->cb(-ENOMEM, nfs, rpc_get_error(nfs->rpc), data->private_data);
 		free_nfs_cb_data(data);
