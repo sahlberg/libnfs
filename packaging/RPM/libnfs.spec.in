@@ -94,6 +94,11 @@ development libraries for LibNFS
 %{_libdir}/pkgconfig/libnfs.pc
 
 %changelog
+* Sat Mar 3 2012 : Version 1.3
+ - add set/unset to portmapper
+ - add mount v1
+ - try to rotate to find a free port better
+ - minor fixes
 * Tue Dec 6 2011 : Version 1.2
  - Add support for MKNOD
  - Add support for HaneWin NFS server
