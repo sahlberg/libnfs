@@ -3547,3 +3547,7 @@ const char *nfs_get_export(struct nfs_context *nfs) {
 const struct nfs_fh3 *nfs_get_rootfh(struct nfs_context *nfs) {
       return &nfs->rootfh;
 }
+
+struct nfs_fh3 *nfs_get_fh(struct nfsfh *nfsfh) {
+       return &nfsfh->fh;
+}

@@ -80,3 +80,28 @@ int rpc_nfsacl_getacl_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *
 
 	return 0;
 }
+
+int rpc_nfsacl_setacl_async(struct rpc_context *rpc, rpc_cb cb, struct SETACL3args *args, void *private_data)
+{
+	struct rpc_pdu *pdu;
+
+	pdu = rpc_allocate_pdu(rpc, NFSACL_PROGRAM, NFSACL_V3, NFSACL3_SETACL, cb, private_data, (xdrproc_t)xdr_SETACL3res, sizeof(SETACL3res));
+	if (pdu == NULL) {
+		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu for nfsacl/setacl call");
+		return -1;
+	}
+
+	if (xdr_SETACL3args(&pdu->xdr, args) == 0) {
+		rpc_set_error(rpc, "XDR error: Failed to encode SETACL3args");
+		rpc_free_pdu(rpc, pdu);
+		return -2;
+	}
+
+	if (rpc_queue_pdu(rpc, pdu) != 0) {
+		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for nfsacl/setacl call");
+		rpc_free_pdu(rpc, pdu);
+		return -2;
+	}
+
+	return 0;
+}

@@ -40,6 +40,16 @@ int rpc_service(struct rpc_context *rpc, int revents);
 char *rpc_get_error(struct rpc_context *rpc);
 int rpc_queue_length(struct rpc_context *rpc);
 
+/* Utility function to get an RPC context from a NFS context. Useful for doing low level NFSACL
+ * calls on a NFS context.
+ */
+struct rpc_context *nfs_get_rpc_context(struct nfs_context *nfs);
+
+/* This function returns the nfs_fh3 structure from a nfsfh structure.
+   This allows to use a file onened with nfs_open() together with low-level
+   rpc functions that thake a nfs filehandle
+*/
+struct nfs_fh3 *nfs_get_fh(struct nfsfh *nfsfh);
 
 #define RPC_STATUS_SUCCESS	   	0
 #define RPC_STATUS_ERROR		1
@@ -768,12 +778,31 @@ int rpc_nfsacl_null_async(struct rpc_context *rpc, rpc_cb cb, void *private_data
  * <0 : An error occured when trying to set up the call. The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
- * RPC_STATUS_SUCCESS : We got a successful response from the rquota daemon.
+ * RPC_STATUS_SUCCESS : We got a successful response from the nfs daemon.
  *                      data is a GETACL3res pointer
- * RPC_STATUS_ERROR   : An error occured when trying to contact the rquota daemon.
+ * RPC_STATUS_ERROR   : An error occured when trying to contact the nfs daemon.
  *                      data is the error string.
  * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
  *                     data is NULL.
  */
 int rpc_nfsacl_getacl_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh, uint32_t mask, void *private_data);
 
+
+
+/*
+ * Call NFSACL/SETACL
+ *
+ * Function returns
+ *  0 : The call was initiated. The callback will be invoked when the call completes.
+ * <0 : An error occured when trying to set up the call. The callback will not be invoked.
+ *
+ * When the callback is invoked, status indicates the result:
+ * RPC_STATUS_SUCCESS : We got a successful response from the nfs daemon.
+ *                      data is a SETACL3res pointer
+ * RPC_STATUS_ERROR   : An error occured when trying to contact the nfs daemon.
+ *                      data is the error string.
+ * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
+ *                     data is NULL.
+ */
+struct SETACL3args;
+int rpc_nfsacl_setacl_async(struct rpc_context *rpc, rpc_cb cb, struct SETACL3args *args, void *private_data);

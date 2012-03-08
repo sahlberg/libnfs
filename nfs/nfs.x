@@ -908,6 +908,26 @@ default:
      void;
 };
 
+struct SETACL3args {
+	nfs_fh3     dir;
+	uint32_t       mask;
+	uint32_t       ace_count;
+	struct nfsacl_ace ace<>;
+	uint32_t       default_ace_count;
+	struct nfsacl_ace default_ace<>;
+};
+
+struct SETACL3resok {
+	post_op_attr   attr;
+};
+
+union SETACL3res switch (nfsstat3 status) {
+case NFS3_OK:
+     SETACL3resok   resok;
+default:
+     void;
+};
+
 program NFSACL_PROGRAM {
 	version NFSACL_V3 {
 		void
@@ -915,5 +935,8 @@ program NFSACL_PROGRAM {
 
 		GETACL3res
 		NFSACL3_GETACL(GETACL3args)           = 1;
+
+		SETACL3res
+		NFSACL3_SETACL(SETACL3args)           = 2;
 	} = 3;
 } = 100227;
