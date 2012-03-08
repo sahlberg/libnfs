@@ -65,3 +65,16 @@ Cygwin
 ------
 Configure with './configure --enable-tirpc' since cygwin only supports ti-rpc and not classic rpc.
 
+
+
+RELEASE TARBALLS
+================
+Release tarballs are available at https://github.com/sahlberg/libnfs/downloads
+
+
+
+MAILINGLIST
+===========
+A libnfs mailinglist is available at http://groups.google.com/group/libnfs
+Announcements of new versions of libnfs will be posted to this list.
+
