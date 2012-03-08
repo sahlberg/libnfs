@@ -785,7 +785,8 @@ int rpc_nfsacl_null_async(struct rpc_context *rpc, rpc_cb cb, void *private_data
  * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
  *                     data is NULL.
  */
-int rpc_nfsacl_getacl_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh, uint32_t mask, void *private_data);
+struct GETACL3args;
+int rpc_nfsacl_getacl_async(struct rpc_context *rpc, rpc_cb cb, struct GETACL3args *args, void *private_data);
 
 
 

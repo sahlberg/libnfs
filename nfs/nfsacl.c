@@ -51,10 +51,9 @@ int rpc_nfsacl_null_async(struct rpc_context *rpc, rpc_cb cb, void *private_data
 }
 
 
-int rpc_nfsacl_getacl_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh, uint32_t mask, void *private_data)
+int rpc_nfsacl_getacl_async(struct rpc_context *rpc, rpc_cb cb, struct GETACL3args *args, void *private_data)
 {
 	struct rpc_pdu *pdu;
-	GETACL3args args;
 
 	pdu = rpc_allocate_pdu(rpc, NFSACL_PROGRAM, NFSACL_V3, NFSACL3_GETACL, cb, private_data, (xdrproc_t)xdr_GETACL3res, sizeof(GETACL3res));
 	if (pdu == NULL) {
@@ -62,11 +61,7 @@ int rpc_nfsacl_getacl_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *
 		return -1;
 	}
 
-	args.dir.data.data_len = fh->data.data_len;
-	args.dir.data.data_val = fh->data.data_val;
-	args.mask = mask;	
-
-	if (xdr_GETACL3args(&pdu->xdr, &args) == 0) {
+	if (xdr_GETACL3args(&pdu->xdr, args) == 0) {
 		rpc_set_error(rpc, "XDR error: Failed to encode GETACL3args");
 		rpc_free_pdu(rpc, pdu);
 		return -2;

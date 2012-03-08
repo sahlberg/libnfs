@@ -117,11 +117,14 @@ void acl_getacl_cb(struct rpc_context *rpc _U_, int status, void *data, void *pr
 void acl_null_cb(struct rpc_context *rpc _U_, int status, void *data, void *private_data)
 {
 	struct client *client = private_data;
+	GETACL3args args;
 
 	printf("Got NFSACL/NULL reply\n");
 	printf("Get ACL for root handle\n");
 
-	if (rpc_nfsacl_getacl_async(rpc, acl_getacl_cb, &client->rootfh, NFSACL_MASK_ACL_ENTRY|NFSACL_MASK_ACL_COUNT|NFSACL_MASK_ACL_DEFAULT_ENTRY|NFSACL_MASK_ACL_DEFAULT_COUNT, client) != 0) {
+	args.dir = client->rootfh;
+	args.mask = NFSACL_MASK_ACL_ENTRY|NFSACL_MASK_ACL_COUNT|NFSACL_MASK_ACL_DEFAULT_ENTRY|NFSACL_MASK_ACL_DEFAULT_COUNT;
+	if (rpc_nfsacl_getacl_async(rpc, acl_getacl_cb, &args, client) != 0) {
 		printf("Failed to send getacl request\n");
 		exit(10);
 	}
