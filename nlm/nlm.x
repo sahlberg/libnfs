@@ -50,7 +50,6 @@ struct nlm4_share {
 	unsigned int   access;
 };
 
-
 struct nlm4_testres_denied {
 	nlm4_holder holder;
 };
@@ -73,6 +72,18 @@ struct NLM4_TESTargs {
 	nlm4_lock  lock;
 };
 
+struct NLM4_CANCres {
+	nlm_cookie cookie;
+	nlmstat4 status;
+};
+
+struct NLM4_CANCargs {
+	nlm_cookie cookie;
+	bool block;
+	bool exclusive;
+	nlm4_lock  lock;
+};
+
 program NLM_PROGRAM {
 	version NLM_V4 {
 		void
@@ -84,8 +95,8 @@ program NLM_PROGRAM {
 /*		nlm4_res			 */
 /*		NLM4_LOCK(nlm4_lockargs)         = 2;	*/
 
-/*		nlm4_res			 */
-/*		NLM4_CANCEL(nlm4_cancargs)       = 3;	*/
+		NLM4_CANCres
+		NLM4_CANCEL(NLM4_CANCargs)       = 3;
 
 /*		nlm4_res			 */
 /*		NLM4_UNLOCK(nlm4_unlockargs)     = 4;	*/
@@ -99,8 +110,8 @@ program NLM_PROGRAM {
 /*		void				 */
 /*		NLM4_LOCK_MSG(nlm4_lockargs)     = 7;	*/
 
-/*		void				 */
-/*		NLM4_CANCEL_MSG(nlm4_cancargs)   = 8;	*/
+		void
+		NLM4_CANCEL_MSG(NLM4_CANCargs)   = 8;
 
 /*		void				 */
 /*		NLM4_UNLOCK_MSG(nlm4_unlockargs) = 9;	*/
@@ -114,8 +125,8 @@ program NLM_PROGRAM {
 /*		void				*/
 /*		NLM4_LOCK_RES(nlm4_res)         = 12;	*/
 
-/*		void				*/
-/*		NLM4_CANCEL_RES(nlm4_res)       = 13;	*/
+		void
+		NLM4_CANCEL_RES(NLM4_CANCres)       = 13;
 
 /*		void				*/
 /*		NLM4_UNLOCK_RES(nlm4_res)       = 14;	*/
