@@ -108,6 +108,17 @@ struct NLM4_LOCKargs {
 	int state;
 };
 
+struct NLM4_GRANTEDargs {
+	nlm_cookie cookie;
+	bool       exclusive;
+	nlm4_lock  lock;
+};
+
+struct NLM4_GRANTEDres {
+	nlm_cookie cookie;
+	nlmstat4 status;
+};
+
 program NLM_PROGRAM {
 	version NLM_V4 {
 		void
@@ -125,8 +136,8 @@ program NLM_PROGRAM {
 		NLM4_UNLOCKres
 		NLM4_UNLOCK(NLM4_UNLOCKargs)     = 4;
 
-/*		nlm4_res			 */
-/*		NLM4_GRANTED(nlm4_testargs)      = 5;	*/
+		NLM4_GRANTEDres
+		NLM4_GRANT(NLM4_GRANTEDargs)      = 5;
 
 		void
 		NLM4_TEST_MSG(NLM4_TESTargs)     = 6;
@@ -140,8 +151,8 @@ program NLM_PROGRAM {
 		void
 		NLM4_UNLOCK_MSG(NLM4_UNLOCKargs) = 9;
 
-/*		void				 */
-/*		NLM4_GRANTED_MSG(nlm4_testargs) = 10;	*/
+		void
+		NLM4_GRANT_MSG(NLM4_GRANTEDargs) = 10;
 
 		void
 		NLM4_TEST_RES(NLM4_TESTres)     = 11;
@@ -155,8 +166,8 @@ program NLM_PROGRAM {
 		void
 		NLM4_UNLOCK_RES(NLM4_UNLOCKres)       = 14;
 
-/*		void				*/
-/*		NLM4_GRANTED_RES(nlm4_res)      = 15;	*/
+		void
+		NLM4_GRANT_RES(NLM4_GRANTEDres)      = 15;
 
 /*		nlm4_shareres			*/
 /*		NLM4_SHARE(nlm4_shareargs)      = 20;	*/
