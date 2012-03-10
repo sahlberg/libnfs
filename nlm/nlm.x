@@ -51,16 +51,20 @@ struct nlm4_share {
 };
 
 
-struct nlm4_testres_ok {
-	nlm_cookie  cookie;
+struct nlm4_testres_denied {
 	nlm4_holder holder;
 };
 
-union NLM4_TESTres switch (nlmstat4 status) {
-	case NLM4_GRANTED:
-		nlm4_testres_ok  lock;
+union nlm4_testreply switch (nlmstat4 status) {
+	case NLM4_DENIED:
+		nlm4_testres_denied lock;
 	default:
 		void;
+};
+
+struct NLM4_TESTres {
+	nlm_cookie cookie;
+	nlm4_testreply reply;
 };
 
 struct NLM4_TESTargs {
