@@ -839,4 +839,24 @@ char *nlmstat4_to_str(int stat);
  * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
  *                     data is NULL.
  */
-int rpc_nlm_null_async(struct rpc_context *rpc, rpc_cb cb, void *private_data);
+int rpc_nlm4_null_async(struct rpc_context *rpc, rpc_cb cb, void *private_data);
+
+/*
+ * Call NLM/TEST
+ * Call the TEST procedure for the NLM protocol
+ *
+ * Function returns
+ *  0 : The call was initiated. The callback will be invoked when the call completes.
+ * <0 : An error occured when trying to set up the call. The callback will not be invoked.
+ *
+ * When the callback is invoked, status indicates the result:
+ * RPC_STATUS_SUCCESS : We got a successful response from the nlm daemon.
+ *                      data is NLM4_TESTres
+ * RPC_STATUS_ERROR   : An error occured when trying to contact the nlm daemon.
+ *                      data is the error string.
+ * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
+ *                     data is NULL.
+ */
+struct NLM4_TESTargs;
+int rpc_nlm4_test_async(struct rpc_context *rpc, rpc_cb cb, struct NLM4_TESTargs *args, void *private_data);
+

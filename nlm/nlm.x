@@ -1,7 +1,15 @@
 /* based on rfc1813 and wireshark */
 
-const COOKIESIZE = 4;
-typedef opaque nlm_cookie[COOKIESIZE];
+
+struct nlm_fh4 {
+	opaque       data<>;
+};
+
+typedef string nlm4_oh<>;
+
+struct nlm_cookie {
+	opaque       data<>;
+};
 	
 enum nlmstat4 {
 	NLM4_GRANTED = 0,
@@ -17,29 +25,29 @@ enum nlmstat4 {
 };
 
 struct nlm4_holder {
-	bool         exclusive;
-	unsigned int svid;
-	netobj       oh;
+	bool           exclusive;
+	unsigned int   svid;
+	nlm4_oh        oh;
 	unsigned hyper l_offset;
 	unsigned hyper l_len;
 };
 
 const NLM_MAXNAME = 256;
 struct nlm4_lock {
-	string       caller_name<NLM_MAXNAME>;
-	netobj       fh;
-	netobj       oh;
-	unsigned int svid;
+	string         caller_name<NLM_MAXNAME>;
+	struct nlm_fh4 fh;
+	nlm4_oh        oh;
+	unsigned int   svid;
 	unsigned hyper l_offset;
 	unsigned hyper l_len;
 };
 
 struct nlm4_share {
-	string       caller_name<NLM_MAXNAME>;
-	netobj       fh;
-	netobj       oh;
-	unsigned int mode;
-	unsigned int access;
+	string         caller_name<NLM_MAXNAME>;
+	struct nlm_fh4 fh;
+	nlm4_oh        oh;
+	unsigned int   mode;
+	unsigned int   access;
 };
 
 
@@ -48,14 +56,14 @@ struct nlm4_testres_ok {
 	nlm4_holder holder;
 };
 
-union nlm4_testres switch (nlmstat4 nlm_status) {
+union NLM4_TESTres switch (nlmstat4 status) {
 	case NLM4_GRANTED:
 		nlm4_testres_ok  lock;
 	default:
 		void;
 };
 
-struct nlm4_testargs {
+struct NLM4_TESTargs {
 	nlm_cookie cookie;
 	bool       exclusive;
 	nlm4_lock  lock;
@@ -66,8 +74,8 @@ program NLM_PROGRAM {
 		void
 		NLM4_NULL(void)                  = 0;
 
-		nlm4_testres
-		NLM4_TEST(nlm4_testargs)         = 1;
+		NLM4_TESTres
+		NLM4_TEST(NLM4_TESTargs)         = 1;
 
 /*		nlm4_res			 */
 /*		NLM4_LOCK(nlm4_lockargs)         = 2;	*/
@@ -81,8 +89,8 @@ program NLM_PROGRAM {
 /*		nlm4_res			 */
 /*		NLM4_GRANTED(nlm4_testargs)      = 5;	*/
 
-/*		void				 */
-/*		NLM4_TEST_MSG(nlm4_testargs)     = 6;	*/
+		void
+		NLM4_TEST_MSG(NLM4_TESTargs)     = 6;
 
 /*		void				 */
 /*		NLM4_LOCK_MSG(nlm4_lockargs)     = 7;	*/
@@ -96,8 +104,8 @@ program NLM_PROGRAM {
 /*		void				 */
 /*		NLM4_GRANTED_MSG(nlm4_testargs) = 10;	*/
 
-/*		void				*/
-/*		NLM4_TEST_RES(nlm4_testres)     = 11;	*/
+		void
+		NLM4_TEST_RES(NLM4_TESTres)     = 11;
 
 /*		void				*/
 /*		NLM4_LOCK_RES(nlm4_res)         = 12;	*/

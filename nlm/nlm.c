@@ -28,7 +28,7 @@
 #include "libnfs-private.h"
 #include "libnfs-raw-nlm.h"
 
-int rpc_nlm_null_async(struct rpc_context *rpc, rpc_cb cb, void *private_data)
+int rpc_nlm4_null_async(struct rpc_context *rpc, rpc_cb cb, void *private_data)
 {
 	struct rpc_pdu *pdu;
 
@@ -40,6 +40,31 @@ int rpc_nlm_null_async(struct rpc_context *rpc, rpc_cb cb, void *private_data)
 
 	if (rpc_queue_pdu(rpc, pdu) != 0) {
 		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for nlm/null call");
+		rpc_free_pdu(rpc, pdu);
+		return -1;
+	}
+
+	return 0;
+}
+
+int rpc_nlm4_test_async(struct rpc_context *rpc, rpc_cb cb, struct NLM4_TESTargs *args, void *private_data)
+{
+	struct rpc_pdu *pdu;
+
+	pdu = rpc_allocate_pdu(rpc, NLM_PROGRAM, NLM_V4, NLM4_TEST, cb, private_data, (xdrproc_t)xdr_NLM4_TESTres, sizeof(NLM4_TESTres));
+	if (pdu == NULL) {
+		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu for nlm/test call");
+		return -1;
+	}
+
+	if (xdr_NLM4_TESTargs(&pdu->xdr, args) == 0) {
+		rpc_set_error(rpc, "XDR error: Failed to encode NLM4_TESTargs");
+		rpc_free_pdu(rpc, pdu);
+		return -2;
+	}
+
+	if (rpc_queue_pdu(rpc, pdu) != 0) {
+		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for nlm/test call");
 		rpc_free_pdu(rpc, pdu);
 		return -1;
 	}
