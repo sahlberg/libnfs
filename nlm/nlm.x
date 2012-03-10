@@ -94,6 +94,20 @@ struct NLM4_UNLOCKargs {
 	nlm4_lock  lock;
 };
 
+struct NLM4_LOCKres {
+	nlm_cookie cookie;
+	nlmstat4 status;
+};
+
+struct NLM4_LOCKargs {
+	nlm_cookie cookie;
+	bool block;
+	bool exclusive;
+	nlm4_lock  lock;
+	bool reclaim;
+	int state;
+};
+
 program NLM_PROGRAM {
 	version NLM_V4 {
 		void
@@ -102,8 +116,8 @@ program NLM_PROGRAM {
 		NLM4_TESTres
 		NLM4_TEST(NLM4_TESTargs)         = 1;
 
-/*		nlm4_res			 */
-/*		NLM4_LOCK(nlm4_lockargs)         = 2;	*/
+		NLM4_LOCKres
+		NLM4_LOCK(NLM4_LOCKargs)         = 2;
 
 		NLM4_CANCres
 		NLM4_CANCEL(NLM4_CANCargs)       = 3;
@@ -117,8 +131,8 @@ program NLM_PROGRAM {
 		void
 		NLM4_TEST_MSG(NLM4_TESTargs)     = 6;
 
-/*		void				 */
-/*		NLM4_LOCK_MSG(nlm4_lockargs)     = 7;	*/
+		void
+		NLM4_LOCK_MSG(NLM4_LOCKargs)     = 7;
 
 		void
 		NLM4_CANCEL_MSG(NLM4_CANCargs)   = 8;
@@ -132,8 +146,8 @@ program NLM_PROGRAM {
 		void
 		NLM4_TEST_RES(NLM4_TESTres)     = 11;
 
-/*		void				*/
-/*		NLM4_LOCK_RES(nlm4_res)         = 12;	*/
+		void
+		NLM4_LOCK_RES(NLM4_LOCKres)         = 12;
 
 		void
 		NLM4_CANCEL_RES(NLM4_CANCres)       = 13;
