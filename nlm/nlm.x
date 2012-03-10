@@ -84,6 +84,16 @@ struct NLM4_CANCargs {
 	nlm4_lock  lock;
 };
 
+struct NLM4_UNLOCKres {
+	nlm_cookie cookie;
+	nlmstat4 status;
+};
+
+struct NLM4_UNLOCKargs {
+	nlm_cookie cookie;
+	nlm4_lock  lock;
+};
+
 program NLM_PROGRAM {
 	version NLM_V4 {
 		void
@@ -98,8 +108,8 @@ program NLM_PROGRAM {
 		NLM4_CANCres
 		NLM4_CANCEL(NLM4_CANCargs)       = 3;
 
-/*		nlm4_res			 */
-/*		NLM4_UNLOCK(nlm4_unlockargs)     = 4;	*/
+		NLM4_UNLOCKres
+		NLM4_UNLOCK(NLM4_UNLOCKargs)     = 4;
 
 /*		nlm4_res			 */
 /*		NLM4_GRANTED(nlm4_testargs)      = 5;	*/
@@ -113,8 +123,8 @@ program NLM_PROGRAM {
 		void
 		NLM4_CANCEL_MSG(NLM4_CANCargs)   = 8;
 
-/*		void				 */
-/*		NLM4_UNLOCK_MSG(nlm4_unlockargs) = 9;	*/
+		void
+		NLM4_UNLOCK_MSG(NLM4_UNLOCKargs) = 9;
 
 /*		void				 */
 /*		NLM4_GRANTED_MSG(nlm4_testargs) = 10;	*/
@@ -128,8 +138,8 @@ program NLM_PROGRAM {
 		void
 		NLM4_CANCEL_RES(NLM4_CANCres)       = 13;
 
-/*		void				*/
-/*		NLM4_UNLOCK_RES(nlm4_res)       = 14;	*/
+		void
+		NLM4_UNLOCK_RES(NLM4_UNLOCKres)       = 14;
 
 /*		void				*/
 /*		NLM4_GRANTED_RES(nlm4_res)      = 15;	*/
