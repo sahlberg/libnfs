@@ -752,6 +752,13 @@ int rpc_rquota2_getactivequota_async(struct rpc_context *rpc, rpc_cb cb, char *e
 
 
 
+
+
+
+/*
+ * NFSACL functions 
+ */
+
 /*
  * Call NFSACL/NULL
  * Call the NULL procedure for the NFSACL
@@ -807,3 +814,29 @@ int rpc_nfsacl_getacl_async(struct rpc_context *rpc, rpc_cb cb, struct GETACL3ar
  */
 struct SETACL3args;
 int rpc_nfsacl_setacl_async(struct rpc_context *rpc, rpc_cb cb, struct SETACL3args *args, void *private_data);
+
+
+
+
+/*
+ * NLM functions
+ */
+char *nlmstat4_to_str(int stat);
+	
+/*
+ * Call NLM/NULL
+ * Call the NULL procedure for the NLM protocol
+ *
+ * Function returns
+ *  0 : The call was initiated. The callback will be invoked when the call completes.
+ * <0 : An error occured when trying to set up the call. The callback will not be invoked.
+ *
+ * When the callback is invoked, status indicates the result:
+ * RPC_STATUS_SUCCESS : We got a successful response from the nlm daemon.
+ *                      data is NULL
+ * RPC_STATUS_ERROR   : An error occured when trying to contact the nlm daemon.
+ *                      data is the error string.
+ * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
+ *                     data is NULL.
+ */
+int rpc_nlm_null_async(struct rpc_context *rpc, rpc_cb cb, void *private_data);
