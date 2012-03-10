@@ -860,3 +860,59 @@ int rpc_nlm4_null_async(struct rpc_context *rpc, rpc_cb cb, void *private_data);
 struct NLM4_TESTargs;
 int rpc_nlm4_test_async(struct rpc_context *rpc, rpc_cb cb, struct NLM4_TESTargs *args, void *private_data);
 
+/*
+ * Call NLM/LOCK
+ * Call the LOCK procedure for the NLM protocol
+ *
+ * Function returns
+ *  0 : The call was initiated. The callback will be invoked when the call completes.
+ * <0 : An error occured when trying to set up the call. The callback will not be invoked.
+ *
+ * When the callback is invoked, status indicates the result:
+ * RPC_STATUS_SUCCESS : We got a successful response from the nlm daemon.
+ *                      data is NLM4_LOCKres
+ * RPC_STATUS_ERROR   : An error occured when trying to contact the nlm daemon.
+ *                      data is the error string.
+ * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
+ *                     data is NULL.
+ */
+struct NLM4_LOCKargs;
+int rpc_nlm4_lock_async(struct rpc_context *rpc, rpc_cb cb, struct NLM4_LOCKargs *args, void *private_data);
+
+/*
+ * Call NLM/CANCEL
+ * Call the CANCEL procedure for the NLM protocol
+ *
+ * Function returns
+ *  0 : The call was initiated. The callback will be invoked when the call completes.
+ * <0 : An error occured when trying to set up the call. The callback will not be invoked.
+ *
+ * When the callback is invoked, status indicates the result:
+ * RPC_STATUS_SUCCESS : We got a successful response from the nlm daemon.
+ *                      data is NLM4_CANCres
+ * RPC_STATUS_ERROR   : An error occured when trying to contact the nlm daemon.
+ *                      data is the error string.
+ * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
+ *                     data is NULL.
+ */
+struct NLM4_CANCargs;
+int rpc_nlm4_cancel_async(struct rpc_context *rpc, rpc_cb cb, struct NLM4_CANCargs *args, void *private_data);
+
+/*
+ * Call NLM/UNLOCK
+ * Call the UNLOCK procedure for the NLM protocol
+ *
+ * Function returns
+ *  0 : The call was initiated. The callback will be invoked when the call completes.
+ * <0 : An error occured when trying to set up the call. The callback will not be invoked.
+ *
+ * When the callback is invoked, status indicates the result:
+ * RPC_STATUS_SUCCESS : We got a successful response from the nlm daemon.
+ *                      data is NLM4_UNLOCKres
+ * RPC_STATUS_ERROR   : An error occured when trying to contact the nlm daemon.
+ *                      data is the error string.
+ * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
+ *                     data is NULL.
+ */
+struct NLM4_UNLOCKargs;
+int rpc_nlm4_unlock_async(struct rpc_context *rpc, rpc_cb cb, struct NLM4_UNLOCKargs *args, void *private_data);

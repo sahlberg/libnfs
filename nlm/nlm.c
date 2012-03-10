@@ -72,6 +72,81 @@ int rpc_nlm4_test_async(struct rpc_context *rpc, rpc_cb cb, struct NLM4_TESTargs
 	return 0;
 }
 
+int rpc_nlm4_lock_async(struct rpc_context *rpc, rpc_cb cb, struct NLM4_LOCKargs *args, void *private_data)
+{
+	struct rpc_pdu *pdu;
+
+	pdu = rpc_allocate_pdu(rpc, NLM_PROGRAM, NLM_V4, NLM4_LOCK, cb, private_data, (xdrproc_t)xdr_NLM4_LOCKres, sizeof(NLM4_LOCKres));
+	if (pdu == NULL) {
+		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu for nlm/lock call");
+		return -1;
+	}
+
+	if (xdr_NLM4_LOCKargs(&pdu->xdr, args) == 0) {
+		rpc_set_error(rpc, "XDR error: Failed to encode NLM4_LOCKargs");
+		rpc_free_pdu(rpc, pdu);
+		return -2;
+	}
+
+	if (rpc_queue_pdu(rpc, pdu) != 0) {
+		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for nlm/lock call");
+		rpc_free_pdu(rpc, pdu);
+		return -1;
+	}
+
+	return 0;
+}
+
+int rpc_nlm4_cancel_async(struct rpc_context *rpc, rpc_cb cb, struct NLM4_CANCargs *args, void *private_data)
+{
+	struct rpc_pdu *pdu;
+
+	pdu = rpc_allocate_pdu(rpc, NLM_PROGRAM, NLM_V4, NLM4_CANCEL, cb, private_data, (xdrproc_t)xdr_NLM4_CANCres, sizeof(NLM4_CANCres));
+	if (pdu == NULL) {
+		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu for nlm/cancel call");
+		return -1;
+	}
+
+	if (xdr_NLM4_CANCargs(&pdu->xdr, args) == 0) {
+		rpc_set_error(rpc, "XDR error: Failed to encode NLM4_CANCargs");
+		rpc_free_pdu(rpc, pdu);
+		return -2;
+	}
+
+	if (rpc_queue_pdu(rpc, pdu) != 0) {
+		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for nlm/cancel call");
+		rpc_free_pdu(rpc, pdu);
+		return -1;
+	}
+
+	return 0;
+}
+
+int rpc_nlm4_unlock_async(struct rpc_context *rpc, rpc_cb cb, struct NLM4_UNLOCKargs *args, void *private_data)
+{
+	struct rpc_pdu *pdu;
+
+	pdu = rpc_allocate_pdu(rpc, NLM_PROGRAM, NLM_V4, NLM4_UNLOCK, cb, private_data, (xdrproc_t)xdr_NLM4_UNLOCKres, sizeof(NLM4_UNLOCKres));
+	if (pdu == NULL) {
+		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu for nlm/unlock call");
+		return -1;
+	}
+
+	if (xdr_NLM4_UNLOCKargs(&pdu->xdr, args) == 0) {
+		rpc_set_error(rpc, "XDR error: Failed to encode NLM4_UNLOCKargs");
+		rpc_free_pdu(rpc, pdu);
+		return -2;
+	}
+
+	if (rpc_queue_pdu(rpc, pdu) != 0) {
+		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for nlm/unlock call");
+		rpc_free_pdu(rpc, pdu);
+		return -1;
+	}
+
+	return 0;
+}
+
 char *nlmstat4_to_str(int st)
 {
 	enum nlmstat4 stat = st;
