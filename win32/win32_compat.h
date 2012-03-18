@@ -53,6 +53,26 @@ typedef int socklen_t;
 #define F_GETFL  3
 #define F_SETFL  4
 
+#ifndef S_IFIFO
+#define S_IFIFO        0x1000  /* FIFO */
+#endif
+
+#ifndef S_IFBLK
+#define S_IFBLK        0x3000  /* Block: Is this ever set under w32? */
+#endif
+
+#ifndef S_IFSOCK
+#define S_IFSOCK 0x0           /* not defined in mingw either */
+#endif
+
+#ifndef major
+#define major(a) 0
+#endif
+
+#ifndef minor
+#define minor(a) 0
+#endif
+
 #define O_NONBLOCK 0x40000000
 #define O_SYNC 0
 
