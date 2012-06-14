@@ -362,8 +362,6 @@ static int rpc_connect_sockaddr_async(struct rpc_context *rpc, struct sockaddr_s
 		return -1;
 	}
 
-
-#if !defined(WIN32)
 	/* Some systems allow you to set capabilities on an executable
 	 * to allow the file to be executed with privilege to bind to
 	 * privileged system ports, even if the user is not root.
@@ -378,32 +376,38 @@ static int rpc_connect_sockaddr_async(struct rpc_context *rpc, struct sockaddr_s
 	 * On linux, use
 	 *    sudo setcap 'cap_net_bind_service=+ep' /path/executable
 	 * to make the executable able to bind to a system port.
+	 *
+	 * On Windows, there is no concept of privileged ports. Thus
+	 * binding will usually succeed.
 	 */
-	if (1) {
-		static int port = 200;
-		int i;
-		int one = 1;
+	{
+		struct sockaddr_in sin;
+		static int portOfs = 0;
+		const int firstPort = 512;	/* >= 512 according to Sun docs */
+		const int portCount = IPPORT_RESERVED - firstPort;
+		int startOfs = portOfs, port, rc;
 
-		setsockopt(rpc->fd, SOL_SOCKET, SO_REUSEADDR, (char *)&one, sizeof(one));
+		do {
+			rc = -1;
+			port = htons(firstPort + portOfs);
+			portOfs = (portOfs + 1) % portCount;
 
-		for (i = 0; i < 500; i++) {
-			struct sockaddr_in sin;
+			/* skip well-known ports */
+			if (!getservbyport(port, "tcp")) {
+				memset(&sin, 0, sizeof(sin));
+				sin.sin_port        = port;
+				sin.sin_family      = AF_INET;
+				sin.sin_addr.s_addr = 0;
 
-			if(++port > 700) port = 200;
-
-			memset(&sin, 0, sizeof(sin));
-			sin.sin_port        = htons(port);
-			sin.sin_family      = AF_INET;
-			sin.sin_addr.s_addr = 0;
-
-			if (bind(rpc->fd, (struct sockaddr *)&sin, sizeof(struct sockaddr_in)) != 0 && errno != EACCES) {
-				/* we didnt get EACCES, so try again */
-				continue;
-			}
-			break;
-		}
-	}
+				rc = bind(rpc->fd, (struct sockaddr *)&sin, sizeof(struct sockaddr_in));
+#if !defined(WIN32)
+				/* we got EACCES, so don't try again */
+				if (rc != 0 && errno == EACCES)
+					break;
 #endif
+			}
+		} while (rc != 0 && portOfs != startOfs);
+	}
 
 	set_nonblocking(rpc->fd);
 
