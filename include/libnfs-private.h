@@ -44,8 +44,8 @@ struct rpc_context {
        struct sockaddr_storage udp_src;
        struct rpc_pdu *waitpdu;
 
-       int inpos;
-       int insize;
+       uint32_t inpos;
+       uint32_t insize;
        char *inbuf;
 
        /* special fields for UDP, which can sometimes be BROADCASTed */
@@ -67,7 +67,7 @@ struct rpc_pdu {
 	unsigned long xid;
 	ZDR zdr;
 
-	int written;
+	uint32_t written;
 	struct rpc_data outdata;
 
 	rpc_cb cb;
@@ -76,7 +76,7 @@ struct rpc_pdu {
 	/* function to decode the zdr reply data and buffer to decode into */
 	zdrproc_t zdr_decode_fn;
 	caddr_t zdr_decode_buf;
-	int zdr_decode_bufsize;
+	uint32_t zdr_decode_bufsize;
 };
 
 struct rpc_pdu *rpc_allocate_pdu(struct rpc_context *rpc, int program, int version, int procedure, rpc_cb cb, void *private_data, zdrproc_t zdr_decode_fn, int zdr_bufsize);
