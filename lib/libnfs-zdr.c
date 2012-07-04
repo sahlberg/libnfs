@@ -286,7 +286,7 @@ static bool_t libnfs_opaque_auth(ZDR *zdrs, struct opaque_auth *auth)
 		return FALSE;
 	}
 
-	if (!libnfs_zdr_bytes(zdrs, &auth->oa_base, &auth->oa_length, &auth->oa_length)) {
+	if (!libnfs_zdr_bytes(zdrs, &auth->oa_base, &auth->oa_length, auth->oa_length)) {
 		return FALSE;
 	}
 
