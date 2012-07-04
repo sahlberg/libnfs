@@ -21,8 +21,7 @@
 #include <stdio.h>
 #include <errno.h>
 #include <sys/stat.h>
-#include <rpc/rpc.h>
-#include <rpc/xdr.h>
+#include "libnfs-zdr.h"
 #include "libnfs.h"
 #include "libnfs-raw.h"
 #include "libnfs-private.h"
@@ -55,7 +54,7 @@ int rpc_rquota1_null_async(struct rpc_context *rpc, rpc_cb cb, void *private_dat
 {
 	struct rpc_pdu *pdu;
 
-	pdu = rpc_allocate_pdu(rpc, RQUOTA_PROGRAM, RQUOTA_V1, RQUOTA1_NULL, cb, private_data, (xdrproc_t)xdr_void, 0);
+	pdu = rpc_allocate_pdu(rpc, RQUOTA_PROGRAM, RQUOTA_V1, RQUOTA1_NULL, cb, private_data, (zdrproc_t)zdr_void, 0);
 	if (pdu == NULL) {
 		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu for rquota1/null call");
 		return -1;
@@ -75,7 +74,7 @@ int rpc_rquota1_getquota_async(struct rpc_context *rpc, rpc_cb cb, char *export,
 	struct rpc_pdu *pdu;
 	GETQUOTA1args args;
 
-	pdu = rpc_allocate_pdu(rpc, RQUOTA_PROGRAM, RQUOTA_V1, RQUOTA1_GETQUOTA, cb, private_data, (xdrproc_t)xdr_GETQUOTA1res, sizeof(GETQUOTA1res));
+	pdu = rpc_allocate_pdu(rpc, RQUOTA_PROGRAM, RQUOTA_V1, RQUOTA1_GETQUOTA, cb, private_data, (zdrproc_t)zdr_GETQUOTA1res, sizeof(GETQUOTA1res));
 	if (pdu == NULL) {
 		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu for rquota1/getquota call");
 		return -1;
@@ -84,8 +83,8 @@ int rpc_rquota1_getquota_async(struct rpc_context *rpc, rpc_cb cb, char *export,
 	args.export = export;
 	args.uid    = uid;
 
-	if (xdr_GETQUOTA1args(&pdu->xdr, &args) == 0) {
-		rpc_set_error(rpc, "XDR error: Failed to encode GETQUOTA1args");
+	if (zdr_GETQUOTA1args(&pdu->zdr, &args) == 0) {
+		rpc_set_error(rpc, "ZDR error: Failed to encode GETQUOTA1args");
 		rpc_free_pdu(rpc, pdu);
 		return -2;
 	}
@@ -104,7 +103,7 @@ int rpc_rquota1_getactivequota_async(struct rpc_context *rpc, rpc_cb cb, char *e
 	struct rpc_pdu *pdu;
 	GETQUOTA1args args;
 
-	pdu = rpc_allocate_pdu(rpc, RQUOTA_PROGRAM, RQUOTA_V1, RQUOTA1_GETACTIVEQUOTA, cb, private_data, (xdrproc_t)xdr_GETQUOTA1res, sizeof(GETQUOTA1res));
+	pdu = rpc_allocate_pdu(rpc, RQUOTA_PROGRAM, RQUOTA_V1, RQUOTA1_GETACTIVEQUOTA, cb, private_data, (zdrproc_t)zdr_GETQUOTA1res, sizeof(GETQUOTA1res));
 	if (pdu == NULL) {
 		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu for rquota1/getactivequota call");
 		return -1;
@@ -113,8 +112,8 @@ int rpc_rquota1_getactivequota_async(struct rpc_context *rpc, rpc_cb cb, char *e
 	args.export = export;
 	args.uid    = uid;
 
-	if (xdr_GETQUOTA1args(&pdu->xdr, &args) == 0) {
-		rpc_set_error(rpc, "XDR error: Failed to encode GETQUOTA1args");
+	if (zdr_GETQUOTA1args(&pdu->zdr, &args) == 0) {
+		rpc_set_error(rpc, "ZDR error: Failed to encode GETQUOTA1args");
 		rpc_free_pdu(rpc, pdu);
 		return -2;
 	}
@@ -133,7 +132,7 @@ int rpc_rquota2_null_async(struct rpc_context *rpc, rpc_cb cb, void *private_dat
 {
 	struct rpc_pdu *pdu;
 
-	pdu = rpc_allocate_pdu(rpc, RQUOTA_PROGRAM, RQUOTA_V2, RQUOTA2_NULL, cb, private_data, (xdrproc_t)xdr_void, 0);
+	pdu = rpc_allocate_pdu(rpc, RQUOTA_PROGRAM, RQUOTA_V2, RQUOTA2_NULL, cb, private_data, (zdrproc_t)zdr_void, 0);
 	if (pdu == NULL) {
 		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu for rquota2/null call");
 		return -1;
@@ -153,7 +152,7 @@ int rpc_rquota2_getquota_async(struct rpc_context *rpc, rpc_cb cb, char *export,
 	struct rpc_pdu *pdu;
 	GETQUOTA2args args;
 
-	pdu = rpc_allocate_pdu(rpc, RQUOTA_PROGRAM, RQUOTA_V2, RQUOTA2_GETQUOTA, cb, private_data, (xdrproc_t)xdr_GETQUOTA1res, sizeof(GETQUOTA1res));
+	pdu = rpc_allocate_pdu(rpc, RQUOTA_PROGRAM, RQUOTA_V2, RQUOTA2_GETQUOTA, cb, private_data, (zdrproc_t)zdr_GETQUOTA1res, sizeof(GETQUOTA1res));
 	if (pdu == NULL) {
 		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu for rquota2/getquota call");
 		return -1;
@@ -163,8 +162,8 @@ int rpc_rquota2_getquota_async(struct rpc_context *rpc, rpc_cb cb, char *export,
 	args.type    = type;
 	args.uid     = uid;
 
-	if (xdr_GETQUOTA2args(&pdu->xdr, &args) == 0) {
-		rpc_set_error(rpc, "XDR error: Failed to encode GETQUOTA2args");
+	if (zdr_GETQUOTA2args(&pdu->zdr, &args) == 0) {
+		rpc_set_error(rpc, "ZDR error: Failed to encode GETQUOTA2args");
 		rpc_free_pdu(rpc, pdu);
 		return -2;
 	}
@@ -183,7 +182,7 @@ int rpc_rquota2_getactivequota_async(struct rpc_context *rpc, rpc_cb cb, char *e
 	struct rpc_pdu *pdu;
 	GETQUOTA2args args;
 
-	pdu = rpc_allocate_pdu(rpc, RQUOTA_PROGRAM, RQUOTA_V2, RQUOTA2_GETACTIVEQUOTA, cb, private_data, (xdrproc_t)xdr_GETQUOTA1res, sizeof(GETQUOTA1res));
+	pdu = rpc_allocate_pdu(rpc, RQUOTA_PROGRAM, RQUOTA_V2, RQUOTA2_GETACTIVEQUOTA, cb, private_data, (zdrproc_t)zdr_GETQUOTA1res, sizeof(GETQUOTA1res));
 	if (pdu == NULL) {
 		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu for rquota2/getactivequota call");
 		return -1;
@@ -193,8 +192,8 @@ int rpc_rquota2_getactivequota_async(struct rpc_context *rpc, rpc_cb cb, char *e
 	args.type    = type;
 	args.uid     = uid;
 
-	if (xdr_GETQUOTA2args(&pdu->xdr, &args) == 0) {
-		rpc_set_error(rpc, "XDR error: Failed to encode GETQUOTA2args");
+	if (zdr_GETQUOTA2args(&pdu->zdr, &args) == 0) {
+		rpc_set_error(rpc, "ZDR error: Failed to encode GETQUOTA2args");
 		rpc_free_pdu(rpc, pdu);
 		return -2;
 	}

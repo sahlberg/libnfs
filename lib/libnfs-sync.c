@@ -47,6 +47,7 @@
 #include <sys/sockio.h>
 #endif
 
+#include "libnfs-zdr.h"
 #include "libnfs.h"
 #include "libnfs-raw.h"
 #include "libnfs-raw-mount.h"

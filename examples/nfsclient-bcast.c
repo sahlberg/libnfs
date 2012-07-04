@@ -30,8 +30,10 @@
 #include <sys/time.h>
 #include <net/if.h>
 #include <netdb.h>
+#include "libnfs-zdr.h"
 #include "libnfs.h"
 #include "libnfs-raw.h"
+#include "libnfs-private.h"
 #include "libnfs-raw-mount.h"
 #include "libnfs-raw-portmap.h"
 

@@ -18,8 +18,6 @@
  * This is the highlevel interface to access NFS resources using a posix-like interface
  */
 #include <stdint.h>
-#include <rpc/rpc.h>
-#include <rpc/auth.h>
 
 struct nfs_context;
 struct rpc_context;

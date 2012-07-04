@@ -39,44 +39,40 @@ enum ftype3 {
 	NF3FIFO   = 7
 };
 
-typedef unsigned long uint32;
+typedef unsigned int mode3;
 
-typedef long int32;
+typedef unsigned int uid3;
 
-typedef uint32 mode3;
-
-typedef uint32 uid3;
-
-typedef uint32 gid3;
+typedef unsigned int gid3;
 
 typedef uint64 size3;
 
 typedef uint64 fileid3;
 
 struct specdata3 {
-	uint32     specdata1;
-	uint32     specdata2;
+	unsigned int specdata1;
+	unsigned int specdata2;
 };
 
 struct nfstime3 {
-	uint32   seconds;
-	uint32   nseconds;
+	unsigned int seconds;
+	unsigned int nseconds;
 };
 
 struct fattr3 {
-	ftype3     type;
-	mode3      mode;
-	uint32     nlink;
-	uid3       uid;
-	gid3       gid;
-	size3      size;
-	size3      used;
-	specdata3  rdev;
-	uint64     fsid;
-	fileid3    fileid;
-	nfstime3   atime;
-	nfstime3   mtime;
-	nfstime3   ctime;
+	ftype3       type;
+	mode3        mode;
+	unsigned int nlink;
+	uid3         uid;
+	gid3         gid;
+	size3        size;
+	size3        used;
+	specdata3    rdev;
+	uint64       fsid;
+	fileid3      fileid;
+	nfstime3     atime;
+	nfstime3     mtime;
+	nfstime3     ctime;
 };
 
 union post_op_attr switch (bool attributes_follow) {
@@ -127,7 +123,7 @@ enum stable_how {
 
 typedef uint64 offset3;
 
-typedef uint32 count3;
+typedef unsigned int count3;
 
 struct wcc_attr {
 	size3       size;
@@ -228,13 +224,13 @@ const ACCESS3_DELETE  = 0x0010;
 const ACCESS3_EXECUTE = 0x0020;
 
 struct ACCESS3args {
-     nfs_fh3  object;
-     uint32   access;
+     nfs_fh3      object;
+     unsigned int access;
 };
 
 struct ACCESS3resok {
-     post_op_attr   obj_attributes;
-     uint32         access;
+     post_op_attr obj_attributes;
+     unsigned int access;
 };
 
 struct ACCESS3resfail {
@@ -424,16 +420,16 @@ struct FSINFO3args {
 
 struct FSINFO3resok {
 	post_op_attr obj_attributes;
-	uint32       rtmax;
-	uint32       rtpref;
-	uint32       rtmult;
-	uint32       wtmax;
-	uint32       wtpref;
-	uint32       wtmult;
-	uint32       dtpref;
+	unsigned int rtmax;
+	unsigned int rtpref;
+	unsigned int rtmult;
+	unsigned int wtmax;
+	unsigned int wtpref;
+	unsigned int wtmult;
+	unsigned int dtpref;
 	size3        maxfilesize;
 	nfstime3     time_delta;
-	uint32       properties;
+	unsigned int properties;
 };
 
 struct FSINFO3resfail {
@@ -460,7 +456,7 @@ struct FSSTAT3resok {
 	size3        tfiles;
 	size3        ffiles;
 	size3        afiles;
-	uint32       invarsec;
+	unsigned int invarsec;
 };
 
 struct FSSTAT3resfail {
@@ -480,8 +476,8 @@ struct PATHCONF3args {
 
 struct PATHCONF3resok {
 	post_op_attr obj_attributes;
-	uint32       linkmax;
-	uint32       name_max;
+	unsigned int linkmax;
+	unsigned int name_max;
 	bool         no_trunc;
 	bool         chown_restricted;
 	bool         case_insensitive;
@@ -878,8 +874,8 @@ const NFSACL_PERM_EXEC  = 0x01;
 
 struct nfsacl_ace {
        enum nfsacl_type type;
-       uint32_t id;
-       uint32_t perm;
+       unsigned int id;
+       unsigned int perm;
 };
 
 const NFSACL_MASK_ACL_ENTRY         = 0x0001;
@@ -888,17 +884,17 @@ const NFSACL_MASK_ACL_DEFAULT_ENTRY = 0x0004;
 const NFSACL_MASK_ACL_DEFAULT_COUNT = 0x0008;
 
 struct GETACL3args {
-	nfs_fh3     dir;
-	uint32	    mask;
+	nfs_fh3      dir;
+	unsigned int mask;
 };
 
 struct GETACL3resok {
-	post_op_attr   attr;
-	uint32_t       mask;
-	uint32_t       ace_count;
-	struct nfsacl_ace ace<>;
-	uint32_t       default_ace_count;
-	struct nfsacl_ace default_ace<>;
+	post_op_attr       attr;
+	unsigned int       mask;
+	unsigned int       ace_count;
+	struct nfsacl_ace  ace<>;
+	unsigned int       default_ace_count;
+	struct nfsacl_ace  default_ace<>;
 };
 
 union GETACL3res switch (nfsstat3 status) {
@@ -909,12 +905,12 @@ default:
 };
 
 struct SETACL3args {
-	nfs_fh3     dir;
-	uint32_t       mask;
-	uint32_t       ace_count;
-	struct nfsacl_ace ace<>;
-	uint32_t       default_ace_count;
-	struct nfsacl_ace default_ace<>;
+	nfs_fh3            dir;
+	unsigned int       mask;
+	unsigned int       ace_count;
+	struct nfsacl_ace  ace<>;
+	unsigned int       default_ace_count;
+	struct nfsacl_ace  default_ace<>;
 };
 
 struct SETACL3resok {

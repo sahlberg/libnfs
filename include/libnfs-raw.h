@@ -20,8 +20,6 @@
  * protocol as well as the XDR encoded/decoded structures.
  */
 #include <stdint.h>
-#include <rpc/rpc.h>
-#include <rpc/auth.h>
 
 struct rpc_data {
        int size;

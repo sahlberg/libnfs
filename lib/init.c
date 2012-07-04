@@ -24,9 +24,8 @@
 #include <stdarg.h>
 #include <string.h>
 #include <stdlib.h>
-#include <rpc/rpc.h>
-#include <rpc/xdr.h>
 #include "slist.h"
+#include "libnfs-zdr.h"
 #include "libnfs.h"
 #include "libnfs-raw.h"
 #include "libnfs-private.h"

@@ -33,8 +33,6 @@
 #include <fcntl.h>
 #include <string.h>
 #include <errno.h>
-#include <rpc/rpc.h>
-#include <rpc/xdr.h>
 #ifdef HAVE_SYS_FILIO_H
 #include <sys/filio.h>
 #endif
@@ -42,6 +40,7 @@
 #include <sys/sockio.h>
 #endif
 #include <sys/types.h>
+#include "libnfs-zdr.h"
 #include "libnfs.h"
 #include "libnfs-raw.h"
 #include "libnfs-private.h"
