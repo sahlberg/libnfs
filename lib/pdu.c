@@ -237,7 +237,7 @@ int rpc_process_pdu(struct rpc_context *rpc, char *buf, int size)
 	/* reassembly */
 	if (recordmarker != 0 && rpc->fragments != NULL) {
 		struct rpc_fragment *fragment;
-		uint64_t total = size - 4;
+		uint32_t total = size - 4;
 		char *ptr;
 
 		zdr_destroy(&zdr);
