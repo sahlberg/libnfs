@@ -10,6 +10,7 @@ bool_t
 zdr_rquotastat (ZDR *zdrs, rquotastat *objp)
 {
 	register int32_t *buf;
+	buf = NULL;
 
 	 if (!zdr_enum (zdrs, (enum_t *) objp))
 		 return FALSE;
@@ -20,6 +21,7 @@ bool_t
 zdr_exportpath (ZDR *zdrs, exportpath *objp)
 {
 	register int32_t *buf;
+	buf = NULL;
 
 	 if (!zdr_string (zdrs, objp, RQUOTAPATHLEN))
 		 return FALSE;
@@ -30,6 +32,7 @@ bool_t
 zdr_GETQUOTA1args (ZDR *zdrs, GETQUOTA1args *objp)
 {
 	register int32_t *buf;
+	buf = NULL;
 
 	 if (!zdr_exportpath (zdrs, &objp->export))
 		 return FALSE;
@@ -42,6 +45,7 @@ bool_t
 zdr_quotatype (ZDR *zdrs, quotatype *objp)
 {
 	register int32_t *buf;
+	buf = NULL;
 
 	 if (!zdr_enum (zdrs, (enum_t *) objp))
 		 return FALSE;
@@ -52,6 +56,7 @@ bool_t
 zdr_GETQUOTA2args (ZDR *zdrs, GETQUOTA2args *objp)
 {
 	register int32_t *buf;
+	buf = NULL;
 
 	 if (!zdr_exportpath (zdrs, &objp->export))
 		 return FALSE;
@@ -66,6 +71,7 @@ bool_t
 zdr_GETQUOTA1res_ok (ZDR *zdrs, GETQUOTA1res_ok *objp)
 {
 	register int32_t *buf;
+	buf = NULL;
 
 
 	if (zdrs->x_op == ZDR_ENCODE) {
@@ -169,6 +175,7 @@ bool_t
 zdr_GETQUOTA1res (ZDR *zdrs, GETQUOTA1res *objp)
 {
 	register int32_t *buf;
+	buf = NULL;
 
 	 if (!zdr_rquotastat (zdrs, &objp->status))
 		 return FALSE;

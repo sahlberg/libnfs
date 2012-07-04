@@ -18,4 +18,4 @@ portmap-stamp : portmap.x
 
 compile_rpc:	
 	rpcgen -h @RPCGENFLAGS@ portmap.x | sed -e "s/#include <rpc\/rpc.h>//" | sed -e "s/xdr/zdr/g" -e "s/XDR/ZDR/g" > libnfs-raw-portmap.h
-	rpcgen -c @RPCGENFLAGS@ portmap.x | sed -e "s/#include \".*portmap.h\"/#include \"libnfs-zdr.h\"\n#include \"libnfs-raw-portmap.h\"/" -e "s/xdr/zdr/g" -e "s/XDR/ZDR/g" > libnfs-raw-portmap.c
+	rpcgen -c @RPCGENFLAGS@ portmap.x | sed -e "s/#include \".*portmap.h\"/#include \"libnfs-zdr.h\"\n#include \"libnfs-raw-portmap.h\"/" -e "s/xdr/zdr/g" -e "s/XDR/ZDR/g" -e "s/register int32_t \*buf;/register int32_t *buf;\n	buf = NULL;/" > libnfs-raw-portmap.c

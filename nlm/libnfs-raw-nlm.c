@@ -10,6 +10,7 @@ bool_t
 zdr_nlm_fh4 (ZDR *zdrs, nlm_fh4 *objp)
 {
 	register int32_t *buf;
+	buf = NULL;
 
 	 if (!zdr_bytes (zdrs, (char **)&objp->data.data_val, (u_int *) &objp->data.data_len, ~0))
 		 return FALSE;
@@ -20,6 +21,7 @@ bool_t
 zdr_nlm4_oh (ZDR *zdrs, nlm4_oh *objp)
 {
 	register int32_t *buf;
+	buf = NULL;
 
 	 if (!zdr_string (zdrs, objp, ~0))
 		 return FALSE;
@@ -30,6 +32,7 @@ bool_t
 zdr_nlm_cookie (ZDR *zdrs, nlm_cookie *objp)
 {
 	register int32_t *buf;
+	buf = NULL;
 
 	 if (!zdr_bytes (zdrs, (char **)&objp->data.data_val, (u_int *) &objp->data.data_len, ~0))
 		 return FALSE;
@@ -40,6 +43,7 @@ bool_t
 zdr_nlmstat4 (ZDR *zdrs, nlmstat4 *objp)
 {
 	register int32_t *buf;
+	buf = NULL;
 
 	 if (!zdr_enum (zdrs, (enum_t *) objp))
 		 return FALSE;
@@ -50,6 +54,7 @@ bool_t
 zdr_nlm4_holder (ZDR *zdrs, nlm4_holder *objp)
 {
 	register int32_t *buf;
+	buf = NULL;
 
 	 if (!zdr_bool (zdrs, &objp->exclusive))
 		 return FALSE;
@@ -68,6 +73,7 @@ bool_t
 zdr_nlm4_lock (ZDR *zdrs, nlm4_lock *objp)
 {
 	register int32_t *buf;
+	buf = NULL;
 
 	 if (!zdr_string (zdrs, &objp->caller_name, NLM_MAXNAME))
 		 return FALSE;
@@ -88,6 +94,7 @@ bool_t
 zdr_nlm4_share (ZDR *zdrs, nlm4_share *objp)
 {
 	register int32_t *buf;
+	buf = NULL;
 
 	 if (!zdr_string (zdrs, &objp->caller_name, NLM_MAXNAME))
 		 return FALSE;
@@ -106,6 +113,7 @@ bool_t
 zdr_nlm4_testres_denied (ZDR *zdrs, nlm4_testres_denied *objp)
 {
 	register int32_t *buf;
+	buf = NULL;
 
 	 if (!zdr_nlm4_holder (zdrs, &objp->holder))
 		 return FALSE;
@@ -116,6 +124,7 @@ bool_t
 zdr_nlm4_testreply (ZDR *zdrs, nlm4_testreply *objp)
 {
 	register int32_t *buf;
+	buf = NULL;
 
 	 if (!zdr_nlmstat4 (zdrs, &objp->status))
 		 return FALSE;
@@ -134,6 +143,7 @@ bool_t
 zdr_NLM4_TESTres (ZDR *zdrs, NLM4_TESTres *objp)
 {
 	register int32_t *buf;
+	buf = NULL;
 
 	 if (!zdr_nlm_cookie (zdrs, &objp->cookie))
 		 return FALSE;
@@ -146,6 +156,7 @@ bool_t
 zdr_NLM4_TESTargs (ZDR *zdrs, NLM4_TESTargs *objp)
 {
 	register int32_t *buf;
+	buf = NULL;
 
 	 if (!zdr_nlm_cookie (zdrs, &objp->cookie))
 		 return FALSE;
@@ -160,6 +171,7 @@ bool_t
 zdr_NLM4_CANCres (ZDR *zdrs, NLM4_CANCres *objp)
 {
 	register int32_t *buf;
+	buf = NULL;
 
 	 if (!zdr_nlm_cookie (zdrs, &objp->cookie))
 		 return FALSE;
@@ -172,6 +184,7 @@ bool_t
 zdr_NLM4_CANCargs (ZDR *zdrs, NLM4_CANCargs *objp)
 {
 	register int32_t *buf;
+	buf = NULL;
 
 	 if (!zdr_nlm_cookie (zdrs, &objp->cookie))
 		 return FALSE;
@@ -188,6 +201,7 @@ bool_t
 zdr_NLM4_UNLOCKres (ZDR *zdrs, NLM4_UNLOCKres *objp)
 {
 	register int32_t *buf;
+	buf = NULL;
 
 	 if (!zdr_nlm_cookie (zdrs, &objp->cookie))
 		 return FALSE;
@@ -200,6 +214,7 @@ bool_t
 zdr_NLM4_UNLOCKargs (ZDR *zdrs, NLM4_UNLOCKargs *objp)
 {
 	register int32_t *buf;
+	buf = NULL;
 
 	 if (!zdr_nlm_cookie (zdrs, &objp->cookie))
 		 return FALSE;
@@ -212,6 +227,7 @@ bool_t
 zdr_NLM4_LOCKres (ZDR *zdrs, NLM4_LOCKres *objp)
 {
 	register int32_t *buf;
+	buf = NULL;
 
 	 if (!zdr_nlm_cookie (zdrs, &objp->cookie))
 		 return FALSE;
@@ -224,6 +240,7 @@ bool_t
 zdr_NLM4_LOCKargs (ZDR *zdrs, NLM4_LOCKargs *objp)
 {
 	register int32_t *buf;
+	buf = NULL;
 
 	 if (!zdr_nlm_cookie (zdrs, &objp->cookie))
 		 return FALSE;
@@ -244,6 +261,7 @@ bool_t
 zdr_NLM4_GRANTEDargs (ZDR *zdrs, NLM4_GRANTEDargs *objp)
 {
 	register int32_t *buf;
+	buf = NULL;
 
 	 if (!zdr_nlm_cookie (zdrs, &objp->cookie))
 		 return FALSE;
@@ -258,6 +276,7 @@ bool_t
 zdr_NLM4_GRANTEDres (ZDR *zdrs, NLM4_GRANTEDres *objp)
 {
 	register int32_t *buf;
+	buf = NULL;
 
 	 if (!zdr_nlm_cookie (zdrs, &objp->cookie))
 		 return FALSE;

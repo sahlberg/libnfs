@@ -10,6 +10,7 @@ bool_t
 zdr_pmap_mapping (ZDR *zdrs, pmap_mapping *objp)
 {
 	register int32_t *buf;
+	buf = NULL;
 
 
 	if (zdrs->x_op == ZDR_ENCODE) {
@@ -65,6 +66,7 @@ bool_t
 zdr_pmap_call_args (ZDR *zdrs, pmap_call_args *objp)
 {
 	register int32_t *buf;
+	buf = NULL;
 
 
 	if (zdrs->x_op == ZDR_ENCODE) {
@@ -120,6 +122,7 @@ bool_t
 zdr_pmap_call_result (ZDR *zdrs, pmap_call_result *objp)
 {
 	register int32_t *buf;
+	buf = NULL;
 
 	 if (!zdr_u_int (zdrs, &objp->port))
 		 return FALSE;

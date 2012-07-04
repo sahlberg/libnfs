@@ -18,4 +18,4 @@ nfs-stamp : nfs.x
 
 compile_rpc:	
 	rpcgen -h @RPCGENFLAGS@ nfs.x | sed -e "s/#include <rpc\/rpc.h>//" | sed -e "s/xdr/zdr/g" -e "s/XDR/ZDR/g" > libnfs-raw-nfs.h
-	rpcgen -c @RPCGENFLAGS@ nfs.x | sed -e "s/#include \".*nfs.h\"/#include \"libnfs-xdr.h\"\n#include \"libnfs-raw-nfs.h\"/" -e "s/xdr/zdr/g" -e "s/XDR/ZDR/g" > libnfs-raw-nfs.c
+	rpcgen -c @RPCGENFLAGS@ nfs.x | sed -e "s/#include \".*nfs.h\"/#include \"libnfs-xdr.h\"\n#include \"libnfs-raw-nfs.h\"/" -e "s/xdr/zdr/g" -e "s/XDR/ZDR/g" -e "s/register int32_t \*buf;/register int32_t *buf;\n	buf = NULL;/" > libnfs-raw-nfs.c

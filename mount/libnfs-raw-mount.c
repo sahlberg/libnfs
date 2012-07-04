@@ -10,6 +10,7 @@ bool_t
 zdr_fhandle3 (ZDR *zdrs, fhandle3 *objp)
 {
 	register int32_t *buf;
+	buf = NULL;
 
 	 if (!zdr_bytes (zdrs, (char **)&objp->fhandle3_val, (u_int *) &objp->fhandle3_len, FHSIZE3))
 		 return FALSE;
@@ -20,6 +21,7 @@ bool_t
 zdr_dirpath (ZDR *zdrs, dirpath *objp)
 {
 	register int32_t *buf;
+	buf = NULL;
 
 	 if (!zdr_string (zdrs, objp, MNTPATHLEN))
 		 return FALSE;
@@ -30,6 +32,7 @@ bool_t
 zdr_name (ZDR *zdrs, name *objp)
 {
 	register int32_t *buf;
+	buf = NULL;
 
 	 if (!zdr_string (zdrs, objp, MNTNAMLEN))
 		 return FALSE;
@@ -40,6 +43,7 @@ bool_t
 zdr_mountstat3 (ZDR *zdrs, mountstat3 *objp)
 {
 	register int32_t *buf;
+	buf = NULL;
 
 	 if (!zdr_enum (zdrs, (enum_t *) objp))
 		 return FALSE;
@@ -50,6 +54,7 @@ bool_t
 zdr_mountlist (ZDR *zdrs, mountlist *objp)
 {
 	register int32_t *buf;
+	buf = NULL;
 
 	 if (!zdr_pointer (zdrs, (char **)objp, sizeof (struct mountbody), (zdrproc_t) zdr_mountbody))
 		 return FALSE;
@@ -60,6 +65,7 @@ bool_t
 zdr_mountbody (ZDR *zdrs, mountbody *objp)
 {
 	register int32_t *buf;
+	buf = NULL;
 
 	 if (!zdr_name (zdrs, &objp->ml_hostname))
 		 return FALSE;
@@ -74,6 +80,7 @@ bool_t
 zdr_groups (ZDR *zdrs, groups *objp)
 {
 	register int32_t *buf;
+	buf = NULL;
 
 	 if (!zdr_pointer (zdrs, (char **)objp, sizeof (struct groupnode), (zdrproc_t) zdr_groupnode))
 		 return FALSE;
@@ -84,6 +91,7 @@ bool_t
 zdr_groupnode (ZDR *zdrs, groupnode *objp)
 {
 	register int32_t *buf;
+	buf = NULL;
 
 	 if (!zdr_name (zdrs, &objp->gr_name))
 		 return FALSE;
@@ -96,6 +104,7 @@ bool_t
 zdr_exports (ZDR *zdrs, exports *objp)
 {
 	register int32_t *buf;
+	buf = NULL;
 
 	 if (!zdr_pointer (zdrs, (char **)objp, sizeof (struct exportnode), (zdrproc_t) zdr_exportnode))
 		 return FALSE;
@@ -106,6 +115,7 @@ bool_t
 zdr_exportnode (ZDR *zdrs, exportnode *objp)
 {
 	register int32_t *buf;
+	buf = NULL;
 
 	 if (!zdr_dirpath (zdrs, &objp->ex_dir))
 		 return FALSE;
@@ -120,6 +130,7 @@ bool_t
 zdr_mountres3_ok (ZDR *zdrs, mountres3_ok *objp)
 {
 	register int32_t *buf;
+	buf = NULL;
 
 	 if (!zdr_fhandle3 (zdrs, &objp->fhandle))
 		 return FALSE;
@@ -133,6 +144,7 @@ bool_t
 zdr_mountres3 (ZDR *zdrs, mountres3 *objp)
 {
 	register int32_t *buf;
+	buf = NULL;
 
 	 if (!zdr_mountstat3 (zdrs, &objp->fhs_status))
 		 return FALSE;
@@ -151,6 +163,7 @@ bool_t
 zdr_mountstat1 (ZDR *zdrs, mountstat1 *objp)
 {
 	register int32_t *buf;
+	buf = NULL;
 
 	 if (!zdr_enum (zdrs, (enum_t *) objp))
 		 return FALSE;
@@ -161,6 +174,7 @@ bool_t
 zdr_fhandle1 (ZDR *zdrs, fhandle1 objp)
 {
 	register int32_t *buf;
+	buf = NULL;
 
 	 if (!zdr_opaque (zdrs, objp, FHSIZE))
 		 return FALSE;
@@ -171,6 +185,7 @@ bool_t
 zdr_mountres1_ok (ZDR *zdrs, mountres1_ok *objp)
 {
 	register int32_t *buf;
+	buf = NULL;
 
 	 if (!zdr_fhandle1 (zdrs, objp->fhandle))
 		 return FALSE;
@@ -181,6 +196,7 @@ bool_t
 zdr_mountres1 (ZDR *zdrs, mountres1 *objp)
 {
 	register int32_t *buf;
+	buf = NULL;
 
 	 if (!zdr_mountstat1 (zdrs, &objp->fhs_status))
 		 return FALSE;
