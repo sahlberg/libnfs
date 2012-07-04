@@ -135,7 +135,7 @@ int rpc_pmap_unset_async(struct rpc_context *rpc, int program, int version, int 
 	return 0;
 }
 
-int rpc_pmap_callit_async(struct rpc_context *rpc, int program, int version, int procedure, const char *data, int datalen, rpc_cb cb, void *private_data)
+int rpc_pmap_callit_async(struct rpc_context *rpc, int program, int version, int procedure, char *data, int datalen, rpc_cb cb, void *private_data)
 {
 	struct rpc_pdu *pdu;
 	struct pmap_call_args ca;

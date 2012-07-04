@@ -445,7 +445,7 @@ AUTH *libnfs_authunix_create(char *host, uint32_t uid, uint32_t gid, uint32_t le
 	auth->ah_cred.oa_length = size;
 	auth->ah_cred.oa_base = malloc(size);
 
-	buf = auth->ah_cred.oa_base;
+	buf = (uint32_t *)auth->ah_cred.oa_base;
 	idx = 0;
 	buf[idx++] = htonl(time(NULL));
 	buf[idx++] = htonl(strlen(host));
