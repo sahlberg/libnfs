@@ -318,6 +318,8 @@ static bool_t libnfs_rpc_call_body(ZDR *zdrs, struct call_body *cmb)
 	if (!libnfs_opaque_auth(zdrs, &cmb->cb_verf)) {
 		return FALSE;
 	}
+
+	return TRUE;
 }
 
 static bool_t libnfs_accepted_reply(ZDR *zdrs, struct accepted_reply *ar)
