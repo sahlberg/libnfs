@@ -30,6 +30,8 @@ struct opaque_auth _null_auth;
 bool_t libnfs_zdr_setpos(ZDR *zdrs, uint32_t pos)
 {
 	zdrs->pos = pos;
+
+	return TRUE;
 }
 
 uint32_t libnfs_zdr_getpos(ZDR *zdrs)
