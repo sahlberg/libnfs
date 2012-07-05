@@ -160,9 +160,15 @@ bool_t libnfs_zdr_bytes(ZDR *zdrs, char **bufp, uint32_t *size, uint32_t maxsize
 }
 
 
-bool_t libnfs_zdr_enum(ZDR *zdrs, int32_t *e)
+bool_t libnfs_zdr_enum(ZDR *zdrs, enum_t *e)
 {
-	return libnfs_zdr_u_int(zdrs, (uint32_t *)e);
+	bool_t ret;
+	int32_t i = *e;
+
+	ret = libnfs_zdr_u_int(zdrs, (uint32_t *)&i);
+	*e = i;
+
+	return ret;	
 }
 
 bool_t libnfs_zdr_bool(ZDR *zdrs, bool_t *b)
