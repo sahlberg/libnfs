@@ -20,9 +20,15 @@
  * i.e. zdrmem_create() buffers.
  * It aims to be compatible with normal rpcgen generated functions.
  */
+#ifdef WIN32
+#include "win32_compat.h"
+#else
+#include <arpa/inet.h>
+#endif/*WIN32*/
 
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 #include "libnfs-zdr.h"
 
 struct opaque_auth _null_auth;
