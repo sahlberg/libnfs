@@ -33,7 +33,7 @@ struct rpc_context {
 	rpc_cb connect_cb;
 	void *connect_data;
 
-	AUTH *auth;
+	struct AUTH *auth;
 	unsigned long xid;
 
        /* buffer used for encoding RPC PDU */

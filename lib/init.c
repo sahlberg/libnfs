@@ -76,7 +76,7 @@ struct rpc_context *rpc_init_udp_context(void)
 	return rpc;
 }
 
-void rpc_set_auth(struct rpc_context *rpc, AUTH *auth)
+void rpc_set_auth(struct rpc_context *rpc, struct AUTH *auth)
 {
 	if (rpc->auth != NULL) {
 		auth_destroy(rpc->auth);

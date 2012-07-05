@@ -96,11 +96,11 @@ struct opaque_auth {
 extern struct opaque_auth _null_auth;
 
 
-typedef struct {
+struct AUTH {
 	struct opaque_auth	ah_cred;
 	struct opaque_auth	ah_verf;
 	caddr_t ah_private;
-} AUTH;
+};
 
 enum msg_type {
 	CALL=0,
@@ -267,15 +267,15 @@ bool_t libnfs_zdr_callmsg(ZDR *zdrs, struct rpc_msg *msg);
 bool_t libnfs_zdr_replymsg(ZDR *zdrs, struct rpc_msg *msg);
 
 #define authnone_create libnfs_authnone_create
-AUTH *libnfs_authnone_create(void);
+struct AUTH *libnfs_authnone_create(void);
 
 #define authunix_create libnfs_authunix_create
-AUTH *libnfs_authunix_create(char *host, uint32_t uid, uint32_t gid, uint32_t len, uint32_t *groups);
+struct AUTH *libnfs_authunix_create(char *host, uint32_t uid, uint32_t gid, uint32_t len, uint32_t *groups);
 
 #define authunix_create_default libnfs_authunix_create_default
-AUTH *libnfs_authunix_create_default(void);
+struct AUTH *libnfs_authunix_create_default(void);
 
 #define auth_destroy libnfs_auth_destroy
-void libnfs_auth_destroy(AUTH *auth);
+void libnfs_auth_destroy(struct AUTH *auth);
 
 #endif

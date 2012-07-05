@@ -413,11 +413,11 @@ bool_t libnfs_zdr_replymsg(ZDR *zdrs, struct rpc_msg *msg)
 	return libnfs_rpc_msg(zdrs, msg);
 }
 
-AUTH *authnone_create(void)
+struct AUTH *authnone_create(void)
 {
-	AUTH *auth;
+	struct AUTH *auth;
 
-	auth = malloc(sizeof(AUTH));
+	auth = malloc(sizeof(struct AUTH));
 
 	auth->ah_cred.oa_flavor = AUTH_NONE;
 	auth->ah_cred.oa_length = 0;
@@ -432,15 +432,15 @@ AUTH *authnone_create(void)
 	return auth;
 }
 
-AUTH *libnfs_authunix_create(char *host, uint32_t uid, uint32_t gid, uint32_t len, uint32_t *groups)
+struct AUTH *libnfs_authunix_create(char *host, uint32_t uid, uint32_t gid, uint32_t len, uint32_t *groups)
 {
-	AUTH *auth;
+	struct AUTH *auth;
 	int size;
 	uint32_t *buf;
 	int idx;
 
 	size = 4 + 4 + ((strlen(host) + 3) & ~3) + 4 + 4 + 4 + len * 4;
-	auth = malloc(sizeof(AUTH));
+	auth = malloc(sizeof(struct AUTH));
 	auth->ah_cred.oa_flavor = AUTH_UNIX;
 	auth->ah_cred.oa_length = size;
 	auth->ah_cred.oa_base = malloc(size);
@@ -468,12 +468,12 @@ AUTH *libnfs_authunix_create(char *host, uint32_t uid, uint32_t gid, uint32_t le
 	return auth;
 }
 
-AUTH *libnfs_authunix_create_default(void)
+struct AUTH *libnfs_authunix_create_default(void)
 {
 	return libnfs_authunix_create("libnfs", getuid(), -1, 0, NULL);
 }
 
-void libnfs_auth_destroy(AUTH *auth)
+void libnfs_auth_destroy(struct AUTH *auth)
 {
 	if (auth->ah_cred.oa_base) {
 		free(auth->ah_cred.oa_base);

@@ -62,7 +62,8 @@ EXTERN int nfs_queue_length(struct nfs_context *nfs);
 /*
  * Used if you need different credentials than the default for the current user.
  */
-EXTERN void nfs_set_auth(struct nfs_context *nfs, AUTH *auth);
+struct AUTH;
+EXTERN void nfs_set_auth(struct nfs_context *nfs, struct AUTH *auth);
 
 
 /*
