@@ -9,7 +9,8 @@
 #undef EINPROGRESS
 
 #define EWOULDBLOCK WSAEWOULDBLOCK
-#define EAGAIN		WSAEWOULDBLOCK					//same on windows
+#define EAGAIN		WSAEWOULDBLOCK			//same on windows
 #define EINTR       WSAEINTR
-#define EINPROGRESS WSAEINPROGRESS
+#define EINPROGRESS WSAEWOULDBLOCK			//does not map to WSAEINPROGRESS !
+
 #endif //WIN32_ERRNOWRAPPER_H_

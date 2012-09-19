@@ -6,7 +6,14 @@
 *.a
 *.lo
 *.o
+*.obj
+*.lib
+*.dll
+*.ilk
+*.pdb
+*.ex?
 *-stamp
+libnfs-raw-*.x
 Makefile
 examples/nfsclient-raw
 examples/nfsclient-sync
