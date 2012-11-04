@@ -1146,7 +1146,7 @@ int nfs_link(struct nfs_context *nfs, const char *oldpath, const char *newpath)
 void mount_getexports_cb(struct rpc_context *mount_context, int status, void *data, void *private_data)
 {
 	struct sync_cb_data *cb_data = private_data;
-	exports export = *(exports *)data;
+	exports export;
 
 	cb_data->is_finished = 1;
 	cb_data->status = status;
@@ -1157,6 +1157,7 @@ void mount_getexports_cb(struct rpc_context *mount_context, int status, void *da
 		return;
 	}
 
+	export = *(exports *)data;
 	while (export != NULL) {
 		exports new_export;
 
