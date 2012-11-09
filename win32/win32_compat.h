@@ -79,6 +79,8 @@ typedef int socklen_t;
 #define MSG_DONTWAIT 0
 #define ssize_t SSIZE_T
 
+#if(_WIN32_WINNT < 0x0600)
+
 #define POLLIN      0x0001    /* There is data to read */
 #define POLLPRI     0x0002    /* There is urgent data to read */
 #define POLLOUT     0x0004    /* Writing now will not block */
@@ -91,6 +93,7 @@ struct pollfd {
     short events;     /* requested events */
     short revents;    /* returned events */
 };
+#endif
 
 /* Wrapper macros to call misc. functions win32 is missing */
 #define poll(x, y, z)        win32_poll(x, y, z)
