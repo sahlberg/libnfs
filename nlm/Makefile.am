@@ -15,6 +15,6 @@ $(nlm_GENERATED) : nlm-stamp
 nlm-stamp : nlm.x
 	rm -f $(nlm_GENERATED)
 	rpcgen -h @RPCGENFLAGS@ $< > libnfs-raw-nlm.h
-	rpcgen -c @RPCGENFLAGS@ $< | sed -e "s/#include \".*nlm.h\"/#include \"libnfs-raw-nlm.h\"/" > libnfs-raw-nlm.c
+	rpcgen -c @RPCGENFLAGS@ $< | sed -e "s/#include \".*nlm.h\"/#include \"libnfs-raw-nlm.h\"/" -e "s/^xdr_uint64/static xdr_uint64_broken/" > libnfs-raw-nlm.c
 	touch nlm-stamp
 	

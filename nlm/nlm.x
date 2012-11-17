@@ -1,5 +1,6 @@
 /* based on rfc1813 and wireshark */
 
+typedef unsigned hyper uint64;
 
 struct nlm_fh4 {
 	opaque       data<>;
@@ -28,8 +29,8 @@ struct nlm4_holder {
 	bool           exclusive;
 	unsigned int   svid;
 	nlm4_oh        oh;
-	unsigned hyper l_offset;
-	unsigned hyper l_len;
+	uint64         l_offset;
+	uint64         l_len;
 };
 
 const NLM_MAXNAME = 256;
@@ -38,8 +39,8 @@ struct nlm4_lock {
 	struct nlm_fh4 fh;
 	nlm4_oh        oh;
 	unsigned int   svid;
-	unsigned hyper l_offset;
-	unsigned hyper l_len;
+	uint64         l_offset;
+	uint64         l_len;
 };
 
 struct nlm4_share {
