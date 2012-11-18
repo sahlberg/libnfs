@@ -267,7 +267,6 @@ finished:
 	if (nfs != NULL) {		
 		nfs_destroy_context(nfs);
 	}
-	printf("nfsclient finished\n");
 	return 0;
 }
 
