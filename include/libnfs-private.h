@@ -23,7 +23,10 @@ struct rpc_fragment {
 	char *data;
 };
 
+#define RPC_CONTEXT_MAGIC 0xc6e46435
+
 struct rpc_context {
+        uint32_t magic;
 	int fd;
 	int is_connected;
 

@@ -30,6 +30,7 @@
 #endif
 #include <stdio.h>
 #include <stdlib.h>
+#include <assert.h>
 #include <fcntl.h>
 #include <string.h>
 #include <errno.h>
@@ -70,12 +71,18 @@ static void set_nonblocking(int fd)
 
 int rpc_get_fd(struct rpc_context *rpc)
 {
+	assert(rpc->magic == RPC_CONTEXT_MAGIC);
+
 	return rpc->fd;
 }
 
 int rpc_which_events(struct rpc_context *rpc)
 {
-	int events = rpc->is_connected ? POLLIN : POLLOUT;
+	int events;
+
+	assert(rpc->magic == RPC_CONTEXT_MAGIC);
+
+	events = rpc->is_connected ? POLLIN : POLLOUT;
 
 	if (rpc->is_udp != 0) {
 		/* for udp sockets we only wait for pollin */
@@ -92,9 +99,8 @@ static int rpc_write_to_socket(struct rpc_context *rpc)
 {
 	int64_t count;
 
-	if (rpc == NULL) {
-		return -1;
-	}
+	assert(rpc->magic == RPC_CONTEXT_MAGIC);
+
 	if (rpc->fd == -1) {
 		rpc_set_error(rpc, "trying to write but not connected");
 		return -1;
@@ -135,6 +141,8 @@ static int rpc_read_from_socket(struct rpc_context *rpc)
 	int size;
 	int pdu_size;
 	int64_t count;
+
+	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
 #if defined(WIN32)
 	if (ioctlsocket(rpc->fd, FIONREAD, &available) != 0) {
@@ -258,6 +266,8 @@ static int rpc_read_from_socket(struct rpc_context *rpc)
 
 int rpc_service(struct rpc_context *rpc, int revents)
 {
+	assert(rpc->magic == RPC_CONTEXT_MAGIC);
+
 	if (revents & POLLERR) {
 #ifdef WIN32
 		char err = 0;
@@ -336,17 +346,23 @@ int rpc_service(struct rpc_context *rpc, int revents)
 
 void rpc_set_autoreconnect(struct rpc_context *rpc)
 {
+	assert(rpc->magic == RPC_CONTEXT_MAGIC);
+
 	rpc->auto_reconnect = 1;
 }
 
 void rpc_unset_autoreconnect(struct rpc_context *rpc)
 {
+	assert(rpc->magic == RPC_CONTEXT_MAGIC);
+
 	rpc->auto_reconnect = 0;
 }
 
 static int rpc_connect_sockaddr_async(struct rpc_context *rpc, struct sockaddr_storage *s)
 {
 	int socksize;
+
+	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
 	switch (s->ss_family) {
 	case AF_INET:
@@ -424,6 +440,8 @@ int rpc_connect_async(struct rpc_context *rpc, const char *server, int port, rpc
 {
 	struct sockaddr_in *sin = (struct sockaddr_in *)&rpc->s;
 
+	assert(rpc->magic == RPC_CONTEXT_MAGIC);
+
 	if (rpc->fd != -1) {
 		rpc_set_error(rpc, "Trying to connect while already connected");
 		return -1;
@@ -464,6 +482,8 @@ int rpc_connect_async(struct rpc_context *rpc, const char *server, int port, rpc
 
 int rpc_disconnect(struct rpc_context *rpc, char *error)
 {
+	assert(rpc->magic == RPC_CONTEXT_MAGIC);
+
 	rpc_unset_autoreconnect(rpc);
 
 	if (rpc->fd != -1) {
@@ -484,6 +504,8 @@ int rpc_disconnect(struct rpc_context *rpc, char *error)
 
 static void reconnect_cb(struct rpc_context *rpc, int status, void *data _U_, void *private_data)
 {
+	assert(rpc->magic == RPC_CONTEXT_MAGIC);
+
 	if (status != RPC_STATUS_SUCCESS) {
 		rpc_error_all_pdus(rpc, "RPC ERROR: Failed to reconnect async");
 		return;
@@ -497,6 +519,8 @@ static void reconnect_cb(struct rpc_context *rpc, int status, void *data _U_, vo
 static int rpc_reconnect_requeue(struct rpc_context *rpc)
 {
 	struct rpc_pdu *pdu;
+
+	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
 	if (rpc->fd != -1) {
 #if defined(WIN32)
@@ -536,6 +560,8 @@ int rpc_bind_udp(struct rpc_context *rpc, char *addr, int port)
 {
 	struct addrinfo *ai = NULL;
 	char service[6];
+
+	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
 	if (rpc->is_udp == 0) {
 		rpc_set_error(rpc, "Cant not bind UDP. Not UDP context");
@@ -580,6 +606,8 @@ int rpc_set_udp_destination(struct rpc_context *rpc, char *addr, int port, int i
 	struct addrinfo *ai = NULL;
 	char service[6];
 
+	assert(rpc->magic == RPC_CONTEXT_MAGIC);
+
 	if (rpc->is_udp == 0) {
 		rpc_set_error(rpc, "Can not set destination sockaddr. Not UDP context");
 		return -1;
@@ -613,6 +641,8 @@ int rpc_set_udp_destination(struct rpc_context *rpc, char *addr, int port, int i
 
 struct sockaddr *rpc_get_recv_sockaddr(struct rpc_context *rpc)
 {
+	assert(rpc->magic == RPC_CONTEXT_MAGIC);
+
 	return (struct sockaddr *)&rpc->udp_src;
 }
 
@@ -620,6 +650,8 @@ int rpc_queue_length(struct rpc_context *rpc)
 {
 	int i=0;
 	struct rpc_pdu *pdu;
+
+	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
 	for(pdu = rpc->outqueue; pdu; pdu = pdu->next) {
 		i++;

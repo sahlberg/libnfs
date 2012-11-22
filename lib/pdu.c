@@ -25,6 +25,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <assert.h>
 #include <errno.h>
 #include <rpc/rpc.h>
 #include <rpc/xdr.h>
@@ -39,9 +40,7 @@ struct rpc_pdu *rpc_allocate_pdu(struct rpc_context *rpc, int program, int versi
 	struct rpc_pdu *pdu;
 	struct rpc_msg msg;
 
-	if (rpc == NULL) {
-		return NULL;
-	}
+	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
 	pdu = malloc(sizeof(struct rpc_pdu));
 	if (pdu == NULL) {
@@ -80,8 +79,10 @@ struct rpc_pdu *rpc_allocate_pdu(struct rpc_context *rpc, int program, int versi
 	return pdu;
 }
 
-void rpc_free_pdu(struct rpc_context *rpc _U_, struct rpc_pdu *pdu)
+void rpc_free_pdu(struct rpc_context *rpc, struct rpc_pdu *pdu)
 {
+	assert(rpc->magic == RPC_CONTEXT_MAGIC);
+
 	if (pdu->outdata.data != NULL) {
 		free(pdu->outdata.data);
 		pdu->outdata.data = NULL;
@@ -102,6 +103,8 @@ void rpc_free_pdu(struct rpc_context *rpc _U_, struct rpc_pdu *pdu)
 int rpc_queue_pdu(struct rpc_context *rpc, struct rpc_pdu *pdu)
 {
 	int size, recordmarker;
+
+	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
 	size = xdr_getpos(&pdu->xdr);
 
@@ -147,6 +150,8 @@ int rpc_get_pdu_size(char *buf)
 static int rpc_process_reply(struct rpc_context *rpc, struct rpc_pdu *pdu, XDR *xdr)
 {
 	struct rpc_msg msg;
+
+	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
 	memset(&msg, 0, sizeof(struct rpc_msg));
 	msg.acpted_rply.ar_verf = _null_auth;
@@ -212,6 +217,8 @@ int rpc_process_pdu(struct rpc_context *rpc, char *buf, int size)
 	int pos, recordmarker = 0;
 	unsigned int xid;
 	char *reasbuf = NULL;
+
+	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
 	memset(&xdr, 0, sizeof(XDR));
 
