@@ -24,6 +24,7 @@
 #include <stdarg.h>
 #include <string.h>
 #include <stdlib.h>
+#include <assert.h>
 #include "slist.h"
 #include "libnfs-zdr.h"
 #include "libnfs.h"
@@ -40,6 +41,7 @@ struct rpc_context *rpc_init_context(void)
 	}
 	memset(rpc, 0, sizeof(struct rpc_context));
 
+	rpc->magic = RPC_CONTEXT_MAGIC;
 	rpc->encodebuflen = 65536;
 	rpc->encodebuf = malloc(rpc->encodebuflen);
 	if (rpc->encodebuf == NULL) {
@@ -78,6 +80,8 @@ struct rpc_context *rpc_init_udp_context(void)
 
 void rpc_set_auth(struct rpc_context *rpc, struct AUTH *auth)
 {
+	assert(rpc->magic == RPC_CONTEXT_MAGIC);
+
 	if (rpc->auth != NULL) {
 		auth_destroy(rpc->auth);
 	}
@@ -88,6 +92,8 @@ void rpc_set_auth(struct rpc_context *rpc, struct AUTH *auth)
 void rpc_set_error(struct rpc_context *rpc, char *error_string, ...)
 {
         va_list ap;
+
+	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
 	if (rpc->error_string != NULL) {
 		free(rpc->error_string);
@@ -100,12 +106,16 @@ void rpc_set_error(struct rpc_context *rpc, char *error_string, ...)
 
 char *rpc_get_error(struct rpc_context *rpc)
 {
+	assert(rpc->magic == RPC_CONTEXT_MAGIC);
+
 	return rpc->error_string;
 }
 
 void rpc_error_all_pdus(struct rpc_context *rpc, char *error)
 {
 	struct rpc_pdu *pdu;
+
+	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
 	while((pdu = rpc->outqueue) != NULL) {
 		pdu->cb(rpc, RPC_STATUS_ERROR, error, pdu->private_data);
@@ -129,6 +139,8 @@ static void rpc_free_fragment(struct rpc_fragment *fragment)
 
 void rpc_free_all_fragments(struct rpc_context *rpc)
 {
+	assert(rpc->magic == RPC_CONTEXT_MAGIC);
+
 	while (rpc->fragments != NULL) {
 	      struct rpc_fragment *fragment = rpc->fragments;
 
@@ -140,6 +152,8 @@ void rpc_free_all_fragments(struct rpc_context *rpc)
 int rpc_add_fragment(struct rpc_context *rpc, char *data, uint64_t size)
 {
 	struct rpc_fragment *fragment;
+
+	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
 	fragment = malloc(sizeof(struct rpc_fragment));
 	if (fragment == NULL) {
@@ -161,6 +175,8 @@ int rpc_add_fragment(struct rpc_context *rpc, char *data, uint64_t size)
 void rpc_destroy_context(struct rpc_context *rpc)
 {
 	struct rpc_pdu *pdu;
+
+	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
 	while((pdu = rpc->outqueue) != NULL) {
 		pdu->cb(rpc, RPC_STATUS_CANCEL, NULL, pdu->private_data);
@@ -201,6 +217,7 @@ void rpc_destroy_context(struct rpc_context *rpc)
 		rpc->udp_dest = NULL;
 	}
 
+	rpc->magic = 0;
 	free(rpc);
 }
 

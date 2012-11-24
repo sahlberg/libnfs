@@ -38,6 +38,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <assert.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -66,6 +67,8 @@ struct sync_cb_data {
 static void wait_for_reply(struct rpc_context *rpc, struct sync_cb_data *cb_data)
 {
 	struct pollfd pfd;
+
+	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
 	while (!cb_data->is_finished) {
 
@@ -134,6 +137,8 @@ int nfs_mount(struct nfs_context *nfs, const char *server, const char *export)
 {
 	struct sync_cb_data cb_data;
 	struct rpc_context *rpc = nfs_get_rpc_context(nfs);
+
+	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
 	cb_data.is_finished = 0;
 
@@ -1149,6 +1154,8 @@ void mount_getexports_cb(struct rpc_context *mount_context, int status, void *da
 	struct sync_cb_data *cb_data = private_data;
 	exports export;
 
+	assert(mount_context->magic == RPC_CONTEXT_MAGIC);
+
 	cb_data->is_finished = 1;
 	cb_data->status = status;
 	cb_data->return_data = NULL;
@@ -1230,6 +1237,8 @@ void callit_cb(struct rpc_context *rpc, int status, void *data _U_, void *privat
 	char hostdd[16];
 	struct nfs_server_list *srvr;
 
+	assert(rpc->magic == RPC_CONTEXT_MAGIC);
+
 	if (status == RPC_STATUS_CANCEL) {
 		return;
 	}
@@ -1282,6 +1291,8 @@ void callit_cb(struct rpc_context *rpc, int status, void *data _U_, void *privat
 static int send_nfsd_probes(struct rpc_context *rpc, INTERFACE_INFO *InterfaceList, int numIfs, struct nfs_list_data *data)
 {
   int i=0;
+
+  assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
   for(i = 0; i < numIfs; i++) 
   {
@@ -1412,6 +1423,8 @@ struct nfs_server_list *nfs_find_local_servers(void)
 static int send_nfsd_probes(struct rpc_context *rpc, struct ifconf *ifc, struct nfs_list_data *data)
 {
 	char *ptr;
+
+	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
 	for (ptr =(char *)(ifc->ifc_buf); ptr < (char *)(ifc->ifc_buf) + ifc->ifc_len; ) {
 		struct ifreq *ifr;
