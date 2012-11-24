@@ -281,7 +281,7 @@ bool_t libnfs_zdr_array(ZDR *zdrs, char **arrp, uint32_t *size, uint32_t maxsize
 	}
 
 	for (i = 0; i < *size; i++) {
-		if (proc(zdrs, *arrp + i * elsize)) {
+		if (!proc(zdrs, *arrp + i * elsize)) {
 			return FALSE;
 		}
 	}
