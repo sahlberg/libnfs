@@ -94,6 +94,14 @@ development libraries for LibNFS
 %{_libdir}/pkgconfig/libnfs.pc
 
 %changelog
+* Sun Nov 25 2012 : Version 1.4
+ - Add trackig of freed context and assert on using a context after it has been
+   freed.
+ - Windows x64 support and fixes.
+ - Switch to using our own version of xdr_int64() since the one in libtirpc
+   crashes on some platforms.
+ - Fix memory leak in an error path for addrinfo.
+ - Fix bug dereferencing a null pointer in the mount callback on error.
 * Sat Mar 3 2012 : Version 1.3
  - add set/unset to portmapper
  - add mount v1
