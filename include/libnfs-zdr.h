@@ -21,6 +21,11 @@
  * It aims to be compatible with normal rpcgen generated functions.
  */
 
+/************************************************************
+ * Definitions copied from RFC 5531
+ * and slightly modified.
+ ************************************************************/
+
 #include "config.h"
 
 #ifndef _LIBNFS_ZDR_H_
@@ -88,6 +93,7 @@ typedef int (*zdrproc_t) (ZDR *, void *,...);
 #define AUTH_NONE 0
 #define AUTH_NULL 0
 #define AUTH_UNIX 1
+
 struct opaque_auth {
 	uint32_t oa_flavor;
 	caddr_t  oa_base;
@@ -95,59 +101,36 @@ struct opaque_auth {
 };
 extern struct opaque_auth _null_auth;
 
-
 struct AUTH {
 	struct opaque_auth	ah_cred;
 	struct opaque_auth	ah_verf;
 	caddr_t ah_private;
 };
 
-enum msg_type {
-	CALL=0,
-	REPLY=1
-};
-
 #define RPC_MSG_VERSION	2
 
-struct call_body {
-	uint32_t cb_rpcvers;
-	uint32_t cb_prog;
-	uint32_t cb_vers;
-	uint32_t cb_proc;
-	struct opaque_auth cb_cred;
-	struct opaque_auth cb_verf;
+enum msg_type {
+	CALL  = 0,
+	REPLY = 1
+};
+
+enum reply_stat {
+	MSG_ACCEPTED=0,
+	MSG_DENIED=1
 };
 
 enum accept_stat {
-	SUCCESS=0,
-	PROG_UNAVAIL=1,
-	PROG_MISMATCH=2,
-	PROC_UNAVAIL=3,
-	GARBAGE_ARGS=4,
-	SYSTEM_ERR=5
-};
-
-struct accepted_reply {
-	struct opaque_auth	ar_verf;
-	uint32_t		ar_stat;
-	union {
-		struct {
-			uint32_t	low;
-			uint32_t	high;
-		} AR_versions;
-		struct {
-			caddr_t	where;
-			zdrproc_t proc;
-		} AR_results;
-		/* and many other null cases */
-	} ru;
-#define	ar_results	ru.AR_results
-#define	ar_vers		ru.AR_versions
+	SUCCESS       = 0,
+	PROG_UNAVAIL  = 1,
+	PROG_MISMATCH = 2,
+	PROC_UNAVAIL  = 3,
+	GARBAGE_ARGS  = 4,
+	SYSTEM_ERR    = 5
 };
 
 enum reject_stat {
-	RPC_MISMATCH=0,
-	AUTH_ERROR=1
+	RPC_MISMATCH = 0,
+	AUTH_ERROR   = 1
 };
 
 enum auth_stat {
@@ -155,59 +138,70 @@ enum auth_stat {
 	/*
 	 * failed at remote end
 	 */
-	AUTH_BADCRED=1,			/* bogus credentials (seal broken) */
-	AUTH_REJECTEDCRED=2,		/* client should begin new session */
-	AUTH_BADVERF=3,			/* bogus verifier (seal broken) */
-	AUTH_REJECTEDVERF=4,		/* verifier expired or was replayed */
-	AUTH_TOOWEAK=5,			/* rejected due to security reasons */
+	AUTH_BADCRED      = 1,		/* bogus credentials (seal broken) */
+	AUTH_REJECTEDCRED = 2,		/* client should begin new session */
+	AUTH_BADVERF      = 3,		/* bogus verifier (seal broken) */
+	AUTH_REJECTEDVERF = 4,		/* verifier expired or was replayed */
+	AUTH_TOOWEAK      = 5,		/* rejected due to security reasons */
 	/*
 	 * failed locally
 	*/
-	AUTH_INVALIDRESP=6,		/* bogus response verifier */
-	AUTH_FAILED=7			/* some unknown reason */
+	AUTH_INVALIDRESP  = 6,		/* bogus response verifier */
+	AUTH_FAILED       = 7		/* some unknown reason */
+};
+
+struct call_body {
+	uint32_t rpcvers;
+	uint32_t prog;
+	uint32_t vers;
+	uint32_t proc;
+	struct opaque_auth cred;
+	struct opaque_auth verf;
+};
+
+struct accepted_reply {
+	struct opaque_auth	verf;
+	uint32_t		stat;
+	union {
+		struct {
+			caddr_t	where;
+			zdrproc_t proc;
+		} results;
+		struct {
+			uint32_t	low;
+			uint32_t	high;
+		} mismatch_info;
+	} reply_data;
 };
 
 struct rejected_reply {
-	enum reject_stat rj_stat;
+	enum reject_stat stat;
 	union {
 		struct {
 			u_long low;
 			u_long high;
-		} RJ_versions;
-		enum auth_stat RJ_why;  /* why authentication did not work */
-	} ru;
-#define	rj_vers	ru.RJ_versions
-#define	rj_why	ru.RJ_why
+		} mismatch_info;
+		enum auth_stat stat;
+	} reject_data;
 };
 
-#define MSG_ACCEPTED 0
-#define MSG_DENIED 1
-
 struct reply_body {
-	uint32_t rp_stat;
+	uint32_t stat;
 	union {
-		struct accepted_reply RP_ar;
-		struct rejected_reply RP_dr;
-	} ru;
-#define	rp_acpt	ru.RP_ar
-#define	rp_rjct	ru.RP_dr
+		struct accepted_reply areply;
+		struct rejected_reply rreply;
+	} reply;
 };
 
 struct rpc_msg {
-	uint32_t		rm_xid;
+	uint32_t		  xid;
 
-	uint32_t		rm_direction;
+	uint32_t		  direction;
 	union {
-		struct call_body RM_cmb;
-		struct reply_body RM_rmb;
-	} ru;
-#define	rm_call		ru.RM_cmb
-#define	rm_reply	ru.RM_rmb
+		struct call_body  cbody;
+		struct reply_body rbody;
+	} body;
 };
-#define	acpted_rply	ru.RM_rmb.ru.RP_ar
-#define	rjcted_rply	ru.RM_rmb.ru.RP_dr
-
-
 
 #define zdrmem_create libnfs_zdrmem_create
 void libnfs_zdrmem_create(ZDR *zdrs, const caddr_t addr, uint32_t size, enum zdr_op xop);

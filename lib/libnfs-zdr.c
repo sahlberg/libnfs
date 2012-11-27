@@ -307,27 +307,27 @@ static bool_t libnfs_opaque_auth(ZDR *zdrs, struct opaque_auth *auth)
 
 static bool_t libnfs_rpc_call_body(ZDR *zdrs, struct call_body *cmb)
 {
-	if (!libnfs_zdr_u_int(zdrs, &cmb->cb_rpcvers)) {
+	if (!libnfs_zdr_u_int(zdrs, &cmb->rpcvers)) {
 		return FALSE;
 	}
 
-	if (!libnfs_zdr_u_int(zdrs, &cmb->cb_prog)) {
+	if (!libnfs_zdr_u_int(zdrs, &cmb->prog)) {
 		return FALSE;
 	}
 
-	if (!libnfs_zdr_u_int(zdrs, &cmb->cb_vers)) {
+	if (!libnfs_zdr_u_int(zdrs, &cmb->vers)) {
 		return FALSE;
 	}
 
-	if (!libnfs_zdr_u_int(zdrs, &cmb->cb_proc)) {
+	if (!libnfs_zdr_u_int(zdrs, &cmb->proc)) {
 		return FALSE;
 	}
 
-	if (!libnfs_opaque_auth(zdrs, &cmb->cb_cred)) {
+	if (!libnfs_opaque_auth(zdrs, &cmb->cred)) {
 		return FALSE;
 	}
 
-	if (!libnfs_opaque_auth(zdrs, &cmb->cb_verf)) {
+	if (!libnfs_opaque_auth(zdrs, &cmb->verf)) {
 		return FALSE;
 	}
 
@@ -336,25 +336,25 @@ static bool_t libnfs_rpc_call_body(ZDR *zdrs, struct call_body *cmb)
 
 static bool_t libnfs_accepted_reply(ZDR *zdrs, struct accepted_reply *ar)
 {
-	if (!libnfs_opaque_auth(zdrs, &ar->ar_verf)) {
+	if (!libnfs_opaque_auth(zdrs, &ar->verf)) {
 		return FALSE;
 	}
 
-	if (!libnfs_zdr_u_int(zdrs, &ar->ar_stat)) {
+	if (!libnfs_zdr_u_int(zdrs, &ar->stat)) {
 		return FALSE;
 	}
 
-	switch (ar->ar_stat) {
+	switch (ar->stat) {
 	case SUCCESS:
-		if (!ar->ar_results.proc(zdrs, ar->ar_results.where)) {
+		if (!ar->reply_data.results.proc(zdrs, ar->reply_data.results.where)) {
 			return FALSE;
 		}
 		return TRUE;
 	case PROG_MISMATCH:
-		if (!libnfs_zdr_u_int(zdrs, &ar->ar_vers.low)) {
+		if (!libnfs_zdr_u_int(zdrs, &ar->reply_data.mismatch_info.low)) {
 			return FALSE;
 		}
-		if (!libnfs_zdr_u_int(zdrs, &ar->ar_vers.high)) {
+		if (!libnfs_zdr_u_int(zdrs, &ar->reply_data.mismatch_info.high)) {
 			return FALSE;
 		}
 		return TRUE;
@@ -365,26 +365,47 @@ static bool_t libnfs_accepted_reply(ZDR *zdrs, struct accepted_reply *ar)
 	return FALSE;
 }
 
-static bool_t libnfs_rejected_reply(ZDR *zdrs, struct rejected_reply *RP_dr)
+static bool_t libnfs_rejected_reply(ZDR *zdrs, struct rejected_reply *rr)
 {
-printf("rejected reply\n");
-exit(10);
+	if (!libnfs_zdr_u_int(zdrs, &rr->stat)) {
+		return FALSE;
+	}
+
+	switch (rr->stat) {
+	case RPC_MISMATCH:
+		if (!libnfs_zdr_u_int(zdrs, &rr->reject_data.mismatch_info.low)) {
+			return FALSE;
+		}
+		if (!libnfs_zdr_u_int(zdrs, &rr->reject_data.mismatch_info.high)) {
+			return FALSE;
+		}
+		return TRUE;
+	case AUTH_ERROR:
+		if (!libnfs_zdr_u_int(zdrs, &rr->reject_data.stat)) {
+			return FALSE;
+		}
+		return TRUE;
+	default:
+		return TRUE;
+	}
+
+	return FALSE;
 }
 
 static bool_t libnfs_rpc_reply_body(ZDR *zdrs, struct reply_body *rmb)
 {
-	if (!libnfs_zdr_u_int(zdrs, &rmb->rp_stat)) {
+	if (!libnfs_zdr_u_int(zdrs, &rmb->stat)) {
 		return FALSE;
 	}
 
-	switch (rmb->rp_stat) {
+	switch (rmb->stat) {
 	case MSG_ACCEPTED:
-		if (!libnfs_accepted_reply(zdrs, &rmb->rp_acpt)) {
+		if (!libnfs_accepted_reply(zdrs, &rmb->reply.areply)) {
 			return FALSE;
 		}
 		return TRUE;
 	case MSG_DENIED:
-		if (!libnfs_rejected_reply(zdrs, &rmb->rp_rjct)) {
+		if (!libnfs_rejected_reply(zdrs, &rmb->reply.rreply)) {
 			return FALSE;
 		}
 		return TRUE;
@@ -395,20 +416,20 @@ static bool_t libnfs_rpc_reply_body(ZDR *zdrs, struct reply_body *rmb)
 
 static bool_t libnfs_rpc_msg(ZDR *zdrs, struct rpc_msg *msg)
 {
-	if (!libnfs_zdr_u_int(zdrs, &msg->rm_xid)) {
+	if (!libnfs_zdr_u_int(zdrs, &msg->xid)) {
 		return FALSE;
 	}
 
-	if (!libnfs_zdr_u_int(zdrs, &msg->rm_direction)) {
+	if (!libnfs_zdr_u_int(zdrs, &msg->direction)) {
 		return FALSE;
 	}
 
-	switch (msg->rm_direction) {
+	switch (msg->direction) {
 	case CALL:
-		return libnfs_rpc_call_body(zdrs, &msg->ru.RM_cmb);
+		return libnfs_rpc_call_body(zdrs, &msg->body.cbody);
 		break;
 	case REPLY:
-		return libnfs_rpc_reply_body(zdrs, &msg->ru.RM_rmb);
+		return libnfs_rpc_reply_body(zdrs, &msg->body.rbody);
 		break;
 	default:
 		return FALSE;

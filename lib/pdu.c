@@ -61,14 +61,14 @@ struct rpc_pdu *rpc_allocate_pdu(struct rpc_context *rpc, int program, int versi
 	}
 
 	memset(&msg, 0, sizeof(struct rpc_msg));
-	msg.rm_xid = pdu->xid;
-        msg.rm_direction = CALL;
-	msg.rm_call.cb_rpcvers = RPC_MSG_VERSION;
-	msg.rm_call.cb_prog = program;
-	msg.rm_call.cb_vers = version;
-	msg.rm_call.cb_proc = procedure;
-	msg.rm_call.cb_cred = rpc->auth->ah_cred;
-	msg.rm_call.cb_verf = rpc->auth->ah_verf;
+	msg.xid                = pdu->xid;
+        msg.direction          = CALL;
+	msg.body.cbody.rpcvers = RPC_MSG_VERSION;
+	msg.body.cbody.prog    = program;
+	msg.body.cbody.vers    = version;
+	msg.body.cbody.proc    = procedure;
+	msg.body.cbody.cred    = rpc->auth->ah_cred;
+	msg.body.cbody.verf    = rpc->auth->ah_verf;
 
 	if (zdr_callmsg(&pdu->zdr, &msg) == 0) {
 		rpc_set_error(rpc, "zdr_callmsg failed");
@@ -156,7 +156,7 @@ static int rpc_process_reply(struct rpc_context *rpc, struct rpc_pdu *pdu, ZDR *
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
 	memset(&msg, 0, sizeof(struct rpc_msg));
-	msg.acpted_rply.ar_verf = _null_auth;
+	msg.body.rbody.reply.areply.verf = _null_auth;
 	if (pdu->zdr_decode_bufsize > 0) {
 		if (pdu->zdr_decode_buf != NULL) {
 			free(pdu->zdr_decode_buf);
@@ -169,8 +169,8 @@ static int rpc_process_reply(struct rpc_context *rpc, struct rpc_pdu *pdu, ZDR *
 		}
 		memset(pdu->zdr_decode_buf, 0, pdu->zdr_decode_bufsize);
 	}
-	msg.acpted_rply.ar_results.where = pdu->zdr_decode_buf;
-	msg.acpted_rply.ar_results.proc  = pdu->zdr_decode_fn;
+	msg.body.rbody.reply.areply.reply_data.results.where = pdu->zdr_decode_buf;
+	msg.body.rbody.reply.areply.reply_data.results.proc  = pdu->zdr_decode_fn;
 
 	if (zdr_replymsg(zdr, &msg) == 0) {
 		rpc_set_error(rpc, "zdr_replymsg failed in portmap_getport_reply");
@@ -181,11 +181,11 @@ static int rpc_process_reply(struct rpc_context *rpc, struct rpc_pdu *pdu, ZDR *
 		}
 		return 0;
 	}
-	if (msg.rm_reply.rp_stat != MSG_ACCEPTED) {
+	if (msg.body.rbody.stat != MSG_ACCEPTED) {
 		pdu->cb(rpc, RPC_STATUS_ERROR, "RPC Packet not accepted by the server", pdu->private_data);
 		return 0;
 	}
-	switch (msg.rm_reply.rp_acpt.ar_stat) {
+	switch (msg.body.rbody.reply.areply.stat) {
 	case SUCCESS:
 		pdu->cb(rpc, RPC_STATUS_SUCCESS, pdu->zdr_decode_buf, pdu->private_data);
 		break;
