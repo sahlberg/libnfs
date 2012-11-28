@@ -84,6 +84,7 @@ development libraries for LibNFS
 %files devel
 %defattr(-,root,root)
 %{_includedir}/nfsc/libnfs.h
+%{_includedir}/nfsc/libnfs-zdr.h
 %{_includedir}/nfsc/libnfs-raw.h
 %{_includedir}/nfsc/libnfs-raw-mount.h
 %{_includedir}/nfsc/libnfs-raw-nfs.h
