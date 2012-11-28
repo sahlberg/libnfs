@@ -13,6 +13,10 @@
 extern "C" {
 #endif
 
+#if defined(ANDROID)
+typedef long long int quad_t;
+typedef long long unsigned u_quad_t;
+#endif
 
 struct nlm_fh4 {
 	struct {
