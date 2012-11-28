@@ -25,17 +25,18 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
 #include <assert.h>
 #include <errno.h>
-#include <rpc/rpc.h>
-#include <rpc/xdr.h>
-#include <rpc/rpc_msg.h>
 #include "slist.h"
+#include "libnfs-zdr.h"
 #include "libnfs.h"
 #include "libnfs-raw.h"
 #include "libnfs-private.h"
 
-struct rpc_pdu *rpc_allocate_pdu(struct rpc_context *rpc, int program, int version, int procedure, rpc_cb cb, void *private_data, xdrproc_t xdr_decode_fn, int xdr_decode_bufsize)
+struct rpc_pdu *rpc_allocate_pdu(struct rpc_context *rpc, int program, int version, int procedure, rpc_cb cb, void *private_data, zdrproc_t zdr_decode_fn, int zdr_decode_bufsize)
 {
 	struct rpc_pdu *pdu;
 	struct rpc_msg msg;
@@ -51,27 +52,27 @@ struct rpc_pdu *rpc_allocate_pdu(struct rpc_context *rpc, int program, int versi
 	pdu->xid                = rpc->xid++;
 	pdu->cb                 = cb;
 	pdu->private_data       = private_data;
-	pdu->xdr_decode_fn      = xdr_decode_fn;
-	pdu->xdr_decode_bufsize = xdr_decode_bufsize;
+	pdu->zdr_decode_fn      = zdr_decode_fn;
+	pdu->zdr_decode_bufsize = zdr_decode_bufsize;
 
-	xdrmem_create(&pdu->xdr, rpc->encodebuf, rpc->encodebuflen, XDR_ENCODE);
+	zdrmem_create(&pdu->zdr, rpc->encodebuf, rpc->encodebuflen, ZDR_ENCODE);
 	if (rpc->is_udp == 0) {
-		xdr_setpos(&pdu->xdr, 4); /* skip past the record marker */
+		zdr_setpos(&pdu->zdr, 4); /* skip past the record marker */
 	}
 
 	memset(&msg, 0, sizeof(struct rpc_msg));
-	msg.rm_xid = pdu->xid;
-        msg.rm_direction = CALL;
-	msg.rm_call.cb_rpcvers = RPC_MSG_VERSION;
-	msg.rm_call.cb_prog = program;
-	msg.rm_call.cb_vers = version;
-	msg.rm_call.cb_proc = procedure;
-	msg.rm_call.cb_cred = rpc->auth->ah_cred;
-	msg.rm_call.cb_verf = rpc->auth->ah_verf;
+	msg.xid                = pdu->xid;
+        msg.direction          = CALL;
+	msg.body.cbody.rpcvers = RPC_MSG_VERSION;
+	msg.body.cbody.prog    = program;
+	msg.body.cbody.vers    = version;
+	msg.body.cbody.proc    = procedure;
+	msg.body.cbody.cred    = rpc->auth->ah_cred;
+	msg.body.cbody.verf    = rpc->auth->ah_verf;
 
-	if (xdr_callmsg(&pdu->xdr, &msg) == 0) {
-		rpc_set_error(rpc, "xdr_callmsg failed");
-		xdr_destroy(&pdu->xdr);
+	if (zdr_callmsg(&pdu->zdr, &msg) == 0) {
+		rpc_set_error(rpc, "zdr_callmsg failed");
+		zdr_destroy(&pdu->zdr);
 		free(pdu);
 		return NULL;
 	}
@@ -88,13 +89,13 @@ void rpc_free_pdu(struct rpc_context *rpc, struct rpc_pdu *pdu)
 		pdu->outdata.data = NULL;
 	}
 
-	if (pdu->xdr_decode_buf != NULL) {
-		xdr_free(pdu->xdr_decode_fn, pdu->xdr_decode_buf);
-		free(pdu->xdr_decode_buf);
-		pdu->xdr_decode_buf = NULL;
+	if (pdu->zdr_decode_buf != NULL) {
+		zdr_free(pdu->zdr_decode_fn, pdu->zdr_decode_buf);
+		free(pdu->zdr_decode_buf);
+		pdu->zdr_decode_buf = NULL;
 	}
 
-	xdr_destroy(&pdu->xdr);
+	zdr_destroy(&pdu->zdr);
 
 	free(pdu);
 }
@@ -106,10 +107,11 @@ int rpc_queue_pdu(struct rpc_context *rpc, struct rpc_pdu *pdu)
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
-	size = xdr_getpos(&pdu->xdr);
+	size = zdr_getpos(&pdu->zdr);
 
 	/* for udp we dont queue, we just send it straight away */
 	if (rpc->is_udp != 0) {
+// XXX add a rpc->udp_dest_sock_size  and get rid of sys/socket.h and netinet/in.h
 		if (sendto(rpc->fd, rpc->encodebuf, size, MSG_DONTWAIT, rpc->udp_dest, sizeof(struct sockaddr_in)) < 0) {
 			rpc_set_error(rpc, "Sendto failed with errno %s", strerror(errno));
 			rpc_free_pdu(rpc, pdu);
@@ -120,9 +122,9 @@ int rpc_queue_pdu(struct rpc_context *rpc, struct rpc_pdu *pdu)
 	}
 
 	/* write recordmarker */
-	xdr_setpos(&pdu->xdr, 0);
+	zdr_setpos(&pdu->zdr, 0);
 	recordmarker = (size - 4) | 0x80000000;
-	xdr_int(&pdu->xdr, &recordmarker);
+	zdr_int(&pdu->zdr, &recordmarker);
 
 	pdu->outdata.size = size;
 	pdu->outdata.data = malloc(pdu->outdata.size);
@@ -147,45 +149,45 @@ int rpc_get_pdu_size(char *buf)
 	return (size & 0x7fffffff) + 4;
 }
 
-static int rpc_process_reply(struct rpc_context *rpc, struct rpc_pdu *pdu, XDR *xdr)
+static int rpc_process_reply(struct rpc_context *rpc, struct rpc_pdu *pdu, ZDR *zdr)
 {
 	struct rpc_msg msg;
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
 	memset(&msg, 0, sizeof(struct rpc_msg));
-	msg.acpted_rply.ar_verf = _null_auth;
-	if (pdu->xdr_decode_bufsize > 0) {
-		if (pdu->xdr_decode_buf != NULL) {
-			free(pdu->xdr_decode_buf);
+	msg.body.rbody.reply.areply.verf = _null_auth;
+	if (pdu->zdr_decode_bufsize > 0) {
+		if (pdu->zdr_decode_buf != NULL) {
+			free(pdu->zdr_decode_buf);
 		}
-		pdu->xdr_decode_buf = malloc(pdu->xdr_decode_bufsize);
-		if (pdu->xdr_decode_buf == NULL) {
-			rpc_set_error(rpc, "xdr_replymsg failed in portmap_getport_reply");
-			pdu->cb(rpc, RPC_STATUS_ERROR, "Failed to allocate buffer for decoding of XDR reply", pdu->private_data);
+		pdu->zdr_decode_buf = malloc(pdu->zdr_decode_bufsize);
+		if (pdu->zdr_decode_buf == NULL) {
+			rpc_set_error(rpc, "zdr_replymsg failed in portmap_getport_reply");
+			pdu->cb(rpc, RPC_STATUS_ERROR, "Failed to allocate buffer for decoding of ZDR reply", pdu->private_data);
 			return 0;
 		}
-		memset(pdu->xdr_decode_buf, 0, pdu->xdr_decode_bufsize);
+		memset(pdu->zdr_decode_buf, 0, pdu->zdr_decode_bufsize);
 	}
-	msg.acpted_rply.ar_results.where = pdu->xdr_decode_buf;
-	msg.acpted_rply.ar_results.proc  = pdu->xdr_decode_fn;
+	msg.body.rbody.reply.areply.reply_data.results.where = pdu->zdr_decode_buf;
+	msg.body.rbody.reply.areply.reply_data.results.proc  = pdu->zdr_decode_fn;
 
-	if (xdr_replymsg(xdr, &msg) == 0) {
-		rpc_set_error(rpc, "xdr_replymsg failed in portmap_getport_reply");
+	if (zdr_replymsg(zdr, &msg) == 0) {
+		rpc_set_error(rpc, "zdr_replymsg failed in portmap_getport_reply");
 		pdu->cb(rpc, RPC_STATUS_ERROR, "Message rejected by server", pdu->private_data);
-		if (pdu->xdr_decode_buf != NULL) {
-			free(pdu->xdr_decode_buf);
-			pdu->xdr_decode_buf = NULL;
+		if (pdu->zdr_decode_buf != NULL) {
+			free(pdu->zdr_decode_buf);
+			pdu->zdr_decode_buf = NULL;
 		}
 		return 0;
 	}
-	if (msg.rm_reply.rp_stat != MSG_ACCEPTED) {
+	if (msg.body.rbody.stat != MSG_ACCEPTED) {
 		pdu->cb(rpc, RPC_STATUS_ERROR, "RPC Packet not accepted by the server", pdu->private_data);
 		return 0;
 	}
-	switch (msg.rm_reply.rp_acpt.ar_stat) {
+	switch (msg.body.rbody.reply.areply.stat) {
 	case SUCCESS:
-		pdu->cb(rpc, RPC_STATUS_SUCCESS, pdu->xdr_decode_buf, pdu->private_data);
+		pdu->cb(rpc, RPC_STATUS_SUCCESS, pdu->zdr_decode_buf, pdu->private_data);
 		break;
 	case PROG_UNAVAIL:
 		pdu->cb(rpc, RPC_STATUS_ERROR, "Server responded: Program not available", pdu->private_data);
@@ -213,24 +215,24 @@ static int rpc_process_reply(struct rpc_context *rpc, struct rpc_pdu *pdu, XDR *
 int rpc_process_pdu(struct rpc_context *rpc, char *buf, int size)
 {
 	struct rpc_pdu *pdu;
-	XDR xdr;
+	ZDR zdr;
 	int pos, recordmarker = 0;
 	unsigned int xid;
 	char *reasbuf = NULL;
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
-	memset(&xdr, 0, sizeof(XDR));
+	memset(&zdr, 0, sizeof(ZDR));
 
-	xdrmem_create(&xdr, buf, size, XDR_DECODE);
+	zdrmem_create(&zdr, buf, size, ZDR_DECODE);
 	if (rpc->is_udp == 0) {
-		if (xdr_int(&xdr, &recordmarker) == 0) {
-			rpc_set_error(rpc, "xdr_int reading recordmarker failed");
-			xdr_destroy(&xdr);
+		if (zdr_int(&zdr, &recordmarker) == 0) {
+			rpc_set_error(rpc, "zdr_int reading recordmarker failed");
+			zdr_destroy(&zdr);
 			return -1;
 		}
 		if (!(recordmarker&0x80000000)) {
-			xdr_destroy(&xdr);
+			zdr_destroy(&zdr);
 			if (rpc_add_fragment(rpc, buf+4, size-4) != 0) {
 				rpc_set_error(rpc, "Failed to queue fragment for reassembly.");
 				return -1;
@@ -242,10 +244,10 @@ int rpc_process_pdu(struct rpc_context *rpc, char *buf, int size)
 	/* reassembly */
 	if (recordmarker != 0 && rpc->fragments != NULL) {
 		struct rpc_fragment *fragment;
-		uint64_t total = size - 4;
+		uint32_t total = size - 4;
 		char *ptr;
 
-		xdr_destroy(&xdr);
+		zdr_destroy(&zdr);
 		for (fragment = rpc->fragments; fragment; fragment = fragment->next) {
 			total += fragment->size;
 		}
@@ -262,20 +264,20 @@ int rpc_process_pdu(struct rpc_context *rpc, char *buf, int size)
 			ptr += fragment->size;
 		}
 		memcpy(ptr, buf + 4, size - 4);
-		xdrmem_create(&xdr, reasbuf, total, XDR_DECODE);
+		zdrmem_create(&zdr, reasbuf, total, ZDR_DECODE);
 		rpc_free_all_fragments(rpc);
 	}
 
-	pos = xdr_getpos(&xdr);
-	if (xdr_int(&xdr, (int *)&xid) == 0) {
-		rpc_set_error(rpc, "xdr_int reading xid failed");
-		xdr_destroy(&xdr);
+	pos = zdr_getpos(&zdr);
+	if (zdr_int(&zdr, (int *)&xid) == 0) {
+		rpc_set_error(rpc, "zdr_int reading xid failed");
+		zdr_destroy(&zdr);
 		if (reasbuf != NULL) {
 			free(reasbuf);
 		}
 		return -1;
 	}
-	xdr_setpos(&xdr, pos);
+	zdr_setpos(&zdr, pos);
 
 	for (pdu=rpc->waitpdu; pdu; pdu=pdu->next) {
 		if (pdu->xid != xid) {
@@ -284,10 +286,10 @@ int rpc_process_pdu(struct rpc_context *rpc, char *buf, int size)
 		if (rpc->is_udp == 0 || rpc->is_broadcast == 0) {
 			SLIST_REMOVE(&rpc->waitpdu, pdu);
 		}
-		if (rpc_process_reply(rpc, pdu, &xdr) != 0) {
+		if (rpc_process_reply(rpc, pdu, &zdr) != 0) {
 			rpc_set_error(rpc, "rpc_procdess_reply failed");
 		}
-		xdr_destroy(&xdr);
+		zdr_destroy(&zdr);
 		if (rpc->is_udp == 0 || rpc->is_broadcast == 0) {
 			rpc_free_pdu(rpc, pdu);
 		}
@@ -297,7 +299,7 @@ int rpc_process_pdu(struct rpc_context *rpc, char *buf, int size)
 		return 0;
 	}
 	rpc_set_error(rpc, "No matching pdu found for xid:%d", xid);
-	xdr_destroy(&xdr);
+	zdr_destroy(&zdr);
 	if (reasbuf != NULL) {
 		free(reasbuf);
 	}

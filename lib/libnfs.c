@@ -38,6 +38,8 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <netinet/in.h>
+#include "libnfs-zdr.h"
 #include "libnfs.h"
 #include "libnfs-raw.h"
 #include "libnfs-raw-mount.h"
@@ -112,7 +114,7 @@ struct nfs_mcb_data {
 static int nfs_lookup_path_async_internal(struct nfs_context *nfs, struct nfs_cb_data *data, struct nfs_fh3 *fh);
 
 
-void nfs_set_auth(struct nfs_context *nfs, AUTH *auth)
+void nfs_set_auth(struct nfs_context *nfs, struct AUTH *auth)
 {
 	rpc_set_auth(nfs->rpc, auth);
 }
@@ -3417,7 +3419,7 @@ uint64_t nfs_get_readmax(struct nfs_context *nfs)
  */
 uint64_t nfs_get_writemax(struct nfs_context *nfs)
 {
-	/* Some XDR libraries can not marshall PDUs bigger than this */
+	/* Some ZDR libraries can not marshall PDUs bigger than this */
         if (nfs->writemax < 32768) {
 		return nfs->writemax;
 	}

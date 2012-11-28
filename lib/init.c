@@ -25,9 +25,8 @@
 #include <string.h>
 #include <stdlib.h>
 #include <assert.h>
-#include <rpc/rpc.h>
-#include <rpc/xdr.h>
 #include "slist.h"
+#include "libnfs-zdr.h"
 #include "libnfs.h"
 #include "libnfs-raw.h"
 #include "libnfs-private.h"
@@ -79,7 +78,7 @@ struct rpc_context *rpc_init_udp_context(void)
 	return rpc;
 }
 
-void rpc_set_auth(struct rpc_context *rpc, AUTH *auth)
+void rpc_set_auth(struct rpc_context *rpc, struct AUTH *auth)
 {
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 

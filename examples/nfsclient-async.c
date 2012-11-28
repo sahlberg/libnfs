@@ -35,6 +35,7 @@
 #include <stdint.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include "libnfs-zdr.h"
 #include "libnfs.h"
 #include "libnfs-raw.h"
 #include "libnfs-raw-mount.h"

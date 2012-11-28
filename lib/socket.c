@@ -34,8 +34,6 @@
 #include <fcntl.h>
 #include <string.h>
 #include <errno.h>
-#include <rpc/rpc.h>
-#include <rpc/xdr.h>
 #ifdef HAVE_SYS_FILIO_H
 #include <sys/filio.h>
 #endif
@@ -43,6 +41,7 @@
 #include <sys/sockio.h>
 #endif
 #include <sys/types.h>
+#include "libnfs-zdr.h"
 #include "libnfs.h"
 #include "libnfs-raw.h"
 #include "libnfs-private.h"
@@ -97,7 +96,7 @@ int rpc_which_events(struct rpc_context *rpc)
 
 static int rpc_write_to_socket(struct rpc_context *rpc)
 {
-	int64_t count;
+	int32_t count;
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
@@ -140,7 +139,9 @@ static int rpc_read_from_socket(struct rpc_context *rpc)
 	int available;
 	int size;
 	int pdu_size;
-	int64_t count;
+	int32_t count;
+
+	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 

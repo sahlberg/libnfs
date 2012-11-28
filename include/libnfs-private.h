@@ -14,8 +14,9 @@
    You should have received a copy of the GNU Lesser General Public License
    along with this program; if not, see <http://www.gnu.org/licenses/>.
 */
-#include <rpc/xdr.h>
-#include <rpc/auth.h>
+#include <sys/socket.h>  /* struct sockaddr_storage */
+
+#include "libnfs-zdr.h"
 
 struct rpc_fragment {
 	struct rpc_fragment *next;
@@ -35,7 +36,7 @@ struct rpc_context {
 	rpc_cb connect_cb;
 	void *connect_data;
 
-	AUTH *auth;
+	struct AUTH *auth;
 	unsigned long xid;
 
        /* buffer used for encoding RPC PDU */
@@ -46,8 +47,8 @@ struct rpc_context {
        struct sockaddr_storage udp_src;
        struct rpc_pdu *waitpdu;
 
-       int inpos;
-       int insize;
+       uint32_t inpos;
+       uint32_t insize;
        char *inbuf;
 
        /* special fields for UDP, which can sometimes be BROADCASTed */
@@ -67,21 +68,21 @@ struct rpc_pdu {
 	struct rpc_pdu *next;
 
 	unsigned long xid;
-	XDR xdr;
+	ZDR zdr;
 
-	int written;
+	uint32_t written;
 	struct rpc_data outdata;
 
 	rpc_cb cb;
 	void *private_data;
 
-	/* function to decode the xdr reply data and buffer to decode into */
-	xdrproc_t xdr_decode_fn;
-	caddr_t xdr_decode_buf;
-	int xdr_decode_bufsize;
+	/* function to decode the zdr reply data and buffer to decode into */
+	zdrproc_t zdr_decode_fn;
+	caddr_t zdr_decode_buf;
+	uint32_t zdr_decode_bufsize;
 };
 
-struct rpc_pdu *rpc_allocate_pdu(struct rpc_context *rpc, int program, int version, int procedure, rpc_cb cb, void *private_data, xdrproc_t xdr_decode_fn, int xdr_bufsize);
+struct rpc_pdu *rpc_allocate_pdu(struct rpc_context *rpc, int program, int version, int procedure, rpc_cb cb, void *private_data, zdrproc_t zdr_decode_fn, int zdr_bufsize);
 void rpc_free_pdu(struct rpc_context *rpc, struct rpc_pdu *pdu);
 int rpc_queue_pdu(struct rpc_context *rpc, struct rpc_pdu *pdu);
 int rpc_get_pdu_size(char *buf);

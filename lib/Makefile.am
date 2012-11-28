@@ -12,6 +12,7 @@ libnfs_la_SOURCES = \
 	init.c \
 	libnfs.c \
 	libnfs-sync.c \
+	libnfs-zdr.c \
 	pdu.c \
 	socket.c
 
