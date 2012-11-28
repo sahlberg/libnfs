@@ -22,7 +22,12 @@
 #define DllExport
 #else
 #include <strings.h>
+#ifndef ANDROID
 #include <sys/statvfs.h>
+#else
+#include <sys/vfs.h>
+#define statvfs statfs
+#endif
 #include <utime.h>
 #include <unistd.h>
 #endif/*WIN32*/
@@ -2414,10 +2419,12 @@ static void nfs_statvfs_1_cb(struct rpc_context *rpc, int status, void *command_
 	svfs.f_bavail  = res->FSSTAT3res_u.resok.abytes/4096;
 	svfs.f_files   = res->FSSTAT3res_u.resok.tfiles;
 	svfs.f_ffree   = res->FSSTAT3res_u.resok.ffiles;
+#if !defined(ANDROID)
 	svfs.f_favail  = res->FSSTAT3res_u.resok.afiles;
 	svfs.f_fsid    = 0;
 	svfs.f_flag    = 0;
 	svfs.f_namemax = 256;
+#endif
 
 	data->cb(0, nfs, &svfs, data->private_data);
 	free_nfs_cb_data(data);
