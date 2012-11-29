@@ -18,6 +18,9 @@
  * This is the highlevel interface to access NFS resources using a posix-like interface
  */
 #include <stdint.h>
+#if defined(ANDROID)
+#include <sys/time.h>
+#endif
 
 struct nfs_context;
 struct rpc_context;

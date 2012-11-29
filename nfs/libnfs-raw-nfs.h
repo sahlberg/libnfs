@@ -18,6 +18,11 @@ extern "C" {
 #define NFS3_CREATEVERFSIZE 8
 #define NFS3_COOKIEVERFSIZE 8
 
+#if defined(ANDROID)
+typedef long long int quad_t;
+typedef long long unsigned u_quad_t;
+#endif
+
 typedef char cookieverf3[NFS3_COOKIEVERFSIZE];
 
 typedef u_quad_t uint64;
