@@ -6,7 +6,8 @@ portmap_GENERATED = $(portmap_SOURCES_GENERATED) $(portmap_HEADERS_GENERATED)
 
 CLEANFILES = $(portmap_GENERATED) portmap-stamp
 
-libportmap_la_CPPFLAGS = -I$(abs_top_srcdir)/include
+libportmap_la_CPPFLAGS = -I$(abs_top_srcdir)/include \
+			 -I$(abs_top_srcdir)/include/nfsc
 libportmap_la_SOURCES = \
 	$(portmap_SOURCES_GENERATED) \
 	portmap.c libnfs-raw-portmap.c

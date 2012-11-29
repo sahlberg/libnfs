@@ -6,8 +6,7 @@
 #ifndef _PORTMAP_H_RPCGEN
 #define _PORTMAP_H_RPCGEN
 
-
-
+#include <nfsc/libnfs-zdr.h>
 
 #ifdef __cplusplus
 extern "C" {

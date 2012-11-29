@@ -23,6 +23,7 @@
 #define _LIBNFS_RAW_H_
 
 #include <stdint.h>
+#include <nfsc/libnfs-zdr.h>
 
 struct rpc_data {
        int size;

@@ -1,6 +1,7 @@
 lib_LTLIBRARIES = libnfs.la
 
 libnfs_la_CPPFLAGS = -I$(abs_top_srcdir)/include \
+		     -I$(abs_top_srcdir)/include/nfsc \
 		     -I../mount \
 		     -I../nfs \
 		     -I../nlm \
