@@ -19,6 +19,9 @@
  * Through this interface you have access to the full gamut of nfs and nfs related
  * protocol as well as the XDR encoded/decoded structures.
  */
+#ifndef _LIBNFS_RAW_H_
+#define _LIBNFS_RAW_H_
+
 #include <stdint.h>
 
 struct rpc_data {
@@ -914,3 +917,5 @@ int rpc_nlm4_cancel_async(struct rpc_context *rpc, rpc_cb cb, struct NLM4_CANCar
  */
 struct NLM4_UNLOCKargs;
 int rpc_nlm4_unlock_async(struct rpc_context *rpc, rpc_cb cb, struct NLM4_UNLOCKargs *args, void *private_data);
+
+#endif
