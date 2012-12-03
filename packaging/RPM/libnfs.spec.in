@@ -95,6 +95,11 @@ development libraries for LibNFS
 %{_libdir}/pkgconfig/libnfs.pc
 
 %changelog
+* Mon Dec 3 2012 : Version 1.5
+ - Switch to using our own RPC/XDR replacement ZDR instead of relying on the
+   system RPC/TIRPC libraries. This allows using libnfs on platforms that lack
+   RPC libraries completely.
+ - Add support for Android.
 * Sun Nov 25 2012 : Version 1.4
  - Add trackig of freed context and assert on using a context after it has been
    freed.

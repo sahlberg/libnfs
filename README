@@ -59,7 +59,7 @@ iOS:    - tested with iOS SDK 4.2 - running on iOS 4.3.x
 FreeBSD:- tested with 8.2
 OpenSolaris
 Windows:- tested on Windows 7 64 and Windows XP 32 using Visual Studio 10 (see README.win32.txt for build instructions)
-
+Android:
 
 Cygwin
 ------
