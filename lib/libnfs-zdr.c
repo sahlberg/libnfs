@@ -20,6 +20,10 @@
  * i.e. zdrmem_create() buffers.
  * It aims to be compatible with normal rpcgen generated functions.
  */
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+
 #ifdef WIN32
 #include "win32_compat.h"
 #endif
@@ -28,9 +32,14 @@
 #include "aros_compat.h"
 #endif
 
+#ifdef HAVE_ARPA_INET_H
+#include <arpa/inet.h>
+#endif
+
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <unistd.h>
 #include "libnfs-zdr.h"
 
 struct opaque_auth _null_auth;

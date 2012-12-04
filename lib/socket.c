@@ -68,6 +68,7 @@
 #include <fcntl.h>
 #include <string.h>
 #include <errno.h>
+#include <time.h>
 #include <sys/types.h>
 #include "libnfs-zdr.h"
 #include "libnfs.h"
