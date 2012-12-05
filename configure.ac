@@ -21,11 +21,6 @@ fi
 # We always want 64 bit file offsets
 CFLAGS="${CFLAGS} -D_FILE_OFFSET_BITS=64"
 
-AC_CHECK_PROG([HAVE_RPCGEN], [rpcgen], [yes], [no])
-if test x$HAVE_RPCGEN != xyes; then
-  AC_MSG_ERROR([Can not find required program])
-fi
-
 #option: examples
 AC_ARG_ENABLE([examples],
               [AC_HELP_STRING([--enable-examples],
