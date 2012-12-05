@@ -18,5 +18,5 @@ rquota-stamp : rquota.x
 	touch rquota-stamp
 	
 compile_rpc:
-	rpcgen -h @RPCGENFLAGS@ rquota.x | sed -e "s/#include <rpc\/rpc.h>//" | sed -e "s/xdr/zdr/g" -e "s/XDR/ZDR/g" > libnfs-raw-rquota.h
-	rpcgen -c @RPCGENFLAGS@ rquota.x | sed -e "s/#include \".*rquota.h\"/#include \"libnfs-xdr.h\"\n#include \"libnfs-raw-rquota.h\"/" -e "s/xdr/zdr/g" -e "s/XDR/ZDR/g" -e "s/register int32_t \*buf;/register int32_t *buf;\n	buf = NULL;/" > libnfs-raw-rquota.c
+	rpcgen -h rquota.x | sed -e "s/#include <rpc\/rpc.h>//" | sed -e "s/xdr/zdr/g" -e "s/XDR/ZDR/g" > libnfs-raw-rquota.h
+	rpcgen -c rquota.x | sed -e "s/#include \".*rquota.h\"/#include \"libnfs-xdr.h\"\n#include \"libnfs-raw-rquota.h\"/" -e "s/xdr/zdr/g" -e "s/XDR/ZDR/g" -e "s/register int32_t \*buf;/register int32_t *buf;\n	buf = NULL;/" > libnfs-raw-rquota.c
