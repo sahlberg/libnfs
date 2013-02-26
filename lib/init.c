@@ -25,6 +25,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <assert.h>
+#include <time.h>
 #include "slist.h"
 #include "libnfs-zdr.h"
 #include "libnfs.h"
@@ -34,6 +35,7 @@
 struct rpc_context *rpc_init_context(void)
 {
 	struct rpc_context *rpc;
+	static uint32_t salt = 0;
 
 	rpc = malloc(sizeof(struct rpc_context));
 	if (rpc == NULL) {
@@ -59,7 +61,8 @@ struct rpc_context *rpc_init_context(void)
 		free(rpc);
 		return NULL;
 	}
-	rpc->xid = 1;
+	rpc->xid = salt + time(NULL);
+	salt += 0x01000000;
 	rpc->fd = -1;
 
 	return rpc;
