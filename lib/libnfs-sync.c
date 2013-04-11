@@ -20,25 +20,34 @@
 #ifdef WIN32
 #include "win32_compat.h"
 #define DllExport
+#define HAVE_POLL_H
 #else
 #include <strings.h>
 #include <unistd.h>
-#ifndef ANDROID
-#include <sys/statvfs.h>
-#else
-#include <netinet/in.h>
-#include <sys/vfs.h>
-#define statvfs statfs
-#endif
-#include <poll.h>
 #include <sys/ioctl.h>
 #include <netdb.h>
 #include <sys/socket.h>
 #include <net/if.h>
-#endif
+
+#ifdef AROS
+#include "aros_compat.h"
+#else
+#ifdef ANDROID
+#include <netinet/in.h>
+#include <sys/vfs.h>
+#define statvfs statfs
+#else
+#include <sys/statvfs.h>
+#endif /*ANDRIOD*/
+#endif /*AROS*/
+#endif /*WIN32*/
 
 #ifdef HAVE_CONFIG_H
 #include "config.h"
+#endif
+
+#ifdef HAVE_POLL_H
+#include <poll.h>
 #endif
 
 #include <stdio.h>

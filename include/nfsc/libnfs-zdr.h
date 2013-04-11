@@ -26,7 +26,9 @@
  * and slightly modified.
  ************************************************************/
 
+#ifdef HAVE_CONFIG_H
 #include "config.h"
+#endif
 
 #ifndef _LIBNFS_ZDR_H_
 #define _LIBNFS_ZDR_H_
@@ -58,8 +60,12 @@ typedef void SVCXPRT;
 #define IZDR_PUT_BOOL(...)		assert(0)
 #define IZDR_GET_BOOL(...)		(assert(0), 0)
 
+#ifndef TRUE
 #define TRUE		1
+#endif
+#ifndef FALSE
 #define FALSE		0
+#endif
 
 enum zdr_op {
 	ZDR_ENCODE = 0,
@@ -178,8 +184,8 @@ struct rejected_reply {
 	enum reject_stat stat;
 	union {
 		struct {
-			u_long low;
-			u_long high;
+			uint32_t low;
+			uint32_t high;
 		} mismatch_info;
 		enum auth_stat stat;
 	} reject_data;

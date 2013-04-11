@@ -21,16 +21,22 @@
 #include "win32_compat.h"
 #define DllExport
 #else
+
 #include <strings.h>
-#ifndef ANDROID
-#include <sys/statvfs.h>
-#else
-#include <sys/vfs.h>
-#define statvfs statfs
-#endif
 #include <utime.h>
 #include <unistd.h>
-#endif/*WIN32*/
+
+#ifdef AROS
+#include "aros_compat.h"
+#else
+#ifdef ANDROID
+#include <sys/vfs.h>
+#define statvfs statfs
+#else
+#include <sys/statvfs.h>
+#endif /*ANDROID*/
+#endif /*AROS*/
+#endif /*WIN32*/
 
 #define _GNU_SOURCE
 

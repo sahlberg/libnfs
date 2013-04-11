@@ -29,7 +29,7 @@ static int dummy ATTRIBUTE((unused));
 #include "win32_compat.h"
 #include <errno.h>
 #include <stdio.h>
-#include < time.h >
+#include <time.h>
 
 #undef poll
 #undef socket

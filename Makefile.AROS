@@ -1,0 +1,27 @@
+AR=ar
+CC=gcc
+CFLAGS=-g -O0 -DAROS=1 -D_U_=" " -I. -Iinclude -Iinclude/nfsc -Iaros -Infs -Imount
+
+OBJS=lib/init.o lib/libnfs.o lib/libnfs-sync.o lib/libnfs-zdr.o lib/pdu.o lib/socket.o 
+OBJS+=mount/mount.o mount/libnfs-raw-mount.o 
+OBJS+=nfs/nfs.o nfs/nfsacl.o nfs/libnfs-raw-nfs.o 
+OBJS+=nlm/nlm.o nlm/libnfs-raw-nlm.o 
+OBJS+=portmap/portmap.o portmap/libnfs-raw-portmap.o
+OBJS+=rquota/rquota.o rquota/libnfs-raw-rquota.o
+OBJS+=aros/aros_compat.o
+
+EXAMPLES=examples/nfsclient-listservers
+
+all: lib/libnfs.a $(EXAMPLES)
+
+lib/libnfs.a: $(OBJS)
+	$(AR) cru $@ $(OBJS)
+
+.c.o:
+	echo $(CC) $(CFLAGS) -c -o $@ $<
+	$(CC) $(CFLAGS) -c -o $@ $<
+
+examples/nfsclient-listservers: examples/nfsclient-listservers.c lib/libnfs.a
+
+	$(CC) $(CFLAGS) -o $@ $< lib/libnfs.a
+

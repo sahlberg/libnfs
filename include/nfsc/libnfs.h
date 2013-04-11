@@ -21,6 +21,9 @@
 #if defined(ANDROID)
 #include <sys/time.h>
 #endif
+#if defined(AROS)
+#include <sys/time.h>
+#endif
 
 struct nfs_context;
 struct rpc_context;

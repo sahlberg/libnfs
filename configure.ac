@@ -81,10 +81,24 @@ case $host in
     ;;
 esac
 
+# check for poll.h
+dnl Check for poll.h
+AC_CHECK_HEADERS([poll.h])
+
 # check for SA_LEN
 dnl Check if sockaddr data structure includes a "sa_len"
 AC_CHECK_MEMBER([struct sockaddr.sa_len],
                 [ AC_DEFINE(HAVE_SOCKADDR_LEN,1,[Whether sockaddr struct has sa_len]) ],
+                [],
+                [
+#include <sys/types.h>
+#include <sys/socket.h>
+])
+
+# check for sockaddr_storage
+dnl Check if sockaddr structure includes a "ss_family"
+AC_CHECK_MEMBER([struct sockaddr_storage.ss_family],
+                [ AC_DEFINE(HAVE_SOCKADDR_STORAGE,1,[Whether we have sockaddr_Storage]) ],
                 [],
                 [
 #include <sys/types.h>

@@ -14,9 +14,37 @@
    You should have received a copy of the GNU Lesser General Public License
    along with this program; if not, see <http://www.gnu.org/licenses/>.
 */
+#ifdef HAVE_CONFIG_H
+#include "config.h"  /* HAVE_SOCKADDR_STORAGE ? */
+#endif
+
 #include <sys/socket.h>  /* struct sockaddr_storage */
 
 #include "libnfs-zdr.h"
+
+#ifndef HAVE_SOCKADDR_STORAGE
+/*
+ * RFC 2553: protocol-independent placeholder for socket addresses
+ */
+#define _SS_MAXSIZE	128
+#define _SS_ALIGNSIZE	(sizeof(double))
+#define _SS_PAD1SIZE	(_SS_ALIGNSIZE - sizeof(unsigned char) * 2)
+#define _SS_PAD2SIZE	(_SS_MAXSIZE - sizeof(unsigned char) * 2 - \
+				_SS_PAD1SIZE - _SS_ALIGNSIZE)
+
+struct sockaddr_storage {
+#ifdef HAVE_SA_LEN
+	unsigned char ss_len;		/* address length */
+	unsigned char ss_family;	/* address family */
+#else
+	unsigned short ss_family;
+#endif
+	char	__ss_pad1[_SS_PAD1SIZE];
+	double	__ss_align;	/* force desired structure storage alignment */
+	char	__ss_pad2[_SS_PAD2SIZE];
+};
+#endif
+
 
 struct rpc_fragment {
 	struct rpc_fragment *next;

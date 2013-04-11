@@ -18,7 +18,6 @@
 #include "win32_compat.h"
 #else
 #include <unistd.h>
-#include <poll.h>
 #include <arpa/inet.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
@@ -28,6 +27,15 @@
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
+
+#ifdef AROS
+#include "aros_compat.h"
+#endif
+
+#ifdef HAVE_POLL_H
+#include <poll.h>
+#endif
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
