@@ -4,8 +4,15 @@
 #include <netinet/in.h>
 #include <sys/mount.h>
 #include <proto/socket.h>
+#include <proto/exec.h>
 
 #define statvfs statfs
+#define ioctl IoctlSocket
+#define close CloseSocket
+
+extern struct Library * SocketBase;
+
+void aros_init_socket(void);
 
 #define f_flag    f_flags
 #define f_favail  f_ffree

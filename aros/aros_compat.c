@@ -17,6 +17,9 @@
 
 #ifdef AROS
 
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdring.h>
 #include <sys/types.h>
 #include <sys/time.h>
 #include "aros_compat.h"
@@ -31,6 +34,16 @@ int major(int i)
 int minor(int i)
 {
   return 2;
+}
+
+struct Library * SocketBase = NULL;
+
+void aros_init_socket(void)
+{
+  if (!(SocketBase = OpenLibrary("bsdsocket.library", 4))) {
+    printf("No TCP/IP stack available.\n");
+    exit(10);
+  }
 }
 
 int aros_poll(struct pollfd *fds, unsigned int nfds, int timo)
@@ -72,7 +85,7 @@ int aros_poll(struct pollfd *fds, unsigned int nfds, int timo)
     timeout.tv_usec = (timo - timeout.tv_sec * 1000) * 1000;
   }
 
-  rc = select(0, ip, op, &efds, toptr);
+  rc = WaitSelect(0, ip, op, &efds, toptr, NULL);
 
   if(rc <= 0)
     return rc;
