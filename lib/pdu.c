@@ -36,6 +36,10 @@
 #include "libnfs-raw.h"
 #include "libnfs-private.h"
 
+#ifdef AROS
+#include "aros_compat.h"
+#endif
+
 struct rpc_pdu *rpc_allocate_pdu(struct rpc_context *rpc, int program, int version, int procedure, rpc_cb cb, void *private_data, zdrproc_t zdr_decode_fn, int zdr_decode_bufsize)
 {
 	struct rpc_pdu *pdu;

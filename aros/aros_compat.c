@@ -23,6 +23,15 @@
 
 #undef poll
 
+/* unix device major/minor numbers dont make much sense on amiga */
+int major(int i)
+{
+  return 1;
+}
+int minor(int i)
+{
+  return 2;
+}
 
 int aros_poll(struct pollfd *fds, unsigned int nfds, int timo)
 {

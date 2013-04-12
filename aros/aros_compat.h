@@ -3,6 +3,7 @@
 
 #include <netinet/in.h>
 #include <sys/mount.h>
+#include <proto/socket.h>
 
 #define statvfs statfs
 
