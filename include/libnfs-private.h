@@ -33,7 +33,7 @@
 				_SS_PAD1SIZE - _SS_ALIGNSIZE)
 
 struct sockaddr_storage {
-#ifdef HAVE_SA_LEN
+#ifdef HAVE_SOCKADDR_LEN
 	unsigned char ss_len;		/* address length */
 	unsigned char ss_family;	/* address family */
 #else
