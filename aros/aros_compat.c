@@ -40,7 +40,7 @@ struct addrinfo **res)
 
   sin->sin_port=0;
   if (service) {
-    sin->sin_port=atoi(service);
+    sin->sin_port=htons(atoi(service));
   } 
 
   *res = malloc(sizeof(struct addrinfo));
