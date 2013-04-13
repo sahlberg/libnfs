@@ -22,22 +22,22 @@
  */
 #ifdef WIN32
 #include "win32_compat.h"
+#pragma comment(lib, "ws2_32.lib")
+WSADATA wsaData;
 #else
 #include <string.h>
 #include <fcntl.h>
 #include <sys/stat.h>
+#include <unistd.h>
+#ifndef AROS
 #include <sys/statvfs.h>
+#endif
+#endif
+
+#ifdef AROS
+#include "aros_compat.h"
 #endif
  
-
-#if defined(WIN32)
-#pragma comment(lib, "ws2_32.lib")
-WSADATA wsaData;
-#else
-#include <sys/statvfs.h>
-#include <unistd.h>
-#endif
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
@@ -47,8 +47,6 @@ WSADATA wsaData;
 #include <fcntl.h>
 #include "libnfs-zdr.h"
 #include "libnfs.h"
-#include <rpc/rpc.h>            /* for authunix_create() */
-#include <popt.h>
 #include "libnfs-raw.h"
 #include "libnfs-raw-mount.h"
 
@@ -67,22 +65,6 @@ void print_usage(void)
 	fprintf(stderr, "Usage: nfsclient-sync [-?|--help] [--usage] <url>\n");
 }
 
-void print_help(void)
-{
-	fprintf(stderr, "Usage: nfsclient-sync [OPTION...] <url>\n");
-	fprintf(stderr, "\n");
-	fprintf(stderr, "Help options:\n");
-	fprintf(stderr, "  -?, --help                        Show this help message\n");
-	fprintf(stderr, "      --usage                       Display brief usage message\n");
-	fprintf(stderr, "\n");
-	fprintf(stderr, "NFS URL format : nfs://<server>/<export-path>\n");
-	fprintf(stderr, "\n");
-	fprintf(stderr, "<host> is either of:\n");
-	fprintf(stderr, "  \"hostname\"       nfs.example\n");
-	fprintf(stderr, "  \"ipv4-address\"   10.1.1.27\n");
-	fprintf(stderr, "  \"ipv6-address\"   [fce0::1]\n");
-}
-
 int main(int argc, char *argv[])
 {
 	struct nfs_context *nfs = NULL;
@@ -95,51 +77,21 @@ int main(int argc, char *argv[])
 	struct nfsdirent *nfsdirent;
 	struct statvfs svfs;
 	exports export, tmp;
-	int show_help = 0, show_usage = 0;
-	poptContext pc;
-	const char **extra_argv;
-	int extra_argc = 0;
 	const char *url = NULL;
 	char *server = NULL, *path = NULL, *strp;
 
-	struct poptOption popt_options[] = {
-		{ "help", '?', POPT_ARG_NONE, &show_help, 0, "Show this help message", NULL },
-		{ "usage", 0, POPT_ARG_NONE, &show_usage, 0, "Display brief usage message", NULL },
-		POPT_TABLEEND
-	};
-
-#if defined(WIN32)
+#ifdef WIN32
 	if (WSAStartup(MAKEWORD(2,2), &wsaData) != 0) {
 		printf("Failed to start Winsock2\n");
 		exit(10);
 	}
 #endif
 
-	pc = poptGetContext(argv[0], argc, argv, popt_options, POPT_CONTEXT_POSIXMEHARDER);
-	if ((res = poptGetNextOpt(pc)) < -1) {
-		fprintf(stderr, "Failed to parse option : %s %s\n",
-			poptBadOption(pc, 0), poptStrerror(res));
-		exit(10);
-	}
-	extra_argv = poptGetArgs(pc);
-	if (extra_argv) {
-		url = *extra_argv;
-		extra_argv++;
-		while (extra_argv[extra_argc]) {
-			extra_argc++;
-		}
-	}
-	poptFreeContext(pc);
+#ifdef AROS
+	aros_init_socket();
+#endif
 
-	if (show_help != 0) {
-		print_help();
-		exit(0);
-	}
-
-	if (show_usage != 0) {
-		print_usage();
-		exit(0);
-	}
+	url = argv[1];
 
 	if (url == NULL) {
 		fprintf(stderr, "No URL specified.\n");

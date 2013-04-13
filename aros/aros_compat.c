@@ -81,7 +81,7 @@ int aros_inet_pton(int af, char *src, void *dst)
   struct sockaddr_in sin;
 
   sin.sin_addr.s_addr = inet_addr(src);
-  memcpy(dst, &sin.sin_addr.s_addr, sizeof(sin.sin_addr,s_addr));
+  memcpy(dst, &sin.sin_addr.s_addr, sizeof(sin.sin_addr.s_addr));
   return 1;
 }
 
