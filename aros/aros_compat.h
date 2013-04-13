@@ -10,6 +10,11 @@
 #define ioctl IoctlSocket
 #define close CloseSocket
 
+#define inet_pton aros_inet_pton
+#define freeaddrinfo aros_freeaddrinfo
+#define getnameinfo aros_getnameinfo
+#define getaddrinfo aros_getaddrinfo
+
 extern struct Library * SocketBase;
 
 void aros_init_socket(void);

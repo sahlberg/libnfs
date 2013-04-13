@@ -1,6 +1,6 @@
 AR=ar
 CC=gcc
-CFLAGS=-g -O0 -DAROS=1 -D_U_=" " -I. -Iinclude -Iinclude/nfsc -Iaros -Infs -Imount
+CFLAGS=-g -O0 -DAROS=1 -D_U_=" " -DHAVE_SOCKADDR_LEN -I. -Iinclude -Iinclude/nfsc -Iaros -Infs -Imount
 
 OBJS=lib/init.o lib/libnfs.o lib/libnfs-sync.o lib/libnfs-zdr.o lib/pdu.o lib/socket.o 
 OBJS+=mount/mount.o mount/libnfs-raw-mount.o 
