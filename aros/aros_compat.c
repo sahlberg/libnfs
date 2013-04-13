@@ -78,8 +78,11 @@ void aros_freeaddrinfo(struct addrinfo *res)
 
 int aros_inet_pton(int af, char *src, void *dst)
 {
-  printf("No inet_pton yet");
-  exit(10);
+  struct sockaddr_in sin;
+
+  sin.sin_addr.s_addr = inet_addr(src);
+  memcpy(dst, &sin.sin_addr.s_addr, sizeof(sin.sin_addr,s_addr));
+  return 1;
 }
 
 

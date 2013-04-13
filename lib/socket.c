@@ -118,7 +118,7 @@ static int rpc_write_to_socket(struct rpc_context *rpc)
 
 		total = rpc->outqueue->outdata.size;
 
-#if defined(WIN32)
+#if defined(WIN32) | defined(AROS)
 		count = send(rpc->fd, rpc->outqueue->outdata.data + rpc->outqueue->written, total - rpc->outqueue->written, 0);
 #else
 		count = write(rpc->fd, rpc->outqueue->outdata.data + rpc->outqueue->written, total - rpc->outqueue->written);
@@ -202,7 +202,7 @@ static int rpc_read_from_socket(struct rpc_context *rpc)
 	if (rpc->inpos < 4) {
 		size = 4 - rpc->inpos;
 
-#if defined(WIN32)
+#if defined(WIN32) | defined(AROS)
 		count = recv(rpc->fd, rpc->inbuf + rpc->inpos, size, 0);
 #else
 		count = read(rpc->fd, rpc->inbuf + rpc->inpos, size);
@@ -242,7 +242,7 @@ static int rpc_read_from_socket(struct rpc_context *rpc)
 		size = rpc->insize - rpc->inpos;
 	}
 
-#if defined(WIN32)
+#if defined(WIN32) | defined(AROS)
 	count = recv(rpc->fd, rpc->inbuf + rpc->inpos, size, 0);
 #else
 	count = read(rpc->fd, rpc->inbuf + rpc->inpos, size);
