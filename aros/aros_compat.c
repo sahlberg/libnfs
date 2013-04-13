@@ -9,6 +9,8 @@
 #include <sys/socket.h>
 #include <netdb.h>
 #include "aros_compat.h"
+#include <errno.h>
+#include <bsdsocket/socketbasetags.h>
 
 #undef poll
 
@@ -77,10 +79,21 @@ int minor(int i)
 
 struct Library * SocketBase = NULL;
 
+extern int errno;
+int h_errno = 0;
+
+
 void aros_init_socket(void)
 {
   if (!(SocketBase = OpenLibrary("bsdsocket.library", 4))) {
     printf("NoTCP/IP Stack available");
+    exit(10);
+  }
+  if (SocketBaseTags(SBTM_SETVAL(SBTC_ERRNOPTR(sizeof(errno))),
+                     (IPTR)&errno,
+                     SBTM_SETVAL(SBTC_HERRNOLONGPTR),
+                     (IPTR)&h_errno, TAG_DONE)) {
+    printf("Failed to set ERRNO");
     exit(10);
   }
 }
