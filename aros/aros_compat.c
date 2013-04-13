@@ -89,7 +89,7 @@ int aros_poll(struct pollfd *fds, unsigned int nfds, int timo)
 {
   struct timeval timeout, *toptr;
   fd_set ifds, ofds, efds, *ip, *op;
-  unsigned int i;
+  unsigned int i, maxfd = 0;
   int  rc;
 
   // Set up the file-descriptor sets in ifds, ofds and efds. 
@@ -110,6 +110,9 @@ int aros_poll(struct pollfd *fds, unsigned int nfds, int timo)
       FD_SET(fds[i].fd, op);
     }
     FD_SET(fds[i].fd, &efds);
+    if (fds[i].fd > maxfd) {
+      maxfd = fds[i].fd;
+    }
   } 
 
   // Set up the timeval structure for the timeout parameter
@@ -124,7 +127,7 @@ int aros_poll(struct pollfd *fds, unsigned int nfds, int timo)
     timeout.tv_usec = (timo - timeout.tv_sec * 1000) * 1000;
   }
 
-  rc = WaitSelect(0, ip, op, &efds, toptr, NULL);
+  rc = WaitSelect(maxfd + 1, ip, op, &efds, toptr, NULL);
 
   if(rc <= 0)
     return rc;
