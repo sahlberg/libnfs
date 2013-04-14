@@ -90,8 +90,6 @@ typedef uint32_t bool_t;
 
 typedef int (*zdrproc_t) (ZDR *, void *,...);
 
-/* XXX find out what we can get rid of */
-
 #define AUTH_NONE 0
 #define AUTH_NULL 0
 #define AUTH_UNIX 1
