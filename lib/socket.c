@@ -16,8 +16,6 @@
 */
 #ifdef WIN32
 #include "win32_compat.h"
-#define ioctl ioctlsocket
-#define close closesocket
 #else
 #include <unistd.h>
 #include <arpa/inet.h>

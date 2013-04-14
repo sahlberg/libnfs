@@ -14,7 +14,6 @@
 
 #ifdef WIN32
 #include "win32_compat.h"
-#define close closesocket
 #else
 #include <unistd.h>
 #include <strings.h>

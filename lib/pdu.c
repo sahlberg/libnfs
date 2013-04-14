@@ -16,9 +16,6 @@
 */
 #ifdef WIN32
 #include "win32_compat.h"
-#ifndef MSG_DONTWAIT
-#define MSG_DONTWAIT 0
-#endif
 #else
 #include <strings.h>
 #endif/*WIN32*/

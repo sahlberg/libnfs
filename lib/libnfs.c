@@ -19,7 +19,6 @@
  */
 #ifdef WIN32
 #include "win32_compat.h"
-#define DllExport
 #else
 
 #include <strings.h>

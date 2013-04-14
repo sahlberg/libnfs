@@ -19,8 +19,6 @@
  */
 #ifdef WIN32
 #include "win32_compat.h"
-#define DllExport
-#define HAVE_POLL_H
 #else
 #include <strings.h>
 #include <unistd.h>
