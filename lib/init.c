@@ -11,14 +11,20 @@
    You should have received a copy of the GNU Lesser General Public License
    along with this program; if not, see <http://www.gnu.org/licenses/>.
 */
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
 
 #ifdef WIN32
 #include "win32_compat.h"
 #else
-#include <unistd.h>
 #include <strings.h>
 #endif/*WIN32*/
 #define _GNU_SOURCE
+
+#ifdef HAVE_UNISTD_H
+#include <unistd.h>
+#endif
 
 #include <stdio.h>
 #include <stdarg.h>

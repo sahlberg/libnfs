@@ -17,14 +17,24 @@
 
 /* Example program using the highlevel async interface.
  */
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+
 #ifdef WIN32
 #include "win32_compat.h"
 #else
 #include <sys/stat.h>
-#include <fcntl.h>
-#include <poll.h>
 #endif
  
+#ifdef HAVE_POLL_H
+#include <poll.h>
+#endif
+
+#ifdef HAVE_UNISTD_H
+#include <unistd.h>
+#endif
+
 #define SERVER "10.1.1.27"
 #define EXPORT "/VIRTUAL"
 #define NFSFILE "/BOOKS/Classics/Dracula.djvu"
@@ -34,7 +44,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <sys/types.h>
-#include <unistd.h>
+#include <fcntl.h>
 #include "libnfs-zdr.h"
 #include "libnfs.h"
 #include "libnfs-raw.h"

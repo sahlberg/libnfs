@@ -14,16 +14,6 @@
    You should have received a copy of the GNU Lesser General Public License
    along with this program; if not, see <http://www.gnu.org/licenses/>.
 */
-#ifdef WIN32
-#include "win32_compat.h"
-#else
-#include <unistd.h>
-#include <arpa/inet.h>
-#include <sys/ioctl.h>
-#include <sys/socket.h>
-#include <netdb.h>
-#endif/*WIN32*/
-
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
@@ -32,8 +22,24 @@
 #include "aros_compat.h"
 #endif
 
+#ifdef WIN32
+#include "win32_compat.h"
+#else
+#include <arpa/inet.h>
+#include <sys/socket.h>
+#include <netdb.h>
+#endif/*WIN32*/
+
 #ifdef HAVE_POLL_H
 #include <poll.h>
+#endif
+
+#ifdef HAVE_UNISTD_H
+#include <unistd.h>
+#endif
+
+#ifdef HAVE_SYS_IOCTL_H
+#include <sys/ioctl.h>
 #endif
 
 #include <stdio.h>

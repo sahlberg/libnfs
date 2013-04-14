@@ -18,14 +18,19 @@
 /* Example program using the lowlevel raw interface.
  * This allow accurate control of the exact commands that are being used.
  */
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
 
 #ifdef WIN32
 #include "win32_compat.h"
-#else
-#include <poll.h>
 #endif
 #define SERVER "10.1.1.27"
 #define EXPORT "/shared"
+
+#ifdef HAVE_POLL_H
+#include <poll.h>
+#endif
 
 #include <stdio.h>
 #include <stdlib.h>

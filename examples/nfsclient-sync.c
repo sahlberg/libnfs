@@ -20,18 +20,24 @@
 
 /* Example program using the highlevel sync interface
  */
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+
 #ifdef WIN32
 #include "win32_compat.h"
 #pragma comment(lib, "ws2_32.lib")
 WSADATA wsaData;
 #else
 #include <string.h>
-#include <fcntl.h>
 #include <sys/stat.h>
-#include <unistd.h>
 #ifndef AROS
 #include <sys/statvfs.h>
 #endif
+#endif
+
+#ifdef HAVE_UNISTD_H
+#include <unistd.h>
 #endif
 
 #ifdef AROS

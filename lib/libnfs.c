@@ -17,13 +17,20 @@
 /*
  * High level api to nfs filesystems
  */
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+
+#ifdef HAVE_UNISTD_H
+#include <unistd.h>
+#endif
+
 #ifdef WIN32
 #include "win32_compat.h"
 #else
 
 #include <strings.h>
 #include <utime.h>
-#include <unistd.h>
 
 #ifdef AROS
 #include "aros_compat.h"

@@ -17,12 +17,14 @@
 /*
  * High level api to nfs filesystems
  */
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+
 #ifdef WIN32
 #include "win32_compat.h"
 #else
 #include <strings.h>
-#include <unistd.h>
-#include <sys/ioctl.h>
 #include <netdb.h>
 #include <sys/socket.h>
 #include <net/if.h>
@@ -40,12 +42,16 @@
 #endif /*AROS*/
 #endif /*WIN32*/
 
-#ifdef HAVE_CONFIG_H
-#include "config.h"
+#ifdef HAVE_SYS_IOCTL_H
+#include <sys/ioctl.h>
 #endif
 
 #ifdef HAVE_POLL_H
 #include <poll.h>
+#endif
+
+#ifdef HAVE_UNISTD_H
+#include <unistd.h>
 #endif
 
 #include <stdio.h>

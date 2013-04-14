@@ -85,6 +85,14 @@ esac
 dnl Check for poll.h
 AC_CHECK_HEADERS([poll.h])
 
+# check for unistd.h
+dnl Check for unistd.h
+AC_CHECK_HEADERS([unistd.h])
+
+# check for sys/ioctl.h
+dnl Check for sys/ioctl.h
+AC_CHECK_HEADERS([sys/ioctl.h])
+
 # check for SA_LEN
 dnl Check if sockaddr data structure includes a "sa_len"
 AC_CHECK_MEMBER([struct sockaddr.sa_len],

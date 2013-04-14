@@ -1,6 +1,9 @@
 #ifndef AROS_COMPAT_H
 #define AROS_COMPAT_H
 
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/ioctl.h>
 #include <netinet/in.h>
 #include <sys/mount.h>
 #include <proto/socket.h>

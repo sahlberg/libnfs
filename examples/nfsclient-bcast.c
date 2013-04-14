@@ -17,19 +17,35 @@
 
 /* Example program using the lowlevel raw broadcast interface.
  */
-
+#ifdef HAVE_CONFIG_H
 #include "config.h"
-#include <stdio.h>
+#endif
+
+#ifdef WIN32
+#include "win32_compat.h"
+#endif
+
+#ifdef HAVE_POLL_H
+#include <poll.h>
+#endif
+
+#ifdef HAVE_UNISTD_H
 #include <unistd.h>
+#endif
+
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <poll.h>
 #include <errno.h>
 #include <sys/socket.h>
-#include <sys/ioctl.h>
 #include <sys/time.h>
 #include <net/if.h>
 #include <netdb.h>
+
+#ifdef HAVE_SYS_IOCTL_H
+#include <sys/ioctl.h>
+#endif
+
 #include "libnfs-zdr.h"
 #include "libnfs.h"
 #include "libnfs-raw.h"
