@@ -14,6 +14,7 @@
 
 #ifdef WIN32
 #include "win32_compat.h"
+#define close closesocket
 #else
 #include <unistd.h>
 #include <strings.h>
@@ -202,11 +203,7 @@ void rpc_destroy_context(struct rpc_context *rpc)
 	rpc->auth =NULL;
 
 	if (rpc->fd != -1) {
-#if defined(WIN32)
-		closesocket(rpc->fd);
-#else
  		close(rpc->fd);
-#endif
 	}
 
 	if (rpc->encodebuf != NULL) {

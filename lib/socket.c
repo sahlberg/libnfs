@@ -16,6 +16,8 @@
 */
 #ifdef WIN32
 #include "win32_compat.h"
+#define ioctl ioctlsocket
+#define close closesocket
 #else
 #include <unistd.h>
 #include <arpa/inet.h>
@@ -69,7 +71,7 @@ static void set_nonblocking(int fd)
 	int v = 0;
 #if defined(WIN32)
 	long nonblocking=1;
-	v = ioctlsocket(fd, FIONBIO,&nonblocking);
+	v = ioctl(fd, FIONBIO, &nonblocking);
 #else
 	v = fcntl(fd, F_GETFL, 0);
         fcntl(fd, F_SETFL, v | O_NONBLOCK);
@@ -149,11 +151,7 @@ static int rpc_read_from_socket(struct rpc_context *rpc)
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
-#if defined(WIN32)
-	if (ioctlsocket(rpc->fd, FIONREAD, &available) != 0) {
-#else
 	if (ioctl(rpc->fd, FIONREAD, &available) != 0) {
-#endif
 		rpc_set_error(rpc, "Ioctl FIONREAD returned error : %d. Closing socket.", errno);
 		return -1;
 	}
@@ -484,11 +482,7 @@ int rpc_disconnect(struct rpc_context *rpc, char *error)
 	rpc_unset_autoreconnect(rpc);
 
 	if (rpc->fd != -1) {
-#if defined(WIN32)
-		closesocket(rpc->fd);
-#else
 		close(rpc->fd);
-#endif
 	}
 	rpc->fd  = -1;
 
@@ -520,11 +514,7 @@ static int rpc_reconnect_requeue(struct rpc_context *rpc)
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
 	if (rpc->fd != -1) {
-#if defined(WIN32)
-		closesocket(rpc->fd);
-#else
 		close(rpc->fd);
-#endif
 	}
 	rpc->fd  = -1;
 
