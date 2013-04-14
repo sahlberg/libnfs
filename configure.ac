@@ -93,6 +93,14 @@ AC_CHECK_HEADERS([unistd.h])
 dnl Check for sys/ioctl.h
 AC_CHECK_HEADERS([sys/ioctl.h])
 
+# check for sys/vfs.h
+dnl Check for sys/vfs.h
+AC_CHECK_HEADERS([sys/vfs.h])
+
+# check for sys/statvfs.h
+dnl Check for sys/statvfs.h
+AC_CHECK_HEADERS([sys/statvfs.h])
+
 # check for SA_LEN
 dnl Check if sockaddr data structure includes a "sa_len"
 AC_CHECK_MEMBER([struct sockaddr.sa_len],

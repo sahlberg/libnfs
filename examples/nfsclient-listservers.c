@@ -17,15 +17,14 @@
 
 /* Example program showing sync interface to probe for all local servers
  */
+#ifdef AROS
+#include "aros_compat.h"
+#endif
 
 #include <stdio.h>
 #include <stdlib.h>
 #include "libnfs-zdr.h"
 #include "libnfs.h"
-
-#ifdef AROS
-#include "aros_compat.h"
-#endif
 
 int main(int argc _U_, char *argv[] _U_)
 {

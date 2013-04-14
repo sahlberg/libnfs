@@ -21,30 +21,34 @@
 #include "config.h"
 #endif
 
-#ifdef HAVE_UNISTD_H
-#include <unistd.h>
+#ifdef AROS
+#include "aros_compat.h"
 #endif
 
 #ifdef WIN32
 #include "win32_compat.h"
 #else
-
 #include <strings.h>
 #include <utime.h>
-
-#ifdef AROS
-#include "aros_compat.h"
-#else
-#ifdef ANDROID
-#include <sys/vfs.h>
-#define statvfs statfs
-#else
-#include <sys/statvfs.h>
-#endif /*ANDROID*/
-#endif /*AROS*/
 #endif /*WIN32*/
 
+#ifdef ANDROID
+#define statvfs statfs
+#endif
+
 #define _GNU_SOURCE
+
+#ifdef HAVE_UNISTD_H
+#include <unistd.h>
+#endif
+
+#ifdef HAVE_SYS_VFS_H
+#include <sys/vfs.h>
+#endif
+
+#ifdef HAVE_SYS_STATVFS_H
+#include <sys/statvfs.h>
+#endif
 
 #include <stdio.h>
 #include <stdarg.h>

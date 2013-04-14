@@ -15,6 +15,10 @@
 #include "config.h"
 #endif
 
+#ifdef AROS
+#include "aros_compat.h"
+#endif
+
 #ifdef WIN32
 #include "win32_compat.h"
 #else
@@ -37,10 +41,6 @@
 #include "libnfs.h"
 #include "libnfs-raw.h"
 #include "libnfs-private.h"
-
-#ifdef AROS
-#include "aros_compat.h"
-#endif
 
 struct rpc_context *rpc_init_context(void)
 {

@@ -14,6 +14,10 @@
    You should have received a copy of the GNU Lesser General Public License
    along with this program; if not, see <http://www.gnu.org/licenses/>.
 */
+#ifdef AROS
+#include "aros_compat.h"
+#endif
+
 #ifdef WIN32
 #include "win32_compat.h"
 #else
@@ -32,10 +36,6 @@
 #include "libnfs.h"
 #include "libnfs-raw.h"
 #include "libnfs-private.h"
-
-#ifdef AROS
-#include "aros_compat.h"
-#endif
 
 struct rpc_pdu *rpc_allocate_pdu(struct rpc_context *rpc, int program, int version, int procedure, rpc_cb cb, void *private_data, zdrproc_t zdr_decode_fn, int zdr_decode_bufsize)
 {

@@ -21,6 +21,10 @@
 #include "config.h"
 #endif
 
+#ifdef AROS
+#include "aros_compat.h"
+#endif
+
 #ifdef WIN32
 #include "win32_compat.h"
 #else
@@ -28,19 +32,20 @@
 #include <netdb.h>
 #include <sys/socket.h>
 #include <net/if.h>
+#endif /*WIN32*/
 
-#ifdef AROS
-#include "aros_compat.h"
-#else
 #ifdef ANDROID
 #include <netinet/in.h>
-#include <sys/vfs.h>
 #define statvfs statfs
-#else
+#endif
+
+#ifdef HAVE_SYS_VFS_H
+#include <sys/vfs.h>
+#endif
+
+#ifdef HAVE_SYS_STATVFS_H
 #include <sys/statvfs.h>
-#endif /*ANDRIOD*/
-#endif /*AROS*/
-#endif /*WIN32*/
+#endif
 
 #ifdef HAVE_SYS_IOCTL_H
 #include <sys/ioctl.h>
