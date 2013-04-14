@@ -35,7 +35,6 @@
 #endif /*WIN32*/
 
 #ifdef ANDROID
-#include <netinet/in.h>
 #define statvfs statfs
 #endif
 
@@ -66,6 +65,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <netinet/in.h>
 #include <errno.h>
 
 #ifdef HAVE_SYS_SOCKIO_H
