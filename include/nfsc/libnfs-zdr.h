@@ -26,10 +26,6 @@
  * and slightly modified.
  ************************************************************/
 
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif
-
 #ifndef _LIBNFS_ZDR_H_
 #define _LIBNFS_ZDR_H_
 
