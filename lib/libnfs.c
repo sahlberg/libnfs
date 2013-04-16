@@ -660,8 +660,8 @@ static int nfs_lookuppath_async(struct nfs_context *nfs, const char *path, nfs_c
 {
 	struct nfs_cb_data *data;
 
-	if (path[0] != '/') {
-		rpc_set_error(nfs->rpc, "Pathname is not absulute %s", path);
+	if (path[0] != 0 && path[0] != '/') {
+		rpc_set_error(nfs->rpc, "Pathname is not absolute %s", path);
 		return -1;
 	}
 
@@ -1731,7 +1731,6 @@ static int nfs_creat_continue_internal(struct nfs_context *nfs, struct nfs_cb_da
 
 	str = &str[strlen(str) + 1];
 
-
 	memset(&args, 0, sizeof(CREATE3args));
 	args.where.dir.data.data_len = data->fh.data.data_len;
 	args.where.dir.data.data_val = data->fh.data.data_val;
@@ -1767,7 +1766,7 @@ int nfs_creat_async(struct nfs_context *nfs, const char *path, int mode, nfs_cb 
 	}
 	*ptr = 0;
 
-	/* new_path now points to the parent directory,  and beyond the nul terminateor is the new directory to create */
+	/* new_path now points to the parent directory,  and beyond the nul terminator is the new directory to create */
 	if (nfs_lookuppath_async(nfs, new_path, cb, private_data, nfs_creat_continue_internal, new_path, free, mode) != 0) {
 		rpc_set_error(nfs->rpc, "Out of memory: failed to start parsing the path components");
 		return -1;
