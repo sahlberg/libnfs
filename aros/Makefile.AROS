@@ -10,7 +10,7 @@ OBJS+=portmap/portmap.o portmap/libnfs-raw-portmap.o
 OBJS+=rquota/rquota.o rquota/libnfs-raw-rquota.o
 OBJS+=aros/aros_compat.o
 
-EXAMPLES=examples/nfsclient-listservers examples/nfsclient-sync
+EXAMPLES=examples/nfsclient-listservers examples/nfsclient-sync examples/nfs-cp examples/nfs-ls
 
 all: lib/libnfs.a $(EXAMPLES)
 
@@ -27,3 +27,8 @@ examples/nfsclient-listservers: examples/nfsclient-listservers.c lib/libnfs.a
 examples/nfsclient-sync: examples/nfsclient-sync.c lib/libnfs.a
 	$(CC) $(CFLAGS) -o $@ $< lib/libnfs.a
 
+examples/nfs-ls: examples/nfs-ls.c lib/libnfs.a
+	$(CC) $(CFLAGS) -o $@ $< lib/libnfs.a
+
+examples/nfs-cp: examples/nfs-cp.c lib/libnfs.a
+	$(CC) $(CFLAGS) -o $@ $< lib/libnfs.a

@@ -96,7 +96,8 @@ static int64_t
 file_pread(struct file_context *fc, char *buf, int64_t count, uint64_t off)
 {
 	if (fc->is_nfs == 0) {
-		return pread(fc->fd, buf, count, off);
+		lseek(fc->fd, off, SEEK_SET);
+		return read(fc->fd, buf, count);
 	} else {
 		return nfs_pread(fc->nfs, fc->nfsfh, off, count, buf);
 	}
@@ -106,7 +107,8 @@ static int64_t
 file_pwrite(struct file_context *fc, char *buf, int64_t count, uint64_t off)
 {
 	if (fc->is_nfs == 0) {
-		return pwrite(fc->fd, buf, count, off);
+		lseek(fc->fd, off, SEEK_SET);
+		return write(fc->fd, buf, count);
 	} else {
 		return nfs_pwrite(fc->nfs, fc->nfsfh, off, count, buf);
 	}
