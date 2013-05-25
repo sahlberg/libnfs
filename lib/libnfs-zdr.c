@@ -504,7 +504,7 @@ struct AUTH *libnfs_authunix_create(char *host, uint32_t uid, uint32_t gid, uint
 
 struct AUTH *libnfs_authunix_create_default(void)
 {
-	return libnfs_authunix_create("libnfs", getuid(), -1, 0, NULL);
+	return libnfs_authunix_create("libnfs", getuid(), getgid(), 0, NULL);
 }
 
 void libnfs_auth_destroy(struct AUTH *auth)
