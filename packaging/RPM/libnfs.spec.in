@@ -95,6 +95,11 @@ development libraries for LibNFS
 %{_libdir}/pkgconfig/libnfs.pc
 
 %changelog
+* Mon May 27 2013 : Version 1.6
+ - AROS/Amiga support
+ - Chose better initial xid value to reduce the probability for collissions.
+ - Set default group to getgid() instead of -1. This fixes an interoperability
+ problem with 3.9 linux knfsd.
 * Mon Dec 3 2012 : Version 1.5
  - Switch to using our own RPC/XDR replacement ZDR instead of relying on the
    system RPC/TIRPC libraries. This allows using libnfs on platforms that lack
