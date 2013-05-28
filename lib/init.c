@@ -61,11 +61,7 @@ struct rpc_context *rpc_init_context(void)
 		return NULL;
 	}
 
-#if defined(WIN32)
-	rpc->auth = authunix_create("LibNFS", 65535, 65535, 0, NULL);
-#else
  	rpc->auth = authunix_create_default();
-#endif
 	if (rpc->auth == NULL) {
 		free(rpc->encodebuf);
 		free(rpc);

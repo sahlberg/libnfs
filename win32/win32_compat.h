@@ -105,6 +105,5 @@ int     win32_poll(struct pollfd *fds, unsigned int nfsd, int timeout);
 int     win32_gettimeofday(struct timeval *tv, struct timezone *tz);
 
 #define DllExport
-#define HAVE_POLL_H
 
 #endif//win32_COMPAT_H_

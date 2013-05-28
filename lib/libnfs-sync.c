@@ -32,6 +32,7 @@
 #include <netdb.h>
 #include <sys/socket.h>
 #include <net/if.h>
+#include <netinet/in.h>
 #endif /*WIN32*/
 
 #ifdef ANDROID
@@ -65,7 +66,6 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
-#include <netinet/in.h>
 #include <errno.h>
 
 #ifdef HAVE_SYS_SOCKIO_H

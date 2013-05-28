@@ -21,6 +21,10 @@ extern "C" {
 typedef long long int quad_t;
 typedef long long unsigned u_quad_t;
 #endif
+#if defined(WIN32)
+typedef long long int quad_t;
+typedef long long unsigned u_quad_t;
+#endif
 
 typedef char cookieverf3[NFS3_COOKIEVERFSIZE];
 

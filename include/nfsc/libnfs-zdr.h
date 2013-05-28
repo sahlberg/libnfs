@@ -29,6 +29,13 @@
 #ifndef _LIBNFS_ZDR_H_
 #define _LIBNFS_ZDR_H_
 
+#ifdef WIN32
+#ifndef CADDR_T_DEFINED
+#define CADDR_T_DEFINED
+typedef char *caddr_t;
+#endif
+#endif
+
 #include <stdio.h>
 #include <assert.h>
 #include <stdint.h>
@@ -41,6 +48,7 @@
 /* we dont need these */
 typedef void CLIENT;
 struct svc_req {
+	int _dummy_;
 };
 typedef void SVCXPRT;
 

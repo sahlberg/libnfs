@@ -32,7 +32,9 @@
 #include "win32_compat.h"
 #pragma comment(lib, "ws2_32.lib")
 WSADATA wsaData;
+#define PRId64 "ll"
 #else
+#include <inttypes.h>
 #include <string.h>
 #include <sys/stat.h>
 #ifndef AROS
@@ -47,7 +49,6 @@ WSADATA wsaData;
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
-#include <inttypes.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -172,7 +173,7 @@ int main(int argc, char *argv[])
 			continue;
 		}
 
-		snprintf(path, 1024, "%s/%s", "/", nfsdirent->name);
+		sprintf(path, "%s/%s", "/", nfsdirent->name);
 		ret = nfs_stat(nfs, path, &st);
 		if (ret != 0) {
 			fprintf(stderr, "Failed to stat(%s) %s\n", path, nfs_get_error(nfs));
@@ -180,7 +181,9 @@ int main(int argc, char *argv[])
 		}
 
 		switch (st.st_mode & S_IFMT) {
+#ifndef WIN32
 		case S_IFLNK:
+#endif
 		case S_IFREG:
 			printf("-");
 			break;

@@ -18,11 +18,14 @@
 #include "config.h"  /* HAVE_SOCKADDR_STORAGE ? */
 #endif
 
+#ifndef WIN32
 #include <sys/socket.h>  /* struct sockaddr_storage */
+#endif
 
 #include "libnfs-zdr.h"
 
-#ifndef HAVE_SOCKADDR_STORAGE
+
+#if !defined(HAVE_SOCKADDR_STORAGE) && !defined(WIN32)
 /*
  * RFC 2553: protocol-independent placeholder for socket addresses
  */
