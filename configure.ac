@@ -125,6 +125,10 @@ AC_CHECK_HEADERS([sys/socket.h])
 dnl Check for netinet/in.h
 AC_CHECK_HEADERS([netinet/in.h])
 
+# check for arpa/inet.h
+dnl Check for arpa/inet.h
+AC_CHECK_HEADERS([arpa/inet.h])
+
 # check for SA_LEN
 dnl Check if sockaddr data structure includes a "sa_len"
 AC_CHECK_MEMBER([struct sockaddr.sa_len],

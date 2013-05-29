@@ -24,9 +24,11 @@
 
 #ifdef WIN32
 #include "win32_compat.h"
-#else
+#endif
+
+#ifdef HAVE_ARPA_INET_H
 #include <arpa/inet.h>
-#endif/*WIN32*/
+#endif
 
 #ifdef HAVE_POLL_H
 #include <poll.h>
