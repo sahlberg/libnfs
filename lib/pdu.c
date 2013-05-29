@@ -14,6 +14,10 @@
    You should have received a copy of the GNU Lesser General Public License
    along with this program; if not, see <http://www.gnu.org/licenses/>.
 */
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+
 #ifdef AROS
 #include "aros_compat.h"
 #endif
@@ -23,8 +27,11 @@
 #else
 #include <strings.h>
 #include <sys/socket.h>
-#include <netinet/in.h>
 #endif/*WIN32*/
+
+#ifdef HAVE_NETINET_IN_H
+#include <netinet/in.h>
+#endif
 
 #include <stdio.h>
 #include <stdlib.h>

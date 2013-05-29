@@ -32,7 +32,6 @@
 #include <netdb.h>
 #include <sys/socket.h>
 #include <net/if.h>
-#include <netinet/in.h>
 #endif /*WIN32*/
 
 #ifdef ANDROID
@@ -57,6 +56,10 @@
 
 #ifdef HAVE_UNISTD_H
 #include <unistd.h>
+#endif
+
+#ifdef HAVE_NETINET_IN_H
+#include <netinet/in.h>
 #endif
 
 #include <stdio.h>

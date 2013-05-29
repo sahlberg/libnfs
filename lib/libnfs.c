@@ -30,7 +30,6 @@
 #else
 #include <strings.h>
 #include <utime.h>
-#include <netinet/in.h>
 #endif /*WIN32*/
 
 #ifdef ANDROID
@@ -49,6 +48,10 @@
 
 #ifdef HAVE_SYS_STATVFS_H
 #include <sys/statvfs.h>
+#endif
+
+#ifdef HAVE_NETINET_IN_H
+#include <netinet/in.h>
 #endif
 
 #include <stdio.h>

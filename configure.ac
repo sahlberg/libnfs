@@ -101,6 +101,10 @@ AC_CHECK_HEADERS([sys/vfs.h])
 dnl Check for sys/statvfs.h
 AC_CHECK_HEADERS([sys/statvfs.h])
 
+# check for netinet/in.h
+dnl Check for netinet/in.h
+AC_CHECK_HEADERS([netinet/in.h])
+
 # check for SA_LEN
 dnl Check if sockaddr data structure includes a "sa_len"
 AC_CHECK_MEMBER([struct sockaddr.sa_len],
