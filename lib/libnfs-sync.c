@@ -27,11 +27,11 @@
 
 #ifdef WIN32
 #include "win32_compat.h"
-#else
-#include <strings.h>
-#include <netdb.h>
+#endif
+
+#ifdef HAVE_NET_IF_H
 #include <net/if.h>
-#endif /*WIN32*/
+#endif
 
 #ifdef ANDROID
 #define statvfs statfs
@@ -57,12 +57,20 @@
 #include <poll.h>
 #endif
 
+#ifdef HAVE_NETDB_H
+#include <netdb.h>
+#endif
+
 #ifdef HAVE_UNISTD_H
 #include <unistd.h>
 #endif
 
 #ifdef HAVE_NETINET_IN_H
 #include <netinet/in.h>
+#endif
+
+#ifdef HAVE_STRINGS_H
+#include <strings.h>
 #endif
 
 #include <stdio.h>

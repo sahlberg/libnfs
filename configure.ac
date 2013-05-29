@@ -89,6 +89,18 @@ AC_CHECK_HEADERS([poll.h])
 dnl Check for unistd.h
 AC_CHECK_HEADERS([unistd.h])
 
+# check for netdb.h
+dnl Check for netdb.h
+AC_CHECK_HEADERS([netdb.h])
+
+# check for utime.h
+dnl Check for utime.h
+AC_CHECK_HEADERS([utime.h])
+
+# check for net/if.h
+dnl Check for net/if.h
+AC_CHECK_HEADERS([net/if.h])
+
 # check for sys/ioctl.h
 dnl Check for sys/ioctl.h
 AC_CHECK_HEADERS([sys/ioctl.h])

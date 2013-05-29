@@ -27,10 +27,11 @@
 
 #ifdef WIN32
 #include "win32_compat.h"
-#else
-#include <strings.h>
+#endif
+
+#ifdef HAVE_UTIME_H
 #include <utime.h>
-#endif /*WIN32*/
+#endif
 
 #ifdef ANDROID
 #define statvfs statfs
@@ -52,6 +53,10 @@
 
 #ifdef HAVE_NETINET_IN_H
 #include <netinet/in.h>
+#endif
+
+#ifdef HAVE_STRINGS_H
+#include <strings.h>
 #endif
 
 #include <stdio.h>

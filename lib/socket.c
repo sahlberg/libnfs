@@ -26,7 +26,6 @@
 #include "win32_compat.h"
 #else
 #include <arpa/inet.h>
-#include <netdb.h>
 #endif/*WIN32*/
 
 #ifdef HAVE_POLL_H
@@ -45,18 +44,24 @@
 #include <sys/socket.h>
 #endif
 
+#ifdef HAVE_NETDB_H
+#include <netdb.h>
+#endif
+
+#ifdef HAVE_SYS_FILIO_H
+#include <sys/filio.h>
+#endif
+
+#ifdef HAVE_SYS_SOCKIO_H
+#include <sys/sockio.h>
+#endif
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
 #include <fcntl.h>
 #include <string.h>
 #include <errno.h>
-#ifdef HAVE_SYS_FILIO_H
-#include <sys/filio.h>
-#endif
-#ifdef HAVE_SYS_SOCKIO_H
-#include <sys/sockio.h>
-#endif
 #include <sys/types.h>
 #include "libnfs-zdr.h"
 #include "libnfs.h"

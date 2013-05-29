@@ -24,9 +24,7 @@
 
 #ifdef WIN32
 #include "win32_compat.h"
-#else
-#include <strings.h>
-#endif/*WIN32*/
+#endif
 
 #ifdef HAVE_NETINET_IN_H
 #include <netinet/in.h>
@@ -34,6 +32,10 @@
 
 #ifdef HAVE_SYS_SOCKET_H
 #include <sys/socket.h>
+#endif
+
+#ifdef HAVE_STRINGS_H
+#include <strings.h>
 #endif
 
 #include <stdio.h>

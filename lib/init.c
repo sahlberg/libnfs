@@ -21,13 +21,16 @@
 
 #ifdef WIN32
 #include "win32_compat.h"
-#else
-#include <strings.h>
-#endif/*WIN32*/
+#endif
+
 #define _GNU_SOURCE
 
 #ifdef HAVE_UNISTD_H
 #include <unistd.h>
+#endif
+
+#ifdef HAVE_STRINGS_H
+#include <strings.h>
 #endif
 
 #include <stdio.h>
