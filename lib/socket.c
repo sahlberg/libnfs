@@ -179,7 +179,7 @@ static int rpc_read_from_socket(struct rpc_context *rpc)
 		char *buf;
 		socklen_t socklen = sizeof(rpc->udp_src);
 
-		buf = malloc(available);
+		buf = (char *)malloc(available);
 		if (buf == NULL) {
 			rpc_set_error(rpc, "Failed to malloc buffer for recvfrom");
 			return -1;
@@ -201,7 +201,7 @@ static int rpc_read_from_socket(struct rpc_context *rpc)
 	/* read record marker, 4 bytes at the beginning of every pdu */
 	if (rpc->inbuf == NULL) {
 		rpc->insize = 4;
-		rpc->inbuf = malloc(rpc->insize);
+		rpc->inbuf = (char *)malloc(rpc->insize);
 		if (rpc->inbuf == NULL) {
 			rpc_set_error(rpc, "Failed to allocate buffer for record marker, errno:%d. Closing socket.", errno);
 			return -1;
@@ -230,14 +230,14 @@ static int rpc_read_from_socket(struct rpc_context *rpc)
 	if (rpc->insize < pdu_size) {
 		unsigned char *buf;
 		
-		buf = malloc(pdu_size);
+		buf = (unsigned char*)malloc(pdu_size);
 		if (buf == NULL) {
 			rpc_set_error(rpc, "Failed to allocate buffer of %d bytes for pdu, errno:%d. Closing socket.", pdu_size, errno);
 			return -1;
 		}
 		memcpy(buf, rpc->inbuf, rpc->insize);
 		free(rpc->inbuf);
-		rpc->inbuf  = buf;
+		rpc->inbuf  = (char *)buf;
 		rpc->insize = rpc_get_pdu_size(rpc->inbuf);
 	}
 

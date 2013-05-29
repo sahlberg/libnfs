@@ -140,7 +140,7 @@ int rpc_queue_pdu(struct rpc_context *rpc, struct rpc_pdu *pdu)
 	zdr_int(&pdu->zdr, &recordmarker);
 
 	pdu->outdata.size = size;
-	pdu->outdata.data = malloc(pdu->outdata.size);
+	pdu->outdata.data = (unsigned char *)malloc(pdu->outdata.size);
 	if (pdu->outdata.data == NULL) {
 		rpc_set_error(rpc, "Out of memory. Failed to allocate buffer for pdu\n");
 		rpc_free_pdu(rpc, pdu);
@@ -174,7 +174,7 @@ static int rpc_process_reply(struct rpc_context *rpc, struct rpc_pdu *pdu, ZDR *
 		if (pdu->zdr_decode_buf != NULL) {
 			free(pdu->zdr_decode_buf);
 		}
-		pdu->zdr_decode_buf = malloc(pdu->zdr_decode_bufsize);
+		pdu->zdr_decode_buf = (caddr_t)malloc(pdu->zdr_decode_bufsize);
 		if (pdu->zdr_decode_buf == NULL) {
 			rpc_set_error(rpc, "zdr_replymsg failed in portmap_getport_reply");
 			pdu->cb(rpc, RPC_STATUS_ERROR, "Failed to allocate buffer for decoding of ZDR reply", pdu->private_data);
@@ -265,7 +265,7 @@ int rpc_process_pdu(struct rpc_context *rpc, char *buf, int size)
 			total += fragment->size;
 		}
 
-		reasbuf = malloc(total);
+		reasbuf = (char *)malloc(total);
 		if (reasbuf == NULL) {
 			rpc_set_error(rpc, "Failed to reassemble PDU");
 			rpc_free_all_fragments(rpc);
