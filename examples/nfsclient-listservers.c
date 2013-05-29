@@ -21,6 +21,10 @@
 #include "aros_compat.h"
 #endif
 
+#ifdef WIN32
+#include "win32_compat.h"
+#endif
+
 #include <stdio.h>
 #include <stdlib.h>
 #include "libnfs-zdr.h"
