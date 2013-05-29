@@ -24,6 +24,10 @@
 #include "win32_compat.h"
 #endif
 
+#ifdef AROS
+#include "aros_compat.h"
+#endif
+
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
