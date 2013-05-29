@@ -22,10 +22,7 @@
  */
 #ifdef WIN32
 #include "win32_compat.h"
-#else
-#include <sys/types.h>
-#include <arpa/inet.h>
-#endif/*WIN32*/
+#endif
 
 #include <stdlib.h>
 #include <string.h>
