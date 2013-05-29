@@ -101,6 +101,10 @@ AC_CHECK_HEADERS([utime.h])
 dnl Check for net/if.h
 AC_CHECK_HEADERS([net/if.h])
 
+# check for sys/time.h
+dnl Check for sys/time.h
+AC_CHECK_HEADERS([sys/time.h])
+
 # check for sys/ioctl.h
 dnl Check for sys/ioctl.h
 AC_CHECK_HEADERS([sys/ioctl.h])
