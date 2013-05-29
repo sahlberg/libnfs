@@ -2868,6 +2868,7 @@ int nfs_utimes_async(struct nfs_context *nfs, const char *path, struct timeval *
 /*
  * Async utime()
  */
+#ifdef HAVE_UTIME_H
 int nfs_utime_async(struct nfs_context *nfs, const char *path, struct utimbuf *times, nfs_cb cb, void *private_data)
 {
 	struct timeval *new_times = NULL;
@@ -2892,9 +2893,7 @@ int nfs_utime_async(struct nfs_context *nfs, const char *path, struct utimbuf *t
 
 	return 0;
 }
-
-
-
+#endif
 
 
 /*

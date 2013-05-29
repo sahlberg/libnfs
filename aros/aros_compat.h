@@ -8,6 +8,8 @@
 #include <sys/mount.h>
 #include <proto/socket.h>
 #include <proto/exec.h>
+#include <netdb.h>
+#include <net/if.h>
 
 #define statvfs statfs
 #define ioctl IoctlSocket
