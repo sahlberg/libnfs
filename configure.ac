@@ -101,6 +101,10 @@ AC_CHECK_HEADERS([sys/vfs.h])
 dnl Check for sys/statvfs.h
 AC_CHECK_HEADERS([sys/statvfs.h])
 
+# check for sys/socket.h
+dnl Check for sys/socket.h
+AC_CHECK_HEADERS([sys/socket.h])
+
 # check for netinet/in.h
 dnl Check for netinet/in.h
 AC_CHECK_HEADERS([netinet/in.h])

@@ -26,7 +26,6 @@
 #include "win32_compat.h"
 #else
 #include <arpa/inet.h>
-#include <sys/socket.h>
 #include <netdb.h>
 #endif/*WIN32*/
 
@@ -40,6 +39,10 @@
 
 #ifdef HAVE_SYS_IOCTL_H
 #include <sys/ioctl.h>
+#endif
+
+#ifdef HAVE_SYS_SOCKET_H
+#include <sys/socket.h>
 #endif
 
 #include <stdio.h>
