@@ -401,8 +401,12 @@ static int rpc_connect_sockaddr_async(struct rpc_context *rpc, struct sockaddr_s
 		static int portOfs = 0;
 		const int firstPort = 512;	/* >= 512 according to Sun docs */
 		const int portCount = IPPORT_RESERVED - firstPort;
-		int startOfs = portOfs, port, rc;
+		int startOfs, port, rc;
 
+		if (portOfs == 0) {
+			portOfs = time(NULL) % 400;
+		}
+		startOfs = portOfs;
 		do {
 			rc = -1;
 			port = htons(firstPort + portOfs);

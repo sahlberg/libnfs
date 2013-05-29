@@ -65,26 +65,3 @@ cl /I. /Iwin32 /Iinclude/nfsc /Iinclude /Imount /Infs -Zi -Od -DWIN32 -D_WIN32_W
 
 
 
-
-
-
-
-
-.lib mswsock.lib advapi32.lib wsock32.lib advapi32.lib
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
