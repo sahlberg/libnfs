@@ -134,7 +134,7 @@ static int rpc_write_to_socket(struct rpc_context *rpc)
 
 		total = rpc->outqueue->outdata.size;
 
-		count = send(rpc->fd, rpc->outqueue->outdata.data + rpc->outqueue->written, total - rpc->outqueue->written, 0);
+		count = send(rpc->fd, (char *)rpc->outqueue->outdata.data + rpc->outqueue->written, total - rpc->outqueue->written, 0);
 		if (count == -1) {
 			if (errno == EAGAIN || errno == EWOULDBLOCK) {
 				return 0;
@@ -157,15 +157,15 @@ static int rpc_write_to_socket(struct rpc_context *rpc)
 static int rpc_read_from_socket(struct rpc_context *rpc)
 {
 	int available;
-	int size;
-	int pdu_size;
+	unsigned int size;
+	unsigned int pdu_size;
 	int32_t count;
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
-	if (ioctl(rpc->fd, FIONREAD, &available) != 0) {
+	if (ioctl(rpc->fd, FIONREAD, (unsigned long*)&available) != 0) {
 		rpc_set_error(rpc, "Ioctl FIONREAD returned error : %d. Closing socket.", errno);
 		return -1;
 	}
