@@ -32,6 +32,7 @@ THE SOFTWARE.
 #include <basetsd.h>
 #include <io.h>
 #include <sys/stat.h>
+#include <time.h>
 
 typedef int uid_t;
 typedef int gid_t;

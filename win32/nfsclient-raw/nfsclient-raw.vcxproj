@@ -19,7 +19,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="Globals">
-    <ProjectGuid>{B907AC9A-50C5-4E43-97C3-27DC7241F6C5}</ProjectGuid>
+    <ProjectGuid>{5C31C9BE-13AA-4012-A3C2-12A8042BE0B5}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
     <RootNamespace>nfsclientsync</RootNamespace>
   </PropertyGroup>
@@ -85,7 +85,7 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;_WIN32_WINNT=0x0501;_U_=;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>..\..\include\nfsc;..\..\include;..\..\.;..\..\win32;..\..\mount;..\..\nfs</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\include\nfsc;..\..\include;..\..\.;..\..\win32;..\..\mount;..\..\nfs;..\..\rquota</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -125,7 +125,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;_WIN32_WINNT=0x0501;_U_=;ONCRPC_STATIC;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>..\..\include\nfsc;..\..\include;..\..\.;..\..\win32;..\..\mount;..\..\nfs</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\include\nfsc;..\..\include;..\..\.;..\..\win32;..\..\mount;..\..\nfs;..\..\rquota</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -155,7 +155,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\examples\nfsclient-sync.c" />
+    <ClCompile Include="..\..\examples\nfsclient-raw.c" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -19,7 +19,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="Globals">
-    <ProjectGuid>{B907AC9A-50C5-4E43-97C3-27DC7241F6C5}</ProjectGuid>
+    <ProjectGuid>{8C223950-DD30-4C89-BD5D-C105951FE2B6}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
     <RootNamespace>nfsclientsync</RootNamespace>
   </PropertyGroup>
@@ -155,7 +155,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\examples\nfsclient-sync.c" />
+    <ClCompile Include="..\..\examples\nfs-cp.c" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
