@@ -506,7 +506,7 @@ struct AUTH *libnfs_authunix_create(char *host, uint32_t uid, uint32_t gid, uint
 struct AUTH *libnfs_authunix_create_default(void)
 {
 #ifdef WIN32
-	return libnfs_authunix_create("libnfs", 65535, 65535, 0, NULL);
+	return libnfs_authunix_create("libnfs", 65534, 65534, 0, NULL);
 #else
 	return libnfs_authunix_create("libnfs", getuid(), getgid(), 0, NULL);
 #endif
