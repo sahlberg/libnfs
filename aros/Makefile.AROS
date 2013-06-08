@@ -21,6 +21,18 @@ lib/libnfs.a: $(OBJS)
 	echo $(CC) $(CFLAGS) -c -o $@ $<
 	$(CC) $(CFLAGS) -c -o $@ $<
 
+install: all
+	cp lib/libnfs.a GCC:lib
+	mkdir -p INCLUDE:nfsc
+	cp include/nfsc/libnfs.h INCLUDE:nfsc
+	cp include/nfsc/libnfs-raw.h INCLUDE:nfsc
+	cp include/nfsc/libnfs-zdr.h INCLUDE:nfsc
+	cp mount/libnfs-raw-mount.h INCLUDE:nfsc
+	cp nlm/libnfs-raw-nlm.h INCLUDE:nfsc
+	cp nfs/libnfs-raw-nfs.h INCLUDE:nfsc
+	cp portmap/libnfs-raw-portmap.h INCLUDE:nfsc
+	cp rquota/libnfs-raw-rquota.h INCLUDE:nfsc
+
 examples/nfsclient-listservers: examples/nfsclient-listservers.c lib/libnfs.a
 	$(CC) $(CFLAGS) -o $@ $< lib/libnfs.a
 
