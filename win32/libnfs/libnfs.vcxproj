@@ -149,7 +149,7 @@ rpcgen.exe -c $(ProjectDir)..\..\mount\libnfs-raw-mount.x &gt;  $(ProjectDir)..\
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_USRDLL;_U_=;__STDC_CONSTANT_MACROS;ONCRPC_STATIC;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_USRDLL;_U_=;_USE_32BIT_TIME_T;__STDC_CONSTANT_MACROS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>..\..\include\nfsc;..\..\include;..\..\.;..\..\win32;..\..\mount;..\..\nfs;..\..\lib</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>4996</DisableSpecificWarnings>
     </ClCompile>
