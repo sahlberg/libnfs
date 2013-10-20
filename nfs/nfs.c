@@ -143,7 +143,36 @@ int rpc_nfs_getattr_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh
 	}
 
 	if (rpc_queue_pdu(rpc, pdu) != 0) {
-		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for nfs/null call");
+		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for nfs/getattr call");
+		rpc_free_pdu(rpc, pdu);
+		return -3;
+	}
+
+	return 0;
+}
+
+int rpc_nfs_pathconf_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh, void *private_data)
+{
+	struct rpc_pdu *pdu;
+	PATHCONF3args args;
+
+	pdu = rpc_allocate_pdu(rpc, NFS_PROGRAM, NFS_V3, NFS3_PATHCONF, cb, private_data, (zdrproc_t)zdr_PATHCONF3res, sizeof(PATHCONF3res));
+	if (pdu == NULL) {
+		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu for nfs/pathconf call");
+		return -1;
+	}
+
+	args.object.data.data_len = fh->data.data_len; 
+	args.object.data.data_val = fh->data.data_val; 
+
+	if (zdr_PATHCONF3args(&pdu->zdr, &args) == 0) {
+		rpc_set_error(rpc, "ZDR error: Failed to encode PATHCONF3args");
+		rpc_free_pdu(rpc, pdu);
+		return -2;
+	}
+
+	if (rpc_queue_pdu(rpc, pdu) != 0) {
+		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for nfs/pathconf call");
 		rpc_free_pdu(rpc, pdu);
 		return -3;
 	}
