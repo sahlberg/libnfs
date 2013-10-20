@@ -17,7 +17,7 @@ libnfs_la_SOURCES = \
 	pdu.c \
 	socket.c
 
-libnfs_la_LDFLAGS = -version-info 1:6:0
+libnfs_la_LDFLAGS = -version-info 1:7:0
 libnfs_la_LIBADD = \
 	../mount/libmount.la \
 	../nfs/libnfs.la \

@@ -95,6 +95,12 @@ development libraries for LibNFS
 %{_libdir}/pkgconfig/libnfs.pc
 
 %changelog
+* Sun Oct 20 2013 : Version 1.7
+ - Allow nested eventloops so that a sync function can be called from a callback.
+ - Fix a bug in unmarshalling a uint64.
+ - Add PATHCONF support.
+ - WIN32/64 updates
+ - AROS updates
 * Mon May 27 2013 : Version 1.6
  - AROS/Amiga support
  - Chose better initial xid value to reduce the probability for collissions.
