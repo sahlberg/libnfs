@@ -163,8 +163,6 @@ static int rpc_read_from_socket(struct rpc_context *rpc)
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
-	assert(rpc->magic == RPC_CONTEXT_MAGIC);
-
 	if (ioctl(rpc->fd, FIONREAD, &available) != 0) {
 		rpc_set_error(rpc, "Ioctl FIONREAD returned error : %d. Closing socket.", errno);
 		return -1;
@@ -258,14 +256,17 @@ static int rpc_read_from_socket(struct rpc_context *rpc)
 	rpc->inpos += count;
 
 	if (rpc->inpos == rpc->insize) {
-		if (rpc_process_pdu(rpc, rpc->inbuf, pdu_size) != 0) {
+		char *buf = rpc->inbuf;
+
+		rpc->inbuf  = NULL;
+		rpc->insize = 0;
+		rpc->inpos  = 0;
+
+		if (rpc_process_pdu(rpc, buf, pdu_size) != 0) {
 			rpc_set_error(rpc, "Invalid/garbage pdu received from server. Closing socket");
 			return -1;
 		}
 		free(rpc->inbuf);
-		rpc->inbuf  = NULL;
-		rpc->insize = 0;
-		rpc->inpos  = 0;
 	}
 
 	return 0;
