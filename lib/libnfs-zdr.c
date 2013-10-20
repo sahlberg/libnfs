@@ -124,7 +124,7 @@ bool_t libnfs_zdr_u_quad_t(ZDR *zdrs, uint64_t *u)
 		*u = ntohl(*(uint32_t *)&zdrs->buf[zdrs->pos]);
 		zdrs->pos += 4;
 		*u <<= 32;
-		*u |= ntohl(*(uint32_t *)&zdrs->buf[zdrs->pos]);
+		*u |= (uint32_t)ntohl(*(uint32_t *)&zdrs->buf[zdrs->pos]);
 		zdrs->pos += 4;
 		return TRUE;
 		break;
