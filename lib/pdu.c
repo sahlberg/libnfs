@@ -230,7 +230,7 @@ int rpc_process_pdu(struct rpc_context *rpc, char *buf, int size)
 	struct rpc_pdu *pdu;
 	ZDR zdr;
 	int pos, recordmarker = 0;
-	unsigned int xid;
+	uint32_t xid;
 	char *reasbuf = NULL;
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);

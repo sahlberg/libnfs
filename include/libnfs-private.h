@@ -68,7 +68,7 @@ struct rpc_context {
 	void *connect_data;
 
 	struct AUTH *auth;
-	unsigned long xid;
+	uint32_t xid;
 
        /* buffer used for encoding RPC PDU */
        char *encodebuf;
@@ -98,7 +98,7 @@ struct rpc_context {
 struct rpc_pdu {
 	struct rpc_pdu *next;
 
-	unsigned long xid;
+	uint32_t xid;
 	ZDR zdr;
 
 	uint32_t written;
