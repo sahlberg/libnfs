@@ -1028,7 +1028,7 @@ int nfs_pread_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t offse
 
 	/* trying to read more than maximum server read size, we has to chop it up into smaller
 	 * reads and collect into a reassembly buffer.
-	 * we send all reads in parallell so that performance is still good.
+	 * we send all reads in parallel so that performance is still good.
 	 */
 	data->max_offset = offset;
 	data->start_offset = offset;
@@ -1208,7 +1208,7 @@ int nfs_pwrite_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t offs
 
 	/* trying to write more than maximum server write size, we has to chop it up into smaller
 	 * chunks.
-	 * we send all writes in parallell so that performance is still good.
+	 * we send all writes in parallel so that performance is still good.
 	 */
 	data->max_offset = offset;
 	data->start_offset = offset;
