@@ -3446,11 +3446,7 @@ uint64_t nfs_get_readmax(struct nfs_context *nfs)
  */
 uint64_t nfs_get_writemax(struct nfs_context *nfs)
 {
-	/* Some ZDR libraries can not marshall PDUs bigger than this */
-        if (nfs->writemax < 32768) {
-		return nfs->writemax;
-	}
-	return 32768;
+	return nfs->writemax;
 }
 
 void nfs_set_error(struct nfs_context *nfs, char *error_string, ...)
