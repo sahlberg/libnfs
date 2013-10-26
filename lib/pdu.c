@@ -113,6 +113,10 @@ void rpc_free_pdu(struct rpc_context *rpc, struct rpc_pdu *pdu)
 	free(pdu);
 }
 
+void rpc_set_next_xid(struct rpc_context *rpc, uint32_t xid)
+{
+	rpc->xid = xid;
+}
 
 int rpc_queue_pdu(struct rpc_context *rpc, struct rpc_pdu *pdu)
 {

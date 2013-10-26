@@ -53,6 +53,12 @@ struct rpc_context *nfs_get_rpc_context(struct nfs_context *nfs);
 */
 struct nfs_fh3 *nfs_get_fh(struct nfsfh *nfsfh);
 
+/* Control what the next XID value to be used on the context will be.
+   This can be used when multiple contexts are used to the same server
+   to avoid that the two contexts have xid collissions.
+ */
+void rpc_set_next_xid(struct rpc_context *rpc, uint32_t xid);
+
 #define RPC_STATUS_SUCCESS	   	0
 #define RPC_STATUS_ERROR		1
 #define RPC_STATUS_CANCEL		2
