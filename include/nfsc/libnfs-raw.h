@@ -79,6 +79,21 @@ void rpc_set_next_xid(struct rpc_context *rpc, uint32_t xid);
  */
 int rpc_connect_async(struct rpc_context *rpc, const char *server, int port, rpc_cb cb, void *private_data);
 /*
+ * Async function to connect to a specific RPC program/version
+ * Function returns
+ *  0 : The connection was initiated. Once the connection establish finishes, the callback will be invoked.
+ * <0 : An error occured when trying to set up the connection. The callback will not be invoked.
+ *
+ * When the callback is invoked, status indicates the result:
+ * RPC_STATUS_SUCCESS : The tcp connection was successfully established.
+ *                      data is NULL.
+ * RPC_STATUS_ERROR   : The connection failed to establish.
+ *                      data is the erro string.
+ * RPC_STATUS_CANCEL  : The connection attempt was aborted before it could complete.
+ *                    : data is NULL.
+ */
+int rpc_connect_program_async(struct rpc_context *rpc, char *server, int program, int version, rpc_cb cb, void *private_data);
+/*
  * When disconnecting a connection in flight. All commands in flight will be called with the callback
  * and status RPC_STATUS_ERROR. Data will be the error string for the disconnection.
  */

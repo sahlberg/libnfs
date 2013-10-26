@@ -219,6 +219,155 @@ void nfs_destroy_context(struct nfs_context *nfs)
 	free(nfs);
 }
 
+struct rpc_cb_data {
+       char *server;
+       uint32_t program;
+       uint32_t version;
+
+       rpc_cb cb;
+       void *private_data;
+};       
+
+void free_rpc_cb_data(struct rpc_cb_data *data)
+{
+	free(data->server);
+	data->server = NULL;
+	free(data);
+}
+
+static void rpc_connect_program_4_cb(struct rpc_context *rpc, int status, void *command_data, void *private_data)
+{
+	struct rpc_cb_data *data = private_data;
+
+	assert(rpc->magic == RPC_CONTEXT_MAGIC);
+
+	/* Dont want any more callbacks even if the socket is closed */
+	rpc->connect_cb = NULL;
+
+	if (status == RPC_STATUS_ERROR) {
+		data->cb(rpc, status, command_data, data->private_data);
+		free_rpc_cb_data(data);
+		return;
+	}
+	if (status == RPC_STATUS_CANCEL) {
+		data->cb(rpc, status, "Command was cancelled", data->private_data);
+		free_rpc_cb_data(data);
+		return;
+	}
+
+	data->cb(rpc, status, NULL, data->private_data);
+	free_rpc_cb_data(data);
+}
+
+static void rpc_connect_program_3_cb(struct rpc_context *rpc, int status, void *command_data, void *private_data)
+{
+	struct rpc_cb_data *data = private_data;
+	uint32_t rpc_port;
+
+	assert(rpc->magic == RPC_CONTEXT_MAGIC);
+
+	if (status == RPC_STATUS_ERROR) {	
+		data->cb(rpc, status, command_data, data->private_data);
+		free_rpc_cb_data(data);
+		return;
+	}
+	if (status == RPC_STATUS_CANCEL) {
+		data->cb(rpc, status, "Command was cancelled", data->private_data);
+		free_rpc_cb_data(data);
+		return;
+	}
+
+	rpc_port = *(uint32_t *)command_data;
+	if (rpc_port == 0) {
+		rpc_set_error(rpc, "RPC error. Program is not available on %s", data->server);
+		data->cb(rpc, RPC_STATUS_ERROR, rpc_get_error(rpc), data->private_data);
+		free_rpc_cb_data(data);
+		return;
+	}
+
+	rpc_disconnect(rpc, "normal disconnect");
+	if (rpc_connect_async(rpc, data->server, rpc_port, rpc_connect_program_4_cb, data) != 0) {
+		data->cb(rpc, status, command_data, data->private_data);
+		free_rpc_cb_data(data);
+		return;
+	}
+}
+
+static void rpc_connect_program_2_cb(struct rpc_context *rpc, int status, void *command_data, void *private_data)
+{
+	struct rpc_cb_data *data = private_data;
+
+	assert(rpc->magic == RPC_CONTEXT_MAGIC);
+
+	if (status == RPC_STATUS_ERROR) {
+		data->cb(rpc, status, command_data, data->private_data);
+		free_rpc_cb_data(data);
+		return;
+	}
+	if (status == RPC_STATUS_CANCEL) {
+		data->cb(rpc, status, "Command was cancelled", data->private_data);
+		free_rpc_cb_data(data);
+		return;
+	}
+
+	if (rpc_pmap_getport_async(rpc, data->program, data->version, IPPROTO_TCP, rpc_connect_program_3_cb, private_data) != 0) {
+		data->cb(rpc, status, command_data, data->private_data);
+		free_rpc_cb_data(data);
+		return;
+	}
+}
+
+static void rpc_connect_program_1_cb(struct rpc_context *rpc, int status, void *command_data, void *private_data)
+{
+	struct rpc_cb_data *data = private_data;
+
+	assert(rpc->magic == RPC_CONTEXT_MAGIC);
+
+	/* Dont want any more callbacks even if the socket is closed */
+	rpc->connect_cb = NULL;
+
+	if (status == RPC_STATUS_ERROR) {
+		data->cb(rpc, status, command_data, data->private_data);
+		free_rpc_cb_data(data);
+		return;
+	}
+	if (status == RPC_STATUS_CANCEL) {
+		data->cb(rpc, status, "Command was cancelled", data->private_data);
+		free_rpc_cb_data(data);
+		return;
+	}
+
+	if (rpc_pmap_null_async(rpc, rpc_connect_program_2_cb, data) != 0) {
+		data->cb(rpc, status, command_data, data->private_data);
+		free_rpc_cb_data(data);
+		return;
+	}
+}
+
+int rpc_connect_program_async(struct rpc_context *rpc, char *server, int program, int version, rpc_cb cb, void *private_data)
+{
+	struct rpc_cb_data *data;
+
+	data = malloc(sizeof(struct rpc_cb_data));
+	if (data == NULL) {
+		return -1;
+	}
+	memset(data, 0, sizeof(struct rpc_cb_data));
+	data->server       = strdup(server);
+	data->program      = program;
+	data->version      = version;
+
+	data->cb           = cb;
+	data->private_data = private_data;
+
+	if (rpc_connect_async(rpc, server, 111, rpc_connect_program_1_cb, data) != 0) {
+		rpc_set_error(rpc, "Failed to start connection");
+		free_rpc_cb_data(data);
+		return -1;
+	}
+	return 0;
+}
+
 void free_nfs_cb_data(struct nfs_cb_data *data)
 {
 	if (data->saved_path != NULL) {
