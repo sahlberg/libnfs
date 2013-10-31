@@ -95,6 +95,9 @@ development libraries for LibNFS
 %{_libdir}/pkgconfig/libnfs.pc
 
 %changelog
+* Sun Wed 30 2013 : Version 1.8
+ - Fix nasty memory leak in read_from_socket
+ - minor updates
 * Sun Oct 20 2013 : Version 1.7
  - Allow nested eventloops so that a sync function can be called from a callback.
  - Fix a bug in unmarshalling a uint64.
