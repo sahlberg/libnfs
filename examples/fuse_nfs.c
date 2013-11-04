@@ -31,8 +31,6 @@
 
 #define discard_const(ptr) ((void *)((intptr_t)(ptr)))
 
-FILE *fh=NULL;
-
 struct nfs_context *nfs = NULL;
 
 static int fuse_nfs_getattr(const char *path, struct stat *stbuf)
@@ -121,8 +119,6 @@ static int fuse_nfs_create(const char *path, mode_t mode, struct fuse_file_info 
 	}
 
 	fi->fh = (uint64_t)nfsfh;
-
-//nfs_chown
 
 	return ret;
 }
