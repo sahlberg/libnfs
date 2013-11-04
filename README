@@ -47,6 +47,14 @@ This is highly non-portable so IF this works on your linux system, count
 yourself lucky.
 
 
+FUSE
+====
+A simple FUSE filesystem built on libnfs can be found in
+examples/fuse_nfs.c
+
+Compile using : gcc fuse_nfs.c -o fuse_nfs -lfuse -lnfs
+Mount using : sudo ./fuse_nfs -n nfs://<server>/<export> -m <mountpoint>
+
 
 PLATFORM support
 =================
