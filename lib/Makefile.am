@@ -5,6 +5,7 @@ libnfs_la_CPPFLAGS = -I$(abs_top_srcdir)/include \
 		     -I../mount \
 		     -I../nfs \
 		     -I../nlm \
+		     -I../nsm \
 		     -I../portmap \
 		     -I../rquota \
 		     "-D_U_=__attribute__((unused))"
@@ -22,6 +23,7 @@ libnfs_la_LIBADD = \
 	../mount/libmount.la \
 	../nfs/libnfs.la \
 	../nlm/libnlm.la \
+	../nsm/libnsm.la \
 	../portmap/libportmap.la \
 	../rquota/librquota.la 
 

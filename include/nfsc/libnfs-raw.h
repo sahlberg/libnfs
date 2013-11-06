@@ -956,4 +956,28 @@ int rpc_nlm4_cancel_async(struct rpc_context *rpc, rpc_cb cb, struct NLM4_CANCar
 struct NLM4_UNLOCKargs;
 int rpc_nlm4_unlock_async(struct rpc_context *rpc, rpc_cb cb, struct NLM4_UNLOCKargs *args, void *private_data);
 
+/*
+ * NSM functions
+ */
+char *nsmstat1_to_str(int stat);
+	
+/*
+ * Call NSM/NULL
+ * Call the NULL procedure for the NSM protocol
+ *
+ * Function returns
+ *  0 : The call was initiated. The callback will be invoked when the call completes.
+ * <0 : An error occured when trying to set up the call. The callback will not be invoked.
+ *
+ * When the callback is invoked, status indicates the result:
+ * RPC_STATUS_SUCCESS : We got a successful response from the nsm daemon.
+ *                      data is NULL
+ * RPC_STATUS_ERROR   : An error occured when trying to contact the nsm daemon.
+ *                      data is the error string.
+ * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
+ *                     data is NULL.
+ */
+int rpc_nsm1_null_async(struct rpc_context *rpc, rpc_cb cb, void *private_data);
+
+
 #endif
