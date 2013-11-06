@@ -979,5 +979,117 @@ char *nsmstat1_to_str(int stat);
  */
 int rpc_nsm1_null_async(struct rpc_context *rpc, rpc_cb cb, void *private_data);
 
+/*
+ * Call NSM/STAT
+ * Call the STAT procedure for the NSM protocol
+ *
+ * Function returns
+ *  0 : The call was initiated. The callback will be invoked when the call completes.
+ * <0 : An error occured when trying to set up the call. The callback will not be invoked.
+ *
+ * When the callback is invoked, status indicates the result:
+ * RPC_STATUS_SUCCESS : We got a successful response from the nsm daemon.
+ *                      data is NSM1_STATres
+ * RPC_STATUS_ERROR   : An error occured when trying to contact the nsm daemon.
+ *                      data is the error string.
+ * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
+ *                     data is NULL.
+ */
+struct NSM1_STATargs;
+int rpc_nsm1_stat_async(struct rpc_context *rpc, rpc_cb cb, struct NSM1_STATargs *args, void *private_data);
+
+/*
+ * Call NSM/MON
+ * Call the MON procedure for the NSM protocol
+ *
+ * Function returns
+ *  0 : The call was initiated. The callback will be invoked when the call completes.
+ * <0 : An error occured when trying to set up the call. The callback will not be invoked.
+ *
+ * When the callback is invoked, status indicates the result:
+ * RPC_STATUS_SUCCESS : We got a successful response from the nsm daemon.
+ *                      data is NSM1_MONres
+ * RPC_STATUS_ERROR   : An error occured when trying to contact the nsm daemon.
+ *                      data is the error string.
+ * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
+ *                     data is NULL.
+ */
+struct NSM1_MONargs;
+int rpc_nsm1_mon_async(struct rpc_context *rpc, rpc_cb cb, struct NSM1_MONargs *args, void *private_data);
+
+/*
+ * Call NSM/UNMON
+ * Call the UNMON procedure for the NSM protocol
+ *
+ * Function returns
+ *  0 : The call was initiated. The callback will be invoked when the call completes.
+ * <0 : An error occured when trying to set up the call. The callback will not be invoked.
+ *
+ * When the callback is invoked, status indicates the result:
+ * RPC_STATUS_SUCCESS : We got a successful response from the nsm daemon.
+ *                      data is NSM1_UNMONres
+ * RPC_STATUS_ERROR   : An error occured when trying to contact the nsm daemon.
+ *                      data is the error string.
+ * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
+ *                     data is NULL.
+ */
+struct NSM1_UNMONargs;
+int rpc_nsm1_unmon_async(struct rpc_context *rpc, rpc_cb cb, struct NSM1_UNMONargs *args, void *private_data);
+
+/*
+ * Call NSM/UNMONALL
+ * Call the UNMONALL procedure for the NSM protocol
+ *
+ * Function returns
+ *  0 : The call was initiated. The callback will be invoked when the call completes.
+ * <0 : An error occured when trying to set up the call. The callback will not be invoked.
+ *
+ * When the callback is invoked, status indicates the result:
+ * RPC_STATUS_SUCCESS : We got a successful response from the nsm daemon.
+ *                      data is NSM1_UNMONALLres
+ * RPC_STATUS_ERROR   : An error occured when trying to contact the nsm daemon.
+ *                      data is the error string.
+ * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
+ *                     data is NULL.
+ */
+struct NSM1_UNMONALLargs;
+int rpc_nsm1_unmonall_async(struct rpc_context *rpc, rpc_cb cb, struct NSM1_UNMONALLargs *args, void *private_data);
+
+/*
+ * Call NSM/SIMUCRASH
+ * Call the SIMUCRASH procedure for the NSM protocol
+ *
+ * Function returns
+ *  0 : The call was initiated. The callback will be invoked when the call completes.
+ * <0 : An error occured when trying to set up the call. The callback will not be invoked.
+ *
+ * When the callback is invoked, status indicates the result:
+ * RPC_STATUS_SUCCESS : We got a successful response from the nsm daemon.
+ *                      data is NULL
+ * RPC_STATUS_ERROR   : An error occured when trying to contact the nsm daemon.
+ *                      data is the error string.
+ * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
+ *                     data is NULL.
+ */
+int rpc_nsm1_simucrash_async(struct rpc_context *rpc, rpc_cb cb, void *private_data);
+
+/*
+ * Call NSM/NOTIFY
+ * Call the NOTIFY procedure for the NSM protocol
+ *
+ * Function returns
+ *  0 : The call was initiated. The callback will be invoked when the call completes.
+ * <0 : An error occured when trying to set up the call. The callback will not be invoked.
+ *
+ * When the callback is invoked, status indicates the result:
+ * RPC_STATUS_SUCCESS : We got a successful response from the nsm daemon.
+ *                      data is NULL
+ * RPC_STATUS_ERROR   : An error occured when trying to contact the nsm daemon.
+ *                      data is the error string.
+ * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
+ *                     data is NULL.
+ */
+struct NSM1_NOTIFYargs;
+int rpc_nsm1_notify_async(struct rpc_context *rpc, rpc_cb cb, struct NSM1_NOTIFYargs *args, void *private_data);
 
 #endif

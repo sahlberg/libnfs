@@ -13,22 +13,9 @@
  */
 const NSM_MAXSTRLEN = 1024;
 
-struct nsm_name {
-    string mon_name<NSM_MAXSTRLEN>;
-};
-
 enum nsmstat1 {
     NSM_STAT_SUCC = 0,   /*  NSM agrees to monitor.  */
     NSM_STAT_FAIL = 1    /*  NSM cannot monitor.  */
-};
-
-struct nsm_stat_res {
-    nsmstat1 res;
-    int      state;
-};
-
-struct nsm_stat {
-    int state;    /*  state number of NSM  */
 };
 
 struct nsm_my_id {
@@ -43,12 +30,42 @@ struct nsm_mon_id {
     struct nsm_my_id my_id;
 };
 
-struct nsm_mon {
+struct NSM1_STATres {
+    nsmstat1 res;
+    int      state;
+};
+
+struct NSM1_STATargs {
+    string mon_name<NSM_MAXSTRLEN>;
+};
+
+struct NSM1_MONres {
+    nsmstat1 res;
+    int      state;
+};
+
+struct NSM1_MONargs {
     struct nsm_mon_id mon_id;
     opaque priv[16];        /*  private information  */
 };
 
-struct nsm_stat_chg {
+struct NSM1_UNMONres {
+    int state;    /*  state number of NSM  */
+};
+
+struct NSM1_UNMONargs {
+    struct nsm_mon_id mon_id;
+};
+
+struct NSM1_UNMONALLres {
+    int state;    /*  state number of NSM  */
+};
+
+struct NSM1_UNMONALLargs {
+    struct nsm_my_id my_id;
+};
+
+struct NSM1_NOTIFYargs {
     string mon_name<NSM_MAXSTRLEN>;
     int    state;
 };
@@ -59,12 +76,12 @@ struct nsm_stat_chg {
 program NSM_PROGRAM {
     version NSM_V1 {
         void NSM1_NULL(void) = 0;
-        struct nsm_stat_res NSM1_STAT(struct nsm_name) = 1;
-        struct nsm_stat_res NSM1_MON(struct nsm_mon) = 2;
-        struct nsm_stat NSM1_UNMON(struct nsm_mon_id) = 3;
-        struct nsm_stat NSM1_UNMON_ALL(struct nsm_my_id) = 4;    
+        struct NSM1_STATres NSM1_STAT(struct NSM1_STATargs) = 1;
+        struct NSM1_MONres NSM1_MON(struct NSM1_MONargs) = 2;
+        struct NSM1_UNMONres NSM1_UNMON(struct NSM1_UNMONargs) = 3;
+        struct NSM1_UNMONALLres NSM1_UNMON_ALL(struct NSM1_UNMONALLargs) = 4; 
         void NSM1_SIMU_CRASH(void) = 5;
-        void NSM1_NOTIFY(struct nsm_stat_chg) = 6;
+        void NSM1_NOTIFY(struct NSM1_NOTIFYargs) = 6;
     } = 1;
 } = 100024;
 

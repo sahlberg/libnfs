@@ -15,27 +15,11 @@ extern "C" {
 
 #define NSM_MAXSTRLEN 1024
 
-struct nsm_name {
-	char *mon_name;
-};
-typedef struct nsm_name nsm_name;
-
 enum nsmstat1 {
 	NSM_STAT_SUCC = 0,
 	NSM_STAT_FAIL = 1,
 };
 typedef enum nsmstat1 nsmstat1;
-
-struct nsm_stat_res {
-	nsmstat1 res;
-	int state;
-};
-typedef struct nsm_stat_res nsm_stat_res;
-
-struct nsm_stat {
-	int state;
-};
-typedef struct nsm_stat nsm_stat;
 
 struct nsm_my_id {
 	char *my_name;
@@ -51,17 +35,54 @@ struct nsm_mon_id {
 };
 typedef struct nsm_mon_id nsm_mon_id;
 
-struct nsm_mon {
+struct NSM1_STATres {
+	nsmstat1 res;
+	int state;
+};
+typedef struct NSM1_STATres NSM1_STATres;
+
+struct NSM1_STATargs {
+	char *mon_name;
+};
+typedef struct NSM1_STATargs NSM1_STATargs;
+
+struct NSM1_MONres {
+	nsmstat1 res;
+	int state;
+};
+typedef struct NSM1_MONres NSM1_MONres;
+
+struct NSM1_MONargs {
 	struct nsm_mon_id mon_id;
 	char priv[16];
 };
-typedef struct nsm_mon nsm_mon;
+typedef struct NSM1_MONargs NSM1_MONargs;
 
-struct nsm_stat_chg {
+struct NSM1_UNMONres {
+	int state;
+};
+typedef struct NSM1_UNMONres NSM1_UNMONres;
+
+struct NSM1_UNMONargs {
+	struct nsm_mon_id mon_id;
+};
+typedef struct NSM1_UNMONargs NSM1_UNMONargs;
+
+struct NSM1_UNMONALLres {
+	int state;
+};
+typedef struct NSM1_UNMONALLres NSM1_UNMONALLres;
+
+struct NSM1_UNMONALLargs {
+	struct nsm_my_id my_id;
+};
+typedef struct NSM1_UNMONALLargs NSM1_UNMONALLargs;
+
+struct NSM1_NOTIFYargs {
 	char *mon_name;
 	int state;
 };
-typedef struct nsm_stat_chg nsm_stat_chg;
+typedef struct NSM1_NOTIFYargs NSM1_NOTIFYargs;
 
 #define NSM_PROGRAM 100024
 #define NSM_V1 1
@@ -71,23 +92,23 @@ typedef struct nsm_stat_chg nsm_stat_chg;
 extern  void * nsm1_null_1(void *, CLIENT *);
 extern  void * nsm1_null_1_svc(void *, struct svc_req *);
 #define NSM1_STAT 1
-extern  struct nsm_stat_res * nsm1_stat_1(struct nsm_name *, CLIENT *);
-extern  struct nsm_stat_res * nsm1_stat_1_svc(struct nsm_name *, struct svc_req *);
+extern  struct NSM1_STATres * nsm1_stat_1(struct NSM1_STATargs *, CLIENT *);
+extern  struct NSM1_STATres * nsm1_stat_1_svc(struct NSM1_STATargs *, struct svc_req *);
 #define NSM1_MON 2
-extern  struct nsm_stat_res * nsm1_mon_1(struct nsm_mon *, CLIENT *);
-extern  struct nsm_stat_res * nsm1_mon_1_svc(struct nsm_mon *, struct svc_req *);
+extern  struct NSM1_MONres * nsm1_mon_1(struct NSM1_MONargs *, CLIENT *);
+extern  struct NSM1_MONres * nsm1_mon_1_svc(struct NSM1_MONargs *, struct svc_req *);
 #define NSM1_UNMON 3
-extern  struct nsm_stat * nsm1_unmon_1(struct nsm_mon_id *, CLIENT *);
-extern  struct nsm_stat * nsm1_unmon_1_svc(struct nsm_mon_id *, struct svc_req *);
+extern  struct NSM1_UNMONres * nsm1_unmon_1(struct NSM1_UNMONargs *, CLIENT *);
+extern  struct NSM1_UNMONres * nsm1_unmon_1_svc(struct NSM1_UNMONargs *, struct svc_req *);
 #define NSM1_UNMON_ALL 4
-extern  struct nsm_stat * nsm1_unmon_all_1(struct nsm_my_id *, CLIENT *);
-extern  struct nsm_stat * nsm1_unmon_all_1_svc(struct nsm_my_id *, struct svc_req *);
+extern  struct NSM1_UNMONALLres * nsm1_unmon_all_1(struct NSM1_UNMONALLargs *, CLIENT *);
+extern  struct NSM1_UNMONALLres * nsm1_unmon_all_1_svc(struct NSM1_UNMONALLargs *, struct svc_req *);
 #define NSM1_SIMU_CRASH 5
 extern  void * nsm1_simu_crash_1(void *, CLIENT *);
 extern  void * nsm1_simu_crash_1_svc(void *, struct svc_req *);
 #define NSM1_NOTIFY 6
-extern  void * nsm1_notify_1(struct nsm_stat_chg *, CLIENT *);
-extern  void * nsm1_notify_1_svc(struct nsm_stat_chg *, struct svc_req *);
+extern  void * nsm1_notify_1(struct NSM1_NOTIFYargs *, CLIENT *);
+extern  void * nsm1_notify_1_svc(struct NSM1_NOTIFYargs *, struct svc_req *);
 extern int nsm_program_1_freeresult (SVCXPRT *, zdrproc_t, caddr_t);
 
 #else /* K&R C */
@@ -95,17 +116,17 @@ extern int nsm_program_1_freeresult (SVCXPRT *, zdrproc_t, caddr_t);
 extern  void * nsm1_null_1();
 extern  void * nsm1_null_1_svc();
 #define NSM1_STAT 1
-extern  struct nsm_stat_res * nsm1_stat_1();
-extern  struct nsm_stat_res * nsm1_stat_1_svc();
+extern  struct NSM1_STATres * nsm1_stat_1();
+extern  struct NSM1_STATres * nsm1_stat_1_svc();
 #define NSM1_MON 2
-extern  struct nsm_stat_res * nsm1_mon_1();
-extern  struct nsm_stat_res * nsm1_mon_1_svc();
+extern  struct NSM1_MONres * nsm1_mon_1();
+extern  struct NSM1_MONres * nsm1_mon_1_svc();
 #define NSM1_UNMON 3
-extern  struct nsm_stat * nsm1_unmon_1();
-extern  struct nsm_stat * nsm1_unmon_1_svc();
+extern  struct NSM1_UNMONres * nsm1_unmon_1();
+extern  struct NSM1_UNMONres * nsm1_unmon_1_svc();
 #define NSM1_UNMON_ALL 4
-extern  struct nsm_stat * nsm1_unmon_all_1();
-extern  struct nsm_stat * nsm1_unmon_all_1_svc();
+extern  struct NSM1_UNMONALLres * nsm1_unmon_all_1();
+extern  struct NSM1_UNMONALLres * nsm1_unmon_all_1_svc();
 #define NSM1_SIMU_CRASH 5
 extern  void * nsm1_simu_crash_1();
 extern  void * nsm1_simu_crash_1_svc();
@@ -118,24 +139,32 @@ extern int nsm_program_1_freeresult ();
 /* the zdr functions */
 
 #if defined(__STDC__) || defined(__cplusplus)
-extern  bool_t zdr_nsm_name (ZDR *, nsm_name*);
 extern  bool_t zdr_nsmstat1 (ZDR *, nsmstat1*);
-extern  bool_t zdr_nsm_stat_res (ZDR *, nsm_stat_res*);
-extern  bool_t zdr_nsm_stat (ZDR *, nsm_stat*);
 extern  bool_t zdr_nsm_my_id (ZDR *, nsm_my_id*);
 extern  bool_t zdr_nsm_mon_id (ZDR *, nsm_mon_id*);
-extern  bool_t zdr_nsm_mon (ZDR *, nsm_mon*);
-extern  bool_t zdr_nsm_stat_chg (ZDR *, nsm_stat_chg*);
+extern  bool_t zdr_NSM1_STATres (ZDR *, NSM1_STATres*);
+extern  bool_t zdr_NSM1_STATargs (ZDR *, NSM1_STATargs*);
+extern  bool_t zdr_NSM1_MONres (ZDR *, NSM1_MONres*);
+extern  bool_t zdr_NSM1_MONargs (ZDR *, NSM1_MONargs*);
+extern  bool_t zdr_NSM1_UNMONres (ZDR *, NSM1_UNMONres*);
+extern  bool_t zdr_NSM1_UNMONargs (ZDR *, NSM1_UNMONargs*);
+extern  bool_t zdr_NSM1_UNMONALLres (ZDR *, NSM1_UNMONALLres*);
+extern  bool_t zdr_NSM1_UNMONALLargs (ZDR *, NSM1_UNMONALLargs*);
+extern  bool_t zdr_NSM1_NOTIFYargs (ZDR *, NSM1_NOTIFYargs*);
 
 #else /* K&R C */
-extern bool_t zdr_nsm_name ();
 extern bool_t zdr_nsmstat1 ();
-extern bool_t zdr_nsm_stat_res ();
-extern bool_t zdr_nsm_stat ();
 extern bool_t zdr_nsm_my_id ();
 extern bool_t zdr_nsm_mon_id ();
-extern bool_t zdr_nsm_mon ();
-extern bool_t zdr_nsm_stat_chg ();
+extern bool_t zdr_NSM1_STATres ();
+extern bool_t zdr_NSM1_STATargs ();
+extern bool_t zdr_NSM1_MONres ();
+extern bool_t zdr_NSM1_MONargs ();
+extern bool_t zdr_NSM1_UNMONres ();
+extern bool_t zdr_NSM1_UNMONargs ();
+extern bool_t zdr_NSM1_UNMONALLres ();
+extern bool_t zdr_NSM1_UNMONALLargs ();
+extern bool_t zdr_NSM1_NOTIFYargs ();
 
 #endif /* K&R C */
 
