@@ -1868,7 +1868,7 @@ static void nfs_creat_1_cb(struct rpc_context *rpc, int status, void *command_da
 	if (res->status != NFS3_OK) {
 		rpc_set_error(nfs->rpc, "NFS: CREATE of %s/%s failed with %s(%d)", data->saved_path, str, nfsstat3_to_str(res->status), nfsstat3_to_errno(res->status));
 		data->cb(nfsstat3_to_errno(res->status), nfs, rpc_get_error(nfs->rpc), data->private_data);
-
+		free_nfs_cb_data(data);
 		return;
 	}
 
