@@ -12,4 +12,3 @@ Requires:
 Conflicts:
 Libs: -L${libdir} -lnfs
 Cflags: -I${includedir}
-Requires.private: @LIBNFS_PC_REQ_PRIVATE@
