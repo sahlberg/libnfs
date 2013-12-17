@@ -121,6 +121,10 @@ AC_CHECK_HEADERS([sys/statvfs.h])
 dnl Check for sys/socket.h
 AC_CHECK_HEADERS([sys/socket.h])
 
+# check for netinet/tcp.h
+dnl Check for netinet/tcp.h
+AC_CHECK_HEADERS([netinet/tcp.h])
+
 # check for netinet/in.h
 dnl Check for netinet/in.h
 AC_CHECK_HEADERS([netinet/in.h])

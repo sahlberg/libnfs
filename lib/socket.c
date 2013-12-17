@@ -46,6 +46,10 @@
 #include <sys/socket.h>
 #endif
 
+#ifdef HAVE_NETINET_TCP_H
+#include <netinet/tcp.h>
+#endif
+
 #ifdef HAVE_NETDB_H
 #include <netdb.h>
 #endif
@@ -91,6 +95,26 @@ static void set_nonblocking(int fd)
         fcntl(fd, F_SETFL, v | O_NONBLOCK);
 #endif //FIXME
 }
+
+#ifdef HAVE_NETINET_TCP_H
+int set_tcp_sockopt(int sockfd, int optname, int value)
+{
+	int level;
+
+	#if defined(__FreeBSD__) || defined(__sun) || (defined(__APPLE__) && defined(__MACH__))
+	struct protoent *buf;
+
+	if ((buf = getprotobyname("tcp")) != NULL)
+		level = buf->p_proto;
+	else
+		return -1;
+	#else
+		level = SOL_TCP;
+	#endif
+
+	return setsockopt(sockfd, level, optname, (char *)&value, sizeof(value));
+}
+#endif
 
 int rpc_get_fd(struct rpc_context *rpc)
 {
@@ -378,6 +402,11 @@ static int rpc_connect_sockaddr_async(struct rpc_context *rpc, struct sockaddr_s
 	case AF_INET:
 		socksize = sizeof(struct sockaddr_in);
 		rpc->fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+#ifdef HAVE_NETINET_TCP_H
+		if (getenv("LIBNFS_TCP_SYNCNT") != NULL) {
+			set_tcp_sockopt(rpc->fd, TCP_SYNCNT, atoi(getenv("LIBNFS_TCP_SYNCNT")));
+		}
+#endif
 		break;
 	default:
 		rpc_set_error(rpc, "Can not handle AF_FAMILY:%d", s->ss_family);
