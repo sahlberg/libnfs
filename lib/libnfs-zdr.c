@@ -219,6 +219,9 @@ bool_t libnfs_zdr_opaque(ZDR *zdrs, char *objp, uint32_t size)
 	case ZDR_ENCODE:
 		memcpy(&zdrs->buf[zdrs->pos], objp, size);
 		zdrs->pos += size;
+		if (zdrs->pos & 3) {
+			memset(&zdrs->buf[zdrs->pos], 0x00, 4 - (zdrs->pos & 3));
+		}
 		zdrs->pos = (zdrs->pos + 3) & ~3;
 		return TRUE;
 	case ZDR_DECODE:
