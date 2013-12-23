@@ -59,6 +59,7 @@ struct file_context {
 	int fd;
 	struct nfs_context *nfs;
 	struct nfsfh *nfsfh;
+	struct nfs_url *url;
 };
 
 void usage(void)
@@ -81,6 +82,7 @@ free_file_context(struct file_context *file_context)
 	if (file_context->nfs != NULL) {
 		nfs_destroy_context(file_context->nfs);
 	}
+	nfs_destroy_url(file_context->url);
 	free(file_context);
 }
 
@@ -120,7 +122,6 @@ static struct file_context *
 open_file(const char *url, int flags)
 {
 	struct file_context *file_context;
-	char *server = NULL, *path = NULL, *file = NULL, *strp;
 
 	file_context = malloc(sizeof(struct file_context));
 	if (file_context == NULL) {
@@ -132,7 +133,6 @@ open_file(const char *url, int flags)
 	file_context->nfs    = NULL;
 	file_context->nfsfh  = NULL;
 	
-
 	if (strncmp(url, "nfs://", 6)) {
 		file_context->is_nfs = 0;
 		file_context->fd = open(url, flags, 0660);
@@ -153,77 +153,40 @@ open_file(const char *url, int flags)
 		return NULL;
 	}
 
-	server = strdup(url + 6);
-	if (server == NULL) {
-		fprintf(stderr, "Failed to strdup server string\n");
-		free_file_context(file_context);
-		return NULL;
-	}
-	if (server[0] == '/' || server[0] == '\0') {
-		fprintf(stderr, "Invalid server string.\n");
-		free(server);
-		free_file_context(file_context);
-		return NULL;
-	}
-	strp = strchr(server, '/');
-	path = strdup(strp);
-	*strp = 0;
-	if (path == NULL) {
-		fprintf(stderr, "Invalid URL specified.\n");
-		free(server);
+	file_context->url = nfs_parse_url_full(file_context->nfs, url);
+	if (file_context->url == NULL) {
+		fprintf(stderr, "%s\n", nfs_get_error(file_context->nfs));
 		free_file_context(file_context);
 		return NULL;
 	}
 
-	strp = strrchr(path, '/');
-	if (strp == NULL) {
-		fprintf(stderr, "Invalid URL specified.\n");
-		free(path);
-		free(server);
-		free_file_context(file_context);
-		return NULL;
-	}
-	file = strdup(strp);
-	*strp = 0;
-
-	if (nfs_mount(file_context->nfs, server, path) != 0) {
- 		fprintf(stderr, "Failed to mount nfs share : %s\n",
+	if (nfs_mount(file_context->nfs, file_context->url->server,
+				file_context->url->path) != 0) {
+		fprintf(stderr, "Failed to mount nfs share : %s\n",
 			       nfs_get_error(file_context->nfs));
-		free(file);
-		free(path);
-		free(server);
 		free_file_context(file_context);
 		return NULL;
 	}
 
 	if (flags == O_RDONLY) {
-		if (nfs_open(file_context->nfs, file, flags,
+		if (nfs_open(file_context->nfs, file_context->url->file, flags,
 				&file_context->nfsfh) != 0) {
- 			fprintf(stderr, "Failed to open file : %s\n",
+ 			fprintf(stderr, "Failed to open file %s: %s\n",
+				       file_context->url->file,
 				       nfs_get_error(file_context->nfs));
-			free(file);
-			free(path);
-			free(server);
 			free_file_context(file_context);
 			return NULL;
 		}
 	} else {
-		if (nfs_creat(file_context->nfs, file, 0660,
+		if (nfs_creat(file_context->nfs, file_context->url->file, 0660,
 				&file_context->nfsfh) != 0) {
- 			fprintf(stderr, "Failed to creat file %s  %s\n", file,
+ 			fprintf(stderr, "Failed to creat file %s: %s\n",
+				       file_context->url->file,
 				       nfs_get_error(file_context->nfs));
-			free(file);
-			free(path);
-			free(server);
 			free_file_context(file_context);
 			return NULL;
 		}
 	}
-
-	free(file);
-	free(path);
-	free(server);
-
 	return file_context;
 }
 
