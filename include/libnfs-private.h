@@ -56,9 +56,10 @@ struct rpc_fragment {
 };
 
 #define RPC_CONTEXT_MAGIC 0xc6e46435
+#define RPC_PARAM_UNDEFINED -1
 
 struct rpc_context {
-        uint32_t magic;
+	uint32_t magic;
 	int fd;
 	int is_connected;
 
@@ -70,29 +71,32 @@ struct rpc_context {
 	struct AUTH *auth;
 	uint32_t xid;
 
-       /* buffer used for encoding RPC PDU */
-       char *encodebuf;
-       int encodebuflen;
+	/* buffer used for encoding RPC PDU */
+	char *encodebuf;
+	int encodebuflen;
 
-       struct rpc_pdu *outqueue;
-       struct sockaddr_storage udp_src;
-       struct rpc_pdu *waitpdu;
+	struct rpc_pdu *outqueue;
+	struct sockaddr_storage udp_src;
+	struct rpc_pdu *waitpdu;
 
-       uint32_t inpos;
-       uint32_t insize;
-       char *inbuf;
+	uint32_t inpos;
+	uint32_t insize;
+	char *inbuf;
 
-       /* special fields for UDP, which can sometimes be BROADCASTed */
-       int is_udp;
-       struct sockaddr *udp_dest;
-       int is_broadcast;
+	/* special fields for UDP, which can sometimes be BROADCASTed */
+	int is_udp;
+	struct sockaddr *udp_dest;
+	int is_broadcast;
 
-       /* track the address we connect to so we can auto-reconnect on session failure */
-       struct sockaddr_storage s;
-       int auto_reconnect;
+	/* track the address we connect to so we can auto-reconnect on session failure */
+	struct sockaddr_storage s;
+	int auto_reconnect;
 
 	/* fragment reassembly */
 	struct rpc_fragment *fragments;
+	
+	/* parameters passable via URL */
+	int tcp_syncnt;
 };
 
 struct rpc_pdu {
@@ -134,6 +138,8 @@ struct sockaddr *rpc_get_recv_sockaddr(struct rpc_context *rpc);
 
 void rpc_set_autoreconnect(struct rpc_context *rpc);
 void rpc_unset_autoreconnect(struct rpc_context *rpc);
+
+void rpc_set_tcp_syncnt(struct rpc_context *rpc, int v);
 
 int rpc_add_fragment(struct rpc_context *rpc, char *data, uint64_t size);
 void rpc_free_all_fragments(struct rpc_context *rpc);

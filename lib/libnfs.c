@@ -280,6 +280,9 @@ flags:
 		if (strp2) {
 			*strp2 = 0;
 			strp2++;
+			if (!strncmp(strp, "tcp-syncnt", 10)) {
+				rpc_set_tcp_syncnt(nfs->rpc, atoi(strp2));
+			}
 		}
 	}
 
