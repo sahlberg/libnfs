@@ -282,6 +282,10 @@ flags:
 			strp2++;
 			if (!strncmp(strp, "tcp-syncnt", 10)) {
 				rpc_set_tcp_syncnt(nfs->rpc, atoi(strp2));
+			} else if (!strncmp(strp, "uid", 3)) {
+				rpc_set_uid(nfs->rpc, atoi(strp2));
+			} else if (!strncmp(strp, "gid", 3)) {
+				rpc_set_gid(nfs->rpc, atoi(strp2));
 			}
 		}
 	}

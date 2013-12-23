@@ -77,7 +77,6 @@ EXTERN int nfs_queue_length(struct nfs_context *nfs);
 struct AUTH;
 EXTERN void nfs_set_auth(struct nfs_context *nfs, struct AUTH *auth);
 
-
 /*
  * When an operation failed, this function can extract a detailed error string.
  */

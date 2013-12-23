@@ -97,6 +97,8 @@ struct rpc_context {
 	
 	/* parameters passable via URL */
 	int tcp_syncnt;
+	int uid;
+	int gid;
 };
 
 struct rpc_pdu {
@@ -140,6 +142,8 @@ void rpc_set_autoreconnect(struct rpc_context *rpc);
 void rpc_unset_autoreconnect(struct rpc_context *rpc);
 
 void rpc_set_tcp_syncnt(struct rpc_context *rpc, int v);
+void rpc_set_uid(struct rpc_context *rpc, int uid);
+void rpc_set_gid(struct rpc_context *rpc, int gid);
 
 int rpc_add_fragment(struct rpc_context *rpc, char *data, uint64_t size);
 void rpc_free_all_fragments(struct rpc_context *rpc);
