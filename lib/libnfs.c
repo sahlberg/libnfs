@@ -173,7 +173,7 @@ char *nfs_get_error(struct nfs_context *nfs)
 	return rpc_get_error(nfs->rpc);
 };
 
-static struct nfs_url *nfs_parse_url(struct nfs_context *nfs, char *url, int dir, int incomplete)
+static struct nfs_url *nfs_parse_url(struct nfs_context *nfs, const char *url, int dir, int incomplete)
 {
 	struct nfs_url *urls;
 	char *strp, *flagsp, *strp2;

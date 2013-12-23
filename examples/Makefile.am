@@ -1,4 +1,4 @@
-noinst_PROGRAMS = nfsclient-async nfsclient-raw nfsclient-sync nfsclient-bcast nfsclient-listservers nfs-ls nfs-cp
+noinst_PROGRAMS = nfsclient-async nfsclient-raw nfsclient-sync nfsclient-bcast nfsclient-listservers nfs-ls nfs-cp nfs-io
 
 AM_CPPFLAGS = \
 	-I$(abs_top_srcdir)/include \
@@ -14,6 +14,8 @@ AM_LDFLAGS = ../lib/.libs/libnfs.la -lpopt
 nfs_ls_SOURCES = nfs-ls.c
 
 nfs_cp_SOURCES = nfs-cp.c
+
+nfs_io_SOURCES = nfs-io.c
 
 nfsclient_async_SOURCES = nfsclient-async.c
 
