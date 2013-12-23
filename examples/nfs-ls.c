@@ -63,11 +63,27 @@ struct client {
        int is_finished;
 };
 
-	int recursive = 0, summary = 0;
+int recursive = 0, summary = 0, discovery = 0;
 
 void print_usage(void)
 {
-	fprintf(stderr, "Usage: nfs-ls [-?|--help|--usage] [-R|--recursive] [-s|--summary] <url>\n");
+	fprintf(stderr, "Usage: nfs-ls [-?|--help|--usage] [-R|--recursive] [-s|--summary] [-D|--discovery] <url>\n");
+}
+
+int process_server(const char *server) {
+	struct exportnode *exports;
+	struct exportnode *export;
+
+	exports = mount_getexports(server);
+	if (exports == NULL) {
+		fprintf(stderr, "Failed to get exports for server %s.\n", server);
+		return -1;
+	}
+	for (export=exports; export; export = export->ex_next) {
+		printf("nfs://%s%s\n", server, export->ex_dir);
+	}
+	mount_free_export_list(exports);
+	return 0;
 }
 
 void process_dir(struct nfs_context *nfs, char *dir, int level) {
@@ -155,11 +171,9 @@ int main(int argc, char *argv[])
 	int i, ret = 1, res;
 	uint64_t offset;
 	struct client client;
-	struct nfsfh  *nfsfh;
 	struct statvfs stvfs;
 	struct nfs_url *url;
 	exports export, tmp;
-	char *server = NULL, *path = NULL, *strp;
 
 #ifdef WIN32
 	if (WSAStartup(MAKEWORD(2,2), &wsaData) != 0) {
@@ -182,7 +196,9 @@ int main(int argc, char *argv[])
 			recursive++;
 		} else if (!strcmp(argv[i], "-s") || !strcmp(argv[i], "--summary")) {
 			summary++;
-		} else {
+		} else if (!strcmp(argv[i], "-D") || !strcmp(argv[i], "--discovery")) {
+			discovery++;
+		} else{
 			goto finished;
 		}
 	}
@@ -191,6 +207,39 @@ int main(int argc, char *argv[])
 	if (nfs == NULL) {
 		printf("failed to init context\n");
 		goto finished;
+	}
+
+	if (discovery) {
+		url = nfs_parse_url_incomplete(nfs, argv[argc - 1]);
+		if (url == NULL) {
+			fprintf(stderr, "%s\n", nfs_get_error(nfs));
+			goto finished;
+		}
+		if (!url->server) {
+			struct nfs_server_list *srvrs;
+			struct nfs_server_list *srv;
+
+			srvrs = nfs_find_local_servers();
+			if (srvrs == NULL) {
+				fprintf(stderr, "Failed to find local servers.\n");
+				goto finished;
+			}
+			for (srv=srvrs; srv; srv = srv->next) {
+				if (recursive) {
+					process_server(srv->addr);
+				} else {
+					printf("nfs://%s\n", srv->addr);
+				}
+			}
+			free_nfs_srvr_list(srvrs);
+			ret = 0;
+			goto finished;
+		}
+		if (url->server && !url->path) {
+			ret = process_server(url->server);
+			goto finished;
+		}
+		nfs_destroy_url(url);
 	}
 
 	url = nfs_parse_url_dir(nfs, argv[argc - 1]);
@@ -203,7 +252,7 @@ int main(int argc, char *argv[])
 	client.export = url->path;
 	client.is_finished = 0;
 
-	if (nfs_mount(nfs, client.server, client.export) != 0) {
+	if ((ret = nfs_mount(nfs, client.server, client.export)) != 0) {
  		fprintf(stderr, "Failed to mount nfs share : %s\n", nfs_get_error(nfs));
 		goto finished;
 	}
@@ -219,17 +268,13 @@ int main(int argc, char *argv[])
 	}
 
 	ret = 0;
-
 finished:
-	if (ret) {
+	if (ret > 0) {
 		print_usage();
 	}
-	free(server);
-	free(path);
 	nfs_destroy_url(url);
-	if (nfs != NULL) {		
+	if (nfs != NULL) {
 		nfs_destroy_context(nfs);
 	}
 	return ret;
 }
-
