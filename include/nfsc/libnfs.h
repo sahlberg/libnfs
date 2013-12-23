@@ -28,6 +28,12 @@
 struct nfs_context;
 struct rpc_context;
 
+struct nfs_url {
+	char *server;
+	char *path;
+	char *file;
+};
+
 #if defined(WIN32)
 #define EXTERN __declspec( dllexport )
 #else
@@ -104,6 +110,31 @@ EXTERN struct nfs_context *nfs_init_context(void);
  * Destroy an nfs context.
  */
 EXTERN void nfs_destroy_context(struct nfs_context *nfs);
+
+
+/*
+ * Parse a complete NFS URL including, server, path and
+ * filename. Fail if any component is missing.
+ */
+EXTERN struct nfs_url *nfs_parse_url_full(struct nfs_context *nfs, const char *url);
+
+/*
+ * Parse an NFS URL, but do not split path and file. File
+ * in the resulting struct remains NULL.
+ */
+EXTERN struct nfs_url *nfs_parse_url_dir(struct nfs_context *nfs, const char *url);
+
+/*
+ * Parse an NFS URL, but do not fail if file, path or even server is missing.
+ * Check elements of the resulting struct for NULL.
+ */
+EXTERN struct nfs_url *nfs_parse_url_incomplete(struct nfs_context *nfs, const char *url);
+
+
+/*
+ * Free the URL struct returned by the nfs_parse_url_* functions.
+ */
+EXTERN void nfs_destroy_url(struct nfs_url *url);
 
 
 struct nfsfh;

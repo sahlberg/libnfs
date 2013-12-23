@@ -152,13 +152,13 @@ void process_dir(struct nfs_context *nfs, char *dir, int level) {
 int main(int argc, char *argv[])
 {
 	struct nfs_context *nfs = NULL;
-	int i, ret, res;
+	int i, ret = 1, res;
 	uint64_t offset;
 	struct client client;
 	struct nfsfh  *nfsfh;
 	struct statvfs stvfs;
+	struct nfs_url *url;
 	exports export, tmp;
-	const char *url = NULL;
 	char *server = NULL, *path = NULL, *strp;
 
 #ifdef WIN32
@@ -172,12 +172,9 @@ int main(int argc, char *argv[])
 	aros_init_socket();
 #endif
 
-	url = argv[argc - 1];
-
-	if (url == NULL) {
+	if (argc < 2) {
 		fprintf(stderr, "No URL specified.\n");
-		print_usage();
-		exit(10);
+		goto finished;
 	}
 
 	for (i=1; i < argc -1; i++) {
@@ -186,51 +183,9 @@ int main(int argc, char *argv[])
 		} else if (!strcmp(argv[i], "-s") || !strcmp(argv[i], "--summary")) {
 			summary++;
 		} else {
-			print_usage();
-			exit(10);
+			goto finished;
 		}
 	}
-
-	if (strncmp(url, "nfs://", 6)) {
-		fprintf(stderr, "Invalid URL specified.\n");
-		print_usage();
-		exit(10);
-	}
-
-	server = strdup(url + 6);
-	if (server == NULL) {
-		fprintf(stderr, "Failed to strdup server string\n");
-		exit(10);
-	}
-	if (server[0] == '/' || server[0] == '\0') {
-		fprintf(stderr, "Invalid server string.\n");
-		free(server);
-		exit(10);
-	}
-	strp = strchr(server, '/');
-	if (strp == NULL) {
-		fprintf(stderr, "Invalid URL specified.\n");
-		print_usage();
-		free(server);
-		exit(10);
-	}
-	path = strdup(strp);
-	if (path == NULL) {
-		fprintf(stderr, "Failed to strdup server string\n");
-		free(server);
-		exit(10);
-	}
-	if (path[0] != '/') {
-		fprintf(stderr, "Invalid path.\n");
-		free(server);
-		free(path);
-		exit(10);
-	}
-	*strp = 0;
-
-	client.server = server;
-	client.export = path;
-	client.is_finished = 0;
 
 	nfs = nfs_init_context();
 	if (nfs == NULL) {
@@ -238,28 +193,43 @@ int main(int argc, char *argv[])
 		goto finished;
 	}
 
-	ret = nfs_mount(nfs, client.server, client.export);
-	if (ret != 0) {
- 		printf("Failed to mount nfs share : %s\n", nfs_get_error(nfs));
+	url = nfs_parse_url_dir(nfs, argv[argc - 1]);
+	if (url == NULL) {
+		fprintf(stderr, "%s\n", nfs_get_error(nfs));
+		goto finished;
+	}
+
+	client.server = url->server;
+	client.export = url->path;
+	client.is_finished = 0;
+
+	if (nfs_mount(nfs, client.server, client.export) != 0) {
+ 		fprintf(stderr, "Failed to mount nfs share : %s\n", nfs_get_error(nfs));
 		goto finished;
 	}
 
 	process_dir(nfs, "", 16);
 
 	if (summary) {
-		ret = nfs_statvfs(nfs, "/", &stvfs);
-		if (ret != 0) {
+		if (nfs_statvfs(nfs, "/", &stvfs) != 0) {
 			goto finished;
 		}
 		printf("\n%12" PRId64 " of %12" PRId64 " bytes free.\n",
 		       stvfs.f_frsize * stvfs.f_bfree, stvfs.f_frsize * stvfs.f_blocks);
 	}
+
+	ret = 0;
+
 finished:
+	if (ret) {
+		print_usage();
+	}
 	free(server);
 	free(path);
+	nfs_destroy_url(url);
 	if (nfs != NULL) {		
 		nfs_destroy_context(nfs);
 	}
-	return 0;
+	return ret;
 }
 
