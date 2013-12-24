@@ -628,7 +628,7 @@ zdr_set_mode3 (ZDR *zdrs, set_mode3 *objp)
 	register int32_t *buf;
 	buf = NULL;
 
-	if (!zdr_bool (zdrs, &objp->set_it))
+	 if (!zdr_bool (zdrs, &objp->set_it))
 		 return FALSE;
 	switch (objp->set_it) {
 	case TRUE:
