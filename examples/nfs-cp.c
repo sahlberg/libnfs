@@ -297,7 +297,7 @@ int main(int argc, char *argv[])
 
 		off += count;
 	}
-	printf("copied %d bytes\n", (int)count);
+	printf("copied %d bytes\n", (int)off);
 
 	free_file_context(src);
 	free_file_context(dst);
