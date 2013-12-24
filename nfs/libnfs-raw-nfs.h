@@ -917,6 +917,331 @@ struct SETATTR3res {
 	} SETATTR3res_u;
 };
 typedef struct SETATTR3res SETATTR3res;
+#define FHSIZE2 32
+
+typedef char fhandle2[FHSIZE2];
+
+enum ftype2 {
+	NF2NON = 0,
+	NF2REG = 1,
+	NF2DIR = 2,
+	NF2BLK = 3,
+	NF2CHR = 4,
+	NF2LNK = 5,
+};
+typedef enum ftype2 ftype2;
+
+struct fattr2 {
+	ftype2 type;
+	u_int mode;
+	u_int nlink;
+	u_int uid;
+	u_int gid;
+	u_int size;
+	u_int blocksize;
+	u_int rdev;
+	u_int blocks;
+	u_int fsid;
+	u_int fileid;
+	nfstime3 atime;
+	nfstime3 mtime;
+	nfstime3 ctime;
+};
+typedef struct fattr2 fattr2;
+
+struct sattr2 {
+	u_int mode;
+	u_int uid;
+	u_int gid;
+	u_int size;
+	nfstime3 atime;
+	nfstime3 mtime;
+};
+typedef struct sattr2 sattr2;
+#define MAXNAMLEN2 255
+
+typedef char *filename2;
+#define MAXPATHLEN2 1024
+
+typedef char *path2;
+#define NFSMAXDATA2 8192
+
+typedef struct {
+	u_int nfsdata2_len;
+	char *nfsdata2_val;
+} nfsdata2;
+#define NFSCOOKIESIZE2 4
+
+typedef char nfscookie2[NFSCOOKIESIZE2];
+
+struct entry2 {
+	u_int fileid;
+	filename2 name;
+	nfscookie2 cookie;
+	struct entry2 *nextentry;
+};
+typedef struct entry2 entry2;
+
+struct diropargs2 {
+	fhandle2 dir;
+	filename2 name;
+};
+typedef struct diropargs2 diropargs2;
+
+struct GETATTR2args {
+	fhandle2 fhandle;
+};
+typedef struct GETATTR2args GETATTR2args;
+
+struct GETATTR2resok {
+	fattr2 attributes;
+};
+typedef struct GETATTR2resok GETATTR2resok;
+
+struct GETATTR2res {
+	nfsstat3 status;
+	union {
+		GETATTR2resok resok;
+	} GETATTR2res_u;
+};
+typedef struct GETATTR2res GETATTR2res;
+
+struct SETATTR2args {
+	fhandle2 fhandle;
+	sattr2 attributes;
+};
+typedef struct SETATTR2args SETATTR2args;
+
+struct SETATTR2resok {
+	fattr2 attributes;
+};
+typedef struct SETATTR2resok SETATTR2resok;
+
+struct SETATTR2res {
+	nfsstat3 status;
+	union {
+		SETATTR2resok resok;
+	} SETATTR2res_u;
+};
+typedef struct SETATTR2res SETATTR2res;
+
+struct LOOKUP2args {
+	diropargs2 what;
+};
+typedef struct LOOKUP2args LOOKUP2args;
+
+struct LOOKUP2resok {
+	fhandle2 file;
+	fattr2 attributes;
+};
+typedef struct LOOKUP2resok LOOKUP2resok;
+
+struct LOOKUP2res {
+	nfsstat3 status;
+	union {
+		LOOKUP2resok resok;
+	} LOOKUP2res_u;
+};
+typedef struct LOOKUP2res LOOKUP2res;
+
+struct READLINK2args {
+	fhandle2 file;
+};
+typedef struct READLINK2args READLINK2args;
+
+struct READLINK2resok {
+	path2 data;
+};
+typedef struct READLINK2resok READLINK2resok;
+
+struct READLINK2res {
+	nfsstat3 status;
+	union {
+		READLINK2resok resok;
+	} READLINK2res_u;
+};
+typedef struct READLINK2res READLINK2res;
+
+struct READ2args {
+	fhandle2 file;
+	u_int offset;
+	u_int count;
+	u_int totalcount;
+};
+typedef struct READ2args READ2args;
+
+struct READ2resok {
+	fattr2 attributes;
+	nfsdata2 data;
+};
+typedef struct READ2resok READ2resok;
+
+struct READ2res {
+	nfsstat3 status;
+	union {
+		READ2resok resok;
+	} READ2res_u;
+};
+typedef struct READ2res READ2res;
+
+struct WRITE2args {
+	fhandle2 file;
+	u_int beginoffset;
+	u_int offset;
+	u_int totalcount;
+	nfsdata2 data;
+};
+typedef struct WRITE2args WRITE2args;
+
+struct WRITE2resok {
+	fattr2 attributes;
+};
+typedef struct WRITE2resok WRITE2resok;
+
+struct WRITE2res {
+	nfsstat3 status;
+	union {
+		WRITE2resok resok;
+	} WRITE2res_u;
+};
+typedef struct WRITE2res WRITE2res;
+
+struct CREATE2args {
+	diropargs2 where;
+	sattr2 attributes;
+};
+typedef struct CREATE2args CREATE2args;
+
+struct CREATE2resok {
+	fhandle2 file;
+	fattr2 attributes;
+};
+typedef struct CREATE2resok CREATE2resok;
+
+struct CREATE2res {
+	nfsstat3 status;
+	union {
+		CREATE2resok resok;
+	} CREATE2res_u;
+};
+typedef struct CREATE2res CREATE2res;
+
+struct REMOVE2args {
+	diropargs2 what;
+};
+typedef struct REMOVE2args REMOVE2args;
+
+struct REMOVE2res {
+	nfsstat3 status;
+};
+typedef struct REMOVE2res REMOVE2res;
+
+struct RENAME2args {
+	diropargs2 from;
+	diropargs2 to;
+};
+typedef struct RENAME2args RENAME2args;
+
+struct RENAME2res {
+	nfsstat3 status;
+};
+typedef struct RENAME2res RENAME2res;
+
+struct LINK2args {
+	fhandle2 from;
+	diropargs2 to;
+};
+typedef struct LINK2args LINK2args;
+
+struct LINK2res {
+	nfsstat3 status;
+};
+typedef struct LINK2res LINK2res;
+
+struct SYMLINK2args {
+	diropargs2 from;
+	path2 to;
+	sattr2 attributes;
+};
+typedef struct SYMLINK2args SYMLINK2args;
+
+struct SYMLINK2res {
+	nfsstat3 status;
+};
+typedef struct SYMLINK2res SYMLINK2res;
+
+struct MKDIR2args {
+	diropargs2 where;
+	sattr2 attributes;
+};
+typedef struct MKDIR2args MKDIR2args;
+
+struct MKDIR2resok {
+	fhandle2 file;
+	fattr2 attributes;
+};
+typedef struct MKDIR2resok MKDIR2resok;
+
+struct MKDIR2res {
+	nfsstat3 status;
+	union {
+		MKDIR2resok resok;
+	} MKDIR2res_u;
+};
+typedef struct MKDIR2res MKDIR2res;
+
+struct RMDIR2args {
+	diropargs2 what;
+};
+typedef struct RMDIR2args RMDIR2args;
+
+struct RMDIR2res {
+	nfsstat3 status;
+};
+typedef struct RMDIR2res RMDIR2res;
+
+struct READDIR2args {
+	fhandle2 dir;
+	nfscookie2 cookie;
+	u_int count;
+};
+typedef struct READDIR2args READDIR2args;
+
+struct READDIR2resok {
+	entry2 *entries;
+	bool_t eof;
+};
+typedef struct READDIR2resok READDIR2resok;
+
+struct READDIR2res {
+	nfsstat3 status;
+	union {
+		READDIR2resok resok;
+	} READDIR2res_u;
+};
+typedef struct READDIR2res READDIR2res;
+
+struct STATFS2args {
+	fhandle2 dir;
+};
+typedef struct STATFS2args STATFS2args;
+
+struct STATFS2resok {
+	u_int tsize;
+	u_int bsize;
+	u_int blocks;
+	u_int bfree;
+	u_int bavail;
+};
+typedef struct STATFS2resok STATFS2resok;
+
+struct STATFS2res {
+	nfsstat3 status;
+	union {
+		STATFS2resok resok;
+	} STATFS2res_u;
+};
+typedef struct STATFS2res STATFS2res;
 
 enum nfsacl_type {
 	NFSACL_TYPE_USER_OBJ = 0x0001,
@@ -1009,6 +1334,110 @@ struct SETACL3res {
 typedef struct SETACL3res SETACL3res;
 
 #define NFS_PROGRAM 100003
+#define NFS_V2 2
+
+#if defined(__STDC__) || defined(__cplusplus)
+#define NFS2_NULL 0
+extern  void * nfs2_null_2(void *, CLIENT *);
+extern  void * nfs2_null_2_svc(void *, struct svc_req *);
+#define NFS2_GETATTR 1
+extern  GETATTR2res * nfs2_getattr_2(GETATTR2args *, CLIENT *);
+extern  GETATTR2res * nfs2_getattr_2_svc(GETATTR2args *, struct svc_req *);
+#define NFS2_SETATTR 2
+extern  SETATTR2res * nfs2_setattr_2(SETATTR2args *, CLIENT *);
+extern  SETATTR2res * nfs2_setattr_2_svc(SETATTR2args *, struct svc_req *);
+#define NFS2_LOOKUP 4
+extern  LOOKUP2res * nfs2_lookup_2(LOOKUP2args *, CLIENT *);
+extern  LOOKUP2res * nfs2_lookup_2_svc(LOOKUP2args *, struct svc_req *);
+#define NFS2_READLINK 5
+extern  READLINK2res * nfs2_readlink_2(READLINK2args *, CLIENT *);
+extern  READLINK2res * nfs2_readlink_2_svc(READLINK2args *, struct svc_req *);
+#define NFS2_READ 6
+extern  READ2res * nfs2_read_2(READ2args *, CLIENT *);
+extern  READ2res * nfs2_read_2_svc(READ2args *, struct svc_req *);
+#define NFS2_WRITE 8
+extern  WRITE2res * nfs2_write_2(WRITE2args *, CLIENT *);
+extern  WRITE2res * nfs2_write_2_svc(WRITE2args *, struct svc_req *);
+#define NFS2_CREATE 9
+extern  CREATE2res * nfs2_create_2(CREATE2args *, CLIENT *);
+extern  CREATE2res * nfs2_create_2_svc(CREATE2args *, struct svc_req *);
+#define NFS2_REMOVE 10
+extern  REMOVE2res * nfs2_remove_2(REMOVE2args *, CLIENT *);
+extern  REMOVE2res * nfs2_remove_2_svc(REMOVE2args *, struct svc_req *);
+#define NFS2_RENAME 11
+extern  RENAME2res * nfs2_rename_2(RENAME2args *, CLIENT *);
+extern  RENAME2res * nfs2_rename_2_svc(RENAME2args *, struct svc_req *);
+#define NFS2_LINK 12
+extern  LINK2res * nfs2_link_2(LINK2args *, CLIENT *);
+extern  LINK2res * nfs2_link_2_svc(LINK2args *, struct svc_req *);
+#define NFS2_SYMLINK 13
+extern  SYMLINK2res * nfs2_symlink_2(SYMLINK2args *, CLIENT *);
+extern  SYMLINK2res * nfs2_symlink_2_svc(SYMLINK2args *, struct svc_req *);
+#define NFS2_MKDIR 14
+extern  MKDIR2res * nfs2_mkdir_2(MKDIR2args *, CLIENT *);
+extern  MKDIR2res * nfs2_mkdir_2_svc(MKDIR2args *, struct svc_req *);
+#define NFS2_RMDIR 15
+extern  RMDIR2res * nfs2_rmdir_2(RMDIR2args *, CLIENT *);
+extern  RMDIR2res * nfs2_rmdir_2_svc(RMDIR2args *, struct svc_req *);
+#define NFS2_READDIR 16
+extern  READDIR2res * nfs2_readdir_2(READDIR2args *, CLIENT *);
+extern  READDIR2res * nfs2_readdir_2_svc(READDIR2args *, struct svc_req *);
+#define NFS2_STATFS 17
+extern  STATFS2res * nfs2_statfs_2(STATFS2args *, CLIENT *);
+extern  STATFS2res * nfs2_statfs_2_svc(STATFS2args *, struct svc_req *);
+extern int nfs_program_2_freeresult (SVCXPRT *, zdrproc_t, caddr_t);
+
+#else /* K&R C */
+#define NFS2_NULL 0
+extern  void * nfs2_null_2();
+extern  void * nfs2_null_2_svc();
+#define NFS2_GETATTR 1
+extern  GETATTR2res * nfs2_getattr_2();
+extern  GETATTR2res * nfs2_getattr_2_svc();
+#define NFS2_SETATTR 2
+extern  SETATTR2res * nfs2_setattr_2();
+extern  SETATTR2res * nfs2_setattr_2_svc();
+#define NFS2_LOOKUP 4
+extern  LOOKUP2res * nfs2_lookup_2();
+extern  LOOKUP2res * nfs2_lookup_2_svc();
+#define NFS2_READLINK 5
+extern  READLINK2res * nfs2_readlink_2();
+extern  READLINK2res * nfs2_readlink_2_svc();
+#define NFS2_READ 6
+extern  READ2res * nfs2_read_2();
+extern  READ2res * nfs2_read_2_svc();
+#define NFS2_WRITE 8
+extern  WRITE2res * nfs2_write_2();
+extern  WRITE2res * nfs2_write_2_svc();
+#define NFS2_CREATE 9
+extern  CREATE2res * nfs2_create_2();
+extern  CREATE2res * nfs2_create_2_svc();
+#define NFS2_REMOVE 10
+extern  REMOVE2res * nfs2_remove_2();
+extern  REMOVE2res * nfs2_remove_2_svc();
+#define NFS2_RENAME 11
+extern  RENAME2res * nfs2_rename_2();
+extern  RENAME2res * nfs2_rename_2_svc();
+#define NFS2_LINK 12
+extern  LINK2res * nfs2_link_2();
+extern  LINK2res * nfs2_link_2_svc();
+#define NFS2_SYMLINK 13
+extern  SYMLINK2res * nfs2_symlink_2();
+extern  SYMLINK2res * nfs2_symlink_2_svc();
+#define NFS2_MKDIR 14
+extern  MKDIR2res * nfs2_mkdir_2();
+extern  MKDIR2res * nfs2_mkdir_2_svc();
+#define NFS2_RMDIR 15
+extern  RMDIR2res * nfs2_rmdir_2();
+extern  RMDIR2res * nfs2_rmdir_2_svc();
+#define NFS2_READDIR 16
+extern  READDIR2res * nfs2_readdir_2();
+extern  READDIR2res * nfs2_readdir_2_svc();
+#define NFS2_STATFS 17
+extern  STATFS2res * nfs2_statfs_2();
+extern  STATFS2res * nfs2_statfs_2_svc();
+extern int nfs_program_2_freeresult ();
+#endif /* K&R C */
 #define NFS_V3 3
 
 #if defined(__STDC__) || defined(__cplusplus)
@@ -1309,6 +1738,56 @@ extern  bool_t zdr_SETATTR3args (ZDR *, SETATTR3args*);
 extern  bool_t zdr_SETATTR3resok (ZDR *, SETATTR3resok*);
 extern  bool_t zdr_SETATTR3resfail (ZDR *, SETATTR3resfail*);
 extern  bool_t zdr_SETATTR3res (ZDR *, SETATTR3res*);
+extern  bool_t zdr_fhandle2 (ZDR *, fhandle2);
+extern  bool_t zdr_ftype2 (ZDR *, ftype2*);
+extern  bool_t zdr_fattr2 (ZDR *, fattr2*);
+extern  bool_t zdr_sattr2 (ZDR *, sattr2*);
+extern  bool_t zdr_filename2 (ZDR *, filename2*);
+extern  bool_t zdr_path2 (ZDR *, path2*);
+extern  bool_t zdr_nfsdata2 (ZDR *, nfsdata2*);
+extern  bool_t zdr_nfscookie2 (ZDR *, nfscookie2);
+extern  bool_t zdr_entry2 (ZDR *, entry2*);
+extern  bool_t zdr_diropargs2 (ZDR *, diropargs2*);
+extern  bool_t zdr_GETATTR2args (ZDR *, GETATTR2args*);
+extern  bool_t zdr_GETATTR2resok (ZDR *, GETATTR2resok*);
+extern  bool_t zdr_GETATTR2res (ZDR *, GETATTR2res*);
+extern  bool_t zdr_SETATTR2args (ZDR *, SETATTR2args*);
+extern  bool_t zdr_SETATTR2resok (ZDR *, SETATTR2resok*);
+extern  bool_t zdr_SETATTR2res (ZDR *, SETATTR2res*);
+extern  bool_t zdr_LOOKUP2args (ZDR *, LOOKUP2args*);
+extern  bool_t zdr_LOOKUP2resok (ZDR *, LOOKUP2resok*);
+extern  bool_t zdr_LOOKUP2res (ZDR *, LOOKUP2res*);
+extern  bool_t zdr_READLINK2args (ZDR *, READLINK2args*);
+extern  bool_t zdr_READLINK2resok (ZDR *, READLINK2resok*);
+extern  bool_t zdr_READLINK2res (ZDR *, READLINK2res*);
+extern  bool_t zdr_READ2args (ZDR *, READ2args*);
+extern  bool_t zdr_READ2resok (ZDR *, READ2resok*);
+extern  bool_t zdr_READ2res (ZDR *, READ2res*);
+extern  bool_t zdr_WRITE2args (ZDR *, WRITE2args*);
+extern  bool_t zdr_WRITE2resok (ZDR *, WRITE2resok*);
+extern  bool_t zdr_WRITE2res (ZDR *, WRITE2res*);
+extern  bool_t zdr_CREATE2args (ZDR *, CREATE2args*);
+extern  bool_t zdr_CREATE2resok (ZDR *, CREATE2resok*);
+extern  bool_t zdr_CREATE2res (ZDR *, CREATE2res*);
+extern  bool_t zdr_REMOVE2args (ZDR *, REMOVE2args*);
+extern  bool_t zdr_REMOVE2res (ZDR *, REMOVE2res*);
+extern  bool_t zdr_RENAME2args (ZDR *, RENAME2args*);
+extern  bool_t zdr_RENAME2res (ZDR *, RENAME2res*);
+extern  bool_t zdr_LINK2args (ZDR *, LINK2args*);
+extern  bool_t zdr_LINK2res (ZDR *, LINK2res*);
+extern  bool_t zdr_SYMLINK2args (ZDR *, SYMLINK2args*);
+extern  bool_t zdr_SYMLINK2res (ZDR *, SYMLINK2res*);
+extern  bool_t zdr_MKDIR2args (ZDR *, MKDIR2args*);
+extern  bool_t zdr_MKDIR2resok (ZDR *, MKDIR2resok*);
+extern  bool_t zdr_MKDIR2res (ZDR *, MKDIR2res*);
+extern  bool_t zdr_RMDIR2args (ZDR *, RMDIR2args*);
+extern  bool_t zdr_RMDIR2res (ZDR *, RMDIR2res*);
+extern  bool_t zdr_READDIR2args (ZDR *, READDIR2args*);
+extern  bool_t zdr_READDIR2resok (ZDR *, READDIR2resok*);
+extern  bool_t zdr_READDIR2res (ZDR *, READDIR2res*);
+extern  bool_t zdr_STATFS2args (ZDR *, STATFS2args*);
+extern  bool_t zdr_STATFS2resok (ZDR *, STATFS2resok*);
+extern  bool_t zdr_STATFS2res (ZDR *, STATFS2res*);
 extern  bool_t zdr_nfsacl_type (ZDR *, nfsacl_type*);
 extern  bool_t zdr_nfsacl_ace (ZDR *, nfsacl_ace*);
 extern  bool_t zdr_GETACL3args (ZDR *, GETACL3args*);
@@ -1447,6 +1926,56 @@ extern bool_t zdr_SETATTR3args ();
 extern bool_t zdr_SETATTR3resok ();
 extern bool_t zdr_SETATTR3resfail ();
 extern bool_t zdr_SETATTR3res ();
+extern bool_t zdr_fhandle2 ();
+extern bool_t zdr_ftype2 ();
+extern bool_t zdr_fattr2 ();
+extern bool_t zdr_sattr2 ();
+extern bool_t zdr_filename2 ();
+extern bool_t zdr_path2 ();
+extern bool_t zdr_nfsdata2 ();
+extern bool_t zdr_nfscookie2 ();
+extern bool_t zdr_entry2 ();
+extern bool_t zdr_diropargs2 ();
+extern bool_t zdr_GETATTR2args ();
+extern bool_t zdr_GETATTR2resok ();
+extern bool_t zdr_GETATTR2res ();
+extern bool_t zdr_SETATTR2args ();
+extern bool_t zdr_SETATTR2resok ();
+extern bool_t zdr_SETATTR2res ();
+extern bool_t zdr_LOOKUP2args ();
+extern bool_t zdr_LOOKUP2resok ();
+extern bool_t zdr_LOOKUP2res ();
+extern bool_t zdr_READLINK2args ();
+extern bool_t zdr_READLINK2resok ();
+extern bool_t zdr_READLINK2res ();
+extern bool_t zdr_READ2args ();
+extern bool_t zdr_READ2resok ();
+extern bool_t zdr_READ2res ();
+extern bool_t zdr_WRITE2args ();
+extern bool_t zdr_WRITE2resok ();
+extern bool_t zdr_WRITE2res ();
+extern bool_t zdr_CREATE2args ();
+extern bool_t zdr_CREATE2resok ();
+extern bool_t zdr_CREATE2res ();
+extern bool_t zdr_REMOVE2args ();
+extern bool_t zdr_REMOVE2res ();
+extern bool_t zdr_RENAME2args ();
+extern bool_t zdr_RENAME2res ();
+extern bool_t zdr_LINK2args ();
+extern bool_t zdr_LINK2res ();
+extern bool_t zdr_SYMLINK2args ();
+extern bool_t zdr_SYMLINK2res ();
+extern bool_t zdr_MKDIR2args ();
+extern bool_t zdr_MKDIR2resok ();
+extern bool_t zdr_MKDIR2res ();
+extern bool_t zdr_RMDIR2args ();
+extern bool_t zdr_RMDIR2res ();
+extern bool_t zdr_READDIR2args ();
+extern bool_t zdr_READDIR2resok ();
+extern bool_t zdr_READDIR2res ();
+extern bool_t zdr_STATFS2args ();
+extern bool_t zdr_STATFS2resok ();
+extern bool_t zdr_STATFS2res ();
 extern bool_t zdr_nfsacl_type ();
 extern bool_t zdr_nfsacl_ace ();
 extern bool_t zdr_GETACL3args ();

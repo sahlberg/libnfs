@@ -696,6 +696,280 @@ struct LINK3args;
 EXTERN int rpc_nfs3_link_async(struct rpc_context *rpc, rpc_cb cb, struct LINK3args *args, void *private_data);
 EXTERN int rpc_nfs_link_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *file, struct nfs_fh3 *newdir, char *newname, void *private_data);
 
+/* 
+ * NFS v2 FUNCTIONS
+ */
+
+/*
+ * Call NFS2/NULL
+ * Function returns
+ *  0 : The call was initiated. The callback will be invoked when the call completes.
+ * <0 : An error occured when trying to set up the call. The callback will not be invoked.
+ *
+ * When the callback is invoked, status indicates the result:
+ * RPC_STATUS_SUCCESS : We got a successful response from the nfs daemon.
+ *                      data is NULL.
+ * RPC_STATUS_ERROR   : An error occured when trying to contact the nfs daemon.
+ *                      data is the error string.
+ * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
+ *                     data is NULL.
+ */
+EXTERN int rpc_nfs2_null_async(struct rpc_context *rpc, rpc_cb cb, void *private_data);
+
+/*
+ * Call NFS2/GETATTR
+ * Function returns
+ *  0 : The call was initiated. The callback will be invoked when the call completes.
+ * <0 : An error occured when trying to set up the call. The callback will not be invoked.
+ *
+ * When the callback is invoked, status indicates the result:
+ * RPC_STATUS_SUCCESS : We got a successful response from the nfs daemon.
+ *                      data is GETATTR2res
+ * RPC_STATUS_ERROR   : An error occured when trying to contact the nfs daemon.
+ *                      data is the error string.
+ * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
+ *                     data is NULL.
+ */
+struct GETATTR2args;
+EXTERN int rpc_nfs2_getattr_async(struct rpc_context *rpc, rpc_cb cb, struct GETATTR2args *args, void *private_data);
+
+/*
+ * Call NFS2/SETATTR
+ * Function returns
+ *  0 : The call was initiated. The callback will be invoked when the call completes.
+ * <0 : An error occured when trying to set up the call. The callback will not be invoked.
+ *
+ * When the callback is invoked, status indicates the result:
+ * RPC_STATUS_SUCCESS : We got a successful response from the nfs daemon.
+ *                      data is SETATTR2res *
+ * RPC_STATUS_ERROR   : An error occured when trying to contact the nfs daemon.
+ *                      data is the error string.
+ * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
+ *                     data is NULL.
+ */
+struct SETATTR2args;
+EXTERN int rpc_nfs2_setattr_async(struct rpc_context *rpc, rpc_cb cb, struct SETATTR2args *args, void *private_data);
+
+/*
+ * Call NFS2/LOOKUP
+ * Function returns
+ *  0 : The call was initiated. The callback will be invoked when the call completes.
+ * <0 : An error occured when trying to set up the call. The callback will not be invoked.
+ *
+ * When the callback is invoked, status indicates the result:
+ * RPC_STATUS_SUCCESS : We got a successful response from the nfs daemon.
+ *                      data is LOOKUP2res
+ * RPC_STATUS_ERROR   : An error occured when trying to contact the nfs daemon.
+ *                      data is the error string.
+ * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
+ *                     data is NULL.
+ */
+struct LOOKUP2args;
+EXTERN int rpc_nfs2_lookup_async(struct rpc_context *rpc, rpc_cb cb, struct LOOKUP2args *args, void *private_data);
+
+/*
+ * Call NFS2/READLINK
+ * Function returns
+ *  0 : The call was initiated. The callback will be invoked when the call completes.
+ * <0 : An error occured when trying to set up the call. The callback will not be invoked.
+ *
+ * When the callback is invoked, status indicates the result:
+ * RPC_STATUS_SUCCESS : We got a successful response from the nfs daemon.
+ *                      data is READLINK2res *
+ * RPC_STATUS_ERROR   : An error occured when trying to contact the nfs daemon.
+ *                      data is the error string.
+ * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
+ *                     data is NULL.
+ */
+struct READLINK2args;
+EXTERN int rpc_nfs32_readlink_async(struct rpc_context *rpc, rpc_cb cb, struct READLINK2args *args, void *private_data);
+
+/*
+ * Call NFS2/READ
+ * Function returns
+ *  0 : The call was initiated. The callback will be invoked when the call completes.
+ * <0 : An error occured when trying to set up the call. The callback will not be invoked.
+ *
+ * When the callback is invoked, status indicates the result:
+ * RPC_STATUS_SUCCESS : We got a successful response from the nfs daemon.
+ *                      data is READ2res
+ * RPC_STATUS_ERROR   : An error occured when trying to contact the nfs daemon.
+ *                      data is the error string.
+ * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
+ *                     data is NULL.
+ */
+struct READ2args;
+EXTERN int rpc_nfs2_read_async(struct rpc_context *rpc, rpc_cb cb, struct READ2args *args, void *private_data);
+
+/*
+ * Call NFS2/WRITE
+ * Function returns
+ *  0 : The call was initiated. The callback will be invoked when the call completes.
+ * <0 : An error occured when trying to set up the call. The callback will not be invoked.
+ *
+ * When the callback is invoked, status indicates the result:
+ * RPC_STATUS_SUCCESS : We got a successful response from the nfs daemon.
+ *                      data is WRITE2res *
+ * RPC_STATUS_ERROR   : An error occured when trying to contact the nfs daemon.
+ *                      data is the error string.
+ * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
+ *                     data is NULL.
+ */
+struct WRITE2args;
+EXTERN int rpc_nfs2_write_async(struct rpc_context *rpc, rpc_cb cb, struct WRITE2args *args, void *private_data);
+
+/*
+ * Call NFS2/CREATE
+ * Function returns
+ *  0 : The call was initiated. The callback will be invoked when the call completes.
+ * <0 : An error occured when trying to set up the call. The callback will not be invoked.
+ *
+ * When the callback is invoked, status indicates the result:
+ * RPC_STATUS_SUCCESS : We got a successful response from the nfs daemon.
+ *                      data is CREATE2res *
+ * RPC_STATUS_ERROR   : An error occured when trying to contact the nfs daemon.
+ *                      data is the error string.
+ * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
+ *                     data is NULL.
+ */
+struct CREATE2args;
+EXTERN int rpc_nfs2_create_async(struct rpc_context *rpc, rpc_cb cb, struct CREATE2args *args, void *private_data);
+
+/*
+ * Call NFS2/REMOVE
+ * Function returns
+ *  0 : The call was initiated. The callback will be invoked when the call completes.
+ * <0 : An error occured when trying to set up the call. The callback will not be invoked.
+ *
+ * When the callback is invoked, status indicates the result:
+ * RPC_STATUS_SUCCESS : We got a successful response from the nfs daemon.
+ *                      data is REMOVE2res *
+ * RPC_STATUS_ERROR   : An error occured when trying to contact the nfs daemon.
+ *                      data is the error string.
+ * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
+ *                     data is NULL.
+ */
+struct REMOVE2args;
+EXTERN int rpc_nfs2_remove_async(struct rpc_context *rpc, rpc_cb cb, struct REMOVE2args *args, void *private_data);
+
+/*
+ * Call NFS2/RENAME
+ * Function returns
+ *  0 : The call was initiated. The callback will be invoked when the call completes.
+ * <0 : An error occured when trying to set up the call. The callback will not be invoked.
+ *
+ * When the callback is invoked, status indicates the result:
+ * RPC_STATUS_SUCCESS : We got a successful response from the nfs daemon.
+ *                      data is RENAME2res *
+ * RPC_STATUS_ERROR   : An error occured when trying to contact the nfs daemon.
+ *                      data is the error string.
+ * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
+ *                     data is NULL.
+ */
+struct RENAME2args;
+EXTERN int rpc_nfs2_rename_async(struct rpc_context *rpc, rpc_cb cb, struct RENAME2args *args, void *private_data);
+
+/*
+ * Call NFS2/LINK
+ * Function returns
+ *  0 : The call was initiated. The callback will be invoked when the call completes.
+ * <0 : An error occured when trying to set up the call. The callback will not be invoked.
+ *
+ * When the callback is invoked, status indicates the result:
+ * RPC_STATUS_SUCCESS : We got a successful response from the nfs daemon.
+ *                      data is LINK2res *
+ * RPC_STATUS_ERROR   : An error occured when trying to contact the nfs daemon.
+ *                      data is the error string.
+ * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
+ *                     data is NULL.
+ */
+struct LINK2args;
+EXTERN int rpc_nfs2_link_async(struct rpc_context *rpc, rpc_cb cb, struct LINK2args *args, void *private_data);
+
+/*
+ * Call NFS2/SYMLINK
+ * Function returns
+ *  0 : The call was initiated. The callback will be invoked when the call completes.
+ * <0 : An error occured when trying to set up the call. The callback will not be invoked.
+ *
+ * When the callback is invoked, status indicates the result:
+ * RPC_STATUS_SUCCESS : We got a successful response from the nfs daemon.
+ *                      data is SYMLINK2res *
+ * RPC_STATUS_ERROR   : An error occured when trying to contact the nfs daemon.
+ *                      data is the error string.
+ * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
+ *                     data is NULL.
+ */
+struct SYMLINK2args;
+EXTERN int rpc_nfs2_symlink_async(struct rpc_context *rpc, rpc_cb cb, struct SYMLINK2args *args, void *private_data);
+
+/*
+ * Call NFS2/MKDIR
+ * Function returns
+ *  0 : The call was initiated. The callback will be invoked when the call completes.
+ * <0 : An error occured when trying to set up the call. The callback will not be invoked.
+ *
+ * When the callback is invoked, status indicates the result:
+ * RPC_STATUS_SUCCESS : We got a successful response from the nfs daemon.
+ *                      data is MKDIR2res *
+ * RPC_STATUS_ERROR   : An error occured when trying to contact the nfs daemon.
+ *                      data is the error string.
+ * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
+ *                     data is NULL.
+ */
+struct MKDIR2args;
+EXTERN int rpc_nfs2_mkdir_async(struct rpc_context *rpc, rpc_cb cb, struct MKDIR2args *args, void *private_data);
+
+/*
+ * Call NFS2/RMDIR
+ * Function returns
+ *  0 : The call was initiated. The callback will be invoked when the call completes.
+ * <0 : An error occured when trying to set up the call. The callback will not be invoked.
+ *
+ * When the callback is invoked, status indicates the result:
+ * RPC_STATUS_SUCCESS : We got a successful response from the nfs daemon.
+ *                      data is RMDIR2res *
+ * RPC_STATUS_ERROR   : An error occured when trying to contact the nfs daemon.
+ *                      data is the error string.
+ * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
+ *                     data is NULL.
+ */
+struct RMDIR2args;
+EXTERN int rpc_nfs2_rmdir_async(struct rpc_context *rpc, rpc_cb cb, struct RMDIR2args *args, void *private_data);
+
+/*
+ * Call NFS2/READDIR
+ * Function returns
+ *  0 : The call was initiated. The callback will be invoked when the call completes.
+ * <0 : An error occured when trying to set up the call. The callback will not be invoked.
+ *
+ * When the callback is invoked, status indicates the result:
+ * RPC_STATUS_SUCCESS : We got a successful response from the nfs daemon.
+ *                      data is READDIR2res *
+ * RPC_STATUS_ERROR   : An error occured when trying to contact the nfs daemon.
+ *                      data is the error string.
+ * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
+ *                     data is NULL.
+ */
+struct READDIR2args;
+EXTERN int rpc_nfs2_readdir_async(struct rpc_context *rpc, rpc_cb cb, struct READDIR2args *args, void *private_data);
+
+/*
+ * Call NFS2/STATFS
+ * Function returns
+ *  0 : The call was initiated. The callback will be invoked when the call completes.
+ * <0 : An error occured when trying to set up the call. The callback will not be invoked.
+ *
+ * When the callback is invoked, status indicates the result:
+ * RPC_STATUS_SUCCESS : We got a successful response from the nfs daemon.
+ *                      data is STATFS2res *
+ * RPC_STATUS_ERROR   : An error occured when trying to contact the nfs daemon.
+ *                      data is the error string.
+ * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
+ *                     data is NULL.
+ */
+struct STATFS2args;
+EXTERN int rpc_nfs2_statfs_async(struct rpc_context *rpc, rpc_cb cb, struct STATFS2args *args, void *private_data);
 
 /* 
  * RQUOTA FUNCTIONS
