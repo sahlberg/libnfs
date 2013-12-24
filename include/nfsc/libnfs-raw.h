@@ -186,13 +186,13 @@ EXTERN int rpc_pmap_unset_async(struct rpc_context *rpc, int program, int versio
 EXTERN int rpc_pmap_callit_async(struct rpc_context *rpc, int program, int version, int procedure, char *data, int datalen, rpc_cb cb, void *private_data);
 
 /* 
- * MOUNT FUNCTIONS
+ * MOUNT v3 FUNCTIONS
  */
 char *mountstat3_to_str(int stat);
 int mountstat3_to_errno(int error);
 
 /*
- * Call MOUNT/NULL
+ * Call MOUNT3/NULL
  * Function returns
  *  0 : The call was initiated. The callback will be invoked when the call completes.
  * <0 : An error occured when trying to set up the call. The callback will not be invoked.
@@ -205,10 +205,11 @@ int mountstat3_to_errno(int error);
  * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
  *                     data is NULL.
  */
+EXTERN int rpc_mount3_null_async(struct rpc_context *rpc, rpc_cb cb, void *private_data);
 EXTERN int rpc_mount_null_async(struct rpc_context *rpc, rpc_cb cb, void *private_data);
 
 /*
- * Call MOUNT/MNT
+ * Call MOUNT3/MNT
  * Function returns
  *  0 : The call was initiated. The callback will be invoked when the call completes.
  * <0 : An error occured when trying to set up the call. The callback will not be invoked.
@@ -221,10 +222,11 @@ EXTERN int rpc_mount_null_async(struct rpc_context *rpc, rpc_cb cb, void *privat
  * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
  *                     data is NULL.
  */
+EXTERN int rpc_mount3_mnt_async(struct rpc_context *rpc, rpc_cb cb, char *export, void *private_data);
 EXTERN int rpc_mount_mnt_async(struct rpc_context *rpc, rpc_cb cb, char *export, void *private_data);
 
 /*
- * Call MOUNT/DUMP
+ * Call MOUNT3/DUMP
  * Function returns
  *  0 : The call was initiated. The callback will be invoked when the call completes.
  * <0 : An error occured when trying to set up the call. The callback will not be invoked.
@@ -237,10 +239,11 @@ EXTERN int rpc_mount_mnt_async(struct rpc_context *rpc, rpc_cb cb, char *export,
  * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
  *                     data is NULL.
  */
+EXTERN int rpc_mount3_dump_async(struct rpc_context *rpc, rpc_cb cb, void *private_data);
 EXTERN int rpc_mount_dump_async(struct rpc_context *rpc, rpc_cb cb, void *private_data);
 
 /*
- * Call MOUNT/UMNT
+ * Call MOUNT3/UMNT
  * Function returns
  *  0 : The call was initiated. The callback will be invoked when the call completes.
  * <0 : An error occured when trying to set up the call. The callback will not be invoked.
@@ -253,10 +256,11 @@ EXTERN int rpc_mount_dump_async(struct rpc_context *rpc, rpc_cb cb, void *privat
  * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
  *                     data is NULL.
  */
+EXTERN int rpc_mount3_umnt_async(struct rpc_context *rpc, rpc_cb cb, char *export, void *private_data);
 EXTERN int rpc_mount_umnt_async(struct rpc_context *rpc, rpc_cb cb, char *export, void *private_data);
 
 /*
- * Call MOUNT/UMNTALL
+ * Call MOUNT3/UMNTALL
  * Function returns
  *  0 : The call was initiated. The callback will be invoked when the call completes.
  * <0 : An error occured when trying to set up the call. The callback will not be invoked.
@@ -269,10 +273,11 @@ EXTERN int rpc_mount_umnt_async(struct rpc_context *rpc, rpc_cb cb, char *export
  * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
  *                     data is NULL.
  */
+EXTERN int rpc_mount3_umntall_async(struct rpc_context *rpc, rpc_cb cb, void *private_data);
 EXTERN int rpc_mount_umntall_async(struct rpc_context *rpc, rpc_cb cb, void *private_data);
 
 /*
- * Call MOUNT/EXPORT
+ * Call MOUNT3/EXPORT
  * NOTE: You must include 'libnfs-raw-mount.h' to get the definitions of the
  * returned structures.
  *
@@ -289,9 +294,111 @@ EXTERN int rpc_mount_umntall_async(struct rpc_context *rpc, rpc_cb cb, void *pri
  * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
  *                     data is NULL.
  */
+EXTERN int rpc_mount3_export_async(struct rpc_context *rpc, rpc_cb cb, void *private_data);
 EXTERN int rpc_mount_export_async(struct rpc_context *rpc, rpc_cb cb, void *private_data);
 
+/* 
+ * MOUNT v1 FUNCTIONS (Used with NFSv2)
+ */
+/*
+ * Call MOUNT1/NULL
+ * Function returns
+ *  0 : The call was initiated. The callback will be invoked when the call completes.
+ * <0 : An error occured when trying to set up the call. The callback will not be invoked.
+ *
+ * When the callback is invoked, status indicates the result:
+ * RPC_STATUS_SUCCESS : We got a successful response from the mount daemon.
+ *                      data is NULL.
+ * RPC_STATUS_ERROR   : An error occured when trying to contact the mount daemon.
+ *                      data is the error string.
+ * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
+ *                     data is NULL.
+ */
+EXTERN int rpc_mount1_null_async(struct rpc_context *rpc, rpc_cb cb, void *private_data);
 
+/*
+ * Call MOUNT1/MNT
+ * Function returns
+ *  0 : The call was initiated. The callback will be invoked when the call completes.
+ * <0 : An error occured when trying to set up the call. The callback will not be invoked.
+ *
+ * When the callback is invoked, status indicates the result:
+ * RPC_STATUS_SUCCESS : We got a successful response from the mount daemon.
+ *                      data is union mountres1.
+ * RPC_STATUS_ERROR   : An error occured when trying to contact the mount daemon.
+ *                      data is the error string.
+ * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
+ *                     data is NULL.
+ */
+EXTERN int rpc_mount1_mnt_async(struct rpc_context *rpc, rpc_cb cb, char *export, void *private_data);
+
+/*
+ * Call MOUNT1/DUMP
+ * Function returns
+ *  0 : The call was initiated. The callback will be invoked when the call completes.
+ * <0 : An error occured when trying to set up the call. The callback will not be invoked.
+ *
+ * When the callback is invoked, status indicates the result:
+ * RPC_STATUS_SUCCESS : We got a successful response from the mount daemon.
+ *                      data is a mountlist.
+ * RPC_STATUS_ERROR   : An error occured when trying to contact the mount daemon.
+ *                      data is the error string.
+ * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
+ *                     data is NULL.
+ */
+EXTERN int rpc_mount1_dump_async(struct rpc_context *rpc, rpc_cb cb, void *private_data);
+
+/*
+ * Call MOUNT1/UMNT
+ * Function returns
+ *  0 : The call was initiated. The callback will be invoked when the call completes.
+ * <0 : An error occured when trying to set up the call. The callback will not be invoked.
+ *
+ * When the callback is invoked, status indicates the result:
+ * RPC_STATUS_SUCCESS : We got a successful response from the mount daemon.
+ *                      data NULL.
+ * RPC_STATUS_ERROR   : An error occured when trying to contact the mount daemon.
+ *                      data is the error string.
+ * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
+ *                     data is NULL.
+ */
+EXTERN int rpc_mount1_umnt_async(struct rpc_context *rpc, rpc_cb cb, char *export, void *private_data);
+
+/*
+ * Call MOUNT1/UMNTALL
+ * Function returns
+ *  0 : The call was initiated. The callback will be invoked when the call completes.
+ * <0 : An error occured when trying to set up the call. The callback will not be invoked.
+ *
+ * When the callback is invoked, status indicates the result:
+ * RPC_STATUS_SUCCESS : We got a successful response from the mount daemon.
+ *                      data NULL.
+ * RPC_STATUS_ERROR   : An error occured when trying to contact the mount daemon.
+ *                      data is the error string.
+ * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
+ *                     data is NULL.
+ */
+EXTERN int rpc_mount1_umntall_async(struct rpc_context *rpc, rpc_cb cb, void *private_data);
+
+/*
+ * Call MOUNT1/EXPORT
+ * NOTE: You must include 'libnfs-raw-mount.h' to get the definitions of the
+ * returned structures.
+ *
+ * Function returns
+ *  0 : The call was initiated. The callback will be invoked when the call completes.
+ * <0 : An error occured when trying to set up the call. The callback will not be invoked.
+ *
+ * When the callback is invoked, status indicates the result:
+ * RPC_STATUS_SUCCESS : We got a successful response from the mount daemon.
+ *                      data is a pointer to an exports pointer:
+ *                      exports export = *(exports *)data;
+ * RPC_STATUS_ERROR   : An error occured when trying to contact the mount daemon.
+ *                      data is the error string.
+ * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
+ *                     data is NULL.
+ */
+EXTERN int rpc_mount1_export_async(struct rpc_context *rpc, rpc_cb cb, void *private_data);
 
 
 /* 
