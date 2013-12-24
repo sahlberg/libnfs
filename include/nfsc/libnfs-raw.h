@@ -135,7 +135,7 @@ EXTERN int rpc_pmap_null_async(struct rpc_context *rpc, rpc_cb cb, void *private
  * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
  *                     data is NULL.
  */
-int rpc_pmap_getport_async(struct rpc_context *rpc, int program, int version, int protocol, rpc_cb cb, void *private_data);
+EXTERN int rpc_pmap_getport_async(struct rpc_context *rpc, int program, int version, int protocol, rpc_cb cb, void *private_data);
 
 /*
  * Call PORTMAPPER/SET
@@ -151,7 +151,7 @@ int rpc_pmap_getport_async(struct rpc_context *rpc, int program, int version, in
  * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
  *                     data is NULL.
  */
-int rpc_pmap_set_async(struct rpc_context *rpc, int program, int version, int protocol, int port, rpc_cb cb, void *private_data);
+EXTERN int rpc_pmap_set_async(struct rpc_context *rpc, int program, int version, int protocol, int port, rpc_cb cb, void *private_data);
 
 /*
  * Call PORTMAPPER/UNSET
@@ -167,7 +167,7 @@ int rpc_pmap_set_async(struct rpc_context *rpc, int program, int version, int pr
  * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
  *                     data is NULL.
  */
-int rpc_pmap_unset_async(struct rpc_context *rpc, int program, int version, int protocol, int port, rpc_cb cb, void *private_data);
+EXTERN int rpc_pmap_unset_async(struct rpc_context *rpc, int program, int version, int protocol, int port, rpc_cb cb, void *private_data);
 
 /*
  * Call PORTMAPPER/CALLIT.
@@ -183,7 +183,7 @@ int rpc_pmap_unset_async(struct rpc_context *rpc, int program, int version, int 
  * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
  *                     data is NULL.
  */
-int rpc_pmap_callit_async(struct rpc_context *rpc, int program, int version, int procedure, char *data, int datalen, rpc_cb cb, void *private_data);
+EXTERN int rpc_pmap_callit_async(struct rpc_context *rpc, int program, int version, int procedure, char *data, int datalen, rpc_cb cb, void *private_data);
 
 /* 
  * MOUNT FUNCTIONS
@@ -295,14 +295,14 @@ EXTERN int rpc_mount_export_async(struct rpc_context *rpc, rpc_cb cb, void *priv
 
 
 /* 
- * NFS FUNCTIONS
+ * NFS v3 FUNCTIONS
  */
 struct nfs_fh3;
 char *nfsstat3_to_str(int error);
 int nfsstat3_to_errno(int error);
 
 /*
- * Call NFS/NULL
+ * Call NFS3/NULL
  * Function returns
  *  0 : The call was initiated. The callback will be invoked when the call completes.
  * <0 : An error occured when trying to set up the call. The callback will not be invoked.
@@ -315,10 +315,11 @@ int nfsstat3_to_errno(int error);
  * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
  *                     data is NULL.
  */
+EXTERN int rpc_nfs3_null_async(struct rpc_context *rpc, rpc_cb cb, void *private_data);
 EXTERN int rpc_nfs_null_async(struct rpc_context *rpc, rpc_cb cb, void *private_data);
 
 /*
- * Call NFS/GETATTR
+ * Call NFS3/GETATTR
  * Function returns
  *  0 : The call was initiated. The callback will be invoked when the call completes.
  * <0 : An error occured when trying to set up the call. The callback will not be invoked.
@@ -331,10 +332,12 @@ EXTERN int rpc_nfs_null_async(struct rpc_context *rpc, rpc_cb cb, void *private_
  * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
  *                     data is NULL.
  */
+struct GETATTR3args;
+EXTERN int rpc_nfs3_getattr_async(struct rpc_context *rpc, rpc_cb cb, struct GETATTR3args *args, void *private_data);
 EXTERN int rpc_nfs_getattr_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh, void *private_data);
 
 /*
- * Call NFS/PATHCONF
+ * Call NFS3/PATHCONF
  * Function returns
  *  0 : The call was initiated. The callback will be invoked when the call completes.
  * <0 : An error occured when trying to set up the call. The callback will not be invoked.
@@ -347,10 +350,12 @@ EXTERN int rpc_nfs_getattr_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_
  * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
  *                     data is NULL.
  */
+struct PATHCONF3args;
+EXTERN int rpc_nfs3_pathconf_async(struct rpc_context *rpc, rpc_cb cb, struct PATHCONF3args *args, void *private_data);
 EXTERN int rpc_nfs_pathconf_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh, void *private_data);
 
 /*
- * Call NFS/LOOKUP
+ * Call NFS3/LOOKUP
  * Function returns
  *  0 : The call was initiated. The callback will be invoked when the call completes.
  * <0 : An error occured when trying to set up the call. The callback will not be invoked.
@@ -363,10 +368,12 @@ EXTERN int rpc_nfs_pathconf_async(struct rpc_context *rpc, rpc_cb cb, struct nfs
  * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
  *                     data is NULL.
  */
+struct LOOKUP3args;
+EXTERN int rpc_nfs3_lookup_async(struct rpc_context *rpc, rpc_cb cb, struct LOOKUP3args *args, void *private_data);
 EXTERN int rpc_nfs_lookup_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh, char *name, void *private_data);
 
 /*
- * Call NFS/ACCESS
+ * Call NFS3/ACCESS
  * Function returns
  *  0 : The call was initiated. The callback will be invoked when the call completes.
  * <0 : An error occured when trying to set up the call. The callback will not be invoked.
@@ -379,10 +386,12 @@ EXTERN int rpc_nfs_lookup_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_f
  * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
  *                     data is NULL.
  */
+struct ACCESS3args;
+EXTERN int rpc_nfs3_access_async(struct rpc_context *rpc, rpc_cb cb, struct ACCESS3args *args, void *private_data);
 EXTERN int rpc_nfs_access_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh, int access, void *private_data);
 
 /*
- * Call NFS/READ
+ * Call NFS3/READ
  * Function returns
  *  0 : The call was initiated. The callback will be invoked when the call completes.
  * <0 : An error occured when trying to set up the call. The callback will not be invoked.
@@ -395,10 +404,12 @@ EXTERN int rpc_nfs_access_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_f
  * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
  *                     data is NULL.
  */
+struct READ3args;
+EXTERN int rpc_nfs3_read_async(struct rpc_context *rpc, rpc_cb cb, struct READ3args *args, void *private_data);
 EXTERN int rpc_nfs_read_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh, uint64_t offset, uint64_t count, void *private_data);
 
 /*
- * Call NFS/WRITE
+ * Call NFS3/WRITE
  * Function returns
  *  0 : The call was initiated. The callback will be invoked when the call completes.
  * <0 : An error occured when trying to set up the call. The callback will not be invoked.
@@ -411,10 +422,12 @@ EXTERN int rpc_nfs_read_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3
  * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
  *                     data is NULL.
  */
+struct WRITE3args;
+EXTERN int rpc_nfs3_write_async(struct rpc_context *rpc, rpc_cb cb, struct WRITE3args *args, void *private_data);
 EXTERN int rpc_nfs_write_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh, char *buf, uint64_t offset, uint64_t count, int stable_how, void *private_data);
 
 /*
- * Call NFS/COMMIT
+ * Call NFS3/COMMIT
  * Function returns
  *  0 : The call was initiated. The callback will be invoked when the call completes.
  * <0 : An error occured when trying to set up the call. The callback will not be invoked.
@@ -427,11 +440,12 @@ EXTERN int rpc_nfs_write_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh
  * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
  *                     data is NULL.
  */
+struct COMMIT3args;
+EXTERN int rpc_nfs3_commit_async(struct rpc_context *rpc, rpc_cb cb, struct COMMIT3args *args, void *private_data);
 EXTERN int rpc_nfs_commit_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh, void *private_data);
 
-
 /*
- * Call NFS/SETATTR
+ * Call NFS3/SETATTR
  * Function returns
  *  0 : The call was initiated. The callback will be invoked when the call completes.
  * <0 : An error occured when trying to set up the call. The callback will not be invoked.
@@ -445,12 +459,11 @@ EXTERN int rpc_nfs_commit_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_f
  *                     data is NULL.
  */
 struct SETATTR3args;
+EXTERN int rpc_nfs3_setattr_async(struct rpc_context *rpc, rpc_cb cb, struct SETATTR3args *args, void *private_data);
 EXTERN int rpc_nfs_setattr_async(struct rpc_context *rpc, rpc_cb cb, struct SETATTR3args *args, void *private_data);
 
-
-
 /*
- * Call NFS/MKDIR
+ * Call NFS3/MKDIR
  * Function returns
  *  0 : The call was initiated. The callback will be invoked when the call completes.
  * <0 : An error occured when trying to set up the call. The callback will not be invoked.
@@ -464,14 +477,11 @@ EXTERN int rpc_nfs_setattr_async(struct rpc_context *rpc, rpc_cb cb, struct SETA
  *                     data is NULL.
  */
 struct MKDIR3args;
+EXTERN int rpc_nfs3_mkdir_async(struct rpc_context *rpc, rpc_cb cb, struct MKDIR3args *args, void *private_data);
 EXTERN int rpc_nfs_mkdir_async(struct rpc_context *rpc, rpc_cb cb, struct MKDIR3args *args, void *private_data);
 
-
-
-
-
 /*
- * Call NFS/RMDIR
+ * Call NFS3/RMDIR
  * Function returns
  *  0 : The call was initiated. The callback will be invoked when the call completes.
  * <0 : An error occured when trying to set up the call. The callback will not be invoked.
@@ -484,13 +494,12 @@ EXTERN int rpc_nfs_mkdir_async(struct rpc_context *rpc, rpc_cb cb, struct MKDIR3
  * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
  *                     data is NULL.
  */
+struct RMDIR3args;
+EXTERN int rpc_nfs3_rmdir_async(struct rpc_context *rpc, rpc_cb cb, struct RMDIR3args *args, void *private_data);
 EXTERN int rpc_nfs_rmdir_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh, char *dir, void *private_data);
 
-
-
-
 /*
- * Call NFS/CREATE
+ * Call NFS3/CREATE
  * Function returns
  *  0 : The call was initiated. The callback will be invoked when the call completes.
  * <0 : An error occured when trying to set up the call. The callback will not be invoked.
@@ -504,11 +513,11 @@ EXTERN int rpc_nfs_rmdir_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh
  *                     data is NULL.
  */
 struct CREATE3args;
+EXTERN int rpc_nfs3_create_async(struct rpc_context *rpc, rpc_cb cb, struct CREATE3args *args, void *private_data);
 EXTERN int rpc_nfs_create_async(struct rpc_context *rpc, rpc_cb cb, struct CREATE3args *args, void *private_data);
 
-
 /*
- * Call NFS/MKNOD
+ * Call NFS3/MKNOD
  * Function returns
  *  0 : The call was initiated. The callback will be invoked when the call completes.
  * <0 : An error occured when trying to set up the call. The callback will not be invoked.
@@ -521,11 +530,12 @@ EXTERN int rpc_nfs_create_async(struct rpc_context *rpc, rpc_cb cb, struct CREAT
  * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
  *                     data is NULL.
  */
+struct MKNOD3args;
+EXTERN int rpc_nfs3_mknod_async(struct rpc_context *rpc, rpc_cb cb, struct MKNOD3args *args, void *private_data);
 EXTERN int rpc_nfs_mknod_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh, char *file, int mode, int major, int minor, void *private_data);
 
-
 /*
- * Call NFS/REMOVE
+ * Call NFS3/REMOVE
  * Function returns
  *  0 : The call was initiated. The callback will be invoked when the call completes.
  * <0 : An error occured when trying to set up the call. The callback will not be invoked.
@@ -538,12 +548,12 @@ EXTERN int rpc_nfs_mknod_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh
  * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
  *                     data is NULL.
  */
+struct REMOVE3args;
+EXTERN int rpc_nfs3_remove_async(struct rpc_context *rpc, rpc_cb cb, struct REMOVE3args *args, void *private_data);
 EXTERN int rpc_nfs_remove_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh, char *name, void *private_data);
 
-
-
 /*
- * Call NFS/READDIR
+ * Call NFS3/READDIR
  * Function returns
  *  0 : The call was initiated. The callback will be invoked when the call completes.
  * <0 : An error occured when trying to set up the call. The callback will not be invoked.
@@ -556,10 +566,12 @@ EXTERN int rpc_nfs_remove_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_f
  * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
  *                     data is NULL.
  */
+struct READDIR3args;
+EXTERN int rpc_nfs3_readdir_async(struct rpc_context *rpc, rpc_cb cb, struct READDIR3args *args, void *private_data);
 EXTERN int rpc_nfs_readdir_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh, uint64_t cookie, char *cookieverf, int count, void *private_data);
 
 /*
- * Call NFS/READDIRPLUS
+ * Call NFS3/READDIRPLUS
  * Function returns
  *  0 : The call was initiated. The callback will be invoked when the call completes.
  * <0 : An error occured when trying to set up the call. The callback will not be invoked.
@@ -572,10 +584,12 @@ EXTERN int rpc_nfs_readdir_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_
  * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
  *                     data is NULL.
  */
+struct READDIRPLUS3args;
+EXTERN int rpc_nfs3_readdirplus_async(struct rpc_context *rpc, rpc_cb cb, struct READDIRPLUS3args *args, void *private_data);
 EXTERN int rpc_nfs_readdirplus_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh, uint64_t cookie, char *cookieverf, int count, void *private_data);
 
 /*
- * Call NFS/FSSTAT
+ * Call NFS3/FSSTAT
  * Function returns
  *  0 : The call was initiated. The callback will be invoked when the call completes.
  * <0 : An error occured when trying to set up the call. The callback will not be invoked.
@@ -588,12 +602,12 @@ EXTERN int rpc_nfs_readdirplus_async(struct rpc_context *rpc, rpc_cb cb, struct 
  * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
  *                     data is NULL.
  */
+struct FSSTAT3args;
+EXTERN int rpc_nfs3_fsstat_async(struct rpc_context *rpc, rpc_cb cb, struct FSSTAT3args *args, void *private_data);
 EXTERN int rpc_nfs_fsstat_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh, void *private_data);
 
-
-
 /*
- * Call NFS/FSINFO
+ * Call NFS3/FSINFO
  * Function returns
  *  0 : The call was initiated. The callback will be invoked when the call completes.
  * <0 : An error occured when trying to set up the call. The callback will not be invoked.
@@ -606,12 +620,12 @@ EXTERN int rpc_nfs_fsstat_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_f
  * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
  *                     data is NULL.
  */
+struct FSINFO3args;
+EXTERN int rpc_nfs3_fsinfo_async(struct rpc_context *rpc, rpc_cb cb, struct FSINFO3args *args, void *private_data);
 EXTERN int rpc_nfs_fsinfo_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh, void *private_data);
 
-
-
 /*
- * Call NFS/READLINK
+ * Call NFS3/READLINK
  * Function returns
  *  0 : The call was initiated. The callback will be invoked when the call completes.
  * <0 : An error occured when trying to set up the call. The callback will not be invoked.
@@ -625,12 +639,11 @@ EXTERN int rpc_nfs_fsinfo_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_f
  *                     data is NULL.
  */
 struct READLINK3args;
+EXTERN int rpc_nfs3_readlink_async(struct rpc_context *rpc, rpc_cb cb, struct READLINK3args *args, void *private_data);
 EXTERN int rpc_nfs_readlink_async(struct rpc_context *rpc, rpc_cb cb, struct READLINK3args *args, void *private_data);
 
-
-
 /*
- * Call NFS/SYMLINK
+ * Call NFS3/SYMLINK
  * Function returns
  *  0 : The call was initiated. The callback will be invoked when the call completes.
  * <0 : An error occured when trying to set up the call. The callback will not be invoked.
@@ -644,11 +657,11 @@ EXTERN int rpc_nfs_readlink_async(struct rpc_context *rpc, rpc_cb cb, struct REA
  *                     data is NULL.
  */
 struct SYMLINK3args;
+EXTERN int rpc_nfs3_symlink_async(struct rpc_context *rpc, rpc_cb cb, struct SYMLINK3args *args, void *private_data);
 EXTERN int rpc_nfs_symlink_async(struct rpc_context *rpc, rpc_cb cb, struct SYMLINK3args *args, void *private_data);
 
-
 /*
- * Call NFS/RENAME
+ * Call NFS3/RENAME
  * Function returns
  *  0 : The call was initiated. The callback will be invoked when the call completes.
  * <0 : An error occured when trying to set up the call. The callback will not be invoked.
@@ -661,12 +674,12 @@ EXTERN int rpc_nfs_symlink_async(struct rpc_context *rpc, rpc_cb cb, struct SYML
  * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
  *                     data is NULL.
  */
+struct RENAME3args;
+EXTERN int rpc_nfs3_rename_async(struct rpc_context *rpc, rpc_cb cb, struct RENAME3args *args, void *private_data);
 EXTERN int rpc_nfs_rename_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *olddir, char *oldname, struct nfs_fh3 *newdir, char *newname, void *private_data);
 
-
-
 /*
- * Call NFS/LINK
+ * Call NFS3/LINK
  * Function returns
  *  0 : The call was initiated. The callback will be invoked when the call completes.
  * <0 : An error occured when trying to set up the call. The callback will not be invoked.
@@ -679,9 +692,9 @@ EXTERN int rpc_nfs_rename_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_f
  * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
  *                     data is NULL.
  */
+struct LINK3args;
+EXTERN int rpc_nfs3_link_async(struct rpc_context *rpc, rpc_cb cb, struct LINK3args *args, void *private_data);
 EXTERN int rpc_nfs_link_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *file, struct nfs_fh3 *newdir, char *newname, void *private_data);
-
-
 
 
 /* 
@@ -878,7 +891,7 @@ char *nlmstat4_to_str(int stat);
  * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
  *                     data is NULL.
  */
-int rpc_nlm4_null_async(struct rpc_context *rpc, rpc_cb cb, void *private_data);
+EXTERN int rpc_nlm4_null_async(struct rpc_context *rpc, rpc_cb cb, void *private_data);
 
 /*
  * Call NLM/TEST
@@ -897,7 +910,7 @@ int rpc_nlm4_null_async(struct rpc_context *rpc, rpc_cb cb, void *private_data);
  *                     data is NULL.
  */
 struct NLM4_TESTargs;
-int rpc_nlm4_test_async(struct rpc_context *rpc, rpc_cb cb, struct NLM4_TESTargs *args, void *private_data);
+EXTERN int rpc_nlm4_test_async(struct rpc_context *rpc, rpc_cb cb, struct NLM4_TESTargs *args, void *private_data);
 
 /*
  * Call NLM/LOCK
@@ -916,7 +929,7 @@ int rpc_nlm4_test_async(struct rpc_context *rpc, rpc_cb cb, struct NLM4_TESTargs
  *                     data is NULL.
  */
 struct NLM4_LOCKargs;
-int rpc_nlm4_lock_async(struct rpc_context *rpc, rpc_cb cb, struct NLM4_LOCKargs *args, void *private_data);
+EXTERN int rpc_nlm4_lock_async(struct rpc_context *rpc, rpc_cb cb, struct NLM4_LOCKargs *args, void *private_data);
 
 /*
  * Call NLM/CANCEL
@@ -935,7 +948,7 @@ int rpc_nlm4_lock_async(struct rpc_context *rpc, rpc_cb cb, struct NLM4_LOCKargs
  *                     data is NULL.
  */
 struct NLM4_CANCargs;
-int rpc_nlm4_cancel_async(struct rpc_context *rpc, rpc_cb cb, struct NLM4_CANCargs *args, void *private_data);
+EXTERN int rpc_nlm4_cancel_async(struct rpc_context *rpc, rpc_cb cb, struct NLM4_CANCargs *args, void *private_data);
 
 /*
  * Call NLM/UNLOCK
@@ -954,7 +967,7 @@ int rpc_nlm4_cancel_async(struct rpc_context *rpc, rpc_cb cb, struct NLM4_CANCar
  *                     data is NULL.
  */
 struct NLM4_UNLOCKargs;
-int rpc_nlm4_unlock_async(struct rpc_context *rpc, rpc_cb cb, struct NLM4_UNLOCKargs *args, void *private_data);
+EXTERN int rpc_nlm4_unlock_async(struct rpc_context *rpc, rpc_cb cb, struct NLM4_UNLOCKargs *args, void *private_data);
 
 /*
  * NSM functions
@@ -977,7 +990,7 @@ char *nsmstat1_to_str(int stat);
  * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
  *                     data is NULL.
  */
-int rpc_nsm1_null_async(struct rpc_context *rpc, rpc_cb cb, void *private_data);
+EXTERN int rpc_nsm1_null_async(struct rpc_context *rpc, rpc_cb cb, void *private_data);
 
 /*
  * Call NSM/STAT
@@ -996,7 +1009,7 @@ int rpc_nsm1_null_async(struct rpc_context *rpc, rpc_cb cb, void *private_data);
  *                     data is NULL.
  */
 struct NSM1_STATargs;
-int rpc_nsm1_stat_async(struct rpc_context *rpc, rpc_cb cb, struct NSM1_STATargs *args, void *private_data);
+EXTERN int rpc_nsm1_stat_async(struct rpc_context *rpc, rpc_cb cb, struct NSM1_STATargs *args, void *private_data);
 
 /*
  * Call NSM/MON
@@ -1015,7 +1028,7 @@ int rpc_nsm1_stat_async(struct rpc_context *rpc, rpc_cb cb, struct NSM1_STATargs
  *                     data is NULL.
  */
 struct NSM1_MONargs;
-int rpc_nsm1_mon_async(struct rpc_context *rpc, rpc_cb cb, struct NSM1_MONargs *args, void *private_data);
+EXTERN int rpc_nsm1_mon_async(struct rpc_context *rpc, rpc_cb cb, struct NSM1_MONargs *args, void *private_data);
 
 /*
  * Call NSM/UNMON
@@ -1034,7 +1047,7 @@ int rpc_nsm1_mon_async(struct rpc_context *rpc, rpc_cb cb, struct NSM1_MONargs *
  *                     data is NULL.
  */
 struct NSM1_UNMONargs;
-int rpc_nsm1_unmon_async(struct rpc_context *rpc, rpc_cb cb, struct NSM1_UNMONargs *args, void *private_data);
+EXTERN int rpc_nsm1_unmon_async(struct rpc_context *rpc, rpc_cb cb, struct NSM1_UNMONargs *args, void *private_data);
 
 /*
  * Call NSM/UNMONALL
@@ -1053,7 +1066,7 @@ int rpc_nsm1_unmon_async(struct rpc_context *rpc, rpc_cb cb, struct NSM1_UNMONar
  *                     data is NULL.
  */
 struct NSM1_UNMONALLargs;
-int rpc_nsm1_unmonall_async(struct rpc_context *rpc, rpc_cb cb, struct NSM1_UNMONALLargs *args, void *private_data);
+EXTERN int rpc_nsm1_unmonall_async(struct rpc_context *rpc, rpc_cb cb, struct NSM1_UNMONALLargs *args, void *private_data);
 
 /*
  * Call NSM/SIMUCRASH
@@ -1071,7 +1084,7 @@ int rpc_nsm1_unmonall_async(struct rpc_context *rpc, rpc_cb cb, struct NSM1_UNMO
  * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
  *                     data is NULL.
  */
-int rpc_nsm1_simucrash_async(struct rpc_context *rpc, rpc_cb cb, void *private_data);
+EXTERN int rpc_nsm1_simucrash_async(struct rpc_context *rpc, rpc_cb cb, void *private_data);
 
 /*
  * Call NSM/NOTIFY
@@ -1090,6 +1103,6 @@ int rpc_nsm1_simucrash_async(struct rpc_context *rpc, rpc_cb cb, void *private_d
  *                     data is NULL.
  */
 struct NSM1_NOTIFYargs;
-int rpc_nsm1_notify_async(struct rpc_context *rpc, rpc_cb cb, struct NSM1_NOTIFYargs *args, void *private_data);
+EXTERN int rpc_nsm1_notify_async(struct rpc_context *rpc, rpc_cb cb, struct NSM1_NOTIFYargs *args, void *private_data);
 
 #endif
