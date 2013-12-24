@@ -118,7 +118,7 @@ int rpc_disconnect(struct rpc_context *rpc, char *error);
  * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
  *                     data is NULL.
  */
-int rpc_pmap_null_async(struct rpc_context *rpc, rpc_cb cb, void *private_data);
+EXTERN int rpc_pmap_null_async(struct rpc_context *rpc, rpc_cb cb, void *private_data);
 
 
 /*
@@ -205,7 +205,7 @@ int mountstat3_to_errno(int error);
  * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
  *                     data is NULL.
  */
-int rpc_mount_null_async(struct rpc_context *rpc, rpc_cb cb, void *private_data);
+EXTERN int rpc_mount_null_async(struct rpc_context *rpc, rpc_cb cb, void *private_data);
 
 /*
  * Call MOUNT/MNT
@@ -221,7 +221,7 @@ int rpc_mount_null_async(struct rpc_context *rpc, rpc_cb cb, void *private_data)
  * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
  *                     data is NULL.
  */
-int rpc_mount_mnt_async(struct rpc_context *rpc, rpc_cb cb, char *export, void *private_data);
+EXTERN int rpc_mount_mnt_async(struct rpc_context *rpc, rpc_cb cb, char *export, void *private_data);
 
 /*
  * Call MOUNT/DUMP
@@ -237,7 +237,7 @@ int rpc_mount_mnt_async(struct rpc_context *rpc, rpc_cb cb, char *export, void *
  * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
  *                     data is NULL.
  */
-int rpc_mount_dump_async(struct rpc_context *rpc, rpc_cb cb, void *private_data);
+EXTERN int rpc_mount_dump_async(struct rpc_context *rpc, rpc_cb cb, void *private_data);
 
 /*
  * Call MOUNT/UMNT
@@ -253,7 +253,7 @@ int rpc_mount_dump_async(struct rpc_context *rpc, rpc_cb cb, void *private_data)
  * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
  *                     data is NULL.
  */
-int rpc_mount_umnt_async(struct rpc_context *rpc, rpc_cb cb, char *export, void *private_data);
+EXTERN int rpc_mount_umnt_async(struct rpc_context *rpc, rpc_cb cb, char *export, void *private_data);
 
 /*
  * Call MOUNT/UMNTALL
@@ -269,7 +269,7 @@ int rpc_mount_umnt_async(struct rpc_context *rpc, rpc_cb cb, char *export, void 
  * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
  *                     data is NULL.
  */
-int rpc_mount_umntall_async(struct rpc_context *rpc, rpc_cb cb, void *private_data);
+EXTERN int rpc_mount_umntall_async(struct rpc_context *rpc, rpc_cb cb, void *private_data);
 
 /*
  * Call MOUNT/EXPORT
@@ -289,7 +289,7 @@ int rpc_mount_umntall_async(struct rpc_context *rpc, rpc_cb cb, void *private_da
  * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
  *                     data is NULL.
  */
-int rpc_mount_export_async(struct rpc_context *rpc, rpc_cb cb, void *private_data);
+EXTERN int rpc_mount_export_async(struct rpc_context *rpc, rpc_cb cb, void *private_data);
 
 
 
@@ -315,7 +315,7 @@ int nfsstat3_to_errno(int error);
  * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
  *                     data is NULL.
  */
-int rpc_nfs_null_async(struct rpc_context *rpc, rpc_cb cb, void *private_data);
+EXTERN int rpc_nfs_null_async(struct rpc_context *rpc, rpc_cb cb, void *private_data);
 
 /*
  * Call NFS/GETATTR
@@ -331,7 +331,7 @@ int rpc_nfs_null_async(struct rpc_context *rpc, rpc_cb cb, void *private_data);
  * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
  *                     data is NULL.
  */
-int rpc_nfs_getattr_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh, void *private_data);
+EXTERN int rpc_nfs_getattr_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh, void *private_data);
 
 /*
  * Call NFS/PATHCONF
@@ -347,7 +347,7 @@ int rpc_nfs_getattr_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh
  * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
  *                     data is NULL.
  */
-int rpc_nfs_pathconf_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh, void *private_data);
+EXTERN int rpc_nfs_pathconf_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh, void *private_data);
 
 /*
  * Call NFS/LOOKUP
@@ -363,7 +363,7 @@ int rpc_nfs_pathconf_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *f
  * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
  *                     data is NULL.
  */
-int rpc_nfs_lookup_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh, char *name, void *private_data);
+EXTERN int rpc_nfs_lookup_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh, char *name, void *private_data);
 
 /*
  * Call NFS/ACCESS
@@ -379,7 +379,7 @@ int rpc_nfs_lookup_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh,
  * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
  *                     data is NULL.
  */
-int rpc_nfs_access_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh, int access, void *private_data);
+EXTERN int rpc_nfs_access_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh, int access, void *private_data);
 
 /*
  * Call NFS/READ
@@ -395,7 +395,7 @@ int rpc_nfs_access_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh,
  * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
  *                     data is NULL.
  */
-int rpc_nfs_read_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh, uint64_t offset, uint64_t count, void *private_data);
+EXTERN int rpc_nfs_read_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh, uint64_t offset, uint64_t count, void *private_data);
 
 /*
  * Call NFS/WRITE
@@ -411,7 +411,7 @@ int rpc_nfs_read_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh, u
  * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
  *                     data is NULL.
  */
-int rpc_nfs_write_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh, char *buf, uint64_t offset, uint64_t count, int stable_how, void *private_data);
+EXTERN int rpc_nfs_write_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh, char *buf, uint64_t offset, uint64_t count, int stable_how, void *private_data);
 
 /*
  * Call NFS/COMMIT
@@ -427,7 +427,7 @@ int rpc_nfs_write_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh, 
  * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
  *                     data is NULL.
  */
-int rpc_nfs_commit_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh, void *private_data);
+EXTERN int rpc_nfs_commit_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh, void *private_data);
 
 
 /*
@@ -445,7 +445,7 @@ int rpc_nfs_commit_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh,
  *                     data is NULL.
  */
 struct SETATTR3args;
-int rpc_nfs_setattr_async(struct rpc_context *rpc, rpc_cb cb, struct SETATTR3args *args, void *private_data);
+EXTERN int rpc_nfs_setattr_async(struct rpc_context *rpc, rpc_cb cb, struct SETATTR3args *args, void *private_data);
 
 
 
@@ -464,7 +464,7 @@ int rpc_nfs_setattr_async(struct rpc_context *rpc, rpc_cb cb, struct SETATTR3arg
  *                     data is NULL.
  */
 struct MKDIR3args;
-int rpc_nfs_mkdir_async(struct rpc_context *rpc, rpc_cb cb, struct MKDIR3args *args, void *private_data);
+EXTERN int rpc_nfs_mkdir_async(struct rpc_context *rpc, rpc_cb cb, struct MKDIR3args *args, void *private_data);
 
 
 
@@ -484,7 +484,7 @@ int rpc_nfs_mkdir_async(struct rpc_context *rpc, rpc_cb cb, struct MKDIR3args *a
  * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
  *                     data is NULL.
  */
-int rpc_nfs_rmdir_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh, char *dir, void *private_data);
+EXTERN int rpc_nfs_rmdir_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh, char *dir, void *private_data);
 
 
 
@@ -504,7 +504,7 @@ int rpc_nfs_rmdir_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh, 
  *                     data is NULL.
  */
 struct CREATE3args;
-int rpc_nfs_create_async(struct rpc_context *rpc, rpc_cb cb, struct CREATE3args *args, void *private_data);
+EXTERN int rpc_nfs_create_async(struct rpc_context *rpc, rpc_cb cb, struct CREATE3args *args, void *private_data);
 
 
 /*
@@ -521,7 +521,7 @@ int rpc_nfs_create_async(struct rpc_context *rpc, rpc_cb cb, struct CREATE3args 
  * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
  *                     data is NULL.
  */
-int rpc_nfs_mknod_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh, char *file, int mode, int major, int minor, void *private_data);
+EXTERN int rpc_nfs_mknod_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh, char *file, int mode, int major, int minor, void *private_data);
 
 
 /*
@@ -538,7 +538,7 @@ int rpc_nfs_mknod_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh, 
  * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
  *                     data is NULL.
  */
-int rpc_nfs_remove_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh, char *name, void *private_data);
+EXTERN int rpc_nfs_remove_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh, char *name, void *private_data);
 
 
 
@@ -556,7 +556,7 @@ int rpc_nfs_remove_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh,
  * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
  *                     data is NULL.
  */
-int rpc_nfs_readdir_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh, uint64_t cookie, char *cookieverf, int count, void *private_data);
+EXTERN int rpc_nfs_readdir_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh, uint64_t cookie, char *cookieverf, int count, void *private_data);
 
 /*
  * Call NFS/READDIRPLUS
@@ -572,7 +572,7 @@ int rpc_nfs_readdir_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh
  * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
  *                     data is NULL.
  */
-int rpc_nfs_readdirplus_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh, uint64_t cookie, char *cookieverf, int count, void *private_data);
+EXTERN int rpc_nfs_readdirplus_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh, uint64_t cookie, char *cookieverf, int count, void *private_data);
 
 /*
  * Call NFS/FSSTAT
@@ -588,7 +588,7 @@ int rpc_nfs_readdirplus_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3
  * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
  *                     data is NULL.
  */
-int rpc_nfs_fsstat_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh, void *private_data);
+EXTERN int rpc_nfs_fsstat_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh, void *private_data);
 
 
 
@@ -606,7 +606,7 @@ int rpc_nfs_fsstat_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh,
  * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
  *                     data is NULL.
  */
-int rpc_nfs_fsinfo_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh, void *private_data);
+EXTERN int rpc_nfs_fsinfo_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh, void *private_data);
 
 
 
@@ -625,7 +625,7 @@ int rpc_nfs_fsinfo_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh,
  *                     data is NULL.
  */
 struct READLINK3args;
-int rpc_nfs_readlink_async(struct rpc_context *rpc, rpc_cb cb, struct READLINK3args *args, void *private_data);
+EXTERN int rpc_nfs_readlink_async(struct rpc_context *rpc, rpc_cb cb, struct READLINK3args *args, void *private_data);
 
 
 
@@ -644,7 +644,7 @@ int rpc_nfs_readlink_async(struct rpc_context *rpc, rpc_cb cb, struct READLINK3a
  *                     data is NULL.
  */
 struct SYMLINK3args;
-int rpc_nfs_symlink_async(struct rpc_context *rpc, rpc_cb cb, struct SYMLINK3args *args, void *private_data);
+EXTERN int rpc_nfs_symlink_async(struct rpc_context *rpc, rpc_cb cb, struct SYMLINK3args *args, void *private_data);
 
 
 /*
@@ -661,7 +661,7 @@ int rpc_nfs_symlink_async(struct rpc_context *rpc, rpc_cb cb, struct SYMLINK3arg
  * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
  *                     data is NULL.
  */
-int rpc_nfs_rename_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *olddir, char *oldname, struct nfs_fh3 *newdir, char *newname, void *private_data);
+EXTERN int rpc_nfs_rename_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *olddir, char *oldname, struct nfs_fh3 *newdir, char *newname, void *private_data);
 
 
 
@@ -679,7 +679,7 @@ int rpc_nfs_rename_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *old
  * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
  *                     data is NULL.
  */
-int rpc_nfs_link_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *file, struct nfs_fh3 *newdir, char *newname, void *private_data);
+EXTERN int rpc_nfs_link_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *file, struct nfs_fh3 *newdir, char *newname, void *private_data);
 
 
 
@@ -704,7 +704,7 @@ int rquotastat_to_errno(int error);
  * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
  *                     data is NULL.
  */
-int rpc_rquota1_null_async(struct rpc_context *rpc, rpc_cb cb, void *private_data);
+EXTERN int rpc_rquota1_null_async(struct rpc_context *rpc, rpc_cb cb, void *private_data);
 
 /*
  * Call RQUOTA1/GETQUOTA
@@ -720,7 +720,7 @@ int rpc_rquota1_null_async(struct rpc_context *rpc, rpc_cb cb, void *private_dat
  * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
  *                     data is NULL.
  */
-int rpc_rquota1_getquota_async(struct rpc_context *rpc, rpc_cb cb, char *export, int uid, void *private_data);
+EXTERN int rpc_rquota1_getquota_async(struct rpc_context *rpc, rpc_cb cb, char *export, int uid, void *private_data);
 
 /*
  * Call RQUOTA1/GETACTIVEQUOTA
@@ -736,7 +736,7 @@ int rpc_rquota1_getquota_async(struct rpc_context *rpc, rpc_cb cb, char *export,
  * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
  *                     data is NULL.
  */
-int rpc_rquota1_getactivequota_async(struct rpc_context *rpc, rpc_cb cb, char *export, int uid, void *private_data);
+EXTERN int rpc_rquota1_getactivequota_async(struct rpc_context *rpc, rpc_cb cb, char *export, int uid, void *private_data);
 
 
 
@@ -814,7 +814,7 @@ int rpc_rquota2_getactivequota_async(struct rpc_context *rpc, rpc_cb cb, char *e
  * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
  *                     data is NULL.
  */
-int rpc_nfsacl_null_async(struct rpc_context *rpc, rpc_cb cb, void *private_data);
+EXTERN int rpc_nfsacl_null_async(struct rpc_context *rpc, rpc_cb cb, void *private_data);
 
 /*
  * Call NFSACL/GETACL
@@ -832,7 +832,7 @@ int rpc_nfsacl_null_async(struct rpc_context *rpc, rpc_cb cb, void *private_data
  *                     data is NULL.
  */
 struct GETACL3args;
-int rpc_nfsacl_getacl_async(struct rpc_context *rpc, rpc_cb cb, struct GETACL3args *args, void *private_data);
+EXTERN int rpc_nfsacl_getacl_async(struct rpc_context *rpc, rpc_cb cb, struct GETACL3args *args, void *private_data);
 
 
 
@@ -852,7 +852,7 @@ int rpc_nfsacl_getacl_async(struct rpc_context *rpc, rpc_cb cb, struct GETACL3ar
  *                     data is NULL.
  */
 struct SETACL3args;
-int rpc_nfsacl_setacl_async(struct rpc_context *rpc, rpc_cb cb, struct SETACL3args *args, void *private_data);
+EXTERN int rpc_nfsacl_setacl_async(struct rpc_context *rpc, rpc_cb cb, struct SETACL3args *args, void *private_data);
 
 
 
