@@ -173,6 +173,18 @@ char *nfs_get_error(struct nfs_context *nfs)
 	return rpc_get_error(nfs->rpc);
 };
 
+int rpc_set_context_args(struct rpc_context *rpc, char *arg, char *val)
+{
+	if (!strncmp(arg, "tcp-syncnt", 10)) {
+		rpc_set_tcp_syncnt(rpc, atoi(val));
+	} else if (!strncmp(arg, "uid", 3)) {
+		rpc_set_uid(rpc, atoi(val));
+	} else if (!strncmp(arg, "gid", 3)) {
+		rpc_set_gid(rpc, atoi(val));
+	}
+	return 0;
+}
+
 static struct nfs_url *nfs_parse_url(struct nfs_context *nfs, const char *url, int dir, int incomplete)
 {
 	struct nfs_url *urls;
@@ -280,13 +292,8 @@ flags:
 		if (strp2) {
 			*strp2 = 0;
 			strp2++;
-			if (!strncmp(strp, "tcp-syncnt", 10)) {
-				rpc_set_tcp_syncnt(nfs->rpc, atoi(strp2));
-			} else if (!strncmp(strp, "uid", 3)) {
-				rpc_set_uid(nfs->rpc, atoi(strp2));
-			} else if (!strncmp(strp, "gid", 3)) {
-				rpc_set_gid(nfs->rpc, atoi(strp2));
-			}
+			rpc_set_context_args(nfs_get_rpc_context(nfs),
+					strp, strp2);
 		}
 	}
 
