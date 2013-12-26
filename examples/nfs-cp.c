@@ -132,6 +132,7 @@ open_file(const char *url, int flags)
 	file_context->fd     = -1;
 	file_context->nfs    = NULL;
 	file_context->nfsfh  = NULL;
+	file_context->url    = NULL;
 	
 	if (strncmp(url, "nfs://", 6)) {
 		file_context->is_nfs = 0;
