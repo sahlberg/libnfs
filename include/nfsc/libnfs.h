@@ -112,6 +112,24 @@ EXTERN void nfs_destroy_context(struct nfs_context *nfs);
 
 
 /*
+ * URL parsing functions.
+ * These functions all parse a URL of the form 
+ * nfs://server/path/file?argv=val[&arg=val]*
+ * and returns a nfs_url.
+ *
+ * Apart from parsing the URL the functions will also update
+ * the nfs context to reflect settings controlled via url arguments.
+ *
+ * Current URL arguments are :
+ * tcp-syncnt=<int>  : Number of SYNs to send during the seccion establish
+ *                     before failing settin up the tcp connection to the
+ *                     server.
+ * uid=<int>         : UID value to use when talking to the server.
+ *                     default it 65534 on Windows and getuid() on unixen.
+ * gid=<int>         : GID value to use when talking to the server.
+ *                     default it 65534 on Windows and getgid() on unixen.
+ */
+/*
  * Parse a complete NFS URL including, server, path and
  * filename. Fail if any component is missing.
  */
