@@ -726,7 +726,7 @@ static void nfs_mount_5_cb(struct rpc_context *rpc, int status, void *command_da
 		return;
 	}
 
-	if (rpc_mount_mnt_async(rpc, nfs_mount_6_cb, nfs->export, data) != 0) {
+	if (rpc_mount3_mnt_async(rpc, nfs_mount_6_cb, nfs->export, data) != 0) {
 		data->cb(-ENOMEM, nfs, command_data, data->private_data);
 		free_nfs_cb_data(data);
 		return;
@@ -754,7 +754,7 @@ static void nfs_mount_4_cb(struct rpc_context *rpc, int status, void *command_da
 		return;
 	}
 
-	if (rpc_mount_null_async(rpc, nfs_mount_5_cb, data) != 0) {
+	if (rpc_mount3_null_async(rpc, nfs_mount_5_cb, data) != 0) {
 		data->cb(-ENOMEM, nfs, command_data, data->private_data);
 		free_nfs_cb_data(data);
 		return;
@@ -3916,7 +3916,7 @@ static void mount_export_4_cb(struct rpc_context *rpc, int status, void *command
 		return;
 	}
 
-	if (rpc_mount_export_async(rpc, mount_export_5_cb, data) != 0) {
+	if (rpc_mount3_export_async(rpc, mount_export_5_cb, data) != 0) {
 		data->cb(rpc, -ENOMEM, command_data, data->private_data);
 		free_mount_cb_data(data);
 		return;
