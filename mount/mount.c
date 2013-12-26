@@ -102,7 +102,7 @@ int rpc_mount3_dump_async(struct rpc_context *rpc, rpc_cb cb, void *private_data
 
 int rpc_mount_dump_async(struct rpc_context *rpc, rpc_cb cb, void *private_data)
 {
-	return rpc_mount_dump_async(rpc, cb, private_data);
+	return rpc_mount3_dump_async(rpc, cb, private_data);
 }
 
 int rpc_mount3_umnt_async(struct rpc_context *rpc, rpc_cb cb, char *export, void *private_data)
@@ -156,7 +156,7 @@ int rpc_mount3_umntall_async(struct rpc_context *rpc, rpc_cb cb, void *private_d
 
 int rpc_mount_umntall_async(struct rpc_context *rpc, rpc_cb cb, void *private_data)
 {
-	return rpc_mount_umntall_async(rpc, cb, private_data);
+	return rpc_mount3_umntall_async(rpc, cb, private_data);
 }
 
 int rpc_mount3_export_async(struct rpc_context *rpc, rpc_cb cb, void *private_data)
@@ -180,7 +180,7 @@ int rpc_mount3_export_async(struct rpc_context *rpc, rpc_cb cb, void *private_da
 
 int rpc_mount_export_async(struct rpc_context *rpc, rpc_cb cb, void *private_data)
 {
-	return rpc_mount_export_async(rpc, cb, private_data);
+	return rpc_mount3_export_async(rpc, cb, private_data);
 }
 
 char *mountstat3_to_str(int st)
