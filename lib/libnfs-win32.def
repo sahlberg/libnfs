@@ -46,6 +46,10 @@ nfs_open
 nfs_open_async
 nfs_opendir
 nfs_opendir_async
+nfs_parse_url_full
+nfs_parse_url_dir
+nfs_parse_url_incomplete
+nfs_destroy_url
 nfs_pread
 nfs_pread_async
 nfs_pwrite
