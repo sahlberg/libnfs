@@ -201,6 +201,7 @@ static struct nfs_url *nfs_parse_url(struct nfs_context *nfs, const char *url, i
 		return NULL;
 	}
 
+	memset(urls, 0x00, sizeof(struct nfs_url));
 	urls->server = strdup(url + 6);
 	if (urls->server == NULL) {
 		nfs_destroy_url(urls);
