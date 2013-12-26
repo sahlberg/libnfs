@@ -201,6 +201,7 @@ static struct nfs_url *nfs_parse_url(struct nfs_context *nfs, const char *url, i
 		return NULL;
 	}
 
+	memset(urls, 0x00, sizeof(struct nfs_url));
 	urls->server = strdup(url + 6);
 	if (urls->server == NULL) {
 		nfs_destroy_url(urls);
@@ -277,11 +278,6 @@ flags:
 		}
 	}
 
-	if (urls->server && strlen(urls->server) <= 1) {
-		free(urls->server);
-		urls->server = NULL;
-	}
-
 	while (flagsp != NULL && *(flagsp+1) != 0) {
 		strp = flagsp + 1;
 		flagsp = strchr(strp, '&');
@@ -294,6 +290,11 @@ flags:
 			strp2++;
 			nfs_set_context_args(nfs, strp, strp2);
 		}
+	}
+
+	if (urls->server && strlen(urls->server) <= 1) {
+		free(urls->server);
+		urls->server = NULL;
 	}
 
 	return urls;
