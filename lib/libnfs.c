@@ -277,11 +277,6 @@ flags:
 		}
 	}
 
-	if (urls->server && strlen(urls->server) <= 1) {
-		free(urls->server);
-		urls->server = NULL;
-	}
-
 	while (flagsp != NULL && *(flagsp+1) != 0) {
 		strp = flagsp + 1;
 		flagsp = strchr(strp, '&');
@@ -295,6 +290,11 @@ flags:
 			rpc_set_context_args(nfs_get_rpc_context(nfs),
 					strp, strp2);
 		}
+	}
+
+	if (urls->server && strlen(urls->server) <= 1) {
+		free(urls->server);
+		urls->server = NULL;
 	}
 
 	return urls;
