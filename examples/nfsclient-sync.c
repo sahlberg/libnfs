@@ -163,7 +163,7 @@ int main(int argc, char *argv[])
 
 	ret = nfs_opendir(nfs, "/", &nfsdir);
 	if (ret != 0) {
-		printf("Failed to opendir(\"/\")\n", nfs_get_error(nfs));
+		printf("Failed to opendir(\"/\") %s\n", nfs_get_error(nfs));
 		exit(10);
 	}
 	while((nfsdirent = nfs_readdir(nfs, nfsdir)) != NULL) {
@@ -212,7 +212,7 @@ int main(int argc, char *argv[])
 			"-w"[!!(st.st_mode & S_IWOTH)],
 			"-x"[!!(st.st_mode & S_IXOTH)]
 		);
-		printf(" %2d", st.st_nlink);
+		printf(" %2d", (int)st.st_nlink);
 		printf(" %5d", st.st_uid);
 		printf(" %5d", st.st_gid);
 		printf(" %12" PRId64, st.st_size);

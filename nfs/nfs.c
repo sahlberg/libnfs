@@ -771,7 +771,7 @@ int rpc_nfs_fsinfo_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh,
 	args.fsroot.data.data_len = fh->data.data_len; 
 	args.fsroot.data.data_val = fh->data.data_val; 
 
-	return rpc_nfs3_fsinfo_async(rpc, cb, fh, private_data);
+	return rpc_nfs3_fsinfo_async(rpc, cb, &args, private_data);
 }
 
 int rpc_nfs3_readlink_async(struct rpc_context *rpc, rpc_cb cb, READLINK3args *args, void *private_data)

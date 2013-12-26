@@ -652,7 +652,7 @@ static void nfs_mount_7_cb(struct rpc_context *rpc, int status, void *command_da
 		return;
 	}
 
-	if (rpc_nfs_null_async(rpc, nfs_mount_8_cb, data) != 0) {
+	if (rpc_nfs3_null_async(rpc, nfs_mount_8_cb, data) != 0) {
 		data->cb(-ENOMEM, nfs, command_data, data->private_data);
 		free_nfs_cb_data(data);
 		return;

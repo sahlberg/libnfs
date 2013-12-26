@@ -100,7 +100,7 @@ void process_dir(struct nfs_context *nfs, char *dir, int level) {
 	
 	ret = nfs_opendir(nfs, dir, &nfsdir);
 	if (ret != 0) {
-		printf("Failed to opendir(\"%s\")\n", dir, nfs_get_error(nfs));
+		printf("Failed to opendir(\"%s\") %s\n", dir, nfs_get_error(nfs));
 		exit(10);
 	}
 	while((nfsdirent = nfs_readdir(nfs, nfsdir)) != NULL) {
