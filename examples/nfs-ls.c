@@ -35,6 +35,7 @@ WSADATA wsaData;
 #include <inttypes.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <sys/statvfs.h>
 #ifndef AROS
 #include <sys/statvfs.h>
 #endif
@@ -62,103 +63,44 @@ struct client {
        int is_finished;
 };
 
+int recursive = 0, summary = 0, discovery = 0;
+
 void print_usage(void)
 {
-	fprintf(stderr, "Usage: nfs-ls [-?|--help] [--usage] <url>\n");
+	fprintf(stderr, "Usage: nfs-ls [-?|--help|--usage] [-R|--recursive] [-s|--summary] [-D|--discovery] <url>\n");
 }
 
-int main(int argc, char *argv[])
-{
-	struct nfs_context *nfs = NULL;
-	int i, ret, res;
-	uint64_t offset;
-	struct client client;
-	struct stat st;
-	struct nfsfh  *nfsfh;
-	struct nfsdir *nfsdir;
+int process_server(const char *server) {
+	struct exportnode *exports;
+	struct exportnode *export;
+
+	exports = mount_getexports(server);
+	if (exports == NULL) {
+		fprintf(stderr, "Failed to get exports for server %s.\n", server);
+		return -1;
+	}
+	for (export=exports; export; export = export->ex_next) {
+		printf("nfs://%s%s\n", server, export->ex_dir);
+	}
+	mount_free_export_list(exports);
+	return 0;
+}
+
+void process_dir(struct nfs_context *nfs, char *dir, int level) {
+	int ret;
 	struct nfsdirent *nfsdirent;
 	struct statvfs svfs;
-	exports export, tmp;
-	const char *url = NULL;
-	char *server = NULL, *path = NULL, *strp;
-
-#ifdef WIN32
-	if (WSAStartup(MAKEWORD(2,2), &wsaData) != 0) {
-		printf("Failed to start Winsock2\n");
-		exit(10);
-	}
-#endif
-
-#ifdef AROS
-	aros_init_socket();
-#endif
-
-	url = argv[1];
-
-	if (url == NULL) {
-		fprintf(stderr, "No URL specified.\n");
-		print_usage();
-		exit(0);
-	}
-
-	if (strncmp(url, "nfs://", 6)) {
-		fprintf(stderr, "Invalid URL specified.\n");
-		print_usage();
-		exit(0);
-	}
-
-	server = strdup(url + 6);
-	if (server == NULL) {
-		fprintf(stderr, "Failed to strdup server string\n");
-		exit(10);
-	}
-	if (server[0] == '/' || server[0] == '\0') {
-		fprintf(stderr, "Invalid server string.\n");
-		free(server);
-		exit(10);
-	}
-	strp = strchr(server, '/');
-	if (strp == NULL) {
-		fprintf(stderr, "Invalid URL specified.\n");
-		print_usage();
-		free(server);
-		exit(0);
-	}
-	path = strdup(strp);
-	if (path == NULL) {
-		fprintf(stderr, "Failed to strdup server string\n");
-		free(server);
-		exit(10);
-	}
-	if (path[0] != '/') {
-		fprintf(stderr, "Invalid path.\n");
-		free(server);
-		free(path);
-		exit(10);
-	}
-	*strp = 0;
+	struct nfsdir *nfsdir;
+	struct stat st;
 	
-	client.server = server;
-	client.export = path;
-	client.is_finished = 0;
-
-
-	nfs = nfs_init_context();
-	if (nfs == NULL) {
-		printf("failed to init context\n");
-		goto finished;
+	if (!level) {
+		printf("Recursion detected!\n");
+		exit(10);
 	}
-
-	ret = nfs_mount(nfs, client.server, client.export);
+	
+	ret = nfs_opendir(nfs, dir, &nfsdir);
 	if (ret != 0) {
- 		printf("Failed to mount nfs share : %s\n", nfs_get_error(nfs));
-		goto finished;
-	}
-
-
-	ret = nfs_opendir(nfs, "/", &nfsdir);
-	if (ret != 0) {
-		printf("Failed to opendir(\"/\")\n", nfs_get_error(nfs));
+		printf("Failed to opendir(\"%s\")\n", dir, nfs_get_error(nfs));
 		exit(10);
 	}
 	while((nfsdirent = nfs_readdir(nfs, nfsdir)) != NULL) {
@@ -168,7 +110,7 @@ int main(int argc, char *argv[])
 			continue;
 		}
 
-		sprintf(path, "%s/%s", "/", nfsdirent->name);
+		snprintf(path, 1024, "%s/%s", dir, nfsdirent->name);
 		ret = nfs_stat(nfs, path, &st);
 		if (ret != 0) {
 			fprintf(stderr, "Failed to stat(%s) %s\n", path, nfs_get_error(nfs));
@@ -178,6 +120,8 @@ int main(int argc, char *argv[])
 		switch (st.st_mode & S_IFMT) {
 #ifndef WIN32
 		case S_IFLNK:
+			printf("l");
+			break;
 #endif
 		case S_IFREG:
 			printf("-");
@@ -207,22 +151,130 @@ int main(int argc, char *argv[])
 			"-w"[!!(st.st_mode & S_IWOTH)],
 			"-x"[!!(st.st_mode & S_IXOTH)]
 		);
-		printf(" %2d", st.st_nlink);
+		printf(" %2d", (int) st.st_nlink);
 		printf(" %5d", st.st_uid);
 		printf(" %5d", st.st_gid);
 		printf(" %12" PRId64, st.st_size);
 
-		printf(" %s\n", nfsdirent->name);
+		printf(" %s\n", path + 1);
+		
+		if (recursive && (st.st_mode & S_IFMT) == S_IFDIR) {
+			process_dir(nfs, path, level - 1);
+		}
 	}
 	nfs_closedir(nfs, nfsdir);
-
-
-finished:
-	free(server);
-	free(path);
-	if (nfs != NULL) {		
-		nfs_destroy_context(nfs);
-	}
-	return 0;
 }
 
+int main(int argc, char *argv[])
+{
+	struct nfs_context *nfs = NULL;
+	int i, ret = 1, res;
+	uint64_t offset;
+	struct client client;
+	struct statvfs stvfs;
+	struct nfs_url *url;
+	exports export, tmp;
+
+#ifdef WIN32
+	if (WSAStartup(MAKEWORD(2,2), &wsaData) != 0) {
+		printf("Failed to start Winsock2\n");
+		exit(10);
+	}
+#endif
+
+#ifdef AROS
+	aros_init_socket();
+#endif
+
+	if (argc < 2) {
+		fprintf(stderr, "No URL specified.\n");
+		goto finished;
+	}
+
+	for (i=1; i < argc -1; i++) {
+		if (!strcmp(argv[i], "-R") || !strcmp(argv[i], "--recursive")) {
+			recursive++;
+		} else if (!strcmp(argv[i], "-s") || !strcmp(argv[i], "--summary")) {
+			summary++;
+		} else if (!strcmp(argv[i], "-D") || !strcmp(argv[i], "--discovery")) {
+			discovery++;
+		} else{
+			goto finished;
+		}
+	}
+
+	nfs = nfs_init_context();
+	if (nfs == NULL) {
+		printf("failed to init context\n");
+		goto finished;
+	}
+
+	if (discovery) {
+		url = nfs_parse_url_incomplete(nfs, argv[argc - 1]);
+		if (url == NULL) {
+			fprintf(stderr, "%s\n", nfs_get_error(nfs));
+			goto finished;
+		}
+		if (!url->server) {
+			struct nfs_server_list *srvrs;
+			struct nfs_server_list *srv;
+
+			srvrs = nfs_find_local_servers();
+			if (srvrs == NULL) {
+				fprintf(stderr, "Failed to find local servers.\n");
+				goto finished;
+			}
+			for (srv=srvrs; srv; srv = srv->next) {
+				if (recursive) {
+					process_server(srv->addr);
+				} else {
+					printf("nfs://%s\n", srv->addr);
+				}
+			}
+			free_nfs_srvr_list(srvrs);
+			ret = 0;
+			goto finished;
+		}
+		if (url->server && !url->path) {
+			ret = process_server(url->server);
+			goto finished;
+		}
+		nfs_destroy_url(url);
+	}
+
+	url = nfs_parse_url_dir(nfs, argv[argc - 1]);
+	if (url == NULL) {
+		fprintf(stderr, "%s\n", nfs_get_error(nfs));
+		goto finished;
+	}
+
+	client.server = url->server;
+	client.export = url->path;
+	client.is_finished = 0;
+
+	if ((ret = nfs_mount(nfs, client.server, client.export)) != 0) {
+ 		fprintf(stderr, "Failed to mount nfs share : %s\n", nfs_get_error(nfs));
+		goto finished;
+	}
+
+	process_dir(nfs, "", 16);
+
+	if (summary) {
+		if (nfs_statvfs(nfs, "/", &stvfs) != 0) {
+			goto finished;
+		}
+		printf("\n%12" PRId64 " of %12" PRId64 " bytes free.\n",
+		       stvfs.f_frsize * stvfs.f_bfree, stvfs.f_frsize * stvfs.f_blocks);
+	}
+
+	ret = 0;
+finished:
+	if (ret > 0) {
+		print_usage();
+	}
+	nfs_destroy_url(url);
+	if (nfs != NULL) {
+		nfs_destroy_context(nfs);
+	}
+	return ret;
+}

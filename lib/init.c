@@ -75,6 +75,14 @@ struct rpc_context *rpc_init_context(void)
 	rpc->xid = salt + time(NULL) + getpid() << 16;
 	salt += 0x01000000;
 	rpc->fd = -1;
+	rpc->tcp_syncnt = RPC_PARAM_UNDEFINED;
+#ifdef WIN32
+	rpc->uid = 65534;
+	rpc->gid = 65534;
+#else
+	rpc->uid = getuid();
+	rpc->gid = getgid();
+#endif
 
 	return rpc;
 }
@@ -102,6 +110,24 @@ void rpc_set_auth(struct rpc_context *rpc, struct AUTH *auth)
 	rpc->auth = auth;
 }
 
+static void rpc_set_uid_gid(struct rpc_context *rpc, int uid, int gid) {
+	if (uid != rpc->uid || gid != rpc->gid) {
+		struct AUTH *auth = libnfs_authunix_create("libnfs", uid, gid, 0, NULL);
+		if (auth != NULL) {
+			rpc_set_auth(rpc, auth);
+			rpc->uid = uid;
+			rpc->gid = gid;
+		}
+	}
+}
+
+void rpc_set_uid(struct rpc_context *rpc, int uid) {
+	rpc_set_uid_gid(rpc, uid, rpc->gid);
+}
+
+void rpc_set_gid(struct rpc_context *rpc, int gid) {
+	rpc_set_uid_gid(rpc, rpc->uid, gid);
+}
 
 void rpc_set_error(struct rpc_context *rpc, char *error_string, ...)
 {

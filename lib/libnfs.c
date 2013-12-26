@@ -173,6 +173,152 @@ char *nfs_get_error(struct nfs_context *nfs)
 	return rpc_get_error(nfs->rpc);
 };
 
+static struct nfs_url *nfs_parse_url(struct nfs_context *nfs, const char *url, int dir, int incomplete)
+{
+	struct nfs_url *urls;
+	char *strp, *flagsp, *strp2;
+
+	if (strncmp(url, "nfs://", 6)) {
+		rpc_set_error(nfs->rpc, "Invalid URL specified");
+		return NULL;
+	}
+
+	urls = malloc(sizeof(struct nfs_url));
+	if (urls == NULL) {
+		rpc_set_error(nfs->rpc, "Out of memory");
+		return NULL;
+	}
+
+	urls->server = strdup(url + 6);
+	if (urls->server == NULL) {
+		nfs_destroy_url(urls);
+		rpc_set_error(nfs->rpc, "Out of memory");
+		return NULL;
+	}
+
+	if (urls->server[0] == '/' || urls->server[0] == '\0' ||
+		urls->server[0] == '?') {
+		if (incomplete) {
+			flagsp = strchr(urls->server, '?');
+			goto flags;
+		}
+		nfs_destroy_url(urls);
+		rpc_set_error(nfs->rpc, "Invalid server string");
+		return NULL;
+	}
+
+	strp = strchr(urls->server, '/');
+	if (strp == NULL) {
+		if (incomplete) {
+			flagsp = strchr(urls->server, '?');
+			goto flags;
+		}
+		nfs_destroy_url(urls);
+		rpc_set_error(nfs->rpc, "Incomplete or invalid URL specified.");
+		return NULL;
+	}
+
+	urls->path = strdup(strp);
+	if (urls->path == NULL) {
+		nfs_destroy_url(urls);
+		rpc_set_error(nfs->rpc, "Out of memory");
+		return NULL;
+	}
+	*strp = 0;
+
+	if (dir) {
+		flagsp = strchr(urls->path, '?');
+		goto flags;
+	}
+
+	strp = strrchr(urls->path, '/');
+	if (strp == NULL) {
+		if (incomplete) {
+			flagsp = strchr(urls->path, '?');
+			goto flags;
+		}
+		nfs_destroy_url(urls);
+		rpc_set_error(nfs->rpc, "Incomplete or invalid URL specified.");
+		return NULL;
+	}
+	urls->file = strdup(strp);
+	if (urls->path == NULL) {
+		nfs_destroy_url(urls);
+		rpc_set_error(nfs->rpc, "Out of memory");
+		return NULL;
+	}
+	*strp = 0;
+	flagsp = strchr(urls->file, '?');
+
+flags:
+	if (flagsp) {
+		*flagsp = 0;
+	}
+
+	if (urls->file && !strlen(urls->file)) {
+		free(urls->file);
+		urls->file = NULL;
+		if (!incomplete) {
+			nfs_destroy_url(urls);
+			rpc_set_error(nfs->rpc, "Incomplete or invalid URL specified.");
+			return NULL;
+		}
+	}
+
+	if (urls->server && strlen(urls->server) <= 1) {
+		free(urls->server);
+		urls->server = NULL;
+	}
+
+	while (flagsp != NULL && *(flagsp+1) != 0) {
+		strp = flagsp + 1;
+		flagsp = strchr(strp, '&');
+		if (flagsp) {
+			*flagsp = 0;
+		}
+		strp2 = strchr(strp, '=');
+		if (strp2) {
+			*strp2 = 0;
+			strp2++;
+			if (!strncmp(strp, "tcp-syncnt", 10)) {
+				rpc_set_tcp_syncnt(nfs->rpc, atoi(strp2));
+			} else if (!strncmp(strp, "uid", 3)) {
+				rpc_set_uid(nfs->rpc, atoi(strp2));
+			} else if (!strncmp(strp, "gid", 3)) {
+				rpc_set_gid(nfs->rpc, atoi(strp2));
+			}
+		}
+	}
+
+	return urls;
+}
+
+struct nfs_url *nfs_parse_url_full(struct nfs_context *nfs, const char *url)
+{
+	return nfs_parse_url(nfs, url, 0, 0);
+}
+
+struct nfs_url *nfs_parse_url_dir(struct nfs_context *nfs, const char *url)
+{
+	return nfs_parse_url(nfs, url, 1, 0);
+}
+
+struct nfs_url *nfs_parse_url_incomplete(struct nfs_context *nfs, const char *url)
+{
+	return nfs_parse_url(nfs, url, 0, 1);
+}
+
+
+void nfs_destroy_url(struct nfs_url *url)
+{
+	if (url) {
+		free(url->server);
+		free(url->path);
+		free(url->file);
+	}
+	free(url);
+}
+
 struct nfs_context *nfs_init_context(void)
 {
 	struct nfs_context *nfs;
