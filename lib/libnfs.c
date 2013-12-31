@@ -2130,7 +2130,7 @@ static int nfs_creat_continue_internal(struct nfs_context *nfs, struct nfs_cb_da
 	args.how.createhow3_u.obj_attributes.mode.set_it = 1;
 	args.how.createhow3_u.obj_attributes.mode.set_mode3_u.mode = data->continue_int;
 
-	if (rpc_nfs_create_async(nfs->rpc, nfs_creat_1_cb, &args, data) != 0) {
+	if (rpc_nfs3_create_async(nfs->rpc, nfs_creat_1_cb, &args, data) != 0) {
 		rpc_set_error(nfs->rpc, "RPC error: Failed to send CREATE call for %s/%s", data->path, str);
 		data->cb(-ENOMEM, nfs, rpc_get_error(nfs->rpc), data->private_data);
 		free_nfs_cb_data(data);
