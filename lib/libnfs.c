@@ -2842,7 +2842,10 @@ static void nfs_statvfs_1_cb(struct rpc_context *rpc, int status, void *command_
 
 static int nfs_statvfs_continue_internal(struct nfs_context *nfs, struct nfs_cb_data *data)
 {
-	if (rpc_nfs_fsstat_async(nfs->rpc, nfs_statvfs_1_cb, &data->fh, data) != 0) {
+	FSSTAT3args args;
+
+	args.fsroot = data->fh;
+	if (rpc_nfs3_fsstat_async(nfs->rpc, nfs_statvfs_1_cb, &args, data) != 0) {
 		rpc_set_error(nfs->rpc, "RPC error: Failed to send FSSTAT call for %s", data->path);
 		data->cb(-ENOMEM, nfs, rpc_get_error(nfs->rpc), data->private_data);
 		free_nfs_cb_data(data);
