@@ -1712,6 +1712,7 @@ static void nfs_fsync_cb(struct rpc_context *rpc, int status, void *command_data
 int nfs_fsync_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_cb cb, void *private_data)
 {
 	struct nfs_cb_data *data;
+	struct COMMIT3args args;
 
 	data = malloc(sizeof(struct nfs_cb_data));
 	if (data == NULL) {
@@ -1723,7 +1724,10 @@ int nfs_fsync_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_cb cb, voi
 	data->cb           = cb;
 	data->private_data = private_data;
 
-	if (rpc_nfs_commit_async(nfs->rpc, nfs_fsync_cb, &nfsfh->fh, data) != 0) {
+	args.file = nfsfh->fh;
+	args.offset = 0;
+	args.count = 0;
+	if (rpc_nfs3_commit_async(nfs->rpc, nfs_fsync_cb, &args, data) != 0) {
 		rpc_set_error(nfs->rpc, "RPC error: Failed to send COMMIT call for %s", data->path);
 		data->cb(-ENOMEM, nfs, rpc_get_error(nfs->rpc), data->private_data);
 		free_nfs_cb_data(data);
