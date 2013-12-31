@@ -2308,10 +2308,44 @@ static int nfs_mknod_continue_internal(struct nfs_context *nfs, struct nfs_cb_da
 {
 	struct mknod_cb_data *cb_data = data->continue_data;
 	char *str = cb_data->path;
+	MKNOD3args args;
 	
 	str = &str[strlen(str) + 1];
 
-	if (rpc_nfs_mknod_async(nfs->rpc, nfs_mknod_cb, &data->fh, str, cb_data->mode, cb_data->major, cb_data->minor, data) != 0) {
+	args.where.dir = data->fh;
+	args.where.name = str;
+	switch (cb_data->mode & S_IFMT) {
+	case S_IFCHR:
+		args.what.type = NF3CHR;
+		args.what.mknoddata3_u.chr_device.dev_attributes.mode.set_it = 1;
+		args.what.mknoddata3_u.chr_device.dev_attributes.mode.set_mode3_u.mode = cb_data->mode & (S_IRUSR|S_IWUSR|S_IXUSR|S_IRGRP|S_IWGRP|S_IXGRP|S_IROTH|S_IWOTH|S_IXOTH);
+		args.what.mknoddata3_u.chr_device.spec.specdata1 = cb_data->major;
+		args.what.mknoddata3_u.chr_device.spec.specdata2 = cb_data->minor;
+		break;
+	case S_IFBLK:
+		args.what.type = NF3BLK;
+		args.what.mknoddata3_u.blk_device.dev_attributes.mode.set_it = 1;
+		args.what.mknoddata3_u.blk_device.dev_attributes.mode.set_mode3_u.mode = cb_data->mode & (S_IRUSR|S_IWUSR|S_IXUSR|S_IRGRP|S_IWGRP|S_IXGRP|S_IROTH|S_IWOTH|S_IXOTH);
+		args.what.mknoddata3_u.blk_device.spec.specdata1 = cb_data->major;
+		args.what.mknoddata3_u.blk_device.spec.specdata2 = cb_data->minor;
+	case S_IFSOCK:
+		args.what.type = NF3SOCK;
+		args.what.mknoddata3_u.sock_attributes.mode.set_it = 1;
+		args.what.mknoddata3_u.sock_attributes.mode.set_mode3_u.mode = cb_data->mode & (S_IRUSR|S_IWUSR|S_IXUSR|S_IRGRP|S_IWGRP|S_IXGRP|S_IROTH|S_IWOTH|S_IXOTH);
+		break;
+	case S_IFIFO:
+		args.what.type = NF3FIFO;
+		args.what.mknoddata3_u.pipe_attributes.mode.set_it = 1;
+		args.what.mknoddata3_u.pipe_attributes.mode.set_mode3_u.mode = cb_data->mode & (S_IRUSR|S_IWUSR|S_IXUSR|S_IRGRP|S_IWGRP|S_IXGRP|S_IROTH|S_IWOTH|S_IXOTH);
+		break;
+	default:
+		rpc_set_error(nfs->rpc, "Invalid file type for NFS3/MKNOD call");
+		data->cb(-EINVAL, nfs, rpc_get_error(nfs->rpc), data->private_data);
+		free_nfs_cb_data(data);
+		return -1;
+	}
+
+	if (rpc_nfs3_mknod_async(nfs->rpc, nfs_mknod_cb, &args, data) != 0) {
 		data->cb(-ENOMEM, nfs, rpc_get_error(nfs->rpc), data->private_data);
 		free_nfs_cb_data(data);
 		return -1;
