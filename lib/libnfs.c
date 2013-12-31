@@ -1893,7 +1893,7 @@ static int nfs_mkdir_continue_internal(struct nfs_context *nfs, struct nfs_cb_da
 	args.attributes.mode.set_it = 1;
 	args.attributes.mode.set_mode3_u.mode = 0755;
 
-	if (rpc_nfs_mkdir_async(nfs->rpc, nfs_mkdir_cb, &args, data) != 0) {
+	if (rpc_nfs3_mkdir_async(nfs->rpc, nfs_mkdir_cb, &args, data) != 0) {
 		rpc_set_error(nfs->rpc, "RPC error: Failed to send MKDIR call for %s", data->path);
 		data->cb(-ENOMEM, nfs, rpc_get_error(nfs->rpc), data->private_data);
 		free_nfs_cb_data(data);
