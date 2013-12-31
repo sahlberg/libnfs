@@ -1973,10 +1973,13 @@ static void nfs_rmdir_cb(struct rpc_context *rpc, int status, void *command_data
 static int nfs_rmdir_continue_internal(struct nfs_context *nfs, struct nfs_cb_data *data)
 {
 	char *str = data->continue_data;
-	
+	RMDIR3args args;
+
 	str = &str[strlen(str) + 1];
 
-	if (rpc_nfs_rmdir_async(nfs->rpc, nfs_rmdir_cb, &data->fh, str, data) != 0) {
+	args.object.dir = data->fh;
+	args.object.name = str;
+	if (rpc_nfs3_rmdir_async(nfs->rpc, nfs_rmdir_cb, &args, data) != 0) {
 		rpc_set_error(nfs->rpc, "RPC error: Failed to send RMDIR call for %s", data->path);
 		data->cb(-ENOMEM, nfs, rpc_get_error(nfs->rpc), data->private_data);
 		free_nfs_cb_data(data);
