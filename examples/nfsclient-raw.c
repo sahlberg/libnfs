@@ -85,7 +85,7 @@ void rquota_connect_cb(struct rpc_context *rpc, int status, void *data _U_, void
 	printf("Connected to RPC.RQUOTAD on %s:%d\n", client->server, client->rquota_port);
 	printf("Send GETQUOTA request for uid 100\n");
 	if (rpc_rquota1_getquota_async(rpc, rquota_getquota_cb, EXPORT, 100, client) != 0) {
-		printf("Failed to send fsinfo request\n");
+		printf("Failed to send getquota request\n");
 		exit(10);
 	}
 }
@@ -170,6 +170,7 @@ void nfs_fsinfo_cb(struct rpc_context *rpc _U_, int status, void *data, void *pr
 void nfs_connect_cb(struct rpc_context *rpc, int status, void *data _U_, void *private_data)
 {
 	struct client *client = private_data;
+	struct FSINFO3args args;
 
 	if (status != RPC_STATUS_SUCCESS) {
 		printf("connection to RPC.MOUNTD on server %s failed\n", client->server);
@@ -178,7 +179,8 @@ void nfs_connect_cb(struct rpc_context *rpc, int status, void *data _U_, void *p
 
 	printf("Connected to RPC.NFSD on %s:%d\n", client->server, client->mount_port);
 	printf("Send FSINFO request\n");
-	if (rpc_nfs_fsinfo_async(rpc, nfs_fsinfo_cb, &client->rootfh, client) != 0) {
+	args.fsroot = client->rootfh;
+	if (rpc_nfs3_fsinfo_async(rpc, nfs_fsinfo_cb, &args, client) != 0) {
 		printf("Failed to send fsinfo request\n");
 		exit(10);
 	}

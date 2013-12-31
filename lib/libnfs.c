@@ -610,6 +610,7 @@ static void nfs_mount_8_cb(struct rpc_context *rpc, int status, void *command_da
 {
 	struct nfs_cb_data *data = private_data;
 	struct nfs_context *nfs = data->nfs;
+	struct FSINFO3args args;
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
@@ -624,7 +625,8 @@ static void nfs_mount_8_cb(struct rpc_context *rpc, int status, void *command_da
 		return;
 	}
 
-	if (rpc_nfs_fsinfo_async(rpc, nfs_mount_9_cb, &nfs->rootfh, data) != 0) {
+	args.fsroot = nfs->rootfh;
+	if (rpc_nfs3_fsinfo_async(rpc, nfs_mount_9_cb, &args, data) != 0) {
 		data->cb(-ENOMEM, nfs, command_data, data->private_data);
 		free_nfs_cb_data(data);
 		return;
