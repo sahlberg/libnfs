@@ -2209,10 +2209,13 @@ static void nfs_unlink_cb(struct rpc_context *rpc, int status, void *command_dat
 static int nfs_unlink_continue_internal(struct nfs_context *nfs, struct nfs_cb_data *data)
 {
 	char *str = data->continue_data;
-	
+	struct REMOVE3args args;
+
 	str = &str[strlen(str) + 1];
 
-	if (rpc_nfs_remove_async(nfs->rpc, nfs_unlink_cb, &data->fh, str, data) != 0) {
+	args.object.dir = data->fh;
+	args.object.name = str;
+	if (rpc_nfs3_remove_async(nfs->rpc, nfs_unlink_cb, &args, data) != 0) {
 		rpc_set_error(nfs->rpc, "RPC error: Failed to send REMOVE call for %s", data->path);
 		data->cb(-ENOMEM, nfs, rpc_get_error(nfs->rpc), data->private_data);
 		free_nfs_cb_data(data);
@@ -2784,8 +2787,7 @@ int nfs_lseek_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t offse
 	data->private_data = private_data;
 
 	memset(&args, 0, sizeof(GETATTR3args));
-	args.object.data.data_len = nfsfh->fh.data.data_len; 
-	args.object.data.data_val = nfsfh->fh.data.data_val; 
+	args.object = nfsfh->fh; 
 
 	if (rpc_nfs3_getattr_async(nfs->rpc, nfs_lseek_1_cb, &args, data) != 0) {
 		rpc_set_error(nfs->rpc, "RPC error: Failed to send LSEEK GETATTR call");
