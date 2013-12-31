@@ -1790,7 +1790,7 @@ int nfs_ftruncate_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t l
 	args.new_attributes.size.set_it = 1;
 	args.new_attributes.size.set_size3_u.size = length;
 
-	if (rpc_nfs_setattr_async(nfs->rpc, nfs_ftruncate_cb, &args, data) != 0) {
+	if (rpc_nfs3_setattr_async(nfs->rpc, nfs_ftruncate_cb, &args, data) != 0) {
 		rpc_set_error(nfs->rpc, "RPC error: Failed to send SETATTR call for %s", data->path);
 		data->cb(-ENOMEM, nfs, rpc_get_error(nfs->rpc), data->private_data);
 		free_nfs_cb_data(data);
@@ -2975,7 +2975,7 @@ static int nfs_chmod_continue_internal(struct nfs_context *nfs, struct nfs_cb_da
 	args.new_attributes.mode.set_it = 1;
 	args.new_attributes.mode.set_mode3_u.mode = data->continue_int;
 
-	if (rpc_nfs_setattr_async(nfs->rpc, nfs_chmod_cb, &args, data) != 0) {
+	if (rpc_nfs3_setattr_async(nfs->rpc, nfs_chmod_cb, &args, data) != 0) {
 		rpc_set_error(nfs->rpc, "RPC error: Failed to send SETATTR call for %s", data->path);
 		data->cb(-ENOMEM, nfs, rpc_get_error(nfs->rpc), data->private_data);
 		free_nfs_cb_data(data);
@@ -3087,7 +3087,7 @@ static int nfs_chown_continue_internal(struct nfs_context *nfs, struct nfs_cb_da
 		args.new_attributes.gid.set_gid3_u.gid = chown_data->gid;
 	}
 
-	if (rpc_nfs_setattr_async(nfs->rpc, nfs_chown_cb, &args, data) != 0) {
+	if (rpc_nfs3_setattr_async(nfs->rpc, nfs_chown_cb, &args, data) != 0) {
 		rpc_set_error(nfs->rpc, "RPC error: Failed to send SETATTR call for %s", data->path);
 		data->cb(-ENOMEM, nfs, rpc_get_error(nfs->rpc), data->private_data);
 		free_nfs_cb_data(data);
@@ -3223,7 +3223,7 @@ static int nfs_utimes_continue_internal(struct nfs_context *nfs, struct nfs_cb_d
 		args.new_attributes.mtime.set_it = SET_TO_SERVER_TIME;
 	}
 
-	if (rpc_nfs_setattr_async(nfs->rpc, nfs_utimes_cb, &args, data) != 0) {
+	if (rpc_nfs3_setattr_async(nfs->rpc, nfs_utimes_cb, &args, data) != 0) {
 		rpc_set_error(nfs->rpc, "RPC error: Failed to send SETATTR call for %s", data->path);
 		data->cb(-ENOMEM, nfs, rpc_get_error(nfs->rpc), data->private_data);
 		free_nfs_cb_data(data);
