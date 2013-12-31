@@ -2533,7 +2533,14 @@ static void nfs_opendir2_cb(struct rpc_context *rpc, int status, void *command_d
 	}
 
 	if (res->READDIR3res_u.resok.reply.eof == 0) {
-	     	if (rpc_nfs_readdir_async(nfs->rpc, nfs_opendir2_cb, &data->fh, cookie, res->READDIR3res_u.resok.cookieverf, 8192, data) != 0) {
+		READDIR3args args;
+
+		args.dir = data->fh;
+		args.cookie = cookie;
+		memcpy(&args.cookieverf, res->READDIR3res_u.resok.cookieverf, sizeof(cookieverf3)); 
+		args.count = 8192;
+
+	     	if (rpc_nfs3_readdir_async(nfs->rpc, nfs_opendir2_cb, &args, data) != 0) {
 			rpc_set_error(nfs->rpc, "RPC error: Failed to send READDIR call for %s", data->path);
 			data->cb(-ENOMEM, nfs, rpc_get_error(nfs->rpc), data->private_data);
 			nfs_free_nfsdir(nfsdir);
@@ -2601,9 +2608,14 @@ static void nfs_opendir_cb(struct rpc_context *rpc, int status, void *command_da
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
 	if (status == RPC_STATUS_ERROR || (status == RPC_STATUS_SUCCESS && res->status == NFS3ERR_NOTSUPP) ){
-		cookieverf3 cv;
+		READDIR3args args;
 
-		if (rpc_nfs_readdir_async(nfs->rpc, nfs_opendir2_cb, &data->fh, 0, (char *)&cv, 8192, data) != 0) {
+		args.dir = data->fh;
+		args.cookie = cookie;
+		memset(&args.cookieverf, 0, sizeof(cookieverf3)); 
+		args.count = 8192;
+
+		if (rpc_nfs3_readdir_async(nfs->rpc, nfs_opendir2_cb, &args, data) != 0) {
 			rpc_set_error(nfs->rpc, "RPC error: Failed to send READDIR call for %s", data->path);
 			data->cb(-ENOMEM, nfs, rpc_get_error(nfs->rpc), data->private_data);
 			nfs_free_nfsdir(nfsdir);
