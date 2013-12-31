@@ -3486,17 +3486,17 @@ static void nfs_symlink_cb(struct rpc_context *rpc, int status, void *command_da
 static int nfs_symlink_continue_internal(struct nfs_context *nfs, struct nfs_cb_data *data)
 {
 	struct nfs_symlink_data *symlink_data = data->continue_data;
-	SYMLINK3args sa;
+	SYMLINK3args args;
 
-	memset(&sa, 0, sizeof(SYMLINK3args));
-	sa.where.dir.data.data_len = data->fh.data.data_len;
-	sa.where.dir.data.data_val = data->fh.data.data_val;
-	sa.where.name = symlink_data->newpathobject;
-	sa.symlink.symlink_attributes.mode.set_it = 1;
-	sa.symlink.symlink_attributes.mode.set_mode3_u.mode = S_IRUSR|S_IWUSR|S_IXUSR|S_IRGRP|S_IWGRP|S_IXGRP|S_IROTH|S_IWOTH|S_IXOTH;
-	sa.symlink.symlink_data = symlink_data->oldpath;
+	memset(&args, 0, sizeof(SYMLINK3args));
+	args.where.dir.data.data_len = data->fh.data.data_len;
+	args.where.dir.data.data_val = data->fh.data.data_val;
+	args.where.name = symlink_data->newpathobject;
+	args.symlink.symlink_attributes.mode.set_it = 1;
+	args.symlink.symlink_attributes.mode.set_mode3_u.mode = S_IRUSR|S_IWUSR|S_IXUSR|S_IRGRP|S_IWGRP|S_IXGRP|S_IROTH|S_IWOTH|S_IXOTH;
+	args.symlink.symlink_data = symlink_data->oldpath;
 
-	if (rpc_nfs_symlink_async(nfs->rpc, nfs_symlink_cb, &sa, data) != 0) {
+	if (rpc_nfs3_symlink_async(nfs->rpc, nfs_symlink_cb, &args, data) != 0) {
 		rpc_set_error(nfs->rpc, "RPC error: Failed to send SYMLINK call for %s", data->path);
 		data->cb(-ENOMEM, nfs, rpc_get_error(nfs->rpc), data->private_data);
 		free_nfs_cb_data(data);
