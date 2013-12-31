@@ -2686,7 +2686,15 @@ static void nfs_opendir_cb(struct rpc_context *rpc, int status, void *command_da
 	}
 
 	if (res->READDIRPLUS3res_u.resok.reply.eof == 0) {
-	     	if (rpc_nfs_readdirplus_async(nfs->rpc, nfs_opendir_cb, &data->fh, cookie, res->READDIRPLUS3res_u.resok.cookieverf, 8192, data) != 0) {
+		READDIRPLUS3args args;
+
+		args.dir = data->fh;
+		args.cookie = cookie;
+		memcpy(&args.cookieverf, res->READDIRPLUS3res_u.resok.cookieverf, sizeof(cookieverf3));
+		args.dircount = 8192;
+		args.maxcount = 8192;
+
+	     	if (rpc_nfs3_readdirplus_async(nfs->rpc, nfs_opendir_cb, &args, data) != 0) {
 			rpc_set_error(nfs->rpc, "RPC error: Failed to send READDIRPLUS call for %s", data->path);
 			data->cb(-ENOMEM, nfs, rpc_get_error(nfs->rpc), data->private_data);
 			nfs_free_nfsdir(nfsdir);
@@ -2707,10 +2715,14 @@ static void nfs_opendir_cb(struct rpc_context *rpc, int status, void *command_da
 
 static int nfs_opendir_continue_internal(struct nfs_context *nfs, struct nfs_cb_data *data)
 {
-	cookieverf3 cv;
+	READDIRPLUS3args args;
 
-	memset(cv, 0, sizeof(cookieverf3));
-	if (rpc_nfs_readdirplus_async(nfs->rpc, nfs_opendir_cb, &data->fh, 0, (char *)&cv, 8192, data) != 0) {
+	args.dir = data->fh;
+	args.cookie = 0;
+	memset(&args.cookieverf, 0, sizeof(cookieverf3));
+	args.dircount = 8192;
+	args.maxcount = 8192;
+	if (rpc_nfs3_readdirplus_async(nfs->rpc, nfs_opendir_cb, &args, data) != 0) {
 		rpc_set_error(nfs->rpc, "RPC error: Failed to send READDIRPLUS call for %s", data->path);
 		data->cb(-ENOMEM, nfs, rpc_get_error(nfs->rpc), data->private_data);
 		free_nfs_cb_data(data);
