@@ -3786,13 +3786,18 @@ static void nfs_link_cb(struct rpc_context *rpc, int status, void *command_data,
 static int nfs_link_continue_2_internal(struct nfs_context *nfs, struct nfs_cb_data *data)
 {
 	struct nfs_link_data *link_data = data->continue_data;
+	LINK3args args;
 
 	/* steal the filehandle */
 	link_data->newdir.data.data_len = data->fh.data.data_len;
 	link_data->newdir.data.data_val = data->fh.data.data_val;
 	data->fh.data.data_val = NULL;
 
-	if (rpc_nfs_link_async(nfs->rpc, nfs_link_cb, &link_data->oldfh, &link_data->newdir, link_data->newobject, data) != 0) {
+	memset(&args, 0, sizeof(LINK3args));
+	args.file = link_data->oldfh;
+	args.link.dir = link_data->newdir;
+	args.link.name = link_data->newobject;
+	if (rpc_nfs3_link_async(nfs->rpc, nfs_link_cb, &args, data) != 0) {
 		rpc_set_error(nfs->rpc, "RPC error: Failed to send LINK call for %s", data->path);
 		data->cb(-ENOMEM, nfs, rpc_get_error(nfs->rpc), data->private_data);
 		free_nfs_cb_data(data);
