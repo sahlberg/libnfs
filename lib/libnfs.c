@@ -3623,13 +3623,18 @@ static void nfs_rename_cb(struct rpc_context *rpc, int status, void *command_dat
 static int nfs_rename_continue_2_internal(struct nfs_context *nfs, struct nfs_cb_data *data)
 {
 	struct nfs_rename_data *rename_data = data->continue_data;
+	RENAME3args args;
 
 	/* steal the filehandle */
 	rename_data->newdir.data.data_len = data->fh.data.data_len;
 	rename_data->newdir.data.data_val = data->fh.data.data_val;
 	data->fh.data.data_val = NULL;
 
-	if (rpc_nfs_rename_async(nfs->rpc, nfs_rename_cb, &rename_data->olddir, rename_data->oldobject, &rename_data->newdir, rename_data->newobject, data) != 0) {
+	args.from.dir = rename_data->olddir;
+	args.from.name = rename_data->oldobject;
+	args.to.dir = rename_data->newdir;
+	args.to.name = rename_data->newobject;
+	if (rpc_nfs3_rename_async(nfs->rpc, nfs_rename_cb, &args, data) != 0) {
 		rpc_set_error(nfs->rpc, "RPC error: Failed to send RENAME call for %s", data->path);
 		data->cb(-ENOMEM, nfs, rpc_get_error(nfs->rpc), data->private_data);
 		free_nfs_cb_data(data);
