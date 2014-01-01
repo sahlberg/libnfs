@@ -379,7 +379,7 @@ struct rpc_cb_data {
 
        rpc_cb cb;
        void *private_data;
-};       
+};
 
 void free_rpc_cb_data(struct rpc_cb_data *data)
 {
@@ -596,8 +596,7 @@ static void nfs_mount_9_cb(struct rpc_context *rpc, int status, void *command_da
 	nfs->writemax = res->FSINFO3res_u.resok.wtmax;
 
 	memset(&args, 0, sizeof(GETATTR3args));
-	args.object.data.data_len = nfs->rootfh.data.data_len; 
-	args.object.data.data_val = nfs->rootfh.data.data_val; 
+	args.object = nfs->rootfh;
 
 	if (rpc_nfs3_getattr_async(rpc, nfs_mount_10_cb, &args, data) != 0) {
 		data->cb(-ENOMEM, nfs, command_data, data->private_data);
@@ -967,9 +966,8 @@ static int nfs_lookup_path_async_internal(struct nfs_context *nfs, struct nfs_cb
 
 
 	memset(&args, 0, sizeof(LOOKUP3args));
-	args.what.dir.data.data_len = fh->data.data_len; 
-	args.what.dir.data.data_val = fh->data.data_val; 
-	args.what.name              = path;
+	args.what.dir = *fh;
+	args.what.name = path;
 
 	if (rpc_nfs3_lookup_async(nfs->rpc, nfs_lookup_path_1_cb, &args, data) != 0) {
 		rpc_set_error(nfs->rpc, "RPC error: Failed to send lookup call for %s", data->path);
@@ -1083,8 +1081,7 @@ static int nfs_stat_continue_internal(struct nfs_context *nfs, struct nfs_cb_dat
 	struct GETATTR3args args;
 
 	memset(&args, 0, sizeof(GETATTR3args));
-	args.object.data.data_len = data->fh.data.data_len; 
-	args.object.data.data_val = data->fh.data.data_val; 
+	args.object = data->fh;
 
 	if (rpc_nfs3_getattr_async(nfs->rpc, nfs_stat_1_cb, &args, data) != 0) {
 		rpc_set_error(nfs->rpc, "RPC error: Failed to send STAT GETATTR call for %s", data->path);
@@ -1179,8 +1176,7 @@ static void nfs_open_cb(struct rpc_context *rpc, int status, void *command_data,
 	}
 
 	/* steal the filehandle */
-	nfsfh->fh.data.data_len = data->fh.data.data_len;
-	nfsfh->fh.data.data_val = data->fh.data.data_val;
+	nfsfh->fh = data->fh;
 	data->fh.data.data_val = NULL;
 
 	data->cb(0, nfs, nfsfh, data->private_data);
@@ -1203,8 +1199,7 @@ static int nfs_open_continue_internal(struct nfs_context *nfs, struct nfs_cb_dat
 	}
 
 	memset(&args, 0, sizeof(ACCESS3args));
-	args.object.data.data_len = data->fh.data.data_len;
-	args.object.data.data_val = data->fh.data.data_val;
+	args.object = data->fh;
 	args.access = nfsmode;
 
 	if (rpc_nfs3_access_async(nfs->rpc, nfs_open_cb, &args, data) != 0) {
@@ -1348,8 +1343,7 @@ int nfs_pread_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t offse
 		READ3args args;
 
 		memset(&args, 0, sizeof(READ3args));
-		args.file.data.data_len = nfsfh->fh.data.data_len;
-		args.file.data.data_val = nfsfh->fh.data.data_val;
+		args.file = nfsfh->fh;
 		args.offset = offset;
 		args.count = count;
 
@@ -1397,8 +1391,7 @@ int nfs_pread_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t offse
 		mdata->count  = readcount;
 
 		memset(&args, 0, sizeof(READ3args));
-		args.file.data.data_len = nfsfh->fh.data.data_len;
-		args.file.data.data_val = nfsfh->fh.data.data_val;
+		args.file = nfsfh->fh;
 		args.offset = offset;
 		args.count = readcount;
 
@@ -1544,8 +1537,7 @@ int nfs_pwrite_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t offs
 		WRITE3args args;
 
 		memset(&args, 0, sizeof(WRITE3args));
-		args.file.data.data_len = nfsfh->fh.data.data_len;
-		args.file.data.data_val = nfsfh->fh.data.data_val;
+		args.file = nfsfh->fh;
 		args.offset = offset;
 		args.count  = count;
 		args.stable = nfsfh->is_sync?FILE_SYNC:UNSTABLE;
@@ -1588,8 +1580,7 @@ int nfs_pwrite_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t offs
 		mdata->count  = writecount;
 
 		memset(&args, 0, sizeof(WRITE3args));
-		args.file.data.data_len = nfsfh->fh.data.data_len;
-		args.file.data.data_val = nfsfh->fh.data.data_val;
+		args.file = nfsfh->fh;
 		args.offset = offset;
 		args.count  = writecount;
 		args.stable = nfsfh->is_sync?FILE_SYNC:UNSTABLE;
@@ -1661,8 +1652,7 @@ int nfs_fstat_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_cb cb, voi
 	data->private_data = private_data;
 
 	memset(&args, 0, sizeof(GETATTR3args));
-	args.object.data.data_len = nfsfh->fh.data.data_len; 
-	args.object.data.data_val = nfsfh->fh.data.data_val; 
+	args.object = nfsfh->fh;
 
 	if (rpc_nfs3_getattr_async(nfs->rpc, nfs_stat_1_cb, &args, data) != 0) {
 		rpc_set_error(nfs->rpc, "RPC error: Failed to send STAT GETATTR call for %s", data->path);
@@ -1789,8 +1779,7 @@ int nfs_ftruncate_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t l
 	data->private_data = private_data;
 
 	memset(&args, 0, sizeof(SETATTR3args));
-	args.object.data.data_len = nfsfh->fh.data.data_len;
-	args.object.data.data_val = nfsfh->fh.data.data_val;
+	args.object = nfsfh->fh;
 	args.new_attributes.size.set_it = 1;
 	args.new_attributes.size.set_size3_u.size = length;
 
@@ -1812,8 +1801,7 @@ static int nfs_truncate_continue_internal(struct nfs_context *nfs, struct nfs_cb
 	uint64_t offset = data->continue_int;
 	struct nfsfh nfsfh;
 
-	nfsfh.fh.data.data_val = data->fh.data.data_val;
-	nfsfh.fh.data.data_len = data->fh.data.data_len;
+	nfsfh.fh = data->fh;
 
 	if (nfs_ftruncate_async(nfs, &nfsfh, offset, data->cb, data->private_data) != 0) {
 		rpc_set_error(nfs->rpc, "RPC error: Failed to send SETATTR call for %s", data->path);
@@ -1887,8 +1875,7 @@ static int nfs_mkdir_continue_internal(struct nfs_context *nfs, struct nfs_cb_da
 	str = &str[strlen(str) + 1];
 
 	memset(&args, 0, sizeof(MKDIR3args));
-	args.where.dir.data.data_len = data->fh.data.data_len;
-	args.where.dir.data.data_val = data->fh.data.data_val;
+	args.where.dir = data->fh;
 	args.where.name = str;
 	args.attributes.mode.set_it = 1;
 	args.attributes.mode.set_mode3_u.mode = 0755;
@@ -2102,9 +2089,8 @@ static void nfs_creat_1_cb(struct rpc_context *rpc, int status, void *command_da
 	}
 
 	memset(&args, 0, sizeof(LOOKUP3args));
-	args.what.dir.data.data_len = data->fh.data.data_len; 
-	args.what.dir.data.data_val = data->fh.data.data_val; 
-	args.what.name              = str;
+	args.what.dir = data->fh;
+	args.what.name = str;
 
 	if (rpc_nfs3_lookup_async(nfs->rpc, nfs_create_2_cb, &args, data) != 0) {
 		rpc_set_error(nfs->rpc, "RPC error: Failed to send lookup call for %s/%s", data->saved_path, str);
@@ -2123,8 +2109,7 @@ static int nfs_creat_continue_internal(struct nfs_context *nfs, struct nfs_cb_da
 	str = &str[strlen(str) + 1];
 
 	memset(&args, 0, sizeof(CREATE3args));
-	args.where.dir.data.data_len = data->fh.data.data_len;
-	args.where.dir.data.data_val = data->fh.data.data_val;
+	args.where.dir = data->fh;
 	args.where.name = str;
 	args.how.mode = UNCHECKED;
 	args.how.createhow3_u.obj_attributes.mode.set_it = 1;
@@ -2537,7 +2522,7 @@ static void nfs_opendir2_cb(struct rpc_context *rpc, int status, void *command_d
 
 		args.dir = data->fh;
 		args.cookie = cookie;
-		memcpy(&args.cookieverf, res->READDIR3res_u.resok.cookieverf, sizeof(cookieverf3)); 
+		memcpy(&args.cookieverf, res->READDIR3res_u.resok.cookieverf, sizeof(cookieverf3));
 		args.count = 8192;
 
 	     	if (rpc_nfs3_readdir_async(nfs->rpc, nfs_opendir2_cb, &args, data) != 0) {
@@ -2567,9 +2552,8 @@ static void nfs_opendir2_cb(struct rpc_context *rpc, int status, void *command_d
 		rdpe_lookup_cb_data->nfsdirent = nfsdirent;
 
 		memset(&args, 0, sizeof(LOOKUP3args));
-		args.what.dir.data.data_len = data->fh.data.data_len; 
-		args.what.dir.data.data_val = data->fh.data.data_val; 
-		args.what.name              = nfsdirent->name;
+		args.what.dir = data->fh;
+		args.what.name = nfsdirent->name;
 
 		if (rpc_nfs3_lookup_async(nfs->rpc, nfs_opendir3_cb, &args, rdpe_lookup_cb_data) != 0) {
 			rpc_set_error(nfs->rpc, "RPC error: Failed to send READDIR LOOKUP call");
@@ -2612,7 +2596,7 @@ static void nfs_opendir_cb(struct rpc_context *rpc, int status, void *command_da
 
 		args.dir = data->fh;
 		args.cookie = cookie;
-		memset(&args.cookieverf, 0, sizeof(cookieverf3)); 
+		memset(&args.cookieverf, 0, sizeof(cookieverf3));
 		args.count = 8192;
 
 		if (rpc_nfs3_readdir_async(nfs->rpc, nfs_opendir2_cb, &args, data) != 0) {
@@ -2845,7 +2829,7 @@ int nfs_lseek_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t offse
 	data->private_data = private_data;
 
 	memset(&args, 0, sizeof(GETATTR3args));
-	args.object = nfsfh->fh; 
+	args.object = nfsfh->fh;
 
 	if (rpc_nfs3_getattr_async(nfs->rpc, nfs_lseek_1_cb, &args, data) != 0) {
 		rpc_set_error(nfs->rpc, "RPC error: Failed to send LSEEK GETATTR call");
@@ -2973,8 +2957,7 @@ static int nfs_readlink_continue_internal(struct nfs_context *nfs, struct nfs_cb
 {
 	READLINK3args args;
 
-	args.symlink.data.data_len = data->fh.data.data_len; 
-	args.symlink.data.data_val = data->fh.data.data_val; 
+	args.symlink = data->fh;
 
 	if (rpc_nfs3_readlink_async(nfs->rpc, nfs_readlink_1_cb, &args, data) != 0) {
 		rpc_set_error(nfs->rpc, "RPC error: Failed to send READLINK call for %s", data->path);
@@ -3037,8 +3020,7 @@ static int nfs_chmod_continue_internal(struct nfs_context *nfs, struct nfs_cb_da
 	SETATTR3args args;
 
 	memset(&args, 0, sizeof(SETATTR3args));
-	args.object.data.data_len = data->fh.data.data_len;
-	args.object.data.data_val = data->fh.data.data_val;
+	args.object = data->fh;
 	args.new_attributes.mode.set_it = 1;
 	args.new_attributes.mode.set_mode3_u.mode = data->continue_int;
 
@@ -3143,8 +3125,7 @@ static int nfs_chown_continue_internal(struct nfs_context *nfs, struct nfs_cb_da
 	struct nfs_chown_data *chown_data = data->continue_data;
 
 	memset(&args, 0, sizeof(SETATTR3args));
-	args.object.data.data_len = data->fh.data.data_len;
-	args.object.data.data_val = data->fh.data.data_val;
+	args.object = data->fh;
 	if (chown_data->uid != (uid_t)-1) {
 		args.new_attributes.uid.set_it = 1;
 		args.new_attributes.uid.set_uid3_u.uid = chown_data->uid;
@@ -3276,8 +3257,7 @@ static int nfs_utimes_continue_internal(struct nfs_context *nfs, struct nfs_cb_d
 	struct timeval *utimes_data = data->continue_data;
 
 	memset(&args, 0, sizeof(SETATTR3args));
-	args.object.data.data_len = data->fh.data.data_len;
-	args.object.data.data_val = data->fh.data.data_val;
+	args.object = data->fh;
 	if (utimes_data != NULL) {
 		args.new_attributes.atime.set_it = SET_TO_CLIENT_TIME;
 		args.new_attributes.atime.set_atime_u.atime.seconds  = utimes_data[0].tv_sec;
@@ -3425,8 +3405,7 @@ static int nfs_access_continue_internal(struct nfs_context *nfs, struct nfs_cb_d
 	}
 
 	memset(&args, 0, sizeof(ACCESS3args));
-	args.object.data.data_len = data->fh.data.data_len;
-	args.object.data.data_val = data->fh.data.data_val;
+	args.object = data->fh;
 	args.access = nfsmode;
 
 	if (rpc_nfs3_access_async(nfs->rpc, nfs_access_cb, &args, data) != 0) {
@@ -3513,8 +3492,7 @@ static int nfs_symlink_continue_internal(struct nfs_context *nfs, struct nfs_cb_
 	SYMLINK3args args;
 
 	memset(&args, 0, sizeof(SYMLINK3args));
-	args.where.dir.data.data_len = data->fh.data.data_len;
-	args.where.dir.data.data_val = data->fh.data.data_val;
+	args.where.dir = data->fh;
 	args.where.name = symlink_data->newpathobject;
 	args.symlink.symlink_attributes.mode.set_it = 1;
 	args.symlink.symlink_attributes.mode.set_mode3_u.mode = S_IRUSR|S_IWUSR|S_IXUSR|S_IRGRP|S_IWGRP|S_IXGRP|S_IROTH|S_IWOTH|S_IXOTH;
@@ -3650,8 +3628,7 @@ static int nfs_rename_continue_2_internal(struct nfs_context *nfs, struct nfs_cb
 	RENAME3args args;
 
 	/* steal the filehandle */
-	rename_data->newdir.data.data_len = data->fh.data.data_len;
-	rename_data->newdir.data.data_val = data->fh.data.data_val;
+	rename_data->newdir = data->fh;
 	data->fh.data.data_val = NULL;
 
 	args.from.dir = rename_data->olddir;
@@ -3673,8 +3650,7 @@ static int nfs_rename_continue_1_internal(struct nfs_context *nfs, struct nfs_cb
 	struct nfs_rename_data *rename_data = data->continue_data;
 
 	/* steal the filehandle */
-	rename_data->olddir.data.data_len = data->fh.data.data_len;
-	rename_data->olddir.data.data_val = data->fh.data.data_val;
+	rename_data->olddir = data->fh;
 	data->fh.data.data_val = NULL;
 
 	if (nfs_lookuppath_async(nfs, rename_data->newpath, data->cb, data->private_data, nfs_rename_continue_2_internal, rename_data, free_nfs_rename_data, 0) != 0) {
@@ -3813,8 +3789,7 @@ static int nfs_link_continue_2_internal(struct nfs_context *nfs, struct nfs_cb_d
 	LINK3args args;
 
 	/* steal the filehandle */
-	link_data->newdir.data.data_len = data->fh.data.data_len;
-	link_data->newdir.data.data_val = data->fh.data.data_val;
+	link_data->newdir = data->fh;
 	data->fh.data.data_val = NULL;
 
 	memset(&args, 0, sizeof(LINK3args));
@@ -3836,8 +3811,7 @@ static int nfs_link_continue_1_internal(struct nfs_context *nfs, struct nfs_cb_d
 	struct nfs_link_data *link_data = data->continue_data;
 
 	/* steal the filehandle */
-	link_data->oldfh.data.data_len = data->fh.data.data_len;
-	link_data->oldfh.data.data_val = data->fh.data.data_val;
+	link_data->oldfh = data->fh;
 	data->fh.data.data_val = NULL;
 
 	if (nfs_lookuppath_async(nfs, link_data->newpath, data->cb, data->private_data, nfs_link_continue_2_internal, link_data, free_nfs_link_data, 0) != 0) {
