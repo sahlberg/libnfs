@@ -690,13 +690,16 @@ struct nfsdirent  {
        char *name;
        uint64_t inode;
 
-       /* some extra fields we get for free through the READDIRPLUS3 call. You need libnfs-raw-nfs.h for these */
+       /* Some extra fields we get for free through the READDIRPLUS3 call.
+	  You need libnfs-raw-nfs.h for type/mode constants */
        uint32_t type; /* NF3REG, NF3DIR, NF3BLK, ... */
        uint32_t mode;
        uint64_t size;
        struct timeval atime;
        struct timeval mtime;
        struct timeval ctime;
+       uint32_t uid;
+       uint32_t gid;
 };
 /*
  * nfs_readdir() never blocks, so no special sync/async versions are available
