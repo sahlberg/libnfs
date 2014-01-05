@@ -1015,7 +1015,7 @@ static int nfs_normalize_path(struct nfs_context *nfs, char *path)
 		}
 	}
 
-	/* ^/../] -> error */
+	/* ^/../ -> error */
 	if (!strncmp(path, "/../", 4)) {
 		rpc_set_error(nfs->rpc,
 			"Absolute path starts with '/../' "
@@ -1058,6 +1058,12 @@ static int nfs_normalize_path(struct nfs_context *nfs, char *path)
 			len--;
 		}
 	}
+	if (path[0] == '\0') {
+		rpc_set_error(nfs->rpc,
+			"Absolute path becase '' "
+			"during normalization");
+		return -1;
+	}
 
 	/* /.$ -> \0 */
 	if (len >= 2) {
@@ -1075,7 +1081,7 @@ static int nfs_normalize_path(struct nfs_context *nfs, char *path)
 		return -1;
 	}
 
-	/* /string/..$ -> /string */
+	/* /string/..$ -> / */
 	if (len >= 3) {
 		if (!strcmp(&path[len - 3], "/..")) {
 			char *tmp = &path[len - 3];
