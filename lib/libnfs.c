@@ -1060,7 +1060,7 @@ static int nfs_normalize_path(struct nfs_context *nfs, char *path)
 	}
 	if (path[0] == '\0') {
 		rpc_set_error(nfs->rpc,
-			"Absolute path becase '' "
+			"Absolute path became '' "
 			"during normalization");
 		return -1;
 	}
