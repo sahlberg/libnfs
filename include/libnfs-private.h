@@ -65,6 +65,13 @@ struct rpc_fragment {
 #define RPC_CONTEXT_MAGIC 0xc6e46435
 #define RPC_PARAM_UNDEFINED -1
 
+/*
+ * Queue is singly-linked but we hold on to the tail
+ */
+struct rpc_queue {
+	struct rpc_pdu *head, *tail;
+};
+
 struct rpc_context {
 	uint32_t magic;
 	int fd;
@@ -82,9 +89,9 @@ struct rpc_context {
 	char *encodebuf;
 	int encodebuflen;
 
-	struct rpc_pdu *outqueue;
+	struct rpc_queue outqueue;
 	struct sockaddr_storage udp_src;
-	struct rpc_pdu *waitpdu;
+	struct rpc_queue waitpdu;
 
 	uint32_t inpos;
 	uint32_t insize;
@@ -125,6 +132,10 @@ struct rpc_pdu {
 	caddr_t zdr_decode_buf;
 	uint32_t zdr_decode_bufsize;
 };
+
+void rpc_reset_queue(struct rpc_queue *q);
+void rpc_enqueue(struct rpc_queue *q, struct rpc_pdu *pdu);
+void rpc_return_to_queue(struct rpc_queue *q, struct rpc_pdu *pdu);
 
 struct rpc_pdu *rpc_allocate_pdu(struct rpc_context *rpc, int program, int version, int procedure, rpc_cb cb, void *private_data, zdrproc_t zdr_decode_fn, int zdr_bufsize);
 void rpc_free_pdu(struct rpc_context *rpc, struct rpc_pdu *pdu);

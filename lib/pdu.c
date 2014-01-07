@@ -49,6 +49,35 @@
 #include "libnfs-raw.h"
 #include "libnfs-private.h"
 
+void rpc_reset_queue(struct rpc_queue *q)
+{
+	q->head = NULL;
+	q->tail = NULL;
+}
+
+/*
+ * Push to the tail end of the queue
+ */
+void rpc_enqueue(struct rpc_queue *q, struct rpc_pdu *pdu)
+{
+	if (q->head == NULL)
+		q->head = pdu;
+	else
+		q->tail->next = pdu;
+	q->tail = pdu;
+}
+
+/*
+ * Push to the front/head of the queue
+ */
+void rpc_return_to_queue(struct rpc_queue *q, struct rpc_pdu *pdu)
+{
+	pdu->next = q->head;
+	q->head = pdu;
+	if (q->tail == NULL)
+		q->tail = pdu;
+}
+
 struct rpc_pdu *rpc_allocate_pdu(struct rpc_context *rpc, int program, int version, int procedure, rpc_cb cb, void *private_data, zdrproc_t zdr_decode_fn, int zdr_decode_bufsize)
 {
 	struct rpc_pdu *pdu;
@@ -135,7 +164,7 @@ int rpc_queue_pdu(struct rpc_context *rpc, struct rpc_pdu *pdu)
 			rpc_free_pdu(rpc, pdu);
 			return -1;
 		}
-		SLIST_ADD_END(&rpc->waitpdu, pdu);
+		rpc_enqueue(&rpc->waitpdu, pdu);
 		return 0;
 	}
 
@@ -153,7 +182,7 @@ int rpc_queue_pdu(struct rpc_context *rpc, struct rpc_pdu *pdu)
 	}
 
 	memcpy(pdu->outdata.data, rpc->encodebuf, pdu->outdata.size);
-	SLIST_ADD_END(&rpc->outqueue, pdu);
+	rpc_enqueue(&rpc->outqueue, pdu);
 
 	return 0;
 }
@@ -237,7 +266,7 @@ static int rpc_process_reply(struct rpc_context *rpc, struct rpc_pdu *pdu, ZDR *
 
 int rpc_process_pdu(struct rpc_context *rpc, char *buf, int size)
 {
-	struct rpc_pdu *pdu;
+	struct rpc_pdu *pdu, *prev_pdu;
 	ZDR zdr;
 	int pos, recordmarker = 0;
 	uint32_t xid;
@@ -302,12 +331,22 @@ int rpc_process_pdu(struct rpc_context *rpc, char *buf, int size)
 	}
 	zdr_setpos(&zdr, pos);
 
-	for (pdu=rpc->waitpdu; pdu; pdu=pdu->next) {
+	/* Linear traverse singly-linked list, but track previous
+	 * entry for optimised removal */
+	prev_pdu = NULL;
+	for (pdu=rpc->waitpdu.head; pdu; pdu=pdu->next) {
 		if (pdu->xid != xid) {
+			prev_pdu = pdu;
 			continue;
 		}
 		if (rpc->is_udp == 0 || rpc->is_broadcast == 0) {
-			SLIST_REMOVE(&rpc->waitpdu, pdu);
+			/* Singly-linked but we track head and tail */
+			if (pdu == rpc->waitpdu.head)
+				rpc->waitpdu.head = pdu->next;
+			if (pdu == rpc->waitpdu.tail)
+				rpc->waitpdu.tail = prev_pdu;
+			if (prev_pdu != NULL)
+				prev_pdu->next = pdu->next;
 		}
 		if (rpc_process_reply(rpc, pdu, &zdr) != 0) {
 			rpc_set_error(rpc, "rpc_procdess_reply failed");

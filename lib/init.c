@@ -83,6 +83,8 @@ struct rpc_context *rpc_init_context(void)
 	rpc->uid = getuid();
 	rpc->gid = getgid();
 #endif
+	rpc_reset_queue(&rpc->outqueue);
+	rpc_reset_queue(&rpc->waitpdu);
 
 	return rpc;
 }
@@ -155,20 +157,23 @@ char *rpc_get_error(struct rpc_context *rpc)
 
 void rpc_error_all_pdus(struct rpc_context *rpc, char *error)
 {
-	struct rpc_pdu *pdu;
+	struct rpc_pdu *pdu, *next;
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
-	while((pdu = rpc->outqueue) != NULL) {
+	while ((pdu = rpc->outqueue.head) != NULL) {
 		pdu->cb(rpc, RPC_STATUS_ERROR, error, pdu->private_data);
-		SLIST_REMOVE(&rpc->outqueue, pdu);
+		rpc->outqueue.head = pdu->next;
 		rpc_free_pdu(rpc, pdu);
 	}
-	while((pdu = rpc->waitpdu) != NULL) {
+	rpc->outqueue.tail = NULL;
+
+	while((pdu = rpc->waitpdu.head) != NULL) {
 		pdu->cb(rpc, RPC_STATUS_ERROR, error, pdu->private_data);
-		SLIST_REMOVE(&rpc->waitpdu, pdu);
+		rpc->waitpdu.head = pdu->next;
 		rpc_free_pdu(rpc, pdu);
 	}
+	rpc->waitpdu.tail = NULL;
 }
 
 static void rpc_free_fragment(struct rpc_fragment *fragment)
@@ -186,7 +191,7 @@ void rpc_free_all_fragments(struct rpc_context *rpc)
 	while (rpc->fragments != NULL) {
 	      struct rpc_fragment *fragment = rpc->fragments;
 
-	      SLIST_REMOVE(&rpc->fragments, fragment);
+	      rpc->fragments = fragment->next;
 	      rpc_free_fragment(fragment);
 	}
 }
@@ -220,14 +225,14 @@ void rpc_destroy_context(struct rpc_context *rpc)
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
-	while((pdu = rpc->outqueue) != NULL) {
+	while((pdu = rpc->outqueue.head) != NULL) {
 		pdu->cb(rpc, RPC_STATUS_CANCEL, NULL, pdu->private_data);
-		SLIST_REMOVE(&rpc->outqueue, pdu);
+		rpc->outqueue.head = pdu->next;
 		rpc_free_pdu(rpc, pdu);
 	}
-	while((pdu = rpc->waitpdu) != NULL) {
+	while((pdu = rpc->waitpdu.head) != NULL) {
 		pdu->cb(rpc, RPC_STATUS_CANCEL, NULL, pdu->private_data);
-		SLIST_REMOVE(&rpc->waitpdu, pdu);
+		rpc->outqueue.head = pdu->next;
 		rpc_free_pdu(rpc, pdu);
 	}
 
