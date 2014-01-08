@@ -2,12 +2,12 @@ lib_LTLIBRARIES = libnfs.la
 
 libnfs_la_CPPFLAGS = -I$(abs_top_srcdir)/include \
 		     -I$(abs_top_srcdir)/include/nfsc \
-		     -I../mount \
-		     -I../nfs \
-		     -I../nlm \
-		     -I../nsm \
-		     -I../portmap \
-		     -I../rquota \
+		     -I$(abs_top_srcdir)/mount \
+		     -I$(abs_top_srcdir)/nfs \
+		     -I$(abs_top_srcdir)/nlm \
+		     -I$(abs_top_srcdir)/nsm \
+		     -I$(abs_top_srcdir)/portmap \
+		     -I$(abs_top_srcdir)/rquota \
 		     "-D_U_=__attribute__((unused))"
 
 libnfs_la_SOURCES = \
