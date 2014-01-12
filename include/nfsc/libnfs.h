@@ -217,8 +217,11 @@ EXTERN int nfs_stat_async(struct nfs_context *nfs, const char *path, nfs_cb cb, 
  *      0 : The operation was successfull.
  * -errno : The command failed.
  */
+#ifdef WIN32
+EXTERN int nfs_stat(struct nfs_context *nfs, const char *path, struct __stat64 *st);
+#else
 EXTERN int nfs_stat(struct nfs_context *nfs, const char *path, struct stat *st);
-
+#endif
 
 /*
  * FSTAT()
@@ -242,7 +245,11 @@ EXTERN int nfs_fstat_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_cb 
  *      0 : The operation was successfull.
  * -errno : The command failed.
  */
+#ifdef WIN32
+EXTERN int nfs_fstat(struct nfs_context *nfs, struct nfsfh *nfsfh, struct __stat64 *st);
+#else
 EXTERN int nfs_fstat(struct nfs_context *nfs, struct nfsfh *nfsfh, struct stat *st);
+#endif
 
 
 
