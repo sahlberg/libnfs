@@ -208,11 +208,18 @@ static void stat_cb(int status, struct nfs_context *nfs, void *data, void *priva
 		nfs_set_error(nfs, "stat call failed with \"%s\"", (char *)data);
 		return;
 	}
-
-	memcpy(cb_data->return_data, data, sizeof(struct stat));
+#ifdef WIN32
+	memcpy(cb_data->return_data, data, sizeof(struct __stat64));
+#else
+  memcpy(cb_data->return_data, data, sizeof(struct stat));
+#endif
 }
 
+#ifdef WIN32
+int nfs_stat(struct nfs_context *nfs, const char *path, struct __stat64 *st)
+#else
 int nfs_stat(struct nfs_context *nfs, const char *path, struct stat *st)
+#endif
 {
 	struct sync_cb_data cb_data;
 

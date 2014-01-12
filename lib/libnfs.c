@@ -713,7 +713,11 @@ static void nfs_stat_1_cb(struct rpc_context *rpc, int status, void *command_dat
 	GETATTR3res *res;
 	struct nfs_cb_data *data = private_data;
 	struct nfs_context *nfs = data->nfs;
+#ifdef WIN32
+  struct __stat64 st;
+#else
 	struct stat st;
+#endif
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
