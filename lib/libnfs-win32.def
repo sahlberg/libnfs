@@ -65,6 +65,9 @@ nfs_rmdir
 nfs_rmdir_async
 nfs_service
 nfs_set_auth
+nfs_set_gid
+nfs_set_tcp_syncnt
+nfs_set_uid
 nfs_stat
 nfs_stat_async
 nfs_statvfs
