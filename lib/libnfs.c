@@ -2465,7 +2465,7 @@ static void nfs_opendir2_cb(struct rpc_context *rpc, int status, void *command_d
 	struct nfsdir *nfsdir = data->continue_data;
 	struct nfsdirent *nfsdirent;
 	struct entry3 *entry;
-	uint64_t cookie;
+	uint64_t cookie = 0;
 	struct rdpe_cb_data *rdpe_cb_data;
 	
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
@@ -2593,7 +2593,7 @@ static void nfs_opendir_cb(struct rpc_context *rpc, int status, void *command_da
 	struct nfs_context *nfs = data->nfs;
 	struct nfsdir *nfsdir = data->continue_data;
 	struct entryplus3 *entry;
-	uint64_t cookie;
+	uint64_t cookie = 0;
 	
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
