@@ -59,6 +59,18 @@
     <ClCompile Include="..\..\lib\libnfs-zdr.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\nlm\libnfs-raw-nlm.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\nlm\nlm.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\nsm\libnfs-raw-nsm.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\nsm\nsm.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\nfs\libnfs-raw-nfs.h">
@@ -79,8 +91,20 @@
     <ClInclude Include="resource.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\include\nfsc\libnfs-zdr.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\nsm\libnfs-raw-nsm.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\nlm\libnfs-raw-nlm.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="..\..\lib\libnfs-win32.def" />
+  </ItemGroup>
+    <ItemGroup>
+    <ResourceCompile Include="version.rc" />
   </ItemGroup>
 </Project>
