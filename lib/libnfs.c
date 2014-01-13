@@ -3904,6 +3904,18 @@ uint64_t nfs_get_writemax(struct nfs_context *nfs)
 	return nfs->writemax;
 }
 
+void nfs_set_tcp_syncnt(struct nfs_context *nfs, int v) {
+	rpc_set_tcp_syncnt(nfs->rpc, v);
+}
+
+void nfs_set_uid(struct nfs_context *nfs, int uid) {
+	rpc_set_uid(nfs->rpc, uid);
+}
+
+void nfs_set_gid(struct nfs_context *nfs, int gid) {
+	rpc_set_gid(nfs->rpc, gid);
+}
+
 void nfs_set_error(struct nfs_context *nfs, char *error_string, ...)
 {
         va_list ap;

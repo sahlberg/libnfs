@@ -399,6 +399,10 @@ void rpc_set_tcp_syncnt(struct rpc_context *rpc, int v)
 	rpc->tcp_syncnt = v;
 }
 
+#ifndef TCP_SYNCNT
+#define TCP_SYNCNT        7
+#endif
+
 static int rpc_connect_sockaddr_async(struct rpc_context *rpc, struct sockaddr_storage *s)
 {
 	int socksize;
