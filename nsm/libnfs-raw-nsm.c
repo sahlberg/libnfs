@@ -90,7 +90,6 @@ zdr_NSM1_MONargs (ZDR *zdrs, NSM1_MONargs *objp)
 	register int32_t *buf;
 	buf = NULL;
 
-	int i;
 	 if (!zdr_nsm_mon_id (zdrs, &objp->mon_id))
 		 return FALSE;
 	 if (!zdr_opaque (zdrs, objp->priv, 16))
