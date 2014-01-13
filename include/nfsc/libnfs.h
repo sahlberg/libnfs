@@ -166,6 +166,13 @@ EXTERN uint64_t nfs_get_readmax(struct nfs_context *nfs);
  */
 EXTERN uint64_t nfs_get_writemax(struct nfs_context *nfs);
 
+/*
+ *  MODIFY CONNECT PARAMTERS 
+ */
+
+EXTERN void nfs_set_tcp_syncnt(struct nfs_context *nfs, int v);
+EXTERN void nfs_set_uid(struct nfs_context *nfs, int uid);
+EXTERN void nfs_set_gid(struct nfs_context *nfs, int gid);
 
 /*
  * MOUNT THE EXPORT
