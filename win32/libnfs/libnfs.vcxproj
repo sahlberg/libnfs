@@ -137,7 +137,7 @@ rpcgen.exe -h $(ProjectDir)..\..\portmap\libnfs-raw-portmap.x &gt;  $(ProjectDir
 rpcgen.exe -c $(ProjectDir)..\..\portmap\libnfs-raw-portmap.x &gt;  $(ProjectDir)..\..\portmap\libnfs-raw-portmap.c
 
 copy $(ProjectDir)..\..\mount\mount.x $(ProjectDir)..\..\mount\libnfs-raw-mount.x
-rpcgen.exe -h $(ProjectDir)..\..\mount\libnfs-raw-mount.x &gt;  $(ProjectDir)..\..\mount\libnfs-raw-mount.h
+rpcgen.exe -h $(ProjectDir)..\..\mount\libnfs-raw-mount.x &gt;  $(ProjectDir)..\..\mount\libnfs-
 rpcgen.exe -c $(ProjectDir)..\..\mount\libnfs-raw-mount.x &gt;  $(ProjectDir)..\..\mount\libnfs-raw-mount.c</Command>
     </PreBuildEvent>
   </ItemDefinitionGroup>
@@ -218,6 +218,10 @@ rpcgen.exe -c $(ProjectDir)..\..\mount\libnfs-raw-mount.x &gt;  $(ProjectDir)..\
     <ClCompile Include="..\..\nfs\libnfs-raw-nfs.c" />
     <ClCompile Include="..\..\nfs\nfs.c" />
     <ClCompile Include="..\..\nfs\nfsacl.c" />
+    <ClCompile Include="..\..\nlm\libnfs-raw-nlm.c" />
+    <ClCompile Include="..\..\nlm\nlm.c" />
+    <ClCompile Include="..\..\nsm\libnfs-raw-nsm.c" />
+    <ClCompile Include="..\..\nsm\nsm.c" />
     <ClCompile Include="..\..\portmap\libnfs-raw-portmap.c" />
     <ClCompile Include="..\..\portmap\portmap.c" />
     <ClCompile Include="..\..\rquota\libnfs-raw-rquota.c" />
@@ -225,8 +229,11 @@ rpcgen.exe -c $(ProjectDir)..\..\mount\libnfs-raw-mount.x &gt;  $(ProjectDir)..\
     <ClCompile Include="..\win32_compat.c" />
   </ItemGroup>
   <ItemGroup>
+  <ClInclude Include="..\..\include\nfsc\libnfs-zdr.h" />
     <ClInclude Include="..\..\mount\libnfs-raw-mount.h" />
     <ClInclude Include="..\..\nfs\libnfs-raw-nfs.h" />
+    <ClInclude Include="..\..\nlm\libnfs-raw-nlm.h" />
+    <ClInclude Include="..\..\nsm\libnfs-raw-nsm.h" />
     <ClInclude Include="..\..\portmap\libnfs-raw-portmap.h" />
     <ClInclude Include="..\..\rquota\libnfs-raw-rquota.h" />
     <ClInclude Include="..\win32_compat.h" />
@@ -234,6 +241,9 @@ rpcgen.exe -c $(ProjectDir)..\..\mount\libnfs-raw-mount.x &gt;  $(ProjectDir)..\
   </ItemGroup>
   <ItemGroup>
     <None Include="..\..\lib\libnfs-win32.def" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="version.rc" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
