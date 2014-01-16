@@ -47,8 +47,7 @@ libtoolize -c -f -i
 automake --add-missing
 
 
-CFLAGS="$RPM_OPT_FLAGS $EXTRA -O0 -g -D_GNU_SOURCE" ./configure \
-	--prefix=%{_prefix} 
+CFLAGS="$RPM_OPT_FLAGS $EXTRA -O0 -g -D_GNU_SOURCE" %configure
 
 %install
 # Clean up in case there is trash left from a previous build
@@ -90,12 +89,14 @@ development libraries for LibNFS
 %{_includedir}/nfsc/libnfs-raw-nfs.h
 %{_includedir}/nfsc/libnfs-raw-portmap.h
 %{_includedir}/nfsc/libnfs-raw-rquota.h
+%{_includedir}/nfsc/libnfs-raw-nlm.h
+%{_includedir}/nfsc/libnfs-raw-nsm.h
 %{_libdir}/libnfs.a
 %{_libdir}/libnfs.la
 %{_libdir}/pkgconfig/libnfs.pc
 
 %changelog
-* Sun Wed 30 2013 : Version 1.8
+* Sun Oct 30 2013 : Version 1.8
  - Fix nasty memory leak in read_from_socket
  - minor updates
 * Sun Oct 20 2013 : Version 1.7
