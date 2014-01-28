@@ -96,6 +96,8 @@ development libraries for LibNFS
 %{_libdir}/pkgconfig/libnfs.pc
 
 %changelog
+* Tue Jan 28 2014 : Version 1.9.1
+ - Restore libnfs-raw-*.h to make install
 * Mon Jan 27 2014 : Version 1.9
  - Use _stat64 on windows so file sizes become 64bit always.
  - Increase default marshalling buffer so we can marshall large PDUs.
