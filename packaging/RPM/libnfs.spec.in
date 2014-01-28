@@ -96,6 +96,17 @@ development libraries for LibNFS
 %{_libdir}/pkgconfig/libnfs.pc
 
 %changelog
+* Mon Jan 27 2014 : Version 1.9
+ - Use _stat64 on windows so file sizes become 64bit always.
+ - Increase default marshalling buffer so we can marshall large PDUs.
+ - RPC layer support for NFSv2
+ - Win32 updates and fixes
+ - Add URL parsing functions and URL argument support.
+ - New utility: nfs-io
+ - nfs-ls enhancements
+ - RPC layer support for NSM
+ - Add example FUSE filesystem.
+ - Minor fixes.
 * Sun Oct 30 2013 : Version 1.8
  - Fix nasty memory leak in read_from_socket
  - minor updates

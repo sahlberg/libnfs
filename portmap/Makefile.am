@@ -10,7 +10,7 @@ libportmap_la_CPPFLAGS = -I$(abs_top_srcdir)/include \
 			 -I$(abs_top_srcdir)/include/nfsc
 libportmap_la_SOURCES = \
 	$(portmap_SOURCES_GENERATED) \
-	portmap.c libnfs-raw-portmap.c
+	portmap.c libnfs-raw-portmap.c libnfs-raw-portmap.h
 
 $(portmap_GENERATED) : portmap-stamp
 portmap-stamp : portmap.x

@@ -10,7 +10,7 @@ libmount_la_CPPFLAGS = -I$(abs_top_srcdir)/include \
 		       -I$(abs_top_srcdir)/include/nfsc
 libmount_la_SOURCES = \
 	$(mount_SOURCES_GENERATED) \
-	mount.c libnfs-raw-mount.c
+	mount.c libnfs-raw-mount.c libnfs-raw-mount.h
 
 $(mount_GENERATED) : mount-stamp
 mount-stamp : mount.x

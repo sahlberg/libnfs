@@ -10,7 +10,7 @@ libnsm_la_CPPFLAGS = -I$(abs_top_srcdir)/include \
 		     -I$(abs_top_srcdir)/include/nfsc
 libnsm_la_SOURCES = \
 	$(nsm_SOURCES_GENERATED) \
-	nsm.c libnfs-raw-nsm.c
+	nsm.c libnfs-raw-nsm.c libnfs-raw-nsm.h
 
 $(nsm_GENERATED) : nsm-stamp
 nsm-stamp : nsm.x

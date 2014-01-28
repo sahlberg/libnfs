@@ -10,7 +10,7 @@ libnlm_la_CPPFLAGS = -I$(abs_top_srcdir)/include \
 		     -I$(abs_top_srcdir)/include/nfsc
 libnlm_la_SOURCES = \
 	$(nlm_SOURCES_GENERATED) \
-	nlm.c libnfs-raw-nlm.c
+	nlm.c libnfs-raw-nlm.c libnfs-raw-nlm.h
 
 $(nlm_GENERATED) : nlm-stamp
 nlm-stamp : nlm.x

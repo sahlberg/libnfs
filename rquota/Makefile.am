@@ -10,7 +10,7 @@ librquota_la_CPPFLAGS = -I$(abs_top_srcdir)/include \
 			-I$(abs_top_srcdir)/include/nfsc
 librquota_la_SOURCES = \
 	$(rquota_SOURCES_GENERATED) \
-	rquota.c libnfs-raw-rquota.c
+	rquota.c libnfs-raw-rquota.c libnfs-raw-rquota.h
 
 $(rquota_GENERATED) : rquota-stamp
 rquota-stamp : rquota.x

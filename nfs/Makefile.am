@@ -10,7 +10,7 @@ libnfs_la_CPPFLAGS = -I$(abs_top_srcdir)/include \
 		     -I$(abs_top_srcdir)/include/nfsc
 libnfs_la_SOURCES = \
 	$(nfs_SOURCES_GENERATED) \
-	nfs.c nfsacl.c libnfs-raw-nfs.c
+	nfs.c nfsacl.c libnfs-raw-nfs.c libnfs-raw-nfs.h
 
 $(nfs_GENERATED) : nfs-stamp
 nfs-stamp : nfs.x
