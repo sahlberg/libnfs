@@ -281,7 +281,7 @@ EXTERN int nfs_fstat(struct nfs_context *nfs, struct nfsfh *nfsfh, struct stat *
  */
 EXTERN int nfs_open_async(struct nfs_context *nfs, const char *path, int mode, nfs_cb cb, void *private_data);
 /*
- * Sync stat(<filename>)
+ * Sync open(<filename>)
  * Function returns
  *      0 : The operation was successfull. *nfsfh is filled in.
  * -errno : The command failed.
@@ -723,13 +723,56 @@ EXTERN struct nfsdirent *nfs_readdir(struct nfs_context *nfs, struct nfsdir *nfs
 
 
 /*
- * READDIR()
+ * CLOSEDIR()
  */
 /*
  * nfs_closedir() never blocks, so no special sync/async versions are available
  */
 EXTERN void nfs_closedir(struct nfs_context *nfs, struct nfsdir *nfsdir);
 
+
+/*
+ * CHDIR()
+ */
+/*
+ * Async chdir(<path>)
+ *
+ * Function returns
+ *  0 : The operation was initiated. Once the operation finishes, the callback will be invoked.
+ * <0 : An error occured when trying to set up the operation. The callback will not be invoked.
+ *
+ * When the callback is invoked, status indicates the result:
+ *      0 : Success.
+ *          data is NULL;
+ * -errno : An error occured.
+ *          data is the error string.
+ */
+EXTERN int nfs_chdir_async(struct nfs_context *nfs, const char *path, nfs_cb cb, void *private_data);
+/*
+ * Sync chdir(<path>)
+ * Function returns
+ *      0 : The operation was successfull.
+ * -errno : The command failed.
+ */
+EXTERN int nfs_chdir(struct nfs_context *nfs, const char *path);
+
+/*
+ * GETCWD()
+ */
+/*
+ * nfs_getcwd() never blocks, so no special sync/async versions are available
+ */
+/*
+ * Sync getcwd()
+ * This function returns a pointer to the current working directory.
+ * This pointer is only stable until the next [f]chdir or when the
+ * context is destroyed.
+ *
+ * Function returns
+ *      0 : The operation was successfull and *cwd is filled in.
+ * -errno : The command failed.
+ */
+EXTERN void nfs_getcwd(struct nfs_context *nfs, const char **cwd);
 
 
 /*

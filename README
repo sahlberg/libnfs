@@ -1,15 +1,15 @@
 LIBNFS is a client library for accessing NFS shares over a network.
 
 LIBNFS offers three different APIs, for different use :
-1, RAW : A fully async low level rpc library for nfs protocols
+1, RAW : A fully async low level RPC library for NFS protocols
 This API is described in include/libnfs-raw.h
 it offers a fully async interface to raw XDR encoded blobs.
-This api provides very flexible and precice control of the RPC issued.
+This API provides very flexible and precise control of the RPC issued.
 
 examples/nfsclient-raw.c provides examples on how to use the raw API
 
 2, NFS ASYNC : A fully asynchronous library for high level vfs functions
-This API is described by the *_async() fucntions in include/libnfs.h.
+This API is described by the *_async() functions in include/libnfs.h.
 This API provides a fully async access to posix vfs like functions such as 
 stat(), read(), ...
 
@@ -17,7 +17,7 @@ examples/nfsclient-async.c provides examples on how to use this API
 
 
 3, NFS SYNC : A synchronous library for high level vfs functions
-This API is described by the *_sync() fucntions in include/libnfs.h.
+This API is described by the *_sync() functions in include/libnfs.h.
 This API provides access to posix vfs like functions such as 
 stat(), read(), ...
 
@@ -31,8 +31,8 @@ The basic syntax of these URLs is :
 nfs://<server|ipv4>/path[?arg=val[&arg=val]*]
 
 Arguments supported by libnfs are :
- tcp-syncnt=<int>  : Number of SYNs to send during the seccion establish
-                     before failing settin up the tcp connection to the
+ tcp-syncnt=<int>  : Number of SYNs to send during the session establish
+                     before failing setting up the tcp connection to the
                      server.
  uid=<int>         : UID value to use when talking to the server.
                      default it 65534 on Windows and getuid() on unixen.
@@ -43,7 +43,7 @@ Arguments supported by libnfs are :
 ROOT vs NON-ROOT
 ================
 When running as root, libnfs tries to allocate a system port for its connection
-to the nfs server. When running as non-root it will use a normal 
+to the NFS server. When running as non-root it will use a normal 
 ephemeral port.
 Many NFS servers default to a mode where they do not allow non-system
 ports from connecting.
@@ -75,7 +75,7 @@ PLATFORM support
 =================
 This is a truly multiplatform library.
 
-Linux:  - tested with Ubuntu 10.04 - should work with others aswell
+Linux:  - tested with Ubuntu 10.04 - should work with others as well
 Cygwin: - tested under 64bit win2k8.
 MacOSX: - tested with SDK 10.4 (under Snow Leopard) - should also work with later SDKs and 64Bit
 iOS:    - tested with iOS SDK 4.2 - running on iOS 4.3.x
@@ -92,8 +92,8 @@ Release tarballs are available at https://sites.google.com/site/libnfstarballs/l
 
 
 
-MAILINGLIST
-===========
-A libnfs mailinglist is available at http://groups.google.com/group/libnfs
+MAILING LIST
+============
+A libnfs mailing list is available at http://groups.google.com/group/libnfs
 Announcements of new versions of libnfs will be posted to this list.
 
