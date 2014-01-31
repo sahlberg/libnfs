@@ -93,7 +93,6 @@ struct nfs_context {
        struct nfs_fh3 rootfh;
        uint64_t readmax;
        uint64_t writemax;
-       char *cwd;
 };
 
 void nfs_free_nfsdir(struct nfsdir *nfsdir)
@@ -335,15 +334,17 @@ struct nfs_context *nfs_init_context(void)
 	if (nfs == NULL) {
 		return NULL;
 	}
-	memset(nfs, 0, sizeof(struct nfs_context));
-
 	nfs->rpc = rpc_init_context();
 	if (nfs->rpc == NULL) {
 		free(nfs);
 		return NULL;
 	}
 
-	nfs->cwd = strdup("/");
+	nfs->server = NULL;
+	nfs->export = NULL;
+
+	nfs->rootfh.data.data_len = 0;
+	nfs->rootfh.data.data_val = NULL;
 
 	return nfs;
 }
@@ -361,11 +362,6 @@ void nfs_destroy_context(struct nfs_context *nfs)
 	if (nfs->export) {
 		free(nfs->export);
 		nfs->export = NULL;
-	}
-
-	if (nfs->cwd) {
-		free(nfs->cwd);
-		nfs->cwd = NULL;
 	}
 
 	if (nfs->rootfh.data.data_val != NULL) {
@@ -936,7 +932,7 @@ static void nfs_lookup_path_1_cb(struct rpc_context *rpc, int status, void *comm
 
 static int nfs_lookup_path_async_internal(struct nfs_context *nfs, struct nfs_cb_data *data, struct nfs_fh3 *fh)
 {
-	char *path, *slash;
+	char *path, *str;
 	LOOKUP3args args;
 
 	while (*data->path == '/') {
@@ -944,16 +940,10 @@ static int nfs_lookup_path_async_internal(struct nfs_context *nfs, struct nfs_cb
 	}
 
 	path = data->path;
-	slash = strchr(path, '/');
-	if (slash != NULL) {
-		/* Clear slash so that path is a zero terminated string for
-		 * the current path component. Set it back to '/' again later
-		 * when we are finished referencing this component so that
-		 * data->saved_path will still point to the full
-		 * normalized path.
-		 */
-		*slash = 0;
-		data->path = slash+1;
+	str = strchr(path, '/');
+	if (str != NULL) {
+		*str = 0;
+		data->path = str+1;
 	} else {
 		while (*data->path != 0) {
 		      data->path++;
@@ -970,9 +960,6 @@ static int nfs_lookup_path_async_internal(struct nfs_context *nfs, struct nfs_cb
 			return -1;
 		}
 		memcpy(data->fh.data.data_val, fh->data.data_val, data->fh.data.data_len);
-		if (slash != NULL) {
-			*slash = '/';
-		}
 		data->continue_cb(nfs, data);
 		return 0;
 	}
@@ -988,109 +975,6 @@ static int nfs_lookup_path_async_internal(struct nfs_context *nfs, struct nfs_cb
 		free_nfs_cb_data(data);
 		return -1;
 	}
-	if (slash != NULL) {
-		*slash = '/';
-	}
-	return 0;
-}
-
-static int nfs_normalize_path(struct nfs_context *nfs, char *path)
-{
-	char *str;
-	int len;
-
-	/* // -> / */
-	while (str = strstr(path, "//")) {
-		while(*str) {
-			*str = *(str + 1);
-			str++;
-		}
-	}
-
-	/* /./ -> / */
-	while (str = strstr(path, "/./")) {
-		while(*(str + 1)) {
-			*str = *(str + 2);
-			str++;
-		}
-	}
-
-	/* ^/../ -> error */
-	if (!strncmp(path, "/../", 4)) {
-		rpc_set_error(nfs->rpc,
-			"Absolute path starts with '/../' "
-			"during normalization");
-		return -1;
-	}
-
-	/* ^[^/] -> error */
-	if (path[0] != '/') {
-		rpc_set_error(nfs->rpc,
-			"Absolute path does not start with '/'");
-		return -1;
-	}
-
-	/* /string/../ -> / */
-	while (str = strstr(path, "/../")) {
-		char *tmp;
-
-		if (!strncmp(path, "/../", 4)) {
-			rpc_set_error(nfs->rpc,
-				"Absolute path starts with '/../' "
-				"during normalization");
-			return -1;
-		}
-
-		tmp = str - 1;
-		while (*tmp != '/') {
-			tmp--;
-		}
-		str += 3;
-		while((*(tmp++) = *(str++)) != '\0')
-			;
-	}
-
-	/* /$ -> \0 */
-	len = strlen(path);
-	if (len >= 1) {
-		if (path[len - 1] == '/') {
-			path[len - 1] = '\0';
-			len--;
-		}
-	}
-	if (path[0] == '\0') {
-		rpc_set_error(nfs->rpc,
-			"Absolute path became '' "
-			"during normalization");
-		return -1;
-	}
-
-	/* /.$ -> \0 */
-	if (len >= 2) {
-		if (!strcmp(&path[len - 2], "/.")) {
-			path[len - 2] = '\0';
-			len -= 2;
-		}
-	}
-
-	/* ^/..$ -> error */
-	if (!strcmp(path, "/..")) {
-		rpc_set_error(nfs->rpc,
-			"Absolute path is '/..' "
-			"during normalization");
-		return -1;
-	}
-
-	/* /string/..$ -> / */
-	if (len >= 3) {
-		if (!strcmp(&path[len - 3], "/..")) {
-			char *tmp = &path[len - 3];
-			while (*--tmp != '/')
-				;
-			*tmp = '\0'; 
-		}
-	}
-
 	return 0;
 }
 
@@ -1098,15 +982,14 @@ static int nfs_lookuppath_async(struct nfs_context *nfs, const char *path, nfs_c
 {
 	struct nfs_cb_data *data;
 
-	if (path[0] == '\0') {
-		rpc_set_error(nfs->rpc, "Path is empty");
+	if (path[0] != 0 && path[0] != '/') {
+		rpc_set_error(nfs->rpc, "Pathname is not absolute %s", path);
 		return -1;
 	}
 
 	data = malloc(sizeof(struct nfs_cb_data));
 	if (data == NULL) {
-		rpc_set_error(nfs->rpc, "out of memory: failed to allocate "
-			"nfs_cb_data structure");
+		rpc_set_error(nfs->rpc, "out of memory: failed to allocate nfs_cb_data structure");
 		return -1;
 	}
 	memset(data, 0, sizeof(struct nfs_cb_data));
@@ -1117,29 +1000,12 @@ static int nfs_lookuppath_async(struct nfs_context *nfs, const char *path, nfs_c
 	data->free_continue_data = free_continue_data;
 	data->continue_int       = continue_int;
 	data->private_data       = private_data;
-	if (path[0] == '/') {
-		data->saved_path = strdup(path);
-	} else {
-		data->saved_path = malloc(strlen(path) + strlen(nfs->cwd) + 2);
-		if (data->saved_path == NULL) {
-			rpc_set_error(nfs->rpc, "out of memory: failed to "
-				"malloc path string");
-			free_nfs_cb_data(data);
-			return -1;
-		}
-		sprintf(data->saved_path, "%s/%s", nfs->cwd, path);
-	}
-
+	data->saved_path         = strdup(path);
 	if (data->saved_path == NULL) {
 		rpc_set_error(nfs->rpc, "out of memory: failed to copy path string");
 		free_nfs_cb_data(data);
 		return -1;
 	}
-	if (nfs_normalize_path(nfs, data->saved_path) != 0) {
-		free_nfs_cb_data(data);
-		return -1;
-	}
-
 	data->path = data->saved_path;
 
 	if (nfs_lookup_path_async_internal(nfs, data, &nfs->rootfh) != 0) {
@@ -1239,6 +1105,8 @@ int nfs_stat_async(struct nfs_context *nfs, const char *path, nfs_cb cb, void *p
 
 	return 0;
 }
+
+
 
 
 
@@ -1358,31 +1226,7 @@ int nfs_open_async(struct nfs_context *nfs, const char *path, int mode, nfs_cb c
 }
 
 
-/*
- * Async chdir()
- */
-static int nfs_chdir_continue_internal(struct nfs_context *nfs, struct nfs_cb_data *data)
-{
-	/* steal saved_path */
-	free(nfs->cwd);
-	nfs->cwd = data->saved_path;
-	data->saved_path = NULL;
 
-	data->cb(0, nfs, NULL, data->private_data);
-	free_nfs_cb_data(data);
-
-	return 0;
-}
-
-int nfs_chdir_async(struct nfs_context *nfs, const char *path, nfs_cb cb, void *private_data)
-{
-	if (nfs_lookuppath_async(nfs, path, cb, private_data, nfs_chdir_continue_internal, NULL, NULL, 0) != 0) {
-		rpc_set_error(nfs->rpc, "Out of memory: failed to start parsing the path components");
-		return -1;
-	}
-
-	return 0;
-}
 
 
 /*
@@ -2910,24 +2754,15 @@ struct nfsdirent *nfs_readdir(struct nfs_context *nfs _U_, struct nfsdir *nfsdir
 }
 
 
-/*
- * closedir()
- */
 void nfs_closedir(struct nfs_context *nfs _U_, struct nfsdir *nfsdir)
 {
 	nfs_free_nfsdir(nfsdir);
 }
 
 
-/*
- * getcwd()
- */
-void nfs_getcwd(struct nfs_context *nfs, const char **cwd)
-{
-	if (cwd) {
-		*cwd = nfs->cwd;
-	}
-}
+
+
+
 
 
 /*
@@ -4093,7 +3928,7 @@ void nfs_set_error(struct nfs_context *nfs, char *error_string, ...)
 		free(nfs->rpc->error_string);
 	}
 	nfs->rpc->error_string = str;
-	va_end(ap);
+    va_end(ap);
 }
 
 

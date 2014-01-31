@@ -237,6 +237,8 @@ int nfs_stat(struct nfs_context *nfs, const char *path, struct stat *st)
 }
 
 
+
+
 /*
  * open()
  */
@@ -275,38 +277,6 @@ int nfs_open(struct nfs_context *nfs, const char *path, int mode, struct nfsfh *
 	return cb_data.status;
 }
 
-/*
- * chdir()
- */
-static void chdir_cb(int status, struct nfs_context *nfs, void *data, void *private_data)
-{
-	struct sync_cb_data *cb_data = private_data;
-
-	cb_data->is_finished = 1;
-	cb_data->status = status;
-
-	if (status < 0) {
-		nfs_set_error(nfs, "chdir call failed with \"%s\"", (char *)data);
-		return;
-	}
-}
-
-int nfs_chdir(struct nfs_context *nfs, const char *path)
-{
-	struct sync_cb_data cb_data;
-
-	cb_data.is_finished = 0;
-
-	if (nfs_chdir_async(nfs, path, chdir_cb, &cb_data) != 0) {
-		nfs_set_error(nfs, "nfs_chdir_async failed with %s",
-			nfs_get_error(nfs));
-		return -1;
-	}
-
-	wait_for_nfs_reply(nfs, &cb_data);
-
-	return cb_data.status;
-}
 
 
 

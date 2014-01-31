@@ -7,7 +7,6 @@ nfs_find_local_servers
 free_nfs_srvr_list
 nfs_access
 nfs_access_async
-nfs_chdir
 nfs_chmod
 nfs_chmod_async
 nfs_chown
@@ -32,7 +31,6 @@ nfs_get_error
 nfs_get_fd
 nfs_get_readmax
 nfs_get_writemax
-nfs_getcwd
 nfs_init_context
 nfs_link
 nfs_link_async
