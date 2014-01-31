@@ -19,7 +19,7 @@ libnfs_la_SOURCES = \
 	socket.c
 
 SOCURRENT=3
-SOREVISION=0
+SOREVISION=1
 SOAGE=2
 libnfs_la_LDFLAGS = -version-info $(SOCURRENT):$(SOREVISION):$(SOAGE)
 libnfs_la_LIBADD = \

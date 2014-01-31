@@ -96,6 +96,8 @@ development libraries for LibNFS
 %{_libdir}/pkgconfig/libnfs.pc
 
 %changelog
+* Thu Jan 30 2014 : Version 1.9.2
+ - Remove chdir change. This needs more testing.
 * Tue Jan 28 2014 : Version 1.9.1
  - Restore libnfs-raw-*.h to make install
 * Mon Jan 27 2014 : Version 1.9
