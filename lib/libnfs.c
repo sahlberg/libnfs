@@ -1099,8 +1099,7 @@ static int nfs_lookuppath_async(struct nfs_context *nfs, const char *path, nfs_c
 	struct nfs_cb_data *data;
 
 	if (path[0] == '\0') {
-		rpc_set_error(nfs->rpc, "Path is empty");
-		return -1;
+		path = ".";
 	}
 
 	data = malloc(sizeof(struct nfs_cb_data));
