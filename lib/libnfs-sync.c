@@ -258,14 +258,14 @@ static void open_cb(int status, struct nfs_context *nfs, void *data, void *priva
 	*nfsfh = fh;
 }
 
-int nfs_open(struct nfs_context *nfs, const char *path, int mode, struct nfsfh **nfsfh)
+int nfs_open(struct nfs_context *nfs, const char *path, int flags, struct nfsfh **nfsfh)
 {
 	struct sync_cb_data cb_data;
 
 	cb_data.is_finished = 0;
 	cb_data.return_data = nfsfh;
 
-	if (nfs_open_async(nfs, path, mode, open_cb, &cb_data) != 0) {
+	if (nfs_open_async(nfs, path, flags, open_cb, &cb_data) != 0) {
 		nfs_set_error(nfs, "nfs_open_async failed");
 		return -1;
 	}

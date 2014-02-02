@@ -1346,9 +1346,9 @@ static int nfs_open_continue_internal(struct nfs_context *nfs, struct nfs_cb_dat
 	return 0;
 }
 
-int nfs_open_async(struct nfs_context *nfs, const char *path, int mode, nfs_cb cb, void *private_data)
+int nfs_open_async(struct nfs_context *nfs, const char *path, int flags, nfs_cb cb, void *private_data)
 {
-	if (nfs_lookuppath_async(nfs, path, cb, private_data, nfs_open_continue_internal, NULL, NULL, mode) != 0) {
+	if (nfs_lookuppath_async(nfs, path, cb, private_data, nfs_open_continue_internal, NULL, NULL, flags) != 0) {
 		rpc_set_error(nfs->rpc, "Out of memory: failed to start parsing the path components");
 		return -1;
 	}

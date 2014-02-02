@@ -272,6 +272,11 @@ EXTERN int nfs_fstat(struct nfs_context *nfs, struct nfsfh *nfsfh, struct stat *
  *  0 : The operation was initiated. Once the operation finishes, the callback will be invoked.
  * <0 : An error occured when trying to set up the operation. The callback will not be invoked.
  *
+ * Supported flags are
+ * O_RDONLY
+ * O_WRONLY
+ * O_RDWR
+ *
  * When the callback is invoked, status indicates the result:
  *      0 : Success.
  *          data is a struct *nfsfh;
@@ -279,14 +284,14 @@ EXTERN int nfs_fstat(struct nfs_context *nfs, struct nfsfh *nfsfh, struct stat *
  * -errno : An error occured.
  *          data is the error string.
  */
-EXTERN int nfs_open_async(struct nfs_context *nfs, const char *path, int mode, nfs_cb cb, void *private_data);
+EXTERN int nfs_open_async(struct nfs_context *nfs, const char *path, int flags, nfs_cb cb, void *private_data);
 /*
  * Sync open(<filename>)
  * Function returns
  *      0 : The operation was successfull. *nfsfh is filled in.
  * -errno : The command failed.
  */
-EXTERN int nfs_open(struct nfs_context *nfs, const char *path, int mode, struct nfsfh **nfsfh);
+EXTERN int nfs_open(struct nfs_context *nfs, const char *path, int flags, struct nfsfh **nfsfh);
 
 
 
