@@ -276,6 +276,7 @@ EXTERN int nfs_fstat(struct nfs_context *nfs, struct nfsfh *nfsfh, struct stat *
  * O_RDONLY
  * O_WRONLY
  * O_RDWR
+ * O_TRUNC (Only valid with O_RDWR or O_WRONLY. Ignored otherwise.)
  *
  * When the callback is invoked, status indicates the result:
  *      0 : Success.

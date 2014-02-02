@@ -143,7 +143,6 @@ struct nfs_mcb_data {
 
 static int nfs_lookup_path_async_internal(struct nfs_context *nfs, struct nfs_cb_data *data, struct nfs_fh3 *fh);
 
-
 void nfs_set_auth(struct nfs_context *nfs, struct AUTH *auth)
 {
 	rpc_set_auth(nfs->rpc, auth);
@@ -1244,6 +1243,37 @@ int nfs_stat_async(struct nfs_context *nfs, const char *path, nfs_cb cb, void *p
 /*
  * Async open()
  */
+static void nfs_open_trunc_cb(struct rpc_context *rpc, int status, void *command_data, void *private_data)
+{
+	struct nfs_cb_data *data = private_data;
+	struct nfs_context *nfs = data->nfs;
+	SETATTR3res *res;
+
+	assert(rpc->magic == RPC_CONTEXT_MAGIC);
+
+	if (status == RPC_STATUS_ERROR) {
+		data->cb(-EFAULT, nfs, command_data, data->private_data);
+		free_nfs_cb_data(data);
+		return;
+	}
+	if (status == RPC_STATUS_CANCEL) {
+		data->cb(-EINTR, nfs, "Command was cancelled", data->private_data);
+		free_nfs_cb_data(data);
+		return;
+	}
+
+	res = command_data;
+	if (res->status != NFS3_OK) {
+		rpc_set_error(nfs->rpc, "NFS: Setattr failed with %s(%d)", nfsstat3_to_str(res->status), nfsstat3_to_errno(res->status));
+		data->cb(nfsstat3_to_errno(res->status), nfs, rpc_get_error(nfs->rpc), data->private_data);
+		free_nfs_cb_data(data);
+		return;
+	}
+
+	data->cb(0, nfs, NULL, data->private_data);
+	free_nfs_cb_data(data);
+}
+
 static void nfs_open_cb(struct rpc_context *rpc, int status, void *command_data, void *private_data)
 {
 	ACCESS3res *res;
@@ -1314,6 +1344,28 @@ static void nfs_open_cb(struct rpc_context *rpc, int status, void *command_data,
 	nfsfh->fh = data->fh;
 	data->fh.data.data_val = NULL;
 
+	/* Try to truncate it if we were requested to */
+	if ((data->continue_int & O_TRUNC) &&
+	    (data->continue_int & (O_RDWR|O_WRONLY))) {
+		SETATTR3args args;
+
+		memset(&args, 0, sizeof(SETATTR3args));
+		args.object = nfsfh->fh;
+		args.new_attributes.size.set_it = 1;
+		args.new_attributes.size.set_size3_u.size = 0;
+
+		if (rpc_nfs3_setattr_async(nfs->rpc, nfs_open_trunc_cb, &args,
+				data) != 0) {
+			rpc_set_error(nfs->rpc, "RPC error: Failed to send "
+				"SETATTR call for %s", data->path);
+			data->cb(-ENOMEM, nfs, rpc_get_error(nfs->rpc),
+				data->private_data);
+			free_nfs_cb_data(data);
+			return;
+		}
+		return;
+	}
+
 	data->cb(0, nfs, nfsfh, data->private_data);
 	free_nfs_cb_data(data);
 }
@@ -1338,8 +1390,10 @@ static int nfs_open_continue_internal(struct nfs_context *nfs, struct nfs_cb_dat
 	args.access = nfsmode;
 
 	if (rpc_nfs3_access_async(nfs->rpc, nfs_open_cb, &args, data) != 0) {
-		rpc_set_error(nfs->rpc, "RPC error: Failed to send OPEN ACCESS call for %s", data->path);
-		data->cb(-ENOMEM, nfs, rpc_get_error(nfs->rpc), data->private_data);
+		rpc_set_error(nfs->rpc, "RPC error: Failed to send OPEN ACCESS "
+				"call for %s", data->path);
+		data->cb(-ENOMEM, nfs, rpc_get_error(nfs->rpc),
+				data->private_data);
 		free_nfs_cb_data(data);
 		return -1;
 	}
