@@ -707,3 +707,10 @@ int rpc_queue_length(struct rpc_context *rpc)
 	}
 	return i;
 }
+
+void rpc_set_fd(struct rpc_context *rpc, int fd)
+{
+	assert(rpc->magic == RPC_CONTEXT_MAGIC);
+
+	rpc->fd = fd;
+}

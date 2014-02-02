@@ -59,6 +59,20 @@ struct nfs_fh3 *nfs_get_fh(struct nfsfh *nfsfh);
  */
 void rpc_set_next_xid(struct rpc_context *rpc, uint32_t xid);
 
+/* This function can be used to set the file descriptor used for
+ * the RPC context. It is primarily useful when emulating dup2()
+ * and similar or where you want full control of the filedescriptor numbers
+ * used by the rpc socket.
+ *
+ * ...
+ * oldfd = rpc_get_fd(rpc);
+ * dup2(oldfd, newfd);
+ * rpc_set_fd(rpc, newfd);
+ * close(oldfd);
+ * ...
+ */
+void rpc_set_fd(struct rpc_context *rpc, int fd);
+
 #define RPC_STATUS_SUCCESS	   	0
 #define RPC_STATUS_ERROR		1
 #define RPC_STATUS_CANCEL		2

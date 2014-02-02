@@ -196,4 +196,5 @@ rpc_rquota1_null_async
 rpc_rquota1_getquota_async
 rpc_rquota1_getactivequota_async
 rpc_service
+rpc_set_fd
 rpc_which_events
