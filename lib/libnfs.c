@@ -1247,6 +1247,7 @@ static void nfs_open_trunc_cb(struct rpc_context *rpc, int status, void *command
 {
 	struct nfs_cb_data *data = private_data;
 	struct nfs_context *nfs = data->nfs;
+	struct nfsfh *nfsfh;
 	SETATTR3res *res;
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
@@ -1270,7 +1271,24 @@ static void nfs_open_trunc_cb(struct rpc_context *rpc, int status, void *command
 		return;
 	}
 
-	data->cb(0, nfs, NULL, data->private_data);
+	nfsfh = malloc(sizeof(struct nfsfh));
+	if (nfsfh == NULL) {
+		rpc_set_error(nfs->rpc, "NFS: Failed to allocate nfsfh structure");
+		data->cb(-ENOMEM, nfs, rpc_get_error(nfs->rpc), data->private_data);
+		free_nfs_cb_data(data);
+		return;
+	}
+	memset(nfsfh, 0, sizeof(struct nfsfh));
+
+	if (data->continue_int & O_SYNC) {
+		nfsfh->is_sync = 1;
+	}
+
+	/* steal the filehandle */
+	nfsfh->fh = data->fh;
+	data->fh.data.data_val = NULL;
+
+	data->cb(0, nfs, nfsfh, data->private_data);
 	free_nfs_cb_data(data);
 }
 
@@ -1327,6 +1345,28 @@ static void nfs_open_cb(struct rpc_context *rpc, int status, void *command_data,
 		return;
 	}
 
+	/* Try to truncate it if we were requested to */
+	if ((data->continue_int & O_TRUNC) &&
+	    (data->continue_int & (O_RDWR|O_WRONLY))) {
+		SETATTR3args args;
+
+		memset(&args, 0, sizeof(SETATTR3args));
+		args.object = data->fh;
+		args.new_attributes.size.set_it = 1;
+		args.new_attributes.size.set_size3_u.size = 0;
+
+		if (rpc_nfs3_setattr_async(nfs->rpc, nfs_open_trunc_cb, &args,
+				data) != 0) {
+			rpc_set_error(nfs->rpc, "RPC error: Failed to send "
+				"SETATTR call for %s", data->path);
+			data->cb(-ENOMEM, nfs, rpc_get_error(nfs->rpc),
+				data->private_data);
+			free_nfs_cb_data(data);
+			return;
+		}
+		return;
+	}
+
 	nfsfh = malloc(sizeof(struct nfsfh));
 	if (nfsfh == NULL) {
 		rpc_set_error(nfs->rpc, "NFS: Failed to allocate nfsfh structure");
@@ -1343,28 +1383,6 @@ static void nfs_open_cb(struct rpc_context *rpc, int status, void *command_data,
 	/* steal the filehandle */
 	nfsfh->fh = data->fh;
 	data->fh.data.data_val = NULL;
-
-	/* Try to truncate it if we were requested to */
-	if ((data->continue_int & O_TRUNC) &&
-	    (data->continue_int & (O_RDWR|O_WRONLY))) {
-		SETATTR3args args;
-
-		memset(&args, 0, sizeof(SETATTR3args));
-		args.object = nfsfh->fh;
-		args.new_attributes.size.set_it = 1;
-		args.new_attributes.size.set_size3_u.size = 0;
-
-		if (rpc_nfs3_setattr_async(nfs->rpc, nfs_open_trunc_cb, &args,
-				data) != 0) {
-			rpc_set_error(nfs->rpc, "RPC error: Failed to send "
-				"SETATTR call for %s", data->path);
-			data->cb(-ENOMEM, nfs, rpc_get_error(nfs->rpc),
-				data->private_data);
-			free_nfs_cb_data(data);
-			return;
-		}
-		return;
-	}
 
 	data->cb(0, nfs, nfsfh, data->private_data);
 	free_nfs_cb_data(data);
