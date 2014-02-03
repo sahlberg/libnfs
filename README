@@ -86,6 +86,25 @@ Android:
 AROS: - Build with 'make -f aros/Makefile.AROS'
 
 
+LD_PRELOAD
+==========
+examples/ld_nfs.c contains a LD_PRELOADable module that can be used to make
+several standard utilities nfs aware.
+It is still very incomplete but can be used for basic things such as cat and cp.
+Patches to add more coverage is welcome.
+
+Compile with :
+gcc -fPIC -shared -o ld_nfs.so examples/ld_nfs.c -ldl -lnfs
+
+Then try things like
+LD_NFS_DEBUG=9 LD_PRELOAD=./ld_nfs.so cat nfs://127.0.0.1/data/tmp/foo123
+
+LD_NFS_DEBUG=9 LD_PRELOAD=./ld_nfs.so cp nfs://127.0.0.1/data/tmp/foo123 nfs://127.0.0.1/data/tmp/foo123.copy
+
+This is just a toy preload module. Don't open bugs if it does not work. Send
+patches to make it better instead.
+
+
 RELEASE TARBALLS
 ================
 Release tarballs are available at https://sites.google.com/site/libnfstarballs/li
