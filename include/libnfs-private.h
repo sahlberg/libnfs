@@ -28,6 +28,9 @@
 
 #include "libnfs-zdr.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #if !defined(HAVE_SOCKADDR_STORAGE) && !defined(WIN32)
 /*
@@ -153,5 +156,9 @@ int rpc_add_fragment(struct rpc_context *rpc, char *data, uint64_t size);
 void rpc_free_all_fragments(struct rpc_context *rpc);
 
 const struct nfs_fh3 *nfs_get_rootfh(struct nfs_context *nfs);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* !_LIBNFS_PRIVATE_H_ */
