@@ -114,7 +114,7 @@ int rpc_connect_program_async(struct rpc_context *rpc, char *server, int program
 int rpc_disconnect(struct rpc_context *rpc, char *error);
 
 
-/* 
+/*
  * PORTMAP FUNCTIONS
  */
 
@@ -199,7 +199,7 @@ EXTERN int rpc_pmap_unset_async(struct rpc_context *rpc, int program, int versio
  */
 EXTERN int rpc_pmap_callit_async(struct rpc_context *rpc, int program, int version, int procedure, char *data, int datalen, rpc_cb cb, void *private_data);
 
-/* 
+/*
  * MOUNT v3 FUNCTIONS
  */
 char *mountstat3_to_str(int stat);
@@ -311,7 +311,7 @@ EXTERN int rpc_mount_umntall_async(struct rpc_context *rpc, rpc_cb cb, void *pri
 EXTERN int rpc_mount3_export_async(struct rpc_context *rpc, rpc_cb cb, void *private_data);
 EXTERN int rpc_mount_export_async(struct rpc_context *rpc, rpc_cb cb, void *private_data);
 
-/* 
+/*
  * MOUNT v1 FUNCTIONS (Used with NFSv2)
  */
 /*
@@ -415,7 +415,7 @@ EXTERN int rpc_mount1_umntall_async(struct rpc_context *rpc, rpc_cb cb, void *pr
 EXTERN int rpc_mount1_export_async(struct rpc_context *rpc, rpc_cb cb, void *private_data);
 
 
-/* 
+/*
  * NFS v3 FUNCTIONS
  */
 struct nfs_fh3;
@@ -817,7 +817,7 @@ struct LINK3args;
 EXTERN int rpc_nfs3_link_async(struct rpc_context *rpc, rpc_cb cb, struct LINK3args *args, void *private_data);
 EXTERN int rpc_nfs_link_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *file, struct nfs_fh3 *newdir, char *newname, void *private_data);
 
-/* 
+/*
  * NFS v2 FUNCTIONS
  */
 
@@ -1092,7 +1092,7 @@ EXTERN int rpc_nfs2_readdir_async(struct rpc_context *rpc, rpc_cb cb, struct REA
 struct STATFS2args;
 EXTERN int rpc_nfs2_statfs_async(struct rpc_context *rpc, rpc_cb cb, struct STATFS2args *args, void *private_data);
 
-/* 
+/*
  * RQUOTA FUNCTIONS
  */
 char *rquotastat_to_str(int error);
@@ -1203,7 +1203,7 @@ int rpc_rquota2_getactivequota_async(struct rpc_context *rpc, rpc_cb cb, char *e
 
 
 /*
- * NFSACL functions 
+ * NFSACL functions
  */
 
 /*
@@ -1269,7 +1269,7 @@ EXTERN int rpc_nfsacl_setacl_async(struct rpc_context *rpc, rpc_cb cb, struct SE
  * NLM functions
  */
 char *nlmstat4_to_str(int stat);
-	
+
 /*
  * Call NLM/NULL
  * Call the NULL procedure for the NLM protocol
@@ -1368,7 +1368,7 @@ EXTERN int rpc_nlm4_unlock_async(struct rpc_context *rpc, rpc_cb cb, struct NLM4
  * NSM functions
  */
 char *nsmstat1_to_str(int stat);
-	
+
 /*
  * Call NSM/NULL
  * Call the NULL procedure for the NSM protocol
