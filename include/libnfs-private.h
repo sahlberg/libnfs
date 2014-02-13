@@ -14,6 +14,10 @@
    You should have received a copy of the GNU Lesser General Public License
    along with this program; if not, see <http://www.gnu.org/licenses/>.
 */
+
+#ifndef _LIBNFS_PRIVATE_H_
+#define _LIBNFS_PRIVATE_H_
+
 #ifdef HAVE_CONFIG_H
 #include "config.h"  /* HAVE_SOCKADDR_STORAGE ? */
 #endif
@@ -94,7 +98,7 @@ struct rpc_context {
 
 	/* fragment reassembly */
 	struct rpc_fragment *fragments;
-	
+
 	/* parameters passable via URL */
 	int tcp_syncnt;
 	int uid;
@@ -149,3 +153,5 @@ int rpc_add_fragment(struct rpc_context *rpc, char *data, uint64_t size);
 void rpc_free_all_fragments(struct rpc_context *rpc);
 
 const struct nfs_fh3 *nfs_get_rootfh(struct nfs_context *nfs);
+
+#endif /* !_LIBNFS_PRIVATE_H_ */
