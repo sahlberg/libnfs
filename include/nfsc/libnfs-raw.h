@@ -25,6 +25,10 @@
 #include <stdint.h>
 #include <nfsc/libnfs-zdr.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 struct rpc_data {
        int size;
        unsigned char *data;
@@ -1499,5 +1503,9 @@ EXTERN int rpc_nsm1_simucrash_async(struct rpc_context *rpc, rpc_cb cb, void *pr
  */
 struct NSM1_NOTIFYargs;
 EXTERN int rpc_nsm1_notify_async(struct rpc_context *rpc, rpc_cb cb, struct NSM1_NOTIFYargs *args, void *private_data);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
