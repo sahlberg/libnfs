@@ -15,6 +15,9 @@
    along with this program; if not, see <http://www.gnu.org/licenses/>.
 */
 
+#ifndef _LIBNFS_SLIST_H_
+#define _LIBNFS_SLIST_H_
+
 #define SLIST_ADD(list, item) \
 	do {							\
 		(item)->next = (*list);				\
@@ -46,6 +49,4 @@
 	   (*list) = head;					\
 	}
 
-
-
-
+#endif /* !_LIBNFS_SLIST_H_ */
