@@ -17,6 +17,10 @@
 /*
  * This is the highlevel interface to access NFS resources using a posix-like interface
  */
+
+#ifndef _LIBNFS_H_
+#define _LIBNFS_H_
+
 #include <stdint.h>
 #if defined(ANDROID)
 #include <sys/time.h>
@@ -37,7 +41,7 @@ struct nfs_url {
 #if defined(WIN32)
 #define EXTERN __declspec( dllexport )
 #else
-#define EXTERN 
+#define EXTERN
 #endif
 
 #if defined(WIN32)
@@ -50,7 +54,7 @@ struct statvfs {
 	uint32_t	f_files;
 	uint32_t	f_ffree;
 	uint32_t	f_favail;
-	uint32_t	f_fsid;	
+	uint32_t	f_fsid;
 	uint32_t	f_flag;
 	uint32_t	f_namemax;
 };
@@ -113,7 +117,7 @@ EXTERN void nfs_destroy_context(struct nfs_context *nfs);
 
 /*
  * URL parsing functions.
- * These functions all parse a URL of the form 
+ * These functions all parse a URL of the form
  * nfs://server/path/file?argv=val[&arg=val]*
  * and returns a nfs_url.
  *
@@ -167,7 +171,7 @@ EXTERN uint64_t nfs_get_readmax(struct nfs_context *nfs);
 EXTERN uint64_t nfs_get_writemax(struct nfs_context *nfs);
 
 /*
- *  MODIFY CONNECT PARAMTERS 
+ *  MODIFY CONNECT PARAMTERS
  */
 
 EXTERN void nfs_set_tcp_syncnt(struct nfs_context *nfs, int v);
@@ -1123,7 +1127,7 @@ EXTERN int mount_getexports_async(struct rpc_context *rpc, const char *server, r
  * Function returns
  *            NULL : something failed
  *  exports export : a linked list of exported directories
- * 
+ *
  * returned data must be freed by calling mount_free_export_list(exportnode);
  */
 EXTERN struct exportnode *mount_getexports(const char *server);
@@ -1152,8 +1156,10 @@ struct nfs_server_list {
  * NULL : something failed
  *
  * struct nfs_server_list : a linked list of all discovered servers
- * 
+ *
  * returned data must be freed by nfs_free_srvr_list(srv);
  */
 struct nfs_server_list *nfs_find_local_servers(void);
 void free_nfs_srvr_list(struct nfs_server_list *srv);
+
+#endif /* !_LIBNFS_H_ */
