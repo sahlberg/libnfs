@@ -29,6 +29,10 @@
 #include <sys/time.h>
 #endif
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 struct nfs_context;
 struct rpc_context;
 
@@ -1161,5 +1165,9 @@ struct nfs_server_list {
  */
 struct nfs_server_list *nfs_find_local_servers(void);
 void free_nfs_srvr_list(struct nfs_server_list *srv);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* !_LIBNFS_H_ */
