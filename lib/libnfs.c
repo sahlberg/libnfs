@@ -3312,7 +3312,6 @@ int nfs_fchmod_async(struct nfs_context *nfs, struct nfsfh *nfsfh, int mode, nfs
 	memcpy(data->fh.data.data_val, nfsfh->fh.data.data_val, data->fh.data.data_len);
 
 	if (nfs_chmod_continue_internal(nfs, data) != 0) {
-		free_nfs_cb_data(data);
 		return -1;
 	}
 
