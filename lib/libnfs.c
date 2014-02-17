@@ -3444,6 +3444,7 @@ int nfs_fchown_async(struct nfs_context *nfs, struct nfsfh *nfsfh, int uid, int 
 	data->cb            = cb;
 	data->private_data  = private_data;
 	data->continue_data = chown_data;
+	data->free_continue_data = free;
 	data->fh.data.data_len = nfsfh->fh.data.data_len;
 	data->fh.data.data_val = malloc(data->fh.data.data_len);
 	if (data->fh.data.data_val == NULL) {
