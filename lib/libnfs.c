@@ -2876,6 +2876,7 @@ static void nfs_opendir_cb(struct rpc_context *rpc, int status, void *command_da
 		nfsdirent->name = strdup(entry->name);
 		if (nfsdirent->name == NULL) {
 			data->cb(-ENOMEM, nfs, "Failed to allocate dirent->name", data->private_data);
+			free(nfsdirent);
 			nfs_free_nfsdir(nfsdir);
 			data->continue_data = NULL;
 			free_nfs_cb_data(data);
