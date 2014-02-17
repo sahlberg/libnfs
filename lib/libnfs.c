@@ -2447,6 +2447,7 @@ int nfs_unlink_async(struct nfs_context *nfs, const char *path, nfs_cb cb, void 
 
 	ptr = strrchr(new_path, '/');
 	if (ptr == NULL) {
+		free(new_path);
 		rpc_set_error(nfs->rpc, "Invalid path %s", path);
 		return -1;
 	}
