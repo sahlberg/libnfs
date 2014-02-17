@@ -1105,6 +1105,8 @@ static int nfs_lookuppath_async(struct nfs_context *nfs, const char *path, nfs_c
 	if (data == NULL) {
 		rpc_set_error(nfs->rpc, "out of memory: failed to allocate "
 			"nfs_cb_data structure");
+		if (free_continue_data)
+			free_continue_data(continue_data);
 		return -1;
 	}
 	memset(data, 0, sizeof(struct nfs_cb_data));
