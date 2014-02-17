@@ -2592,6 +2592,7 @@ int nfs_mknod_async(struct nfs_context *nfs, const char *path, int mode, int dev
 	ptr = strrchr(cb_data->path, '/');
 	if (ptr == NULL) {
 		rpc_set_error(nfs->rpc, "Invalid path %s", path);
+		free_mknod_cb_data(cb_data);
 		return -1;
 	}
 	*ptr = 0;
