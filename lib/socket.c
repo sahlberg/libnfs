@@ -251,7 +251,7 @@ static int rpc_read_from_socket(struct rpc_context *rpc)
 	pdu_size = rpc_get_pdu_size(rpc->inbuf);
 	if (rpc->insize < pdu_size) {
 		unsigned char *buf;
-		
+
 		buf = malloc(pdu_size);
 		if (buf == NULL) {
 			rpc_set_error(rpc, "Failed to allocate buffer of %d bytes for pdu, errno:%d. Closing socket.", pdu_size, errno);
@@ -485,10 +485,10 @@ static int rpc_connect_sockaddr_async(struct rpc_context *rpc, struct sockaddr_s
 	if (connect(rpc->fd, (struct sockaddr *)s, socksize) != 0 && errno != EINPROGRESS) {
 		rpc_set_error(rpc, "connect() to server failed. %s(%d)", strerror(errno), errno);
 		return -1;
-	}		
+	}
 
 	return 0;
-}	    
+}
 
 int rpc_connect_async(struct rpc_context *rpc, const char *server, int port, rpc_cb cb, void *private_data)
 {
@@ -532,7 +532,7 @@ int rpc_connect_async(struct rpc_context *rpc, const char *server, int port, rpc
 	}
 
 	return 0;
-}	    
+}
 
 int rpc_disconnect(struct rpc_context *rpc, char *error)
 {
@@ -617,7 +617,7 @@ int rpc_bind_udp(struct rpc_context *rpc, char *addr, int port)
 	sprintf(service, "%d", port);
 	if (getaddrinfo(addr, service, NULL, &ai) != 0) {
 		rpc_set_error(rpc, "Invalid address:%s. "
-			"Can not resolv into IPv4/v6 structure.");
+			      "Can not resolv into IPv4/v6 structure.", addr);
 		return -1;
  	}
 
@@ -625,13 +625,13 @@ int rpc_bind_udp(struct rpc_context *rpc, char *addr, int port)
 	case AF_INET:
 		rpc->fd = socket(ai->ai_family, SOCK_DGRAM, 0);
 		if (rpc->fd == -1) {
-			rpc_set_error(rpc, "Failed to create UDP socket: %s", strerror(errno)); 
+			rpc_set_error(rpc, "Failed to create UDP socket: %s", strerror(errno));
 			freeaddrinfo(ai);
 			return -1;
 		}
 
 		if (bind(rpc->fd, (struct sockaddr *)ai->ai_addr, sizeof(struct sockaddr_in)) != 0) {
-			rpc_set_error(rpc, "Failed to bind to UDP socket: %s",strerror(errno)); 
+			rpc_set_error(rpc, "Failed to bind to UDP socket: %s",strerror(errno));
 			freeaddrinfo(ai);
 			return -1;
 		}
@@ -662,7 +662,7 @@ int rpc_set_udp_destination(struct rpc_context *rpc, char *addr, int port, int i
 	sprintf(service, "%d", port);
 	if (getaddrinfo(addr, service, NULL, &ai) != 0) {
 		rpc_set_error(rpc, "Invalid address:%s. "
-			"Can not resolv into IPv4/v6 structure.");
+			      "Can not resolv into IPv4/v6 structure.", addr);
 		return -1;
  	}
 
