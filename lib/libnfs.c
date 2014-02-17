@@ -532,6 +532,7 @@ void free_nfs_cb_data(struct nfs_cb_data *data)
 	}
 
 	if (data->continue_data != NULL) {
+		assert(data->free_continue_data);
 		data->free_continue_data(data->continue_data);
 		data->continue_data = NULL;
 	}
