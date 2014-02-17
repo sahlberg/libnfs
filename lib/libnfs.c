@@ -3889,19 +3889,28 @@ static int nfs_rename_continue_2_internal(struct nfs_context *nfs, struct nfs_cb
 static int nfs_rename_continue_1_internal(struct nfs_context *nfs, struct nfs_cb_data *data)
 {
 	struct nfs_rename_data *rename_data = data->continue_data;
+	char* newpath = strdup(rename_data->newpath);
+	if (!newpath) {
+		rpc_set_error(nfs->rpc, "Out of memory. Could not allocate memory to store target path for rename");
+		data->cb(-ENOMEM, nfs, rpc_get_error(nfs->rpc), data->private_data);
+		free_nfs_cb_data(data);
+		return -1;
+	}
 
 	/* steal the filehandle */
 	rename_data->olddir = data->fh;
 	data->fh.data.data_val = NULL;
 
 	if (nfs_lookuppath_async(nfs, rename_data->newpath, data->cb, data->private_data, nfs_rename_continue_2_internal, rename_data, free_nfs_rename_data, 0) != 0) {
-		rpc_set_error(nfs->rpc, "RPC error: Failed to send LOOKUP call for %s", rename_data->newpath);
+		rpc_set_error(nfs->rpc, "RPC error: Failed to send LOOKUP call for %s", newpath);
 		data->cb(-ENOMEM, nfs, rpc_get_error(nfs->rpc), data->private_data);
 		free_nfs_cb_data(data);
+		free(newpath);
 		return -1;
 	}
 	data->continue_data = NULL;
 	free_nfs_cb_data(data);
+	free(newpath);
 
 	return 0;
 }
