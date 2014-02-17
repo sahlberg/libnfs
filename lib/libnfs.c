@@ -3446,7 +3446,6 @@ int nfs_fchown_async(struct nfs_context *nfs, struct nfsfh *nfsfh, int uid, int 
 	memcpy(data->fh.data.data_val, nfsfh->fh.data.data_val, data->fh.data.data_len);
 
 	if (nfs_chown_continue_internal(nfs, data) != 0) {
-		free_nfs_cb_data(data);
 		return -1;
 	}
 
