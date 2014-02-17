@@ -240,8 +240,8 @@ EXTERN int rpc_mount_null_async(struct rpc_context *rpc, rpc_cb cb, void *privat
  * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
  *                     data is NULL.
  */
-EXTERN int rpc_mount3_mnt_async(struct rpc_context *rpc, rpc_cb cb, char *export, void *private_data);
-EXTERN int rpc_mount_mnt_async(struct rpc_context *rpc, rpc_cb cb, char *export, void *private_data);
+EXTERN int rpc_mount3_mnt_async(struct rpc_context *rpc, rpc_cb cb, char *exportname, void *private_data);
+EXTERN int rpc_mount_mnt_async(struct rpc_context *rpc, rpc_cb cb, char *exportname, void *private_data);
 
 /*
  * Call MOUNT3/DUMP
@@ -274,8 +274,8 @@ EXTERN int rpc_mount_dump_async(struct rpc_context *rpc, rpc_cb cb, void *privat
  * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
  *                     data is NULL.
  */
-EXTERN int rpc_mount3_umnt_async(struct rpc_context *rpc, rpc_cb cb, char *export, void *private_data);
-EXTERN int rpc_mount_umnt_async(struct rpc_context *rpc, rpc_cb cb, char *export, void *private_data);
+EXTERN int rpc_mount3_umnt_async(struct rpc_context *rpc, rpc_cb cb, char *exportname, void *private_data);
+EXTERN int rpc_mount_umnt_async(struct rpc_context *rpc, rpc_cb cb, char *exportname, void *private_data);
 
 /*
  * Call MOUNT3/UMNTALL
@@ -348,7 +348,7 @@ EXTERN int rpc_mount1_null_async(struct rpc_context *rpc, rpc_cb cb, void *priva
  * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
  *                     data is NULL.
  */
-EXTERN int rpc_mount1_mnt_async(struct rpc_context *rpc, rpc_cb cb, char *export, void *private_data);
+EXTERN int rpc_mount1_mnt_async(struct rpc_context *rpc, rpc_cb cb, char *exportname, void *private_data);
 
 /*
  * Call MOUNT1/DUMP
@@ -380,7 +380,7 @@ EXTERN int rpc_mount1_dump_async(struct rpc_context *rpc, rpc_cb cb, void *priva
  * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
  *                     data is NULL.
  */
-EXTERN int rpc_mount1_umnt_async(struct rpc_context *rpc, rpc_cb cb, char *export, void *private_data);
+EXTERN int rpc_mount1_umnt_async(struct rpc_context *rpc, rpc_cb cb, char *exportname, void *private_data);
 
 /*
  * Call MOUNT1/UMNTALL
@@ -1132,7 +1132,7 @@ EXTERN int rpc_rquota1_null_async(struct rpc_context *rpc, rpc_cb cb, void *priv
  * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
  *                     data is NULL.
  */
-EXTERN int rpc_rquota1_getquota_async(struct rpc_context *rpc, rpc_cb cb, char *export, int uid, void *private_data);
+EXTERN int rpc_rquota1_getquota_async(struct rpc_context *rpc, rpc_cb cb, char *exportname, int uid, void *private_data);
 
 /*
  * Call RQUOTA1/GETACTIVEQUOTA
@@ -1148,7 +1148,7 @@ EXTERN int rpc_rquota1_getquota_async(struct rpc_context *rpc, rpc_cb cb, char *
  * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
  *                     data is NULL.
  */
-EXTERN int rpc_rquota1_getactivequota_async(struct rpc_context *rpc, rpc_cb cb, char *export, int uid, void *private_data);
+EXTERN int rpc_rquota1_getactivequota_async(struct rpc_context *rpc, rpc_cb cb, char *exportname, int uid, void *private_data);
 
 
 
@@ -1183,7 +1183,7 @@ int rpc_rquota2_null_async(struct rpc_context *rpc, rpc_cb cb, void *private_dat
  * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
  *                     data is NULL.
  */
-int rpc_rquota2_getquota_async(struct rpc_context *rpc, rpc_cb cb, char *export, int type, int uid, void *private_data);
+int rpc_rquota2_getquota_async(struct rpc_context *rpc, rpc_cb cb, char *exportname, int type, int uid, void *private_data);
 
 /*
  * Call RQUOTA2/GETACTIVEQUOTA
@@ -1199,7 +1199,7 @@ int rpc_rquota2_getquota_async(struct rpc_context *rpc, rpc_cb cb, char *export,
  * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
  *                     data is NULL.
  */
-int rpc_rquota2_getactivequota_async(struct rpc_context *rpc, rpc_cb cb, char *export, int type, int uid, void *private_data);
+int rpc_rquota2_getactivequota_async(struct rpc_context *rpc, rpc_cb cb, char *exportname, int type, int uid, void *private_data);
 
 
 
