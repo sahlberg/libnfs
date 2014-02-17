@@ -2594,7 +2594,6 @@ int nfs_mknod_async(struct nfs_context *nfs, const char *path, int mode, int dev
 	/* data->path now points to the parent directory,  and beyond the nul terminateor is the new directory to create */
 	if (nfs_lookuppath_async(nfs, cb_data->path, cb, private_data, nfs_mknod_continue_internal, cb_data, free_mknod_cb_data, 0) != 0) {
 		rpc_set_error(nfs->rpc, "Out of memory: failed to start parsing the path components");
-		free_mknod_cb_data(cb_data);
 		return -1;
 	}
 
