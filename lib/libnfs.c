@@ -2729,6 +2729,7 @@ static void nfs_opendir2_cb(struct rpc_context *rpc, int status, void *command_d
 		nfsdirent->name = strdup(entry->name);
 		if (nfsdirent->name == NULL) {
 			data->cb(-ENOMEM, nfs, "Failed to allocate dirent->name", data->private_data);
+			free(nfsdirent);
 			nfs_free_nfsdir(nfsdir);
 			data->continue_data = NULL;
 			free_nfs_cb_data(data);
@@ -2788,6 +2789,9 @@ static void nfs_opendir2_cb(struct rpc_context *rpc, int status, void *command_d
 		 	 * commands in flight to complete
 		 	 */
 			if (rdpe_cb_data->getattrcount > 0) {
+				nfs_free_nfsdir(nfsdir);
+				data->continue_data = NULL;
+				free_nfs_cb_data(data);
 				rdpe_cb_data->status = RPC_STATUS_ERROR;
 				free(rdpe_lookup_cb_data);
 				return;
@@ -2804,7 +2808,6 @@ static void nfs_opendir2_cb(struct rpc_context *rpc, int status, void *command_d
 		rdpe_cb_data->getattrcount++;
 	}
 }
-
 
 static void nfs_opendir_cb(struct rpc_context *rpc, int status, void *command_data, void *private_data)
 {
