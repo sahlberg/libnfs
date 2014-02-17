@@ -3433,10 +3433,10 @@ int nfs_fchown_async(struct nfs_context *nfs, struct nfsfh *nfsfh, int uid, int 
 	chown_data->uid = uid;
 	chown_data->gid = gid;
 
-
 	data = malloc(sizeof(struct nfs_cb_data));
 	if (data == NULL) {
 		rpc_set_error(nfs->rpc, "out of memory. failed to allocate memory for fchown data");
+		free(chown_data);
 		return -1;
 	}
 	memset(data, 0, sizeof(struct nfs_cb_data));
@@ -3452,7 +3452,6 @@ int nfs_fchown_async(struct nfs_context *nfs, struct nfsfh *nfsfh, int uid, int 
 		return -1;
 	}
 	memcpy(data->fh.data.data_val, nfsfh->fh.data.data_val, data->fh.data.data_len);
-
 
 	if (nfs_chown_continue_internal(nfs, data) != 0) {
 		free_nfs_cb_data(data);
