@@ -524,28 +524,16 @@ int rpc_connect_program_async(struct rpc_context *rpc, char *server, int program
 	return 0;
 }
 
-void free_nfs_cb_data(struct nfs_cb_data *data)
+static void free_nfs_cb_data(struct nfs_cb_data *data)
 {
-	if (data->saved_path != NULL) {
-		free(data->saved_path);
-		data->saved_path = NULL;
-	}
-
 	if (data->continue_data != NULL) {
 		assert(data->free_continue_data);
 		data->free_continue_data(data->continue_data);
-		data->continue_data = NULL;
 	}
 
-	if (data->fh.data.data_val != NULL) {
-		free(data->fh.data.data_val);
-		data->fh.data.data_val = NULL;
-	}
-
-	if (data->buffer != NULL) {
-		free(data->buffer);
-		data->buffer = NULL;
-	}
+	free(data->saved_path);
+	free(data->fh.data.data_val);
+	free(data->buffer);
 
 	free(data);
 }
