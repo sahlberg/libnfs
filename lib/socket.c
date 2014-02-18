@@ -210,6 +210,7 @@ static int rpc_read_from_socket(struct rpc_context *rpc)
 		if (count < 0) {
 			rpc_set_error(rpc, "Failed recvfrom: %s", strerror(errno));
 			free(buf);
+			return -1;
 		}
 		if (rpc_process_pdu(rpc, buf, count) != 0) {
 			rpc_set_error(rpc, "Invalid/garbage pdu received from server. Ignoring PDU");
