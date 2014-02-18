@@ -2794,46 +2794,48 @@ static void nfs_opendir2_cb(struct rpc_context *rpc, int status, void *command_d
 	/* steal the dirhandle */
 	nfsdir->current = nfsdir->entries;
 
-	rdpe_cb_data = malloc(sizeof(struct rdpe_cb_data));
-	rdpe_cb_data->getattrcount = 0;
-	rdpe_cb_data->status = RPC_STATUS_SUCCESS;
-	rdpe_cb_data->data = data;
-	for (nfsdirent = nfsdir->entries; nfsdirent; nfsdirent = nfsdirent->next) {
-		struct rdpe_lookup_cb_data *rdpe_lookup_cb_data;
-		LOOKUP3args args;
+	if (nfsdir->entries) {
+		rdpe_cb_data = malloc(sizeof(struct rdpe_cb_data));
+		rdpe_cb_data->getattrcount = 0;
+		rdpe_cb_data->status = RPC_STATUS_SUCCESS;
+		rdpe_cb_data->data = data;
+		for (nfsdirent = nfsdir->entries; nfsdirent; nfsdirent = nfsdirent->next) {
+			struct rdpe_lookup_cb_data *rdpe_lookup_cb_data;
+			LOOKUP3args args;
 
-		rdpe_lookup_cb_data = malloc(sizeof(struct rdpe_lookup_cb_data));
-		rdpe_lookup_cb_data->rdpe_cb_data = rdpe_cb_data;
-		rdpe_lookup_cb_data->nfsdirent = nfsdirent;
+			rdpe_lookup_cb_data = malloc(sizeof(struct rdpe_lookup_cb_data));
+			rdpe_lookup_cb_data->rdpe_cb_data = rdpe_cb_data;
+			rdpe_lookup_cb_data->nfsdirent = nfsdirent;
 
-		memset(&args, 0, sizeof(LOOKUP3args));
-		args.what.dir = data->fh;
-		args.what.name = nfsdirent->name;
+			memset(&args, 0, sizeof(LOOKUP3args));
+			args.what.dir = data->fh;
+			args.what.name = nfsdirent->name;
 
-		if (rpc_nfs3_lookup_async(nfs->rpc, nfs_opendir3_cb, &args, rdpe_lookup_cb_data) != 0) {
-			rpc_set_error(nfs->rpc, "RPC error: Failed to send READDIR LOOKUP call");
+			if (rpc_nfs3_lookup_async(nfs->rpc, nfs_opendir3_cb, &args, rdpe_lookup_cb_data) != 0) {
+				rpc_set_error(nfs->rpc, "RPC error: Failed to send READDIR LOOKUP call");
 
-			/* if we have already commands in flight, we cant just stop, we have to wait for the
-		 	 * commands in flight to complete
-		 	 */
-			if (rdpe_cb_data->getattrcount > 0) {
+				/* if we have already commands in flight, we cant just stop, we have to wait for the
+				 * commands in flight to complete
+				 */
+				if (rdpe_cb_data->getattrcount > 0) {
+					nfs_free_nfsdir(nfsdir);
+					data->continue_data = NULL;
+					free_nfs_cb_data(data);
+					rdpe_cb_data->status = RPC_STATUS_ERROR;
+					free(rdpe_lookup_cb_data);
+					return;
+				}
+
+				data->cb(-ENOMEM, nfs, rpc_get_error(nfs->rpc), data->private_data);
 				nfs_free_nfsdir(nfsdir);
 				data->continue_data = NULL;
 				free_nfs_cb_data(data);
-				rdpe_cb_data->status = RPC_STATUS_ERROR;
 				free(rdpe_lookup_cb_data);
+				free(rdpe_cb_data);
 				return;
 			}
-
-			data->cb(-ENOMEM, nfs, rpc_get_error(nfs->rpc), data->private_data);
-			nfs_free_nfsdir(nfsdir);
-			data->continue_data = NULL;
-			free_nfs_cb_data(data);
-			free(rdpe_lookup_cb_data);
-			free(rdpe_cb_data);
-			return;
+			rdpe_cb_data->getattrcount++;
 		}
-		rdpe_cb_data->getattrcount++;
 	}
 }
 
