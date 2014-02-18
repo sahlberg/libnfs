@@ -41,6 +41,10 @@ typedef char *caddr_t;
 #include <stdint.h>
 #include <sys/types.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define _RPC_RPC_H 1
 #define _RPC_ZDR_H 1
 #define _RPC_AUTH_H 1
@@ -279,5 +283,9 @@ struct AUTH *libnfs_authunix_create_default(void);
 
 #define auth_destroy libnfs_auth_destroy
 void libnfs_auth_destroy(struct AUTH *auth);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
