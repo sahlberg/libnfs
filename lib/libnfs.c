@@ -1775,6 +1775,10 @@ int nfs_pwrite_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t offs
 		return 0;
 	}
 
+	/* hello, clang-analyzer */
+	assert(count > 0);
+	assert(data->num_calls == 0);
+
 	/* trying to write more than maximum server write size, we has to chop it up into smaller
 	 * chunks.
 	 * we send all writes in parallel so that performance is still good.
@@ -1794,6 +1798,8 @@ int nfs_pwrite_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t offs
 		mdata = malloc(sizeof(struct nfs_mcb_data));
 		if (mdata == NULL) {
 			rpc_set_error(nfs->rpc, "out of memory: failed to allocate nfs_mcb_data structure");
+			if (data->num_calls == 0)
+				free_nfs_cb_data(data);
 			return -1;
 		}
 		memset(mdata, 0, sizeof(struct nfs_mcb_data));
@@ -1813,6 +1819,9 @@ int nfs_pwrite_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t offs
 			rpc_set_error(nfs->rpc, "RPC error: Failed to send WRITE call for %s", data->path);
 			data->cb(-ENOMEM, nfs, rpc_get_error(nfs->rpc), data->private_data);
 			free(mdata);
+			if (data->num_calls == 0)
+				free_nfs_cb_data(data);
+
 			return -1;
 		}
 
