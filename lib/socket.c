@@ -174,10 +174,14 @@ static int rpc_write_to_socket(struct rpc_context *rpc)
 
 		pdu->written += count;
 		if (pdu->written == total) {
+			unsigned int hash;
+
 			rpc->outqueue.head = pdu->next;
 			if (pdu->next == NULL)
 				rpc->outqueue.tail = NULL;
-			rpc_enqueue(&rpc->waitpdu, pdu);
+
+			hash = rpc_hash_xid(pdu->xid);
+			rpc_enqueue(&rpc->waitpdu[hash], pdu);
 		}
 	}
 	return 0;
@@ -607,6 +611,7 @@ static void reconnect_cb(struct rpc_context *rpc, int status, void *data _U_, vo
 static int rpc_reconnect_requeue(struct rpc_context *rpc)
 {
 	struct rpc_pdu *pdu;
+	unsigned int i;
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
@@ -620,12 +625,16 @@ static int rpc_reconnect_requeue(struct rpc_context *rpc)
 	/* socket is closed so we will not get any replies to any commands
 	 * in flight. Move them all over from the waitpdu queue back to the out queue
 	 */
-	for (pdu=rpc->waitpdu.head; pdu; pdu=pdu->next) {
-		rpc_return_to_queue(&rpc->outqueue, pdu);
-		/* we have to re-send the whole pdu again */
-		pdu->written = 0;
+	for (i = 0; i < HASHES; i++) {
+		struct rpc_queue *q = &rpc->waitpdu[i];
+
+		for (pdu=q->head; pdu; pdu=pdu->next) {
+			rpc_return_to_queue(&rpc->outqueue, pdu);
+			/* we have to re-send the whole pdu again */
+			pdu->written = 0;
+		}
+		rpc_reset_queue(q);
 	}
-	rpc_reset_queue(&rpc->waitpdu);
 
 	if (rpc->auto_reconnect != 0) {
 		rpc->connect_cb  = reconnect_cb;
@@ -734,14 +743,19 @@ int rpc_queue_length(struct rpc_context *rpc)
 {
 	int i=0;
 	struct rpc_pdu *pdu;
+	unsigned int n;
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
 	for(pdu = rpc->outqueue.head; pdu; pdu = pdu->next) {
 		i++;
 	}
-	for(pdu = rpc->waitpdu.head; pdu; pdu = pdu->next) {
-		i++;
+
+	for (n = 0; n < HASHES; n++) {
+		struct rpc_queue *q = &rpc->waitpdu[n];
+
+		for(pdu = q->head; pdu; pdu = pdu->next)
+			i++;
 	}
 	return i;
 }

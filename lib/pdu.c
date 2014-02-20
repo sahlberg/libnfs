@@ -79,6 +79,11 @@ void rpc_return_to_queue(struct rpc_queue *q, struct rpc_pdu *pdu)
 		q->tail = pdu;
 }
 
+unsigned int rpc_hash_xid(uint32_t xid)
+{
+	return (xid * 7919) % HASHES;
+}
+
 struct rpc_pdu *rpc_allocate_pdu(struct rpc_context *rpc, int program, int version, int procedure, rpc_cb cb, void *private_data, zdrproc_t zdr_decode_fn, int zdr_decode_bufsize)
 {
 	struct rpc_pdu *pdu;
@@ -159,13 +164,17 @@ int rpc_queue_pdu(struct rpc_context *rpc, struct rpc_pdu *pdu)
 
 	/* for udp we dont queue, we just send it straight away */
 	if (rpc->is_udp != 0) {
+		unsigned int hash;
+
 // XXX add a rpc->udp_dest_sock_size  and get rid of sys/socket.h and netinet/in.h
 		if (sendto(rpc->fd, rpc->encodebuf, size, MSG_DONTWAIT, rpc->udp_dest, sizeof(struct sockaddr_in)) < 0) {
 			rpc_set_error(rpc, "Sendto failed with errno %s", strerror(errno));
 			rpc_free_pdu(rpc, pdu);
 			return -1;
 		}
-		rpc_enqueue(&rpc->waitpdu, pdu);
+
+		hash = rpc_hash_xid(pdu->xid);
+		rpc_enqueue(&rpc->waitpdu[hash], pdu);
 		return 0;
 	}
 
@@ -268,8 +277,10 @@ static int rpc_process_reply(struct rpc_context *rpc, struct rpc_pdu *pdu, ZDR *
 int rpc_process_pdu(struct rpc_context *rpc, char *buf, int size)
 {
 	struct rpc_pdu *pdu, *prev_pdu;
+	struct rpc_queue *q;
 	ZDR zdr;
 	int pos, recordmarker = 0;
+	unsigned int hash;
 	uint32_t xid;
 	char *reasbuf = NULL;
 
@@ -332,20 +343,24 @@ int rpc_process_pdu(struct rpc_context *rpc, char *buf, int size)
 	}
 	zdr_setpos(&zdr, pos);
 
-	/* Linear traverse singly-linked list, but track previous
-	 * entry for optimised removal */
+	/* Look up the transaction in a hash table of our requests */
+	hash = rpc_hash_xid(xid);
+	q = &rpc->waitpdu[hash];
+
+	/* Follow the hash chain.  Linear traverse singly-linked list,
+	 * but track previous entry for optimised removal */
 	prev_pdu = NULL;
-	for (pdu=rpc->waitpdu.head; pdu; pdu=pdu->next) {
+	for (pdu=q->head; pdu; pdu=pdu->next) {
 		if (pdu->xid != xid) {
 			prev_pdu = pdu;
 			continue;
 		}
 		if (rpc->is_udp == 0 || rpc->is_broadcast == 0) {
 			/* Singly-linked but we track head and tail */
-			if (pdu == rpc->waitpdu.head)
-				rpc->waitpdu.head = pdu->next;
-			if (pdu == rpc->waitpdu.tail)
-				rpc->waitpdu.tail = prev_pdu;
+			if (pdu == q->head)
+				q->head = pdu->next;
+			if (pdu == q->tail)
+				q->tail = prev_pdu;
 			if (prev_pdu != NULL)
 				prev_pdu->next = pdu->next;
 		}

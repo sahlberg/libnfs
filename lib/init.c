@@ -49,6 +49,7 @@ struct rpc_context *rpc_init_context(void)
 {
 	struct rpc_context *rpc;
 	static uint32_t salt = 0;
+	unsigned int i;
 
 	rpc = malloc(sizeof(struct rpc_context));
 	if (rpc == NULL) {
@@ -84,7 +85,8 @@ struct rpc_context *rpc_init_context(void)
 	rpc->gid = getgid();
 #endif
 	rpc_reset_queue(&rpc->outqueue);
-	rpc_reset_queue(&rpc->waitpdu);
+	for (i = 0; i < HASHES; i++)
+		rpc_reset_queue(&rpc->waitpdu[i]);
 
 	return rpc;
 }
@@ -158,6 +160,7 @@ char *rpc_get_error(struct rpc_context *rpc)
 void rpc_error_all_pdus(struct rpc_context *rpc, char *error)
 {
 	struct rpc_pdu *pdu, *next;
+	unsigned int i;
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
@@ -168,12 +171,16 @@ void rpc_error_all_pdus(struct rpc_context *rpc, char *error)
 	}
 	rpc->outqueue.tail = NULL;
 
-	while((pdu = rpc->waitpdu.head) != NULL) {
-		pdu->cb(rpc, RPC_STATUS_ERROR, error, pdu->private_data);
-		rpc->waitpdu.head = pdu->next;
-		rpc_free_pdu(rpc, pdu);
+	for (i = 0; i < HASHES; i++) {
+		struct rpc_queue *q = &rpc->waitpdu[i];
+
+		while((pdu = q->head) != NULL) {
+			pdu->cb(rpc, RPC_STATUS_ERROR, error, pdu->private_data);
+			q->head = pdu->next;
+			rpc_free_pdu(rpc, pdu);
+		}
+		q->tail = NULL;
 	}
-	rpc->waitpdu.tail = NULL;
 }
 
 static void rpc_free_fragment(struct rpc_fragment *fragment)
@@ -222,6 +229,7 @@ int rpc_add_fragment(struct rpc_context *rpc, char *data, uint64_t size)
 void rpc_destroy_context(struct rpc_context *rpc)
 {
 	struct rpc_pdu *pdu;
+	unsigned int i;
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
@@ -230,10 +238,15 @@ void rpc_destroy_context(struct rpc_context *rpc)
 		rpc->outqueue.head = pdu->next;
 		rpc_free_pdu(rpc, pdu);
 	}
-	while((pdu = rpc->waitpdu.head) != NULL) {
-		pdu->cb(rpc, RPC_STATUS_CANCEL, NULL, pdu->private_data);
-		rpc->outqueue.head = pdu->next;
-		rpc_free_pdu(rpc, pdu);
+
+	for (i = 0; i < HASHES; i++) {
+		struct rpc_queue *q = &rpc->waitpdu[i];
+
+		while((pdu = q->head) != NULL) {
+			pdu->cb(rpc, RPC_STATUS_CANCEL, NULL, pdu->private_data);
+			rpc->outqueue.head = pdu->next;
+			rpc_free_pdu(rpc, pdu);
+		}
 	}
 
 	rpc_free_all_fragments(rpc);
