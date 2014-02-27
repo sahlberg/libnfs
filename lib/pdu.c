@@ -65,6 +65,7 @@ void rpc_enqueue(struct rpc_queue *q, struct rpc_pdu *pdu)
 	else
 		q->tail->next = pdu;
 	q->tail = pdu;
+	pdu->next = NULL;
 }
 
 /*
