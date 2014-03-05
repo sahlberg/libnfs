@@ -236,6 +236,36 @@ int nfs_stat(struct nfs_context *nfs, const char *path, struct stat *st)
 	return cb_data.status;
 }
 
+static void stat64_cb(int status, struct nfs_context *nfs, void *data, void *private_data)
+{
+	struct sync_cb_data *cb_data = private_data;
+
+	cb_data->is_finished = 1;
+	cb_data->status = status;
+
+	if (status < 0) {
+		nfs_set_error(nfs, "stat call failed with \"%s\"", (char *)data);
+		return;
+	}
+	memcpy(cb_data->return_data, data, sizeof(struct nfs_stat_64));
+}
+
+int nfs_stat64(struct nfs_context *nfs, const char *path, struct nfs_stat_64 *st)
+{
+	struct sync_cb_data cb_data;
+
+	cb_data.is_finished = 0;
+	cb_data.return_data = st;
+
+	if (nfs_stat64_async(nfs, path, stat64_cb, &cb_data) != 0) {
+		nfs_set_error(nfs, "nfs_stat64_async failed");
+		return -1;
+	}
+
+	wait_for_nfs_reply(nfs, &cb_data);
+
+	return cb_data.status;
+}
 
 /*
  * open()

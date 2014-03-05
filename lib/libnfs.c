@@ -1230,6 +1230,84 @@ int nfs_stat_async(struct nfs_context *nfs, const char *path, nfs_cb cb, void *p
 }
 
 
+/*
+ * Async nfs_stat64()
+ */
+static void nfs_stat64_1_cb(struct rpc_context *rpc, int status, void *command_data, void *private_data)
+{
+	GETATTR3res *res;
+	struct nfs_cb_data *data = private_data;
+	struct nfs_context *nfs = data->nfs;
+	struct nfs_stat_64 st;
+
+	assert(rpc->magic == RPC_CONTEXT_MAGIC);
+
+	if (status == RPC_STATUS_ERROR) {
+		data->cb(-EFAULT, nfs, command_data, data->private_data);
+		free_nfs_cb_data(data);
+		return;
+	}
+	if (status == RPC_STATUS_CANCEL) {
+		data->cb(-EINTR, nfs, "Command was cancelled", data->private_data);
+		free_nfs_cb_data(data);
+		return;
+	}
+
+	res = command_data;
+	if (res->status != NFS3_OK) {
+		rpc_set_error(nfs->rpc, "NFS: GETATTR of %s failed with %s(%d)", data->saved_path, nfsstat3_to_str(res->status), nfsstat3_to_errno(res->status));
+		data->cb(nfsstat3_to_errno(res->status), nfs, rpc_get_error(nfs->rpc), data->private_data);
+		free_nfs_cb_data(data);
+		return;
+	}
+
+        st.nfs_dev     = -1;
+        st.nfs_ino     = res->GETATTR3res_u.resok.obj_attributes.fileid;
+        st.nfs_mode    = res->GETATTR3res_u.resok.obj_attributes.mode;
+	if (res->GETATTR3res_u.resok.obj_attributes.type == NF3DIR) {
+		st.nfs_mode |= S_IFDIR ;
+	}
+	if (res->GETATTR3res_u.resok.obj_attributes.type == NF3REG) {
+		st.nfs_mode |= S_IFREG ;
+	}
+        st.nfs_nlink   = res->GETATTR3res_u.resok.obj_attributes.nlink;
+        st.nfs_uid     = res->GETATTR3res_u.resok.obj_attributes.uid;
+        st.nfs_gid     = res->GETATTR3res_u.resok.obj_attributes.gid;
+        st.nfs_rdev    = 0;
+        st.nfs_size    = res->GETATTR3res_u.resok.obj_attributes.size;
+        st.nfs_atime   = res->GETATTR3res_u.resok.obj_attributes.atime.seconds;
+        st.nfs_mtime   = res->GETATTR3res_u.resok.obj_attributes.mtime.seconds;
+        st.nfs_ctime   = res->GETATTR3res_u.resok.obj_attributes.ctime.seconds;
+
+	data->cb(0, nfs, &st, data->private_data);
+	free_nfs_cb_data(data);
+}
+
+static int nfs_stat64_continue_internal(struct nfs_context *nfs, struct nfs_cb_data *data)
+{
+	struct GETATTR3args args;
+
+	memset(&args, 0, sizeof(GETATTR3args));
+	args.object = data->fh;
+
+	if (rpc_nfs3_getattr_async(nfs->rpc, nfs_stat64_1_cb, &args, data) != 0) {
+		rpc_set_error(nfs->rpc, "RPC error: Failed to send STAT GETATTR call for %s", data->path);
+		data->cb(-ENOMEM, nfs, rpc_get_error(nfs->rpc), data->private_data);
+		free_nfs_cb_data(data);
+		return -1;
+	}
+	return 0;
+}
+
+int nfs_stat64_async(struct nfs_context *nfs, const char *path, nfs_cb cb, void *private_data)
+{
+	if (nfs_lookuppath_async(nfs, path, cb, private_data, nfs_stat64_continue_internal, NULL, NULL, 0) != 0) {
+		rpc_set_error(nfs->rpc, "Out of memory: failed to start parsing the path components");
+		return -1;
+	}
+
+	return 0;
+}
 
 /*
  * Async open()

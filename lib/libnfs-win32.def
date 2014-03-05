@@ -72,6 +72,8 @@ nfs_set_tcp_syncnt
 nfs_set_uid
 nfs_stat
 nfs_stat_async
+nfs_stat64
+nfs_stat64_async
 nfs_statvfs
 nfs_statvfs_async
 nfs_symlink
