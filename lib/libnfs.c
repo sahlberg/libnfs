@@ -1040,7 +1040,7 @@ static int nfs_normalize_path(struct nfs_context *nfs, char *path)
 
 	/* /$ -> \0 */
 	len = strlen(path);
-	if (len >= 1) {
+	if (len > 1) {
 		if (path[len - 1] == '/') {
 			path[len - 1] = '\0';
 			len--;
