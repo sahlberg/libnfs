@@ -456,16 +456,18 @@ static bool_t libnfs_rpc_msg(struct rpc_context *rpc, ZDR *zdrs, struct rpc_msg 
 	switch (msg->direction) {
 	case CALL:
 		ret = libnfs_rpc_call_body(rpc, zdrs, &msg->body.cbody);
-		rpc_set_error(rpc, "libnfs_rpc_msg failed to encode CALL, "
-			"ret=%d: %s", ret, rpc_get_error(rpc));
+		if (!ret) { 
+			rpc_set_error(rpc, "libnfs_rpc_msg failed to encode "
+				"CALL, ret=%d: %s", ret, rpc_get_error(rpc));
+		}
 		return ret;
-		break;
 	case REPLY:
 		ret = libnfs_rpc_reply_body(rpc, zdrs, &msg->body.rbody);
-		rpc_set_error(rpc, "libnfs_rpc_msg failed to decode REPLY, "
-			"ret=%d: %s", ret, rpc_get_error(rpc));
+		if (!ret) { 
+			rpc_set_error(rpc, "libnfs_rpc_msg failed to decode "
+				"REPLY, ret=%d: %s", ret, rpc_get_error(rpc));
+		}
 		return ret;
-		break;
 	default:
 		rpc_set_error(rpc, "libnfs_rpc_msg failed to decode. "
 			"Neither CALL not REPLY");
