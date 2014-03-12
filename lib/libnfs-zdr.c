@@ -310,29 +310,41 @@ static bool_t libnfs_opaque_auth(ZDR *zdrs, struct opaque_auth *auth)
 	return TRUE;
 }
 
-static bool_t libnfs_rpc_call_body(ZDR *zdrs, struct call_body *cmb)
+static bool_t libnfs_rpc_call_body(struct rpc_context *rpc, ZDR *zdrs, struct call_body *cmb)
 {
 	if (!libnfs_zdr_u_int(zdrs, &cmb->rpcvers)) {
+		rpc_set_error(rpc, "libnfs_rpc_call_body failed to encode "
+			"RPCVERS");
 		return FALSE;
 	}
 
 	if (!libnfs_zdr_u_int(zdrs, &cmb->prog)) {
+		rpc_set_error(rpc, "libnfs_rpc_call_body failed to encode "
+			"PROG");
 		return FALSE;
 	}
 
 	if (!libnfs_zdr_u_int(zdrs, &cmb->vers)) {
+		rpc_set_error(rpc, "libnfs_rpc_call_body failed to encode "
+			"VERS");
 		return FALSE;
 	}
 
 	if (!libnfs_zdr_u_int(zdrs, &cmb->proc)) {
+		rpc_set_error(rpc, "libnfs_rpc_call_body failed to encode "
+			"PROC");
 		return FALSE;
 	}
 
 	if (!libnfs_opaque_auth(zdrs, &cmb->cred)) {
+		rpc_set_error(rpc, "libnfs_rpc_call_body failed to encode "
+			"CRED");
 		return FALSE;
 	}
 
 	if (!libnfs_opaque_auth(zdrs, &cmb->verf)) {
+		rpc_set_error(rpc, "libnfs_rpc_call_body failed to encode "
+			"VERF");
 		return FALSE;
 	}
 
@@ -397,58 +409,78 @@ static bool_t libnfs_rejected_reply(ZDR *zdrs, struct rejected_reply *rr)
 	return FALSE;
 }
 
-static bool_t libnfs_rpc_reply_body(ZDR *zdrs, struct reply_body *rmb)
+static bool_t libnfs_rpc_reply_body(struct rpc_context *rpc, ZDR *zdrs, struct reply_body *rmb)
 {
 	if (!libnfs_zdr_u_int(zdrs, &rmb->stat)) {
+		rpc_set_error(rpc, "libnfs_rpc_reply_body failed to decode "
+			"STAT");
 		return FALSE;
 	}
 
 	switch (rmb->stat) {
 	case MSG_ACCEPTED:
 		if (!libnfs_accepted_reply(zdrs, &rmb->reply.areply)) {
+			rpc_set_error(rpc, "libnfs_rpc_reply_body failed to "
+				"decode ACCEPTED");
 			return FALSE;
 		}
 		return TRUE;
 	case MSG_DENIED:
 		if (!libnfs_rejected_reply(zdrs, &rmb->reply.rreply)) {
+			rpc_set_error(rpc, "libnfs_rpc_reply_body failed to "
+				"decode DENIED");
 			return FALSE;
 		}
 		return TRUE;
 	}
 
+	rpc_set_error(rpc, "libnfs_rpc_reply_body failed to "
+		"decode. Neither ACCEPTED nor DENIED");
 	return FALSE;
 }
 
-static bool_t libnfs_rpc_msg(ZDR *zdrs, struct rpc_msg *msg)
+static bool_t libnfs_rpc_msg(struct rpc_context *rpc, ZDR *zdrs, struct rpc_msg *msg)
 {
+	int ret;
+
 	if (!libnfs_zdr_u_int(zdrs, &msg->xid)) {
+		rpc_set_error(rpc, "libnfs_rpc_msg failed to decode XID");
 		return FALSE;
 	}
 
 	if (!libnfs_zdr_u_int(zdrs, &msg->direction)) {
+		rpc_set_error(rpc, "libnfs_rpc_msg failed to decode DIRECTION");
 		return FALSE;
 	}
 
 	switch (msg->direction) {
 	case CALL:
-		return libnfs_rpc_call_body(zdrs, &msg->body.cbody);
+		ret = libnfs_rpc_call_body(rpc, zdrs, &msg->body.cbody);
+		rpc_set_error(rpc, "libnfs_rpc_msg failed to encode CALL, "
+			"ret=%d: %s", ret, rpc_get_error(rpc));
+		return ret;
 		break;
 	case REPLY:
-		return libnfs_rpc_reply_body(zdrs, &msg->body.rbody);
+		ret = libnfs_rpc_reply_body(rpc, zdrs, &msg->body.rbody);
+		rpc_set_error(rpc, "libnfs_rpc_msg failed to decode REPLY, "
+			"ret=%d: %s", ret, rpc_get_error(rpc));
+		return ret;
 		break;
 	default:
+		rpc_set_error(rpc, "libnfs_rpc_msg failed to decode. "
+			"Neither CALL not REPLY");
 		return FALSE;
 	}
 }
 
-bool_t libnfs_zdr_callmsg(ZDR *zdrs, struct rpc_msg *msg)
+bool_t libnfs_zdr_callmsg(struct rpc_context *rpc, ZDR *zdrs, struct rpc_msg *msg)
 {
-	return libnfs_rpc_msg(zdrs, msg);
+	return libnfs_rpc_msg(rpc, zdrs, msg);
 }
 
-bool_t libnfs_zdr_replymsg(ZDR *zdrs, struct rpc_msg *msg)
+bool_t libnfs_zdr_replymsg(struct rpc_context *rpc, ZDR *zdrs, struct rpc_msg *msg)
 {
-	return libnfs_rpc_msg(zdrs, msg);
+	return libnfs_rpc_msg(rpc, zdrs, msg);
 }
 
 struct AUTH *authnone_create(void)
