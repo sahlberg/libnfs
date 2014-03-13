@@ -76,7 +76,7 @@ struct rpc_context *rpc_init_context(void)
 	salt += 0x01000000;
 	rpc->fd = -1;
 	rpc->tcp_syncnt = RPC_PARAM_UNDEFINED;
-#ifdef WIN32
+#if defined(WIN32) || defined(ANDROID)
 	rpc->uid = 65534;
 	rpc->gid = 65534;
 #else
