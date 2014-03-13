@@ -2732,9 +2732,13 @@ static void nfs_opendir3_cb(struct rpc_context *rpc, int status, void *command_d
 	rdpe_cb_data->getattrcount--;
 
 	if (status == RPC_STATUS_ERROR) {
+		rpc_set_error(nfs->rpc, "LOOKUP during READDIRPLUS emulation "
+			      "failed with RPC_STATUS_ERROR");
 		rdpe_cb_data->status = RPC_STATUS_ERROR;
 	}
 	if (status == RPC_STATUS_CANCEL) {
+		rpc_set_error(nfs->rpc, "LOOKUP during READDIRPLUS emulation "
+			      "failed with RPC_STATUS_CANCEL");
 		rdpe_cb_data->status = RPC_STATUS_CANCEL;
 	}
 	if (status == RPC_STATUS_SUCCESS && res->status == NFS3_OK) {
@@ -2758,7 +2762,10 @@ static void nfs_opendir3_cb(struct rpc_context *rpc, int status, void *command_d
 
 	if (rdpe_cb_data->getattrcount == 0) {
 		if (rdpe_cb_data->status != RPC_STATUS_SUCCESS) {
-			data->cb(-ENOMEM, nfs, rpc_get_error(nfs->rpc), data->private_data);
+			rpc_set_error(nfs->rpc, "READDIRPLUS emulation "
+			      "failed: %s", rpc_get_error(rpc));
+			data->cb(-ENOMEM, nfs, rpc_get_error(nfs->rpc),
+				data->private_data);
 			nfs_free_nfsdir(nfsdir);
 		} else {
 			data->cb(0, nfs, nfsdir, data->private_data);
