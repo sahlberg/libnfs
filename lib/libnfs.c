@@ -2737,9 +2737,6 @@ static void nfs_opendir3_cb(struct rpc_context *rpc, int status, void *command_d
 	if (status == RPC_STATUS_CANCEL) {
 		rdpe_cb_data->status = RPC_STATUS_CANCEL;
 	}
-	if (status == RPC_STATUS_SUCCESS && res->status != NFS3_OK) {
-		rdpe_cb_data->status = RPC_STATUS_ERROR;
-	}
 	if (status == RPC_STATUS_SUCCESS && res->status == NFS3_OK) {
 		if (res->LOOKUP3res_u.resok.obj_attributes.attributes_follow) {
 			fattr3 *attributes = &res->LOOKUP3res_u.resok.obj_attributes.post_op_attr_u.attributes;
