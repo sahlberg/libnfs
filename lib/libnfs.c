@@ -133,6 +133,7 @@ struct nfs_cb_data {
        int num_calls;
        uint64_t start_offset, max_offset;
        char *buffer;
+       char *usrbuf;
 };
 
 struct nfs_mcb_data {
@@ -1736,38 +1737,6 @@ int nfs_read_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t count,
 /*
  * Async pwrite()
  */
-static void nfs_pwrite_cb(struct rpc_context *rpc, int status, void *command_data, void *private_data)
-{
-	struct nfs_cb_data *data = private_data;
-	struct nfs_context *nfs = data->nfs;
-	WRITE3res *res;
-
-	assert(rpc->magic == RPC_CONTEXT_MAGIC);
-
-	if (status == RPC_STATUS_ERROR) {
-		data->cb(-EFAULT, nfs, command_data, data->private_data);
-		free_nfs_cb_data(data);
-		return;
-	}
-	if (status == RPC_STATUS_CANCEL) {
-		data->cb(-EINTR, nfs, "Command was cancelled", data->private_data);
-		free_nfs_cb_data(data);
-		return;
-	}
-
-	res = command_data;
-	if (res->status != NFS3_OK) {
-		rpc_set_error(nfs->rpc, "NFS: Write failed with %s(%d)", nfsstat3_to_str(res->status), nfsstat3_to_errno(res->status));
-		data->cb(nfsstat3_to_errno(res->status), nfs, rpc_get_error(nfs->rpc), data->private_data);
-		free_nfs_cb_data(data);
-		return;
-	}
-
-	data->nfsfh->offset += res->WRITE3res_u.resok.count;
-	data->cb(res->WRITE3res_u.resok.count, nfs, NULL, data->private_data);
-	free_nfs_cb_data(data);
-}
-
 static void nfs_fill_WRITE3args (WRITE3args *args, struct nfsfh *fh, uint64_t offset, uint64_t count,
                                  void *buf)
 {
@@ -1806,6 +1775,26 @@ static void nfs_pwrite_mcb(struct rpc_context *rpc, int status, void *command_da
 			rpc_set_error(nfs->rpc, "NFS: Write failed with %s(%d)", nfsstat3_to_str(res->status), nfsstat3_to_errno(res->status));
 			data->error = 1;
 		} else  {
+			if (res->WRITE3res_u.resok.count < mdata->count) {
+				if (res->WRITE3res_u.resok.count == 0) {
+					rpc_set_error(nfs->rpc, "NFS: Write failed. No bytes written!");
+					data->error = 1;
+				} else {
+					/* reissue reminder of this write request */
+					WRITE3args args;
+					mdata->offset += res->WRITE3res_u.resok.count;
+					mdata->count -= res->WRITE3res_u.resok.count;
+					nfs_fill_WRITE3args(&args, data->nfsfh, mdata->offset, mdata->count,
+										&data->usrbuf[mdata->offset - data->start_offset]);
+					if (rpc_nfs3_write_async(nfs->rpc, nfs_pwrite_mcb, &args, mdata) == 0) {
+						data->num_calls++;
+						return;
+					} else {
+						rpc_set_error(nfs->rpc, "RPC error: Failed to send WRITE call for %s", data->path);
+						data->error = 1;
+					}
+				}
+			}
 			if (res->WRITE3res_u.resok.count > 0) {
 				if (data->max_offset < mdata->offset + res->WRITE3res_u.resok.count) {
 					data->max_offset = mdata->offset + res->WRITE3res_u.resok.count;
@@ -1814,22 +1803,21 @@ static void nfs_pwrite_mcb(struct rpc_context *rpc, int status, void *command_da
 		}
 	}
 
+	free(mdata);
+
 	if (data->num_calls > 0) {
 		/* still waiting for more replies */
-		free(mdata);
 		return;
 	}
 
 	if (data->error != 0) {
 		data->cb(-EFAULT, nfs, command_data, data->private_data);
 		free_nfs_cb_data(data);
-		free(mdata);
 		return;
 	}
 	if (data->cancel != 0) {
 		data->cb(-EINTR, nfs, "Command was cancelled", data->private_data);
 		free_nfs_cb_data(data);
-		free(mdata);
 		return;
 	}
 
@@ -1837,7 +1825,6 @@ static void nfs_pwrite_mcb(struct rpc_context *rpc, int status, void *command_da
 	data->cb(data->max_offset - data->start_offset, nfs, NULL, data->private_data);
 
 	free_nfs_cb_data(data);
-	free(mdata);
 }
 
 
@@ -1855,24 +1842,11 @@ int nfs_pwrite_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t offs
 	data->cb           = cb;
 	data->private_data = private_data;
 	data->nfsfh        = nfsfh;
+	data->usrbuf       = buf;
 
 	nfsfh->offset = offset;
 
-	if (count <= nfs_get_writemax(nfs)) {
-		WRITE3args args;
-		nfs_fill_WRITE3args(&args, nfsfh, offset, count, buf);
-
-		if (rpc_nfs3_write_async(nfs->rpc, nfs_pwrite_cb, &args, data) != 0) {
-			rpc_set_error(nfs->rpc, "RPC error: Failed to send WRITE call for %s", data->path);
-			data->cb(-ENOMEM, nfs, rpc_get_error(nfs->rpc), data->private_data);
-			free_nfs_cb_data(data);
-			return -1;
-		}
-		return 0;
-	}
-
 	/* hello, clang-analyzer */
-	assert(count > 0);
 	assert(data->num_calls == 0);
 
 	/* trying to write more than maximum server write size, we has to chop it up into smaller
@@ -1882,7 +1856,7 @@ int nfs_pwrite_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t offs
 	data->max_offset = offset;
 	data->start_offset = offset;
 
-	while (count > 0) {
+	do {
 		uint64_t writecount = count;
 		struct nfs_mcb_data *mdata;
 		WRITE3args args;
@@ -1918,7 +1892,7 @@ int nfs_pwrite_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t offs
 		count               -= writecount;
 		offset              += writecount;
 		data->num_calls++;
-	}
+	} while (count > 0);
 
 	return 0;
 }
