@@ -1567,7 +1567,7 @@ static void nfs_pread_mcb(struct rpc_context *rpc, int status, void *command_dat
 		} else  {
 			if (res->READ3res_u.resok.count > 0) {
 				if (res->READ3res_u.resok.count <= mdata->count) {
-					if (data->num_calls || (res->READ3res_u.resok.count < mdata->count && !res->READ3res_u.resok.eof)) {
+					if (data->buffer || data->num_calls || (res->READ3res_u.resok.count < mdata->count && !res->READ3res_u.resok.eof)) {
 						/* reassemble the data into the buffer */
 						if (data->buffer == NULL) {
 							data->buffer = 	malloc(data->request_size);
