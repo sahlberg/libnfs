@@ -1588,9 +1588,14 @@ static void nfs_pread_mcb(struct rpc_context *rpc, int status, void *command_dat
 			data->error = 1;
 		} else  {
 			if (res->READ3res_u.resok.count > 0) {
-				memcpy(&data->buffer[mdata->offset - data->start_offset], res->READ3res_u.resok.data.data_val, res->READ3res_u.resok.count);
-				if ((unsigned)data->max_offset < mdata->offset + res->READ3res_u.resok.count) {
-					data->max_offset = mdata->offset + res->READ3res_u.resok.count;
+				if (res->READ3res_u.resok.count <= mdata->count) {
+					memcpy(&data->buffer[mdata->offset - data->start_offset], res->READ3res_u.resok.data.data_val, res->READ3res_u.resok.count);
+					if ((unsigned)data->max_offset < mdata->offset + res->READ3res_u.resok.count) {
+						data->max_offset = mdata->offset + res->READ3res_u.resok.count;
+					}
+				} else {
+					rpc_set_error(nfs->rpc, "NFS: Read overflow. Server has sent more data than requested!");
+					data->error = 1;
 				}
 			}
 		}
