@@ -1605,7 +1605,7 @@ static void nfs_pread_mcb(struct rpc_context *rpc, int status, void *command_dat
 						return;
 					} else {
 						rpc_set_error(nfs->rpc, "RPC error: Failed to send READ call for %s", data->path);
-						data->error = 1;
+						data->oom = 1;
 					}
 				}
 			}
@@ -1683,9 +1683,11 @@ int nfs_pread_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t offse
 		mdata = malloc(sizeof(struct nfs_mcb_data));
 		if (mdata == NULL) {
 			rpc_set_error(nfs->rpc, "out of memory: failed to allocate nfs_mcb_data structure");
-			if (data->num_calls == 0)
+			if (data->num_calls == 0) {
 				free_nfs_cb_data(data);
-			return -1;
+				return -1;
+			}
+			data->oom = 1;
 		}
 		memset(mdata, 0, sizeof(struct nfs_mcb_data));
 		mdata->data   = data;
@@ -1696,11 +1698,12 @@ int nfs_pread_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t offse
 
 		if (rpc_nfs3_read_async(nfs->rpc, nfs_pread_mcb, &args, mdata) != 0) {
 			rpc_set_error(nfs->rpc, "RPC error: Failed to send READ call for %s", data->path);
-			data->cb(-ENOMEM, nfs, rpc_get_error(nfs->rpc), data->private_data);
 			free(mdata);
-			if (data->num_calls == 0)
+			if (data->num_calls == 0) {
 				free_nfs_cb_data(data);
-			return -1;
+				return -1;
+			}
+			data->oom = 1;
 		}
 
 		count               -= readcount;
@@ -1778,7 +1781,7 @@ static void nfs_pwrite_mcb(struct rpc_context *rpc, int status, void *command_da
 						return;
 					} else {
 						rpc_set_error(nfs->rpc, "RPC error: Failed to send WRITE call for %s", data->path);
-						data->error = 1;
+						data->oom = 1;
 					}
 				}
 			}
@@ -1796,7 +1799,11 @@ static void nfs_pwrite_mcb(struct rpc_context *rpc, int status, void *command_da
 		/* still waiting for more replies */
 		return;
 	}
-
+	if (data->oom != 0) {
+		data->cb(-ENOMEM, nfs, command_data, data->private_data);
+		free_nfs_cb_data(data);
+		return;
+	}
 	if (data->error != 0) {
 		data->cb(-EFAULT, nfs, command_data, data->private_data);
 		free_nfs_cb_data(data);
@@ -1855,9 +1862,11 @@ int nfs_pwrite_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t offs
 		mdata = malloc(sizeof(struct nfs_mcb_data));
 		if (mdata == NULL) {
 			rpc_set_error(nfs->rpc, "out of memory: failed to allocate nfs_mcb_data structure");
-			if (data->num_calls == 0)
+			if (data->num_calls == 0) {
 				free_nfs_cb_data(data);
-			return -1;
+				return -1;
+			}
+			data->oom = 1;
 		}
 		memset(mdata, 0, sizeof(struct nfs_mcb_data));
 		mdata->data   = data;
@@ -1868,12 +1877,12 @@ int nfs_pwrite_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t offs
 
 		if (rpc_nfs3_write_async(nfs->rpc, nfs_pwrite_mcb, &args, mdata) != 0) {
 			rpc_set_error(nfs->rpc, "RPC error: Failed to send WRITE call for %s", data->path);
-			data->cb(-ENOMEM, nfs, rpc_get_error(nfs->rpc), data->private_data);
 			free(mdata);
-			if (data->num_calls == 0)
+			if (data->num_calls == 0) {
 				free_nfs_cb_data(data);
-
-			return -1;
+				return -1;
+			}
+			data->oom = 1;
 		}
 
 		count               -= writecount;
