@@ -72,7 +72,7 @@ struct rpc_context *rpc_init_context(void)
 		free(rpc);
 		return NULL;
 	}
-	rpc->xid = salt + time(NULL) + getpid() << 16;
+	rpc->xid = salt + time(NULL) + (getpid() << 16);
 	salt += 0x01000000;
 	rpc->fd = -1;
 	rpc->tcp_syncnt = RPC_PARAM_UNDEFINED;

@@ -1,5 +1,5 @@
 AC_PREREQ(2.50)
-AC_INIT([libnfs], [1.9.2], [ronniesahlberg@gmail.com])
+AC_INIT([libnfs], [1.9.3], [ronniesahlberg@gmail.com])
 AC_CONFIG_HEADERS([config.h])
 AM_INIT_AUTOMAKE([foreign])
 AC_CANONICAL_HOST
@@ -20,6 +20,14 @@ fi
 
 # We always want 64 bit file offsets
 CFLAGS="${CFLAGS} -D_FILE_OFFSET_BITS=64"
+
+AC_MSG_CHECKING(whether compiler understands -Wall -Werror)
+old_CFLAGS="$CFLAGS"
+CFLAGS="$CFLAGS -Wall -Werror"
+AC_TRY_COMPILE([],[],
+  AC_MSG_RESULT(yes),
+  AC_MSG_RESULT(no)
+  CFLAGS="$old_CFLAGS")
 
 #option: examples
 AC_ARG_ENABLE([examples],

@@ -22,6 +22,9 @@
  */
 #ifdef WIN32
 #include "win32_compat.h"
+#else
+#include <unistd.h>
+#include <sys/types.h>
 #endif
 
 #ifdef AROS
@@ -31,6 +34,11 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <arpa/inet.h>
+
+#include "libnfs.h"
+#include "libnfs-raw.h"
+#include "libnfs-private.h"
 #include "libnfs-zdr.h"
 
 struct opaque_auth _null_auth;

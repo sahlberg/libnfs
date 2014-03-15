@@ -68,6 +68,7 @@
 #include <fcntl.h>
 #include <string.h>
 #include <errno.h>
+#include <time.h>
 #include <sys/types.h>
 #include "libnfs-zdr.h"
 #include "libnfs.h"
@@ -251,7 +252,7 @@ static int rpc_read_from_socket(struct rpc_context *rpc)
 
 	pdu_size = rpc_get_pdu_size(rpc->inbuf);
 	if (rpc->insize < pdu_size) {
-		unsigned char *buf;
+		char *buf;
 
 		buf = malloc(pdu_size);
 		if (buf == NULL) {
