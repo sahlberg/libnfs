@@ -21,6 +21,14 @@ fi
 # We always want 64 bit file offsets
 CFLAGS="${CFLAGS} -D_FILE_OFFSET_BITS=64"
 
+AC_MSG_CHECKING(whether compiler understands -Wall -Werror)
+old_CFLAGS="$CFLAGS"
+CFLAGS="$CFLAGS -Wall -Werror"
+AC_TRY_COMPILE([],[],
+  AC_MSG_RESULT(yes),
+  AC_MSG_RESULT(no)
+  CFLAGS="$old_CFLAGS")
+
 #option: examples
 AC_ARG_ENABLE([examples],
               [AC_HELP_STRING([--enable-examples],
