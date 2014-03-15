@@ -139,6 +139,7 @@ struct nfs_mcb_data {
        struct nfs_cb_data *data;
        uint64_t offset;
        uint64_t count;
+       char *buf;
 };
 
 static int nfs_lookup_path_async_internal(struct nfs_context *nfs, struct nfs_cb_data *data, struct nfs_fh3 *fh);
@@ -1793,6 +1794,32 @@ static void nfs_pwrite_mcb(struct rpc_context *rpc, int status, void *command_da
 					data->max_offset = mdata->offset + res->WRITE3res_u.resok.count;
 				}
 			}
+			/* Was this a short write? If so just reissue a new
+			   write for whatever was missing.
+			*/
+			if (res->WRITE3res_u.resok.count < mdata->count) {
+				struct nfs_mcb_data *new_mdata;
+				WRITE3args args;
+				mdata = malloc(sizeof(struct nfs_mcb_data));
+
+				memset(new_mdata, 0, sizeof(struct nfs_mcb_data));
+				new_mdata->data   = data;
+				new_mdata->offset = mdata->offset + res->WRITE3res_u.resok.count;
+
+				new_mdata->count  = mdata->count - res->WRITE3res_u.resok.count;
+				new_mdata->buf    = mdata->buf + res->WRITE3res_u.resok.count;
+
+				memset(&args, 0, sizeof(WRITE3args));
+				args.file   = data->nfsfh->fh;
+				args.offset = mdata->offset;
+				args.count  = mdata->count;
+				args.stable = data->nfsfh->is_sync ? FILE_SYNC:UNSTABLE;
+				args.data.data_len = mdata->count;
+				args.data.data_val = mdata->buf;
+
+				rpc_nfs3_write_async(nfs->rpc, nfs_pwrite_mcb, &args, new_mdata);
+				data->num_calls++;
+			}
 		}
 	}
 
@@ -1891,14 +1918,15 @@ int nfs_pwrite_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t offs
 		mdata->data   = data;
 		mdata->offset = offset;
 		mdata->count  = writecount;
+		mdata->buf    = &buf[offset - data->start_offset];
 
 		memset(&args, 0, sizeof(WRITE3args));
-		args.file = nfsfh->fh;
-		args.offset = offset;
-		args.count  = writecount;
-		args.stable = nfsfh->is_sync?FILE_SYNC:UNSTABLE;
-		args.data.data_len = writecount;
-		args.data.data_val = &buf[offset - data->start_offset];
+		args.file   = data->nfsfh->fh;
+		args.offset = mdata->offset;
+		args.count  = mdata->count;
+		args.stable = data->nfsfh->is_sync ? FILE_SYNC:UNSTABLE;
+		args.data.data_len = mdata->count;
+		args.data.data_val = mdata->buf;
 
 		if (rpc_nfs3_write_async(nfs->rpc, nfs_pwrite_mcb, &args, mdata) != 0) {
 			rpc_set_error(nfs->rpc, "RPC error: Failed to send WRITE call for %s", data->path);
