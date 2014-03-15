@@ -1560,6 +1560,14 @@ static void nfs_pread_cb(struct rpc_context *rpc, int status, void *command_data
 	free_nfs_cb_data(data);
 }
 
+static void nfs_fill_READ3args(READ3args *args, struct nfsfh *fh, uint64_t offset, uint64_t count)
+{
+	memset(args, 0, sizeof(READ3args));
+	args->file = fh->fh;
+	args->offset = offset;
+	args->count = count;
+}
+
 static void nfs_pread_mcb(struct rpc_context *rpc, int status, void *command_data, void *private_data)
 {
 	struct nfs_mcb_data *mdata = private_data;
@@ -1646,11 +1654,7 @@ int nfs_pread_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t offse
 
 	if (count <= nfs_get_readmax(nfs)) {
 		READ3args args;
-
-		memset(&args, 0, sizeof(READ3args));
-		args.file = nfsfh->fh;
-		args.offset = offset;
-		args.count = count;
+		nfs_fill_READ3args(&args, nfsfh, offset, count);
 
 		if (rpc_nfs3_read_async(nfs->rpc, nfs_pread_cb, &args, data) != 0) {
 			rpc_set_error(nfs->rpc, "RPC error: Failed to send READ call for %s", data->path);
@@ -1700,10 +1704,7 @@ int nfs_pread_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t offse
 		mdata->offset = offset;
 		mdata->count  = readcount;
 
-		memset(&args, 0, sizeof(READ3args));
-		args.file = nfsfh->fh;
-		args.offset = offset;
-		args.count = readcount;
+		nfs_fill_READ3args(&args, nfsfh, offset, readcount);
 
 		if (rpc_nfs3_read_async(nfs->rpc, nfs_pread_mcb, &args, mdata) != 0) {
 			rpc_set_error(nfs->rpc, "RPC error: Failed to send READ call for %s", data->path);
@@ -1765,6 +1766,18 @@ static void nfs_pwrite_cb(struct rpc_context *rpc, int status, void *command_dat
 	data->nfsfh->offset += res->WRITE3res_u.resok.count;
 	data->cb(res->WRITE3res_u.resok.count, nfs, NULL, data->private_data);
 	free_nfs_cb_data(data);
+}
+
+static void nfs_fill_WRITE3args (WRITE3args *args, struct nfsfh *fh, uint64_t offset, uint64_t count,
+                                 void *buf)
+{
+	memset(args, 0, sizeof(WRITE3args));
+	args->file = fh->fh;
+	args->offset = offset;
+	args->count  = count;
+	args->stable = fh->is_sync?FILE_SYNC:UNSTABLE;
+	args->data.data_len = count;
+	args->data.data_val = buf;
 }
 
 static void nfs_pwrite_mcb(struct rpc_context *rpc, int status, void *command_data, void *private_data)
@@ -1847,14 +1860,7 @@ int nfs_pwrite_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t offs
 
 	if (count <= nfs_get_writemax(nfs)) {
 		WRITE3args args;
-
-		memset(&args, 0, sizeof(WRITE3args));
-		args.file = nfsfh->fh;
-		args.offset = offset;
-		args.count  = count;
-		args.stable = nfsfh->is_sync?FILE_SYNC:UNSTABLE;
-		args.data.data_len = count;
-		args.data.data_val = buf;
+		nfs_fill_WRITE3args(&args, nfsfh, offset, count, buf);
 
 		if (rpc_nfs3_write_async(nfs->rpc, nfs_pwrite_cb, &args, data) != 0) {
 			rpc_set_error(nfs->rpc, "RPC error: Failed to send WRITE call for %s", data->path);
@@ -1897,13 +1903,7 @@ int nfs_pwrite_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t offs
 		mdata->offset = offset;
 		mdata->count  = writecount;
 
-		memset(&args, 0, sizeof(WRITE3args));
-		args.file = nfsfh->fh;
-		args.offset = offset;
-		args.count  = writecount;
-		args.stable = nfsfh->is_sync?FILE_SYNC:UNSTABLE;
-		args.data.data_len = writecount;
-		args.data.data_val = &buf[offset - data->start_offset];
+		nfs_fill_WRITE3args(&args, nfsfh, offset, writecount, &buf[offset - data->start_offset]);
 
 		if (rpc_nfs3_write_async(nfs->rpc, nfs_pwrite_mcb, &args, mdata) != 0) {
 			rpc_set_error(nfs->rpc, "RPC error: Failed to send WRITE call for %s", data->path);
