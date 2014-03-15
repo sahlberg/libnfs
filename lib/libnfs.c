@@ -1589,10 +1589,33 @@ static void nfs_pread_mcb(struct rpc_context *rpc, int status, void *command_dat
 			data->error = 1;
 		} else  {
 			if (res->READ3res_u.resok.count > 0) {
-				memcpy(&data->buffer[mdata->offset - data->start_offset], res->READ3res_u.resok.data.data_val, res->READ3res_u.resok.count);
+				memcpy(mdata->buf, res->READ3res_u.resok.data.data_val, res->READ3res_u.resok.count);
 				if ((unsigned)data->max_offset < mdata->offset + res->READ3res_u.resok.count) {
 					data->max_offset = mdata->offset + res->READ3res_u.resok.count;
 				}
+			}
+			/* Was this a short read? If so just reissue a new
+			   read for whatever was missing.
+			*/
+			if (res->READ3res_u.resok.count < mdata->count &&
+			    !res->READ3res_u.resok.eof) {
+				struct nfs_mcb_data *new_mdata;
+				READ3args args;
+
+				mdata = malloc(sizeof(struct nfs_mcb_data));
+				memset(new_mdata, 0, sizeof(struct nfs_mcb_data));
+				new_mdata->data   = data;
+				new_mdata->offset = mdata->offset + res->READ3res_u.resok.count;
+
+				new_mdata->count  = mdata->count - res->READ3res_u.resok.count;
+				new_mdata->buf    = mdata->buf + res->READ3res_u.resok.count;
+
+				memset(&args, 0, sizeof(READ3args));
+				args.file   = data->nfsfh->fh;
+				args.offset = new_mdata->offset;
+				args.count  = new_mdata->count;
+				rpc_nfs3_read_async(nfs->rpc, nfs_pread_mcb, &args, new_mdata);
+				data->num_calls++;
 			}
 		}
 	}
@@ -1695,11 +1718,12 @@ int nfs_pread_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t offse
 		mdata->data   = data;
 		mdata->offset = offset;
 		mdata->count  = readcount;
+		mdata->buf    = data->buffer;
 
 		memset(&args, 0, sizeof(READ3args));
-		args.file = nfsfh->fh;
-		args.offset = offset;
-		args.count = readcount;
+		args.file   = nfsfh->fh;
+		args.offset = mdata->offset;
+		args.count  = mdata->count;
 
 		if (rpc_nfs3_read_async(nfs->rpc, nfs_pread_mcb, &args, mdata) != 0) {
 			rpc_set_error(nfs->rpc, "RPC error: Failed to send READ call for %s", data->path);
