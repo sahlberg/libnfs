@@ -1598,7 +1598,7 @@ static void nfs_pread_mcb(struct rpc_context *rpc, int status, void *command_dat
 			if (res->READ3res_u.resok.count > 0) {
 				if (res->READ3res_u.resok.count <= mdata->count) {
 					memcpy(&data->buffer[mdata->offset - data->start_offset], res->READ3res_u.resok.data.data_val, res->READ3res_u.resok.count);
-					if ((unsigned)data->max_offset < mdata->offset + res->READ3res_u.resok.count) {
+					if (data->max_offset < mdata->offset + res->READ3res_u.resok.count) {
 						data->max_offset = mdata->offset + res->READ3res_u.resok.count;
 					}
 				} else {
@@ -1807,7 +1807,7 @@ static void nfs_pwrite_mcb(struct rpc_context *rpc, int status, void *command_da
 			data->error = 1;
 		} else  {
 			if (res->WRITE3res_u.resok.count > 0) {
-				if ((unsigned)data->max_offset < mdata->offset + res->WRITE3res_u.resok.count) {
+				if (data->max_offset < mdata->offset + res->WRITE3res_u.resok.count) {
 					data->max_offset = mdata->offset + res->WRITE3res_u.resok.count;
 				}
 			}
