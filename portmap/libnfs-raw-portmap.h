@@ -58,45 +58,45 @@ typedef struct pmap_dump_result pmap_dump_result;
 #define PMAP_V2 2
 
 #if defined(__STDC__) || defined(__cplusplus)
-#define PMAP_NULL 0
-extern  void * pmap_null_2(void *, CLIENT *);
-extern  void * pmap_null_2_svc(void *, struct svc_req *);
-#define PMAP_SET 1
-extern  bool_t * pmap_set_2(pmap_mapping *, CLIENT *);
-extern  bool_t * pmap_set_2_svc(pmap_mapping *, struct svc_req *);
-#define PMAP_UNSET 2
-extern  bool_t * pmap_unset_2(pmap_mapping *, CLIENT *);
-extern  bool_t * pmap_unset_2_svc(pmap_mapping *, struct svc_req *);
-#define PMAP_GETPORT 3
-extern  u_int * pmap_getport_2(pmap_mapping *, CLIENT *);
-extern  u_int * pmap_getport_2_svc(pmap_mapping *, struct svc_req *);
-#define PMAP_DUMP 4
-extern  pmap_mapping_list * pmap_dump_2(void *, CLIENT *);
-extern  pmap_mapping_list * pmap_dump_2_svc(void *, struct svc_req *);
-#define PMAP_CALLIT 5
-extern  pmap_call_result * pmap_callit_2(pmap_call_args *, CLIENT *);
-extern  pmap_call_result * pmap_callit_2_svc(pmap_call_args *, struct svc_req *);
+#define PMAP2_NULL 0
+extern  void * pmap2_null_2(void *, CLIENT *);
+extern  void * pmap2_null_2_svc(void *, struct svc_req *);
+#define PMAP2_SET 1
+extern  bool_t * pmap2_set_2(pmap_mapping *, CLIENT *);
+extern  bool_t * pmap2_set_2_svc(pmap_mapping *, struct svc_req *);
+#define PMAP2_UNSET 2
+extern  bool_t * pmap2_unset_2(pmap_mapping *, CLIENT *);
+extern  bool_t * pmap2_unset_2_svc(pmap_mapping *, struct svc_req *);
+#define PMAP2_GETPORT 3
+extern  u_int * pmap2_getport_2(pmap_mapping *, CLIENT *);
+extern  u_int * pmap2_getport_2_svc(pmap_mapping *, struct svc_req *);
+#define PMAP2_DUMP 4
+extern  pmap_dump_result * pmap2_dump_2(void *, CLIENT *);
+extern  pmap_dump_result * pmap2_dump_2_svc(void *, struct svc_req *);
+#define PMAP2_CALLIT 5
+extern  pmap_call_result * pmap2_callit_2(pmap_call_args *, CLIENT *);
+extern  pmap_call_result * pmap2_callit_2_svc(pmap_call_args *, struct svc_req *);
 extern int pmap_program_2_freeresult (SVCXPRT *, zdrproc_t, caddr_t);
 
 #else /* K&R C */
-#define PMAP_NULL 0
-extern  void * pmap_null_2();
-extern  void * pmap_null_2_svc();
-#define PMAP_SET 1
-extern  bool_t * pmap_set_2();
-extern  bool_t * pmap_set_2_svc();
-#define PMAP_UNSET 2
-extern  bool_t * pmap_unset_2();
-extern  bool_t * pmap_unset_2_svc();
-#define PMAP_GETPORT 3
-extern  u_int * pmap_getport_2();
-extern  u_int * pmap_getport_2_svc();
-#define PMAP_DUMP 4
-extern  pmap_mapping_list * pmap_dump_2();
-extern  pmap_mapping_list * pmap_dump_2_svc();
-#define PMAP_CALLIT 5
-extern  pmap_call_result * pmap_callit_2();
-extern  pmap_call_result * pmap_callit_2_svc();
+#define PMAP2_NULL 0
+extern  void * pmap2_null_2();
+extern  void * pmap2_null_2_svc();
+#define PMAP2_SET 1
+extern  bool_t * pmap2_set_2();
+extern  bool_t * pmap2_set_2_svc();
+#define PMAP2_UNSET 2
+extern  bool_t * pmap2_unset_2();
+extern  bool_t * pmap2_unset_2_svc();
+#define PMAP2_GETPORT 3
+extern  u_int * pmap2_getport_2();
+extern  u_int * pmap2_getport_2_svc();
+#define PMAP2_DUMP 4
+extern  pmap_dump_result * pmap2_dump_2();
+extern  pmap_dump_result * pmap2_dump_2_svc();
+#define PMAP2_CALLIT 5
+extern  pmap_call_result * pmap2_callit_2();
+extern  pmap_call_result * pmap2_callit_2_svc();
 extern int pmap_program_2_freeresult ();
 #endif /* K&R C */
 

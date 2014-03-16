@@ -35,22 +35,22 @@ struct pmap_dump_result {
 program PMAP_PROGRAM {
 	version PMAP_V2 {
         	void
-		PMAP_NULL(void)              = 0;
+		PMAP2_NULL(void)              = 0;
 
 		bool
-            	PMAP_SET(pmap_mapping)       = 1;
+            	PMAP2_SET(pmap_mapping)       = 1;
 
             	bool
-            	PMAP_UNSET(pmap_mapping)     = 2;
+            	PMAP2_UNSET(pmap_mapping)     = 2;
 
             	unsigned int
-            	PMAP_GETPORT(pmap_mapping)   = 3;
+            	PMAP2_GETPORT(pmap_mapping)   = 3;
 
-		pmap_mapping_list
-		PMAP_DUMP(void)              = 4;
+		pmap_dump_result
+		PMAP2_DUMP(void)              = 4;
 
 		pmap_call_result
-		PMAP_CALLIT(pmap_call_args)  = 5;
+		PMAP2_CALLIT(pmap_call_args)  = 5;
 	} = 2;
 } = 100000;
 

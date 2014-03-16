@@ -469,7 +469,7 @@ static void rpc_connect_program_2_cb(struct rpc_context *rpc, int status, void *
 		return;
 	}
 
-	if (rpc_pmap_getport_async(rpc, data->program, data->version, IPPROTO_TCP, rpc_connect_program_3_cb, private_data) != 0) {
+	if (rpc_pmap2_getport_async(rpc, data->program, data->version, IPPROTO_TCP, rpc_connect_program_3_cb, private_data) != 0) {
 		data->cb(rpc, status, command_data, data->private_data);
 		free_rpc_cb_data(data);
 		return;
@@ -496,7 +496,7 @@ static void rpc_connect_program_1_cb(struct rpc_context *rpc, int status, void *
 		return;
 	}
 
-	if (rpc_pmap_null_async(rpc, rpc_connect_program_2_cb, data) != 0) {
+	if (rpc_pmap2_null_async(rpc, rpc_connect_program_2_cb, data) != 0) {
 		data->cb(rpc, status, command_data, data->private_data);
 		free_rpc_cb_data(data);
 		return;
@@ -812,7 +812,7 @@ static void nfs_mount_2_cb(struct rpc_context *rpc, int status, void *command_da
 		return;
 	}
 
-	if (rpc_pmap_getport_async(rpc, MOUNT_PROGRAM, MOUNT_V3, IPPROTO_TCP, nfs_mount_3_cb, private_data) != 0) {
+	if (rpc_pmap2_getport_async(rpc, MOUNT_PROGRAM, MOUNT_V3, IPPROTO_TCP, nfs_mount_3_cb, private_data) != 0) {
 		data->cb(-ENOMEM, nfs, command_data, data->private_data);
 		free_nfs_cb_data(data);
 		return;
@@ -840,7 +840,7 @@ static void nfs_mount_1_cb(struct rpc_context *rpc, int status, void *command_da
 		return;
 	}
 
-	if (rpc_pmap_null_async(rpc, nfs_mount_2_cb, data) != 0) {
+	if (rpc_pmap2_null_async(rpc, nfs_mount_2_cb, data) != 0) {
 		data->cb(-ENOMEM, nfs, command_data, data->private_data);
 		free_nfs_cb_data(data);
 		return;
@@ -4368,7 +4368,7 @@ static void mount_export_2_cb(struct rpc_context *rpc, int status, void *command
 		return;
 	}
 
-	if (rpc_pmap_getport_async(rpc, MOUNT_PROGRAM, MOUNT_V3, IPPROTO_TCP, mount_export_3_cb, private_data) != 0) {
+	if (rpc_pmap2_getport_async(rpc, MOUNT_PROGRAM, MOUNT_V3, IPPROTO_TCP, mount_export_3_cb, private_data) != 0) {
 		data->cb(rpc, -ENOMEM, command_data, data->private_data);
 		free_mount_cb_data(data);
 		return;
@@ -4395,7 +4395,7 @@ static void mount_export_1_cb(struct rpc_context *rpc, int status, void *command
 		return;
 	}
 
-	if (rpc_pmap_null_async(rpc, mount_export_2_cb, data) != 0) {
+	if (rpc_pmap2_null_async(rpc, mount_export_2_cb, data) != 0) {
 		data->cb(rpc, -ENOMEM, command_data, data->private_data);
 		free_mount_cb_data(data);
 		return;
