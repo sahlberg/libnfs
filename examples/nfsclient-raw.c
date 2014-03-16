@@ -44,6 +44,7 @@
 #include "libnfs-raw.h"
 #include "libnfs-raw-mount.h"
 #include "libnfs-raw-nfs.h"
+#include "libnfs-raw-portmap.h"
 #include "libnfs-raw-rquota.h"
 
 struct client {
@@ -345,6 +346,38 @@ void pmap_getport1_cb(struct rpc_context *rpc, int status, void *data, void *pri
 	}
 }
 
+void pmap_dump_cb(struct rpc_context *rpc, int status, void *data, void *private_data)
+{
+	struct client *client = private_data;
+	struct pmap_dump_result *dr = data;
+	struct pmap_mapping_list *list = dr->list;
+
+	if (status == RPC_STATUS_ERROR) {
+		printf("portmapper null call failed with \"%s\"\n", (char *)data);
+		exit(10);
+	}
+	if (status != RPC_STATUS_SUCCESS) {
+		printf("portmapper null call to server %s failed, status:%d\n", client->server, status);
+		exit(10);
+	}
+
+	printf("Got reply from server for PORTMAP/DUMP procedure.\n");
+	while (list) {
+		printf("Prog:%d Vers:%d Protocol:%d Port:%d\n",
+			list->map.prog,
+			list->map.vers,
+			list->map.prot,
+			list->map.port);
+		list = list->next;
+	}
+
+	printf("Send getport request asking for MOUNT port\n");
+	if (rpc_pmap_getport_async(rpc, RQUOTA_PROGRAM, RQUOTA_V1, IPPROTO_TCP, pmap_getport1_cb, client) != 0) {
+		printf("Failed to send getport request\n");
+		exit(10);
+	}
+}
+
 void pmap_null_cb(struct rpc_context *rpc, int status, void *data, void *private_data)
 {
 	struct client *client = private_data;
@@ -359,8 +392,8 @@ void pmap_null_cb(struct rpc_context *rpc, int status, void *data, void *private
 	}
 
 	printf("Got reply from server for PORTMAP/NULL procedure.\n");
-	printf("Send getport request asking for MOUNT port\n");
-	if (rpc_pmap_getport_async(rpc, RQUOTA_PROGRAM, RQUOTA_V1, IPPROTO_TCP, pmap_getport1_cb, client) != 0) {
+	printf("Send PMAP/DUMP command\n");
+	if (rpc_pmap_dump_async(rpc, pmap_dump_cb, client) != 0) {
 		printf("Failed to send getport request\n");
 		exit(10);
 	}

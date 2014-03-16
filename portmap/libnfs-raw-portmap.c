@@ -130,3 +130,27 @@ zdr_pmap_call_result (ZDR *zdrs, pmap_call_result *objp)
 		 return FALSE;
 	return TRUE;
 }
+
+bool_t
+zdr_pmap_mapping_list (ZDR *zdrs, pmap_mapping_list *objp)
+{
+	register int32_t *buf;
+	buf = NULL;
+
+	 if (!zdr_pmap_mapping (zdrs, &objp->map))
+		 return FALSE;
+	 if (!zdr_pointer (zdrs, (char **)&objp->next, sizeof (pmap_mapping_list), (zdrproc_t) zdr_pmap_mapping_list))
+		 return FALSE;
+	return TRUE;
+}
+
+bool_t
+zdr_pmap_dump_result (ZDR *zdrs, pmap_dump_result *objp)
+{
+	register int32_t *buf;
+	buf = NULL;
+
+	 if (!zdr_pointer (zdrs, (char **)&objp->list, sizeof (pmap_mapping_list), (zdrproc_t) zdr_pmap_mapping_list))
+		 return FALSE;
+	return TRUE;
+}

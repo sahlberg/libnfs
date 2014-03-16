@@ -6,7 +6,8 @@
 #ifndef _PORTMAP_H_RPCGEN
 #define _PORTMAP_H_RPCGEN
 
-#include <nfsc/libnfs-zdr.h>
+
+
 
 #ifdef __cplusplus
 extern "C" {
@@ -42,6 +43,17 @@ struct pmap_call_result {
 };
 typedef struct pmap_call_result pmap_call_result;
 
+struct pmap_mapping_list {
+	pmap_mapping map;
+	struct pmap_mapping_list *next;
+};
+typedef struct pmap_mapping_list pmap_mapping_list;
+
+struct pmap_dump_result {
+	struct pmap_mapping_list *list;
+};
+typedef struct pmap_dump_result pmap_dump_result;
+
 #define PMAP_PROGRAM 100000
 #define PMAP_V2 2
 
@@ -58,6 +70,9 @@ extern  bool_t * pmap_unset_2_svc(pmap_mapping *, struct svc_req *);
 #define PMAP_GETPORT 3
 extern  u_int * pmap_getport_2(pmap_mapping *, CLIENT *);
 extern  u_int * pmap_getport_2_svc(pmap_mapping *, struct svc_req *);
+#define PMAP_DUMP 4
+extern  pmap_mapping_list * pmap_dump_2(void *, CLIENT *);
+extern  pmap_mapping_list * pmap_dump_2_svc(void *, struct svc_req *);
 #define PMAP_CALLIT 5
 extern  pmap_call_result * pmap_callit_2(pmap_call_args *, CLIENT *);
 extern  pmap_call_result * pmap_callit_2_svc(pmap_call_args *, struct svc_req *);
@@ -76,6 +91,9 @@ extern  bool_t * pmap_unset_2_svc();
 #define PMAP_GETPORT 3
 extern  u_int * pmap_getport_2();
 extern  u_int * pmap_getport_2_svc();
+#define PMAP_DUMP 4
+extern  pmap_mapping_list * pmap_dump_2();
+extern  pmap_mapping_list * pmap_dump_2_svc();
 #define PMAP_CALLIT 5
 extern  pmap_call_result * pmap_callit_2();
 extern  pmap_call_result * pmap_callit_2_svc();
@@ -88,11 +106,15 @@ extern int pmap_program_2_freeresult ();
 extern  bool_t zdr_pmap_mapping (ZDR *, pmap_mapping*);
 extern  bool_t zdr_pmap_call_args (ZDR *, pmap_call_args*);
 extern  bool_t zdr_pmap_call_result (ZDR *, pmap_call_result*);
+extern  bool_t zdr_pmap_mapping_list (ZDR *, pmap_mapping_list*);
+extern  bool_t zdr_pmap_dump_result (ZDR *, pmap_dump_result*);
 
 #else /* K&R C */
 extern bool_t zdr_pmap_mapping ();
 extern bool_t zdr_pmap_call_args ();
 extern bool_t zdr_pmap_call_result ();
+extern bool_t zdr_pmap_mapping_list ();
+extern bool_t zdr_pmap_dump_result ();
 
 #endif /* K&R C */
 

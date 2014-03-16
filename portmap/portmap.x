@@ -23,6 +23,15 @@ struct pmap_call_result {
 	opaque res<>;
 };
 
+struct pmap_mapping_list {
+       pmap_mapping map;
+       pmap_mapping_list *next;
+};
+
+struct pmap_dump_result {
+       struct pmap_mapping_list *list;
+};
+
 program PMAP_PROGRAM {
 	version PMAP_V2 {
         	void
@@ -36,6 +45,9 @@ program PMAP_PROGRAM {
 
             	unsigned int
             	PMAP_GETPORT(pmap_mapping)   = 3;
+
+		pmap_mapping_list
+		PMAP_DUMP(void)              = 4;
 
 		pmap_call_result
 		PMAP_CALLIT(pmap_call_args)  = 5;

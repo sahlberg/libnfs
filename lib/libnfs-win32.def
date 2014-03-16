@@ -100,6 +100,7 @@ rpc_pmap_null_async
 rpc_pmap_getport_async
 rpc_pmap_set_async
 rpc_pmap_unset_async
+rpc_pmap_dump_async
 rpc_pmap_callit_async
 rpc_mount_null_async
 rpc_mount_mnt_async
