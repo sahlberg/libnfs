@@ -130,6 +130,12 @@ extern int pmap_program_2_freeresult ();
 #define PMAP3_NULL 0
 extern  void * pmap3_null_3(void *, CLIENT *);
 extern  void * pmap3_null_3_svc(void *, struct svc_req *);
+#define PMAP3_SET 1
+extern  bool_t * pmap3_set_3(pmap3_mapping *, CLIENT *);
+extern  bool_t * pmap3_set_3_svc(pmap3_mapping *, struct svc_req *);
+#define PMAP3_UNSET 2
+extern  bool_t * pmap3_unset_3(pmap3_mapping *, CLIENT *);
+extern  bool_t * pmap3_unset_3_svc(pmap3_mapping *, struct svc_req *);
 #define PMAP3_GETADDR 3
 extern  pmap3_getaddr_result * pmap3_getaddr_3(pmap3_mapping *, CLIENT *);
 extern  pmap3_getaddr_result * pmap3_getaddr_3_svc(pmap3_mapping *, struct svc_req *);
@@ -142,6 +148,12 @@ extern int pmap_program_3_freeresult (SVCXPRT *, zdrproc_t, caddr_t);
 #define PMAP3_NULL 0
 extern  void * pmap3_null_3();
 extern  void * pmap3_null_3_svc();
+#define PMAP3_SET 1
+extern  bool_t * pmap3_set_3();
+extern  bool_t * pmap3_set_3_svc();
+#define PMAP3_UNSET 2
+extern  bool_t * pmap3_unset_3();
+extern  bool_t * pmap3_unset_3_svc();
 #define PMAP3_GETADDR 3
 extern  pmap3_getaddr_result * pmap3_getaddr_3();
 extern  pmap3_getaddr_result * pmap3_getaddr_3_svc();

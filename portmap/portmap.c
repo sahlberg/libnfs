@@ -209,6 +209,56 @@ int rpc_pmap3_null_async(struct rpc_context *rpc, rpc_cb cb, void *private_data)
 	return 0;
 }
 
+int rpc_pmap3_set_async(struct rpc_context *rpc, struct pmap3_mapping *map, rpc_cb cb, void *private_data)
+{
+	struct rpc_pdu *pdu;
+
+	pdu = rpc_allocate_pdu(rpc, PMAP_PROGRAM, PMAP_V3, PMAP3_SET, cb, private_data, (zdrproc_t)zdr_int, sizeof(uint32_t));
+	if (pdu == NULL) {
+		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu for PORTMAP3/SET call");
+		return -1;
+	}
+
+	if (zdr_pmap3_mapping(&pdu->zdr, map) == 0) {
+		rpc_set_error(rpc, "ZDR error: Failed to encode data for PORTMAP3/SET call");
+		rpc_free_pdu(rpc, pdu);
+		return -1;
+	}
+
+	if (rpc_queue_pdu(rpc, pdu) != 0) {
+		rpc_set_error(rpc, "Failed to queue PORTMAP3/SET pdu");
+		rpc_free_pdu(rpc, pdu);
+		return -1;
+	}
+
+	return 0;
+}
+
+int rpc_pmap3_unset_async(struct rpc_context *rpc, struct pmap3_mapping *map, rpc_cb cb, void *private_data)
+{
+	struct rpc_pdu *pdu;
+
+	pdu = rpc_allocate_pdu(rpc, PMAP_PROGRAM, PMAP_V3, PMAP3_UNSET, cb, private_data, (zdrproc_t)zdr_int, sizeof(uint32_t));
+	if (pdu == NULL) {
+		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu for PORTMAP3/UNSET call");
+		return -1;
+	}
+
+	if (zdr_pmap3_mapping(&pdu->zdr, map) == 0) {
+		rpc_set_error(rpc, "ZDR error: Failed to encode data for PORTMAP3/UNSET call");
+		rpc_free_pdu(rpc, pdu);
+		return -1;
+	}
+
+	if (rpc_queue_pdu(rpc, pdu) != 0) {
+		rpc_set_error(rpc, "Failed to queue PORTMAP3/UNSET pdu");
+		rpc_free_pdu(rpc, pdu);
+		return -1;
+	}
+
+	return 0;
+}
+
 int rpc_pmap3_getaddr_async(struct rpc_context *rpc, struct pmap3_mapping *map, rpc_cb cb, void *private_data)
 {
 	struct rpc_pdu *pdu;

@@ -77,6 +77,12 @@ program PMAP_PROGRAM {
         	void
 		PMAP3_NULL(void)              = 0;
 
+		bool
+		PMAP3_SET(pmap3_mapping)      = 1;
+
+		bool
+		PMAP3_UNSET(pmap3_mapping)    = 2;
+
 		pmap3_getaddr_result
 		PMAP3_GETADDR(pmap3_mapping)  = 3;
 
