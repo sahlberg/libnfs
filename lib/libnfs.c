@@ -4215,91 +4215,6 @@ static void mount_export_4_cb(struct rpc_context *rpc, int status, void *command
 	}
 }
 
-static void mount_export_3_cb(struct rpc_context *rpc, int status, void *command_data, void *private_data)
-{
-	struct mount_cb_data *data = private_data;
-	uint32_t mount_port;
-
-	assert(rpc->magic == RPC_CONTEXT_MAGIC);
-
-	if (status == RPC_STATUS_ERROR) {
-		data->cb(rpc, -EFAULT, command_data, data->private_data);
-		free_mount_cb_data(data);
-		return;
-	}
-	if (status == RPC_STATUS_CANCEL) {
-		data->cb(rpc, -EINTR, "Command was cancelled", data->private_data);
-		free_mount_cb_data(data);
-		return;
-	}
-
-	mount_port = *(uint32_t *)command_data;
-	if (mount_port == 0) {
-		rpc_set_error(rpc, "RPC error. Mount program is not available");
-		data->cb(rpc, -ENOENT, command_data, data->private_data);
-		free_mount_cb_data(data);
-		return;
-	}
-
-	rpc_disconnect(rpc, "normal disconnect");
-	if (rpc_connect_async(rpc, data->server, mount_port, mount_export_4_cb, data) != 0) {
-		data->cb(rpc, -ENOMEM, command_data, data->private_data);
-		free_mount_cb_data(data);
-		return;
-	}
-}
-
-static void mount_export_2_cb(struct rpc_context *rpc, int status, void *command_data, void *private_data)
-{
-	struct mount_cb_data *data = private_data;
-
-	assert(rpc->magic == RPC_CONTEXT_MAGIC);
-
-	if (status == RPC_STATUS_ERROR) {
-		data->cb(rpc, -EFAULT, command_data, data->private_data);
-		free_mount_cb_data(data);
-		return;
-	}
-	if (status == RPC_STATUS_CANCEL) {
-		data->cb(rpc, -EINTR, "Command was cancelled", data->private_data);
-		free_mount_cb_data(data);
-		return;
-	}
-
-	if (rpc_pmap2_getport_async(rpc, MOUNT_PROGRAM, MOUNT_V3, IPPROTO_TCP, mount_export_3_cb, private_data) != 0) {
-		data->cb(rpc, -ENOMEM, command_data, data->private_data);
-		free_mount_cb_data(data);
-		return;
-	}
-}
-
-static void mount_export_1_cb(struct rpc_context *rpc, int status, void *command_data, void *private_data)
-{
-	struct mount_cb_data *data = private_data;
-
-	assert(rpc->magic == RPC_CONTEXT_MAGIC);
-
-	/* Dont want any more callbacks even if the socket is closed */
-	rpc->connect_cb = NULL;
-
-	if (status == RPC_STATUS_ERROR) {
-		data->cb(rpc, -EFAULT, command_data, data->private_data);
-		free_mount_cb_data(data);
-		return;
-	}
-	if (status == RPC_STATUS_CANCEL) {
-		data->cb(rpc, -EINTR, "Command was cancelled", data->private_data);
-		free_mount_cb_data(data);
-		return;
-	}
-
-	if (rpc_pmap2_null_async(rpc, mount_export_2_cb, data) != 0) {
-		data->cb(rpc, -ENOMEM, command_data, data->private_data);
-		free_mount_cb_data(data);
-		return;
-	}
-}
-
 int mount_getexports_async(struct rpc_context *rpc, const char *server, rpc_cb cb, void *private_data)
 {
 	struct mount_cb_data *data;
@@ -4318,7 +4233,8 @@ int mount_getexports_async(struct rpc_context *rpc, const char *server, rpc_cb c
 		free_mount_cb_data(data);
 		return -1;
 	}
-	if (rpc_connect_async(rpc, data->server, 111, mount_export_1_cb, data) != 0) {
+	if (rpc_connect_program_async(rpc, data->server, MOUNT_PROGRAM, MOUNT_V3, mount_export_4_cb, data) != 0) {
+		rpc_set_error(rpc, "Failed to start connection");
 		free_mount_cb_data(data);
 		return -1;
 	}
