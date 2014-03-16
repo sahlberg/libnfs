@@ -240,6 +240,23 @@ EXTERN int rpc_pmap2_callit_async(struct rpc_context *rpc, int program, int vers
 EXTERN int rpc_pmap3_null_async(struct rpc_context *rpc, rpc_cb cb, void *private_data);
 
 /*
+ * Call PORTMAPPER3/GETADDR.
+ * Function returns
+ *  0 : The connection was initiated. Once the connection establish finishes, the callback will be invoked.
+ * <0 : An error occured when trying to set up the connection. The callback will not be invoked.
+ *
+ * When the callback is invoked, status indicates the result:
+ * RPC_STATUS_SUCCESS : We got a successful response from the portmapper daemon.
+ *                      data is struct pmap3_getaddr_result.
+ * RPC_STATUS_ERROR   : An error occured when trying to contact the portmapper.
+ *                      data is the error string.
+ * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
+ *                     data is NULL.
+ */
+struct pmap3_mapping;
+EXTERN int rpc_pmap3_getaddr_async(struct rpc_context *rpc, struct pmap3_mapping *map, rpc_cb cb, void *private_data);
+
+/*
  * Call PORTMAPPER3/DUMP.
  * Function returns
  *  0 : The connection was initiated. Once the connection establish finishes, the callback will be invoked.

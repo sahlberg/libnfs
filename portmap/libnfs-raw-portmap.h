@@ -54,6 +54,11 @@ struct pmap2_dump_result {
 };
 typedef struct pmap2_dump_result pmap2_dump_result;
 
+struct pmap3_getaddr_result {
+	char *addr;
+};
+typedef struct pmap3_getaddr_result pmap3_getaddr_result;
+
 struct pmap3_mapping {
 	u_int prog;
 	u_int vers;
@@ -125,6 +130,9 @@ extern int pmap_program_2_freeresult ();
 #define PMAP3_NULL 0
 extern  void * pmap3_null_3(void *, CLIENT *);
 extern  void * pmap3_null_3_svc(void *, struct svc_req *);
+#define PMAP3_GETADDR 3
+extern  pmap3_getaddr_result * pmap3_getaddr_3(pmap3_mapping *, CLIENT *);
+extern  pmap3_getaddr_result * pmap3_getaddr_3_svc(pmap3_mapping *, struct svc_req *);
 #define PMAP3_DUMP 4
 extern  pmap3_dump_result * pmap3_dump_3(void *, CLIENT *);
 extern  pmap3_dump_result * pmap3_dump_3_svc(void *, struct svc_req *);
@@ -134,6 +142,9 @@ extern int pmap_program_3_freeresult (SVCXPRT *, zdrproc_t, caddr_t);
 #define PMAP3_NULL 0
 extern  void * pmap3_null_3();
 extern  void * pmap3_null_3_svc();
+#define PMAP3_GETADDR 3
+extern  pmap3_getaddr_result * pmap3_getaddr_3();
+extern  pmap3_getaddr_result * pmap3_getaddr_3_svc();
 #define PMAP3_DUMP 4
 extern  pmap3_dump_result * pmap3_dump_3();
 extern  pmap3_dump_result * pmap3_dump_3_svc();
@@ -148,6 +159,7 @@ extern  bool_t zdr_pmap2_call_args (ZDR *, pmap2_call_args*);
 extern  bool_t zdr_pmap2_call_result (ZDR *, pmap2_call_result*);
 extern  bool_t zdr_pmap2_mapping_list (ZDR *, pmap2_mapping_list*);
 extern  bool_t zdr_pmap2_dump_result (ZDR *, pmap2_dump_result*);
+extern  bool_t zdr_pmap3_getaddr_result (ZDR *, pmap3_getaddr_result*);
 extern  bool_t zdr_pmap3_mapping (ZDR *, pmap3_mapping*);
 extern  bool_t zdr_pmap3_mapping_list (ZDR *, pmap3_mapping_list*);
 extern  bool_t zdr_pmap3_dump_result (ZDR *, pmap3_dump_result*);
@@ -158,6 +170,7 @@ extern bool_t zdr_pmap2_call_args ();
 extern bool_t zdr_pmap2_call_result ();
 extern bool_t zdr_pmap2_mapping_list ();
 extern bool_t zdr_pmap2_dump_result ();
+extern bool_t zdr_pmap3_getaddr_result ();
 extern bool_t zdr_pmap3_mapping ();
 extern bool_t zdr_pmap3_mapping_list ();
 extern bool_t zdr_pmap3_dump_result ();

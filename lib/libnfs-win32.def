@@ -102,6 +102,9 @@ rpc_pmap2_set_async
 rpc_pmap2_unset_async
 rpc_pmap2_dump_async
 rpc_pmap2_callit_async
+rpc_pmap3_null_async
+rpc_pmap3_getaddr_async
+rpc_pmap3_dump_async
 rpc_mount_null_async
 rpc_mount_mnt_async
 rpc_mount_dump_async

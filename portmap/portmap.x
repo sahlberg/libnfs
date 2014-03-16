@@ -32,6 +32,10 @@ struct pmap2_dump_result {
        struct pmap2_mapping_list *list;
 };
 
+struct pmap3_getaddr_result {
+       string addr<>;
+};
+
 struct pmap3_mapping {
        unsigned int prog;
        unsigned int vers;
@@ -64,7 +68,7 @@ program PMAP_PROGRAM {
             	PMAP2_GETPORT(pmap2_mapping)   = 3;
 
 		pmap2_dump_result
-		PMAP2_DUMP(void)              = 4;
+		PMAP2_DUMP(void)               = 4;
 
 		pmap2_call_result
 		PMAP2_CALLIT(pmap2_call_args)  = 5;
@@ -73,9 +77,11 @@ program PMAP_PROGRAM {
         	void
 		PMAP3_NULL(void)              = 0;
 
+		pmap3_getaddr_result
+		PMAP3_GETADDR(pmap3_mapping)  = 3;
+
 		pmap3_dump_result
 		PMAP3_DUMP(void)              = 4;
-
 	} = 3;
 } = 100000;
 

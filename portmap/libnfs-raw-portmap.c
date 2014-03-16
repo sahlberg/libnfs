@@ -156,6 +156,17 @@ zdr_pmap2_dump_result (ZDR *zdrs, pmap2_dump_result *objp)
 }
 
 bool_t
+zdr_pmap3_getaddr_result (ZDR *zdrs, pmap3_getaddr_result *objp)
+{
+	register int32_t *buf;
+	buf = NULL;
+
+	 if (!zdr_string (zdrs, &objp->addr, ~0))
+		 return FALSE;
+	return TRUE;
+}
+
+bool_t
 zdr_pmap3_mapping (ZDR *zdrs, pmap3_mapping *objp)
 {
 	register int32_t *buf;
