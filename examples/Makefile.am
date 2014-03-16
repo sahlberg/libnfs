@@ -1,4 +1,4 @@
-noinst_PROGRAMS = nfsclient-async nfsclient-raw nfsclient-sync nfsclient-bcast nfsclient-listservers nfs-ls nfs-cp nfs-io
+noinst_PROGRAMS = nfsclient-async nfsclient-raw nfsclient-sync nfsclient-bcast nfsclient-listservers nfs-ls nfs-cp nfs-io portmap-client
 
 AM_CPPFLAGS = \
 	-I$(abs_top_srcdir)/include \
@@ -27,3 +27,4 @@ nfsclient_bcast_SOURCES = nfsclient-bcast.c
 
 nfsclient_listservers_SOURCES = nfsclient-listservers.c
 
+portmap_example_SOURCES = portmap-example.c

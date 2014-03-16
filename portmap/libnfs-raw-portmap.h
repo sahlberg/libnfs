@@ -15,15 +15,15 @@ extern "C" {
 
 #define PMAP_PORT 111
 
-struct pmap_mapping {
+struct pmap2_mapping {
 	u_int prog;
 	u_int vers;
 	u_int prot;
 	u_int port;
 };
-typedef struct pmap_mapping pmap_mapping;
+typedef struct pmap2_mapping pmap2_mapping;
 
-struct pmap_call_args {
+struct pmap2_call_args {
 	u_int prog;
 	u_int vers;
 	u_int proc;
@@ -32,27 +32,47 @@ struct pmap_call_args {
 		char *args_val;
 	} args;
 };
-typedef struct pmap_call_args pmap_call_args;
+typedef struct pmap2_call_args pmap2_call_args;
 
-struct pmap_call_result {
+struct pmap2_call_result {
 	u_int port;
 	struct {
 		u_int res_len;
 		char *res_val;
 	} res;
 };
-typedef struct pmap_call_result pmap_call_result;
+typedef struct pmap2_call_result pmap2_call_result;
 
-struct pmap_mapping_list {
-	pmap_mapping map;
-	struct pmap_mapping_list *next;
+struct pmap2_mapping_list {
+	pmap2_mapping map;
+	struct pmap2_mapping_list *next;
 };
-typedef struct pmap_mapping_list pmap_mapping_list;
+typedef struct pmap2_mapping_list pmap2_mapping_list;
 
-struct pmap_dump_result {
-	struct pmap_mapping_list *list;
+struct pmap2_dump_result {
+	struct pmap2_mapping_list *list;
 };
-typedef struct pmap_dump_result pmap_dump_result;
+typedef struct pmap2_dump_result pmap2_dump_result;
+
+struct pmap3_mapping {
+	u_int prog;
+	u_int vers;
+	char *netid;
+	char *addr;
+	char *owner;
+};
+typedef struct pmap3_mapping pmap3_mapping;
+
+struct pmap3_mapping_list {
+	pmap3_mapping map;
+	struct pmap3_mapping_list *next;
+};
+typedef struct pmap3_mapping_list pmap3_mapping_list;
+
+struct pmap3_dump_result {
+	struct pmap3_mapping_list *list;
+};
+typedef struct pmap3_dump_result pmap3_dump_result;
 
 #define PMAP_PROGRAM 100000
 #define PMAP_V2 2
@@ -62,20 +82,20 @@ typedef struct pmap_dump_result pmap_dump_result;
 extern  void * pmap2_null_2(void *, CLIENT *);
 extern  void * pmap2_null_2_svc(void *, struct svc_req *);
 #define PMAP2_SET 1
-extern  bool_t * pmap2_set_2(pmap_mapping *, CLIENT *);
-extern  bool_t * pmap2_set_2_svc(pmap_mapping *, struct svc_req *);
+extern  bool_t * pmap2_set_2(pmap2_mapping *, CLIENT *);
+extern  bool_t * pmap2_set_2_svc(pmap2_mapping *, struct svc_req *);
 #define PMAP2_UNSET 2
-extern  bool_t * pmap2_unset_2(pmap_mapping *, CLIENT *);
-extern  bool_t * pmap2_unset_2_svc(pmap_mapping *, struct svc_req *);
+extern  bool_t * pmap2_unset_2(pmap2_mapping *, CLIENT *);
+extern  bool_t * pmap2_unset_2_svc(pmap2_mapping *, struct svc_req *);
 #define PMAP2_GETPORT 3
-extern  u_int * pmap2_getport_2(pmap_mapping *, CLIENT *);
-extern  u_int * pmap2_getport_2_svc(pmap_mapping *, struct svc_req *);
+extern  u_int * pmap2_getport_2(pmap2_mapping *, CLIENT *);
+extern  u_int * pmap2_getport_2_svc(pmap2_mapping *, struct svc_req *);
 #define PMAP2_DUMP 4
-extern  pmap_dump_result * pmap2_dump_2(void *, CLIENT *);
-extern  pmap_dump_result * pmap2_dump_2_svc(void *, struct svc_req *);
+extern  pmap2_dump_result * pmap2_dump_2(void *, CLIENT *);
+extern  pmap2_dump_result * pmap2_dump_2_svc(void *, struct svc_req *);
 #define PMAP2_CALLIT 5
-extern  pmap_call_result * pmap2_callit_2(pmap_call_args *, CLIENT *);
-extern  pmap_call_result * pmap2_callit_2_svc(pmap_call_args *, struct svc_req *);
+extern  pmap2_call_result * pmap2_callit_2(pmap2_call_args *, CLIENT *);
+extern  pmap2_call_result * pmap2_callit_2_svc(pmap2_call_args *, struct svc_req *);
 extern int pmap_program_2_freeresult (SVCXPRT *, zdrproc_t, caddr_t);
 
 #else /* K&R C */
@@ -92,29 +112,55 @@ extern  bool_t * pmap2_unset_2_svc();
 extern  u_int * pmap2_getport_2();
 extern  u_int * pmap2_getport_2_svc();
 #define PMAP2_DUMP 4
-extern  pmap_dump_result * pmap2_dump_2();
-extern  pmap_dump_result * pmap2_dump_2_svc();
+extern  pmap2_dump_result * pmap2_dump_2();
+extern  pmap2_dump_result * pmap2_dump_2_svc();
 #define PMAP2_CALLIT 5
-extern  pmap_call_result * pmap2_callit_2();
-extern  pmap_call_result * pmap2_callit_2_svc();
+extern  pmap2_call_result * pmap2_callit_2();
+extern  pmap2_call_result * pmap2_callit_2_svc();
 extern int pmap_program_2_freeresult ();
+#endif /* K&R C */
+#define PMAP_V3 3
+
+#if defined(__STDC__) || defined(__cplusplus)
+#define PMAP3_NULL 0
+extern  void * pmap3_null_3(void *, CLIENT *);
+extern  void * pmap3_null_3_svc(void *, struct svc_req *);
+#define PMAP3_DUMP 4
+extern  pmap3_dump_result * pmap3_dump_3(void *, CLIENT *);
+extern  pmap3_dump_result * pmap3_dump_3_svc(void *, struct svc_req *);
+extern int pmap_program_3_freeresult (SVCXPRT *, zdrproc_t, caddr_t);
+
+#else /* K&R C */
+#define PMAP3_NULL 0
+extern  void * pmap3_null_3();
+extern  void * pmap3_null_3_svc();
+#define PMAP3_DUMP 4
+extern  pmap3_dump_result * pmap3_dump_3();
+extern  pmap3_dump_result * pmap3_dump_3_svc();
+extern int pmap_program_3_freeresult ();
 #endif /* K&R C */
 
 /* the zdr functions */
 
 #if defined(__STDC__) || defined(__cplusplus)
-extern  bool_t zdr_pmap_mapping (ZDR *, pmap_mapping*);
-extern  bool_t zdr_pmap_call_args (ZDR *, pmap_call_args*);
-extern  bool_t zdr_pmap_call_result (ZDR *, pmap_call_result*);
-extern  bool_t zdr_pmap_mapping_list (ZDR *, pmap_mapping_list*);
-extern  bool_t zdr_pmap_dump_result (ZDR *, pmap_dump_result*);
+extern  bool_t zdr_pmap2_mapping (ZDR *, pmap2_mapping*);
+extern  bool_t zdr_pmap2_call_args (ZDR *, pmap2_call_args*);
+extern  bool_t zdr_pmap2_call_result (ZDR *, pmap2_call_result*);
+extern  bool_t zdr_pmap2_mapping_list (ZDR *, pmap2_mapping_list*);
+extern  bool_t zdr_pmap2_dump_result (ZDR *, pmap2_dump_result*);
+extern  bool_t zdr_pmap3_mapping (ZDR *, pmap3_mapping*);
+extern  bool_t zdr_pmap3_mapping_list (ZDR *, pmap3_mapping_list*);
+extern  bool_t zdr_pmap3_dump_result (ZDR *, pmap3_dump_result*);
 
 #else /* K&R C */
-extern bool_t zdr_pmap_mapping ();
-extern bool_t zdr_pmap_call_args ();
-extern bool_t zdr_pmap_call_result ();
-extern bool_t zdr_pmap_mapping_list ();
-extern bool_t zdr_pmap_dump_result ();
+extern bool_t zdr_pmap2_mapping ();
+extern bool_t zdr_pmap2_call_args ();
+extern bool_t zdr_pmap2_call_result ();
+extern bool_t zdr_pmap2_mapping_list ();
+extern bool_t zdr_pmap2_dump_result ();
+extern bool_t zdr_pmap3_mapping ();
+extern bool_t zdr_pmap3_mapping_list ();
+extern bool_t zdr_pmap3_dump_result ();
 
 #endif /* K&R C */
 

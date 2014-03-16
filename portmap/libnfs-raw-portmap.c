@@ -7,7 +7,7 @@
 #include "libnfs-raw-portmap.h"
 
 bool_t
-zdr_pmap_mapping (ZDR *zdrs, pmap_mapping *objp)
+zdr_pmap2_mapping (ZDR *zdrs, pmap2_mapping *objp)
 {
 	register int32_t *buf;
 	buf = NULL;
@@ -63,7 +63,7 @@ zdr_pmap_mapping (ZDR *zdrs, pmap_mapping *objp)
 }
 
 bool_t
-zdr_pmap_call_args (ZDR *zdrs, pmap_call_args *objp)
+zdr_pmap2_call_args (ZDR *zdrs, pmap2_call_args *objp)
 {
 	register int32_t *buf;
 	buf = NULL;
@@ -119,7 +119,7 @@ zdr_pmap_call_args (ZDR *zdrs, pmap_call_args *objp)
 }
 
 bool_t
-zdr_pmap_call_result (ZDR *zdrs, pmap_call_result *objp)
+zdr_pmap2_call_result (ZDR *zdrs, pmap2_call_result *objp)
 {
 	register int32_t *buf;
 	buf = NULL;
@@ -132,25 +132,68 @@ zdr_pmap_call_result (ZDR *zdrs, pmap_call_result *objp)
 }
 
 bool_t
-zdr_pmap_mapping_list (ZDR *zdrs, pmap_mapping_list *objp)
+zdr_pmap2_mapping_list (ZDR *zdrs, pmap2_mapping_list *objp)
 {
 	register int32_t *buf;
 	buf = NULL;
 
-	 if (!zdr_pmap_mapping (zdrs, &objp->map))
+	 if (!zdr_pmap2_mapping (zdrs, &objp->map))
 		 return FALSE;
-	 if (!zdr_pointer (zdrs, (char **)&objp->next, sizeof (pmap_mapping_list), (zdrproc_t) zdr_pmap_mapping_list))
+	 if (!zdr_pointer (zdrs, (char **)&objp->next, sizeof (pmap2_mapping_list), (zdrproc_t) zdr_pmap2_mapping_list))
 		 return FALSE;
 	return TRUE;
 }
 
 bool_t
-zdr_pmap_dump_result (ZDR *zdrs, pmap_dump_result *objp)
+zdr_pmap2_dump_result (ZDR *zdrs, pmap2_dump_result *objp)
 {
 	register int32_t *buf;
 	buf = NULL;
 
-	 if (!zdr_pointer (zdrs, (char **)&objp->list, sizeof (pmap_mapping_list), (zdrproc_t) zdr_pmap_mapping_list))
+	 if (!zdr_pointer (zdrs, (char **)&objp->list, sizeof (pmap2_mapping_list), (zdrproc_t) zdr_pmap2_mapping_list))
+		 return FALSE;
+	return TRUE;
+}
+
+bool_t
+zdr_pmap3_mapping (ZDR *zdrs, pmap3_mapping *objp)
+{
+	register int32_t *buf;
+	buf = NULL;
+
+	 if (!zdr_u_int (zdrs, &objp->prog))
+		 return FALSE;
+	 if (!zdr_u_int (zdrs, &objp->vers))
+		 return FALSE;
+	 if (!zdr_string (zdrs, &objp->netid, ~0))
+		 return FALSE;
+	 if (!zdr_string (zdrs, &objp->addr, ~0))
+		 return FALSE;
+	 if (!zdr_string (zdrs, &objp->owner, ~0))
+		 return FALSE;
+	return TRUE;
+}
+
+bool_t
+zdr_pmap3_mapping_list (ZDR *zdrs, pmap3_mapping_list *objp)
+{
+	register int32_t *buf;
+	buf = NULL;
+
+	 if (!zdr_pmap3_mapping (zdrs, &objp->map))
+		 return FALSE;
+	 if (!zdr_pointer (zdrs, (char **)&objp->next, sizeof (pmap3_mapping_list), (zdrproc_t) zdr_pmap3_mapping_list))
+		 return FALSE;
+	return TRUE;
+}
+
+bool_t
+zdr_pmap3_dump_result (ZDR *zdrs, pmap3_dump_result *objp)
+{
+	register int32_t *buf;
+	buf = NULL;
+
+	 if (!zdr_pointer (zdrs, (char **)&objp->list, sizeof (pmap3_mapping_list), (zdrproc_t) zdr_pmap3_mapping_list))
 		 return FALSE;
 	return TRUE;
 }

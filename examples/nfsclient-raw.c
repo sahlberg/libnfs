@@ -349,8 +349,8 @@ void pmap_getport1_cb(struct rpc_context *rpc, int status, void *data, void *pri
 void pmap_dump_cb(struct rpc_context *rpc, int status, void *data, void *private_data)
 {
 	struct client *client = private_data;
-	struct pmap_dump_result *dr = data;
-	struct pmap_mapping_list *list = dr->list;
+	struct pmap2_dump_result *dr = data;
+	struct pmap2_mapping_list *list = dr->list;
 
 	if (status == RPC_STATUS_ERROR) {
 		printf("portmapper null call failed with \"%s\"\n", (char *)data);
