@@ -80,7 +80,6 @@
 #include "win32_errnowrapper.h"
 #endif
 
-
 static int rpc_reconnect_requeue(struct rpc_context *rpc);
 static int rpc_connect_sockaddr_async(struct rpc_context *rpc, struct sockaddr_storage *s);
 
@@ -420,6 +419,15 @@ static int rpc_connect_sockaddr_async(struct rpc_context *rpc, struct sockaddr_s
 		}
 #endif
 		break;
+	case AF_INET6:
+		socksize = sizeof(struct sockaddr_in6);
+		rpc->fd = socket(AF_INET6, SOCK_STREAM, IPPROTO_TCP);
+#ifdef HAVE_NETINET_TCP_H
+		if (rpc->tcp_syncnt != RPC_PARAM_UNDEFINED) {
+			set_tcp_sockopt(rpc->fd, TCP_SYNCNT, rpc->tcp_syncnt);
+		}
+#endif
+		break;
 	default:
 		rpc_set_error(rpc, "Can not handle AF_FAMILY:%d", s->ss_family);
 		return -1;
@@ -449,7 +457,7 @@ static int rpc_connect_sockaddr_async(struct rpc_context *rpc, struct sockaddr_s
 	 * binding will usually succeed.
 	 */
 	{
-		struct sockaddr_in sin;
+		struct sockaddr_storage ss;
 		static int portOfs = 0;
 		const int firstPort = 512;	/* >= 512 according to Sun docs */
 		const int portCount = IPPORT_RESERVED - firstPort;
@@ -466,12 +474,26 @@ static int rpc_connect_sockaddr_async(struct rpc_context *rpc, struct sockaddr_s
 
 			/* skip well-known ports */
 			if (!getservbyport(port, "tcp")) {
-				memset(&sin, 0, sizeof(sin));
-				sin.sin_port        = port;
-				sin.sin_family      = AF_INET;
-				sin.sin_addr.s_addr = 0;
+				memset(&ss, 0, sizeof(ss));
 
-				rc = bind(rpc->fd, (struct sockaddr *)&sin, sizeof(struct sockaddr_in));
+				switch (s->ss_family) {
+				case AF_INET:
+					((struct sockaddr_in *)&ss)->sin_port = port;
+					((struct sockaddr_in *)&ss)->sin_family      = AF_INET;
+#ifdef HAVE_SOCKADDR_LEN
+					((struct sockaddr_in *)&ss)->sin_len = sizeof(struct sockaddr_in);
+#endif
+					break;
+				case AF_INET6:
+					((struct sockaddr_in6 *)&ss)->sin6_port = port;
+					((struct sockaddr_in6 *)&ss)->sin6_family      = AF_INET6;
+#ifdef HAVE_SOCKADDR_LEN
+					((struct sockaddr_in6 *)&ss)->sin6_len = sizeof(struct sockaddr_in);
+#endif
+					break;
+				}
+
+				rc = bind(rpc->fd, (struct sockaddr *)&ss, socksize);
 #if !defined(WIN32)
 				/* we got EACCES, so don't try again */
 				if (rc != 0 && errno == EACCES)
@@ -493,7 +515,7 @@ static int rpc_connect_sockaddr_async(struct rpc_context *rpc, struct sockaddr_s
 
 int rpc_connect_async(struct rpc_context *rpc, const char *server, int port, rpc_cb cb, void *private_data)
 {
-	struct sockaddr_in *sin = (struct sockaddr_in *)&rpc->s;
+	struct addrinfo *ai = NULL;
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
@@ -509,24 +531,33 @@ int rpc_connect_async(struct rpc_context *rpc, const char *server, int port, rpc
 
 	rpc->auto_reconnect = 0;
 
-	sin->sin_family = AF_INET;
-	sin->sin_port   = htons(port);
-	if (inet_pton(AF_INET, server, &sin->sin_addr) != 1) {
-		rpc_set_error(rpc, "Not a valid server ip address");
+	if (getaddrinfo(server, NULL, NULL, &ai) != 0) {
+		rpc_set_error(rpc, "Invalid address:%s. "
+			      "Can not resolv into IPv4/v6 structure.", server);
 		return -1;
-	}
+ 	}
 
-
-	switch (rpc->s.ss_family) {
+	switch (ai->ai_family) {
 	case AF_INET:
+		((struct sockaddr_in *)&rpc->s)->sin_family = ai->ai_family;
+		((struct sockaddr_in *)&rpc->s)->sin_port   = htons(port);
 #ifdef HAVE_SOCKADDR_LEN
-		sin->sin_len = sizeof(struct sockaddr_in);
+		((struct sockaddr_in *)&rpc->s)->sin_len = sizeof(struct sockaddr_in);
+#endif
+		break;
+	case AF_INET6:
+		((struct sockaddr_in6 *)&rpc->s)->sin6_family = ai->ai_family;
+		((struct sockaddr_in6 *)&rpc->s)->sin6_port   = htons(port);
+#ifdef HAVE_SOCKADDR_LEN
+		((struct sockaddr_in6 *)&rpc->s)->sin6_len = sizeof(struct sockaddr_in6);
 #endif
 		break;
 	}
 
 	rpc->connect_cb  = cb;
 	rpc->connect_data = private_data;
+
+	freeaddrinfo(ai);
 
 	if (rpc_connect_sockaddr_async(rpc, &rpc->s) != 0) {
 		return -1;
