@@ -394,6 +394,30 @@ void free_rpc_cb_data(struct rpc_cb_data *data)
 	free(data);
 }
 
+static void rpc_connect_program_5_cb(struct rpc_context *rpc, int status, void *command_data, void *private_data)
+{
+	struct rpc_cb_data *data = private_data;
+
+	assert(rpc->magic == RPC_CONTEXT_MAGIC);
+
+	/* Dont want any more callbacks even if the socket is closed */
+	rpc->connect_cb = NULL;
+
+	if (status == RPC_STATUS_ERROR) {
+		data->cb(rpc, status, command_data, data->private_data);
+		free_rpc_cb_data(data);
+		return;
+	}
+	if (status == RPC_STATUS_CANCEL) {
+		data->cb(rpc, status, "Command was cancelled", data->private_data);
+		free_rpc_cb_data(data);
+		return;
+	}
+
+	data->cb(rpc, status, NULL, data->private_data);
+	free_rpc_cb_data(data);
+}
+
 static void rpc_connect_program_4_cb(struct rpc_context *rpc, int status, void *command_data, void *private_data)
 {
 	struct rpc_cb_data *data = private_data;
@@ -411,6 +435,25 @@ static void rpc_connect_program_4_cb(struct rpc_context *rpc, int status, void *
 	if (status == RPC_STATUS_CANCEL) {
 		data->cb(rpc, status, "Command was cancelled", data->private_data);
 		free_rpc_cb_data(data);
+		return;
+	}
+
+	switch (data->program) {
+	case MOUNT_PROGRAM:
+		if (rpc_mount3_null_async(rpc, rpc_connect_program_5_cb,
+					data) != 0) {
+			data->cb(rpc, status, command_data, data->private_data);
+			free_rpc_cb_data(data);
+			return;
+		}
+		return;
+	case NFS_PROGRAM:
+		if (rpc_nfs3_null_async(rpc, rpc_connect_program_5_cb,
+					data) != 0) {
+			data->cb(rpc, status, command_data, data->private_data);
+			free_rpc_cb_data(data);
+			return;
+		}
 		return;
 	}
 
@@ -503,7 +546,7 @@ static void rpc_connect_program_1_cb(struct rpc_context *rpc, int status, void *
 	}
 }
 
-int rpc_connect_program_async(struct rpc_context *rpc, char *server, int program, int version, rpc_cb cb, void *private_data)
+int rpc_connect_program_async(struct rpc_context *rpc, const char *server, int program, int version, rpc_cb cb, void *private_data)
 {
 	struct rpc_cb_data *data;
 
@@ -627,36 +670,6 @@ static void nfs_mount_8_cb(struct rpc_context *rpc, int status, void *command_da
 	}
 }
 
-
-static void nfs_mount_7_cb(struct rpc_context *rpc, int status, void *command_data, void *private_data)
-{
-	struct nfs_cb_data *data = private_data;
-	struct nfs_context *nfs = data->nfs;
-
-	assert(rpc->magic == RPC_CONTEXT_MAGIC);
-
-	/* Dont want any more callbacks even if the socket is closed */
-	rpc->connect_cb = NULL;
-
-	if (status == RPC_STATUS_ERROR) {
-		data->cb(-EFAULT, nfs, command_data, data->private_data);
-		free_nfs_cb_data(data);
-		return;
-	}
-	if (status == RPC_STATUS_CANCEL) {
-		data->cb(-EINTR, nfs, "Command was cancelled", data->private_data);
-		free_nfs_cb_data(data);
-		return;
-	}
-
-	if (rpc_nfs3_null_async(rpc, nfs_mount_8_cb, data) != 0) {
-		data->cb(-ENOMEM, nfs, command_data, data->private_data);
-		free_nfs_cb_data(data);
-		return;
-	}
-}
-
-
 static void nfs_mount_6_cb(struct rpc_context *rpc, int status, void *command_data, void *private_data)
 {
 	struct nfs_cb_data *data = private_data;
@@ -695,11 +708,13 @@ static void nfs_mount_6_cb(struct rpc_context *rpc, int status, void *command_da
 	memcpy(nfs->rootfh.data.data_val, res->mountres3_u.mountinfo.fhandle.fhandle3_val, nfs->rootfh.data.data_len);
 
 	rpc_disconnect(rpc, "normal disconnect");
-	if (rpc_connect_async(rpc, nfs->server, 2049, nfs_mount_7_cb, data) != 0) {
+
+	if (rpc_connect_program_async(nfs->rpc, nfs->server, NFS_PROGRAM, NFS_V3, nfs_mount_8_cb, data) != 0) {
 		data->cb(-ENOMEM, nfs, command_data, data->private_data);
 		free_nfs_cb_data(data);
 		return;
 	}
+
 	/* NFS TCP connections we want to autoreconnect after sessions are torn down (due to inactivity or error) */
 	rpc_set_autoreconnect(rpc);
 }
@@ -724,123 +739,6 @@ static void nfs_mount_5_cb(struct rpc_context *rpc, int status, void *command_da
 	}
 
 	if (rpc_mount3_mnt_async(rpc, nfs_mount_6_cb, nfs->export, data) != 0) {
-		data->cb(-ENOMEM, nfs, command_data, data->private_data);
-		free_nfs_cb_data(data);
-		return;
-	}
-}
-
-static void nfs_mount_4_cb(struct rpc_context *rpc, int status, void *command_data, void *private_data)
-{
-	struct nfs_cb_data *data = private_data;
-	struct nfs_context *nfs = data->nfs;
-
-	assert(rpc->magic == RPC_CONTEXT_MAGIC);
-
-	/* Dont want any more callbacks even if the socket is closed */
-	rpc->connect_cb = NULL;
-
-	if (status == RPC_STATUS_ERROR) {
-		data->cb(-EFAULT, nfs, command_data, data->private_data);
-		free_nfs_cb_data(data);
-		return;
-	}
-	if (status == RPC_STATUS_CANCEL) {
-		data->cb(-EINTR, nfs, "Command was cancelled", data->private_data);
-		free_nfs_cb_data(data);
-		return;
-	}
-
-	if (rpc_mount3_null_async(rpc, nfs_mount_5_cb, data) != 0) {
-		data->cb(-ENOMEM, nfs, command_data, data->private_data);
-		free_nfs_cb_data(data);
-		return;
-	}
-}
-
-static void nfs_mount_3_cb(struct rpc_context *rpc, int status, void *command_data, void *private_data)
-{
-	struct nfs_cb_data *data = private_data;
-	struct nfs_context *nfs = data->nfs;
-	uint32_t mount_port;
-
-	assert(rpc->magic == RPC_CONTEXT_MAGIC);
-
-	if (status == RPC_STATUS_ERROR) {
-		data->cb(-EFAULT, nfs, command_data, data->private_data);
-		free_nfs_cb_data(data);
-		return;
-	}
-	if (status == RPC_STATUS_CANCEL) {
-		data->cb(-EINTR, nfs, "Command was cancelled", data->private_data);
-		free_nfs_cb_data(data);
-		return;
-	}
-
-	mount_port = *(uint32_t *)command_data;
-	if (mount_port == 0) {
-		rpc_set_error(rpc, "RPC error. Mount program is not available on %s", nfs->server);
-		data->cb(-ENOENT, nfs, command_data, data->private_data);
-		free_nfs_cb_data(data);
-		return;
-	}
-
-	rpc_disconnect(rpc, "normal disconnect");
-	if (rpc_connect_async(rpc, nfs->server, mount_port, nfs_mount_4_cb, data) != 0) {
-		data->cb(-ENOMEM, nfs, command_data, data->private_data);
-		free_nfs_cb_data(data);
-		return;
-	}
-}
-
-
-static void nfs_mount_2_cb(struct rpc_context *rpc, int status, void *command_data, void *private_data)
-{
-	struct nfs_cb_data *data = private_data;
-	struct nfs_context *nfs = data->nfs;
-
-	assert(rpc->magic == RPC_CONTEXT_MAGIC);
-
-	if (status == RPC_STATUS_ERROR) {
-		data->cb(-EFAULT, nfs, command_data, data->private_data);
-		free_nfs_cb_data(data);
-		return;
-	}
-	if (status == RPC_STATUS_CANCEL) {
-		data->cb(-EINTR, nfs, "Command was cancelled", data->private_data);
-		free_nfs_cb_data(data);
-		return;
-	}
-
-	if (rpc_pmap2_getport_async(rpc, MOUNT_PROGRAM, MOUNT_V3, IPPROTO_TCP, nfs_mount_3_cb, private_data) != 0) {
-		data->cb(-ENOMEM, nfs, command_data, data->private_data);
-		free_nfs_cb_data(data);
-		return;
-	}
-}
-
-static void nfs_mount_1_cb(struct rpc_context *rpc, int status, void *command_data, void *private_data)
-{
-	struct nfs_cb_data *data = private_data;
-	struct nfs_context *nfs = data->nfs;
-
-	assert(rpc->magic == RPC_CONTEXT_MAGIC);
-
-	/* Dont want any more callbacks even if the socket is closed */
-	rpc->connect_cb = NULL;
-
-	if (status == RPC_STATUS_ERROR) {
-		data->cb(-EFAULT, nfs, command_data, data->private_data);
-		free_nfs_cb_data(data);
-		return;
-	}
-	if (status == RPC_STATUS_CANCEL) {
-		data->cb(-EINTR, nfs, "Command was cancelled", data->private_data);
-		free_nfs_cb_data(data);
-		return;
-	}
-
-	if (rpc_pmap2_null_async(rpc, nfs_mount_2_cb, data) != 0) {
 		data->cb(-ENOMEM, nfs, command_data, data->private_data);
 		free_nfs_cb_data(data);
 		return;
@@ -875,7 +773,7 @@ int nfs_mount_async(struct nfs_context *nfs, const char *server, const char *exp
 	data->cb           = cb;
 	data->private_data = private_data;
 
-	if (rpc_connect_async(nfs->rpc, server, 111, nfs_mount_1_cb, data) != 0) {
+	if (rpc_connect_program_async(nfs->rpc, server, MOUNT_PROGRAM, MOUNT_V3, nfs_mount_5_cb, data) != 0) {
 		rpc_set_error(nfs->rpc, "Failed to start connection");
 		free_nfs_cb_data(data);
 		return -1;

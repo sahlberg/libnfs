@@ -110,7 +110,7 @@ int rpc_connect_async(struct rpc_context *rpc, const char *server, int port, rpc
  * RPC_STATUS_CANCEL  : The connection attempt was aborted before it could complete.
  *                    : data is NULL.
  */
-int rpc_connect_program_async(struct rpc_context *rpc, char *server, int program, int version, rpc_cb cb, void *private_data);
+int rpc_connect_program_async(struct rpc_context *rpc, const char *server, int program, int version, rpc_cb cb, void *private_data);
 /*
  * When disconnecting a connection in flight. All commands in flight will be called with the callback
  * and status RPC_STATUS_ERROR. Data will be the error string for the disconnection.
