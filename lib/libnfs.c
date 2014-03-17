@@ -73,6 +73,7 @@
 #include "libnfs-raw.h"
 #include "libnfs-raw-mount.h"
 #include "libnfs-raw-nfs.h"
+#include "libnfs-raw-portmap.h"
 #include "libnfs-private.h"
 
 struct nfsdir {
@@ -464,7 +465,9 @@ static void rpc_connect_program_4_cb(struct rpc_context *rpc, int status, void *
 static void rpc_connect_program_3_cb(struct rpc_context *rpc, int status, void *command_data, void *private_data)
 {
 	struct rpc_cb_data *data = private_data;
-	uint32_t rpc_port;
+	struct pmap3_getaddr_result *gar;
+	uint32_t rpc_port = 0;
+	unsigned char *ptr;
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
@@ -479,7 +482,29 @@ static void rpc_connect_program_3_cb(struct rpc_context *rpc, int status, void *
 		return;
 	}
 
-	rpc_port = *(uint32_t *)command_data;
+	switch (rpc->s.ss_family) {
+	case AF_INET:
+		rpc_port = *(uint32_t *)command_data;
+		break;
+	case AF_INET6:
+		/* ouch. portmapper and ipv6 are not great */
+		gar = command_data;
+		if (gar->addr == NULL) {
+			break;
+		}
+		ptr = strrchr(gar->addr, '.');
+		if (ptr == NULL) {
+			break;
+		}
+		rpc_port = atoi(ptr + 1);
+		*ptr = 0;
+		ptr = strrchr(gar->addr, '.');
+		if (ptr == NULL) {
+			break;
+		}
+		rpc_port += 256 * atoi(ptr + 1);
+		break;
+	}
 	if (rpc_port == 0) {
 		rpc_set_error(rpc, "RPC error. Program is not available on %s", data->server);
 		data->cb(rpc, RPC_STATUS_ERROR, rpc_get_error(rpc), data->private_data);
@@ -498,6 +523,7 @@ static void rpc_connect_program_3_cb(struct rpc_context *rpc, int status, void *
 static void rpc_connect_program_2_cb(struct rpc_context *rpc, int status, void *command_data, void *private_data)
 {
 	struct rpc_cb_data *data = private_data;
+	struct pmap3_mapping map;
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
@@ -512,10 +538,26 @@ static void rpc_connect_program_2_cb(struct rpc_context *rpc, int status, void *
 		return;
 	}
 
-	if (rpc_pmap2_getport_async(rpc, data->program, data->version, IPPROTO_TCP, rpc_connect_program_3_cb, private_data) != 0) {
-		data->cb(rpc, status, command_data, data->private_data);
-		free_rpc_cb_data(data);
-		return;
+	switch (rpc->s.ss_family) {
+	case AF_INET:
+		if (rpc_pmap2_getport_async(rpc, data->program, data->version, IPPROTO_TCP, rpc_connect_program_3_cb, private_data) != 0) {
+			data->cb(rpc, status, command_data, data->private_data);
+			free_rpc_cb_data(data);
+			return;
+		}
+		break;
+	case AF_INET6:
+		map.prog=data->program;
+		map.vers=data->version;
+		map.netid="";
+		map.addr="";
+		map.owner="";
+		if (rpc_pmap3_getaddr_async(rpc, &map, rpc_connect_program_3_cb, private_data) != 0) {
+			data->cb(rpc, status, command_data, data->private_data);
+			free_rpc_cb_data(data);
+			return;
+		}
+		break;
 	}
 }
 
@@ -539,10 +581,21 @@ static void rpc_connect_program_1_cb(struct rpc_context *rpc, int status, void *
 		return;
 	}
 
-	if (rpc_pmap2_null_async(rpc, rpc_connect_program_2_cb, data) != 0) {
-		data->cb(rpc, status, command_data, data->private_data);
-		free_rpc_cb_data(data);
-		return;
+	switch (rpc->s.ss_family) {
+	case AF_INET:
+		if (rpc_pmap2_null_async(rpc, rpc_connect_program_2_cb, data) != 0) {
+			data->cb(rpc, status, command_data, data->private_data);
+			free_rpc_cb_data(data);
+			return;
+		}
+		break;
+	case AF_INET6:
+		if (rpc_pmap3_null_async(rpc, rpc_connect_program_2_cb, data) != 0) {
+			data->cb(rpc, status, command_data, data->private_data);
+			free_rpc_cb_data(data);
+			return;
+		}
+		break;
 	}
 }
 
