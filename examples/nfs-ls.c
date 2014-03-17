@@ -260,7 +260,7 @@ int main(int argc, char *argv[])
 	process_dir(nfs, "", 16);
 
 	if (summary) {
-		if (nfs_statvfs(nfs, "/", &stvfs) != 0) {
+		if (nfs_statvfs(nfs, "", &stvfs) != 0) {
 			goto finished;
 		}
 		printf("\n%12" PRId64 " of %12" PRId64 " bytes free.\n",
