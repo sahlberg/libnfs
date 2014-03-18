@@ -142,6 +142,9 @@ extern  pmap3_getaddr_result * pmap3_getaddr_3_svc(pmap3_mapping *, struct svc_r
 #define PMAP3_DUMP 4
 extern  pmap3_dump_result * pmap3_dump_3(void *, CLIENT *);
 extern  pmap3_dump_result * pmap3_dump_3_svc(void *, struct svc_req *);
+#define PMAP3_GETTIME 6
+extern  u_int * pmap3_gettime_3(void *, CLIENT *);
+extern  u_int * pmap3_gettime_3_svc(void *, struct svc_req *);
 extern int pmap_program_3_freeresult (SVCXPRT *, zdrproc_t, caddr_t);
 
 #else /* K&R C */
@@ -160,6 +163,9 @@ extern  pmap3_getaddr_result * pmap3_getaddr_3_svc();
 #define PMAP3_DUMP 4
 extern  pmap3_dump_result * pmap3_dump_3();
 extern  pmap3_dump_result * pmap3_dump_3_svc();
+#define PMAP3_GETTIME 6
+extern  u_int * pmap3_gettime_3();
+extern  u_int * pmap3_gettime_3_svc();
 extern int pmap_program_3_freeresult ();
 #endif /* K&R C */
 

@@ -88,6 +88,9 @@ program PMAP_PROGRAM {
 
 		pmap3_dump_result
 		PMAP3_DUMP(void)              = 4;
+
+		unsigned int
+		PMAP3_GETTIME(void)           = 6;
 	} = 3;
 } = 100000;
 

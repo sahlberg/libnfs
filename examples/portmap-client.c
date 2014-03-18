@@ -37,6 +37,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 #include "libnfs-zdr.h"
 #include "libnfs.h"
 #include "libnfs-raw.h"
@@ -120,6 +121,26 @@ void pmap3_getaddr_cb(struct rpc_context *rpc, int status, void *data, void *pri
 
 	printf("PORTMAP3/GETADDR:\n");
 	printf("	Addr:%s\n", gar->addr);
+
+	client->is_finished = 1;
+}
+
+void pmap3_gettime_cb(struct rpc_context *rpc, int status, void *data, void *private_data)
+{
+	struct client *client = private_data;
+	time_t t = *(uint32_t *)data;
+
+	if (status == RPC_STATUS_ERROR) {
+		printf("PORTMAP3/GETTIME call failed with \"%s\"\n", (char *)data);
+		exit(10);
+	}
+	if (status != RPC_STATUS_SUCCESS) {
+		printf("PORTMAP3/GETTIME call failed, status:%d\n", status);
+		exit(10);
+	}
+
+	printf("PORTMAP3/GETTIME:\n");
+	printf("	Time:%d %s\n", (int)t, ctime(&t));
 
 	client->is_finished = 1;
 }
@@ -224,6 +245,7 @@ int main(int argc _U_, char *argv[] _U_)
 	int null3 = 0;
 	int getaddr3 = 0;
 	int dump3 = 0;
+	int gettime3 = 0;
 	int command_found = 0;
 
 	int getaddr3prog, getaddr3vers;
@@ -244,6 +266,9 @@ int main(int argc _U_, char *argv[] _U_)
 			command_found++;
 		} else if (!strcmp(argv[i], "dump3")) {
 			dump3 = 1;
+			command_found++;
+		} else if (!strcmp(argv[i], "gettime3")) {
+			gettime3 = 1;
 			command_found++;
 		} else if (!strcmp(argv[i], "getaddr3")) {
 			getaddr3 = 1;
@@ -293,6 +318,13 @@ int main(int argc _U_, char *argv[] _U_)
 	if (dump3) {
 		if (rpc_pmap3_dump_async(rpc, pmap3_dump_cb, &client) != 0) {
 			printf("Failed to send DUMP3 request\n");
+			exit(10);
+		}
+		wait_until_finished(rpc, &client);
+	}
+	if (gettime3) {
+		if (rpc_pmap3_gettime_async(rpc, pmap3_gettime_cb, &client) != 0) {
+			printf("Failed to send GETTIME3 request\n");
 			exit(10);
 		}
 		wait_until_finished(rpc, &client);
