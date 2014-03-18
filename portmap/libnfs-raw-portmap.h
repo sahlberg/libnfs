@@ -99,6 +99,15 @@ struct pmap3_call_result {
 };
 typedef struct pmap3_call_result pmap3_call_result;
 
+struct pmap3_netbuf {
+	u_int maxlen;
+	struct {
+		u_int buf_len;
+		char *buf_val;
+	} buf;
+};
+typedef struct pmap3_netbuf pmap3_netbuf;
+
 #define PMAP_PROGRAM 100000
 #define PMAP_V2 2
 
@@ -168,6 +177,9 @@ extern  pmap3_call_result * pmap3_callit_3_svc(pmap3_call_args *, struct svc_req
 #define PMAP3_GETTIME 6
 extern  u_int * pmap3_gettime_3(void *, CLIENT *);
 extern  u_int * pmap3_gettime_3_svc(void *, struct svc_req *);
+#define PMAP3_UADDR2TADDR 7
+extern  pmap3_netbuf * pmap3_uaddr2taddr_3(char **, CLIENT *);
+extern  pmap3_netbuf * pmap3_uaddr2taddr_3_svc(char **, struct svc_req *);
 extern int pmap_program_3_freeresult (SVCXPRT *, zdrproc_t, caddr_t);
 
 #else /* K&R C */
@@ -192,6 +204,9 @@ extern  pmap3_call_result * pmap3_callit_3_svc();
 #define PMAP3_GETTIME 6
 extern  u_int * pmap3_gettime_3();
 extern  u_int * pmap3_gettime_3_svc();
+#define PMAP3_UADDR2TADDR 7
+extern  pmap3_netbuf * pmap3_uaddr2taddr_3();
+extern  pmap3_netbuf * pmap3_uaddr2taddr_3_svc();
 extern int pmap_program_3_freeresult ();
 #endif /* K&R C */
 
@@ -209,6 +224,7 @@ extern  bool_t zdr_pmap3_mapping_list (ZDR *, pmap3_mapping_list*);
 extern  bool_t zdr_pmap3_dump_result (ZDR *, pmap3_dump_result*);
 extern  bool_t zdr_pmap3_call_args (ZDR *, pmap3_call_args*);
 extern  bool_t zdr_pmap3_call_result (ZDR *, pmap3_call_result*);
+extern  bool_t zdr_pmap3_netbuf (ZDR *, pmap3_netbuf*);
 
 #else /* K&R C */
 extern bool_t zdr_pmap2_mapping ();
@@ -222,6 +238,7 @@ extern bool_t zdr_pmap3_mapping_list ();
 extern bool_t zdr_pmap3_dump_result ();
 extern bool_t zdr_pmap3_call_args ();
 extern bool_t zdr_pmap3_call_result ();
+extern bool_t zdr_pmap3_netbuf ();
 
 #endif /* K&R C */
 

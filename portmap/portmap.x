@@ -65,6 +65,11 @@ struct pmap3_call_result {
 	opaque res<>;
 };
 
+struct pmap3_netbuf {
+	unsigned int maxlen;
+	opaque buf<>;
+};
+
 program PMAP_PROGRAM {
 	version PMAP_V2 {
         	void
@@ -106,6 +111,9 @@ program PMAP_PROGRAM {
 
 		unsigned int
 		PMAP3_GETTIME(void)           = 6;
+
+		pmap3_netbuf
+		PMAP3_UADDR2TADDR(string)     = 7;
 	} = 3;
 } = 100000;
 

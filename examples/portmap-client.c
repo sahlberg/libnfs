@@ -145,6 +145,34 @@ void pmap3_gettime_cb(struct rpc_context *rpc, int status, void *data, void *pri
 	client->is_finished = 1;
 }
 
+void pmap3_uaddr2taddr_cb(struct rpc_context *rpc, int status, void *data, void *private_data)
+{
+	struct client *client = private_data;
+	struct pmap3_netbuf *nb = data;
+	int i;
+
+	if (status == RPC_STATUS_ERROR) {
+		printf("PORTMAP3/UADDR2TADDR call failed with \"%s\"\n", (char *)data);
+		exit(10);
+	}
+	if (status != RPC_STATUS_SUCCESS) {
+		printf("PORTMAP3/UADDR2TADDR call failed, status:%d\n", status);
+		exit(10);
+	}
+
+	printf("PORTMAP3/UADDR2TADDR:\n");
+	printf("	MaxLen:%d\n", nb->maxlen);
+	printf("        ");
+	for (i = 0; i < nb->maxlen; i++) {
+		printf("%02x ", nb->buf.buf_val[i]);
+		if (i %16 == 15) {
+			printf("\n        ");
+		}
+	}
+	printf("\n");
+	client->is_finished = 1;
+}
+
 void pmap2_null_cb(struct rpc_context *rpc, int status, void *data, void *private_data)
 {
 	struct client *client = private_data;
@@ -246,10 +274,12 @@ int main(int argc _U_, char *argv[] _U_)
 	int getaddr3 = 0;
 	int dump3 = 0;
 	int gettime3 = 0;
+	int u2t3 = 0;
 	int command_found = 0;
 
 	int getaddr3prog, getaddr3vers;
 	char *getaddr3netid;
+	char *u2t3string;
 
 	rpc = rpc_init_context();
 	if (rpc == NULL) {
@@ -269,6 +299,10 @@ int main(int argc _U_, char *argv[] _U_)
 			command_found++;
 		} else if (!strcmp(argv[i], "gettime3")) {
 			gettime3 = 1;
+			command_found++;
+		} else if (!strcmp(argv[i], "u2t3")) {
+			u2t3 = 1;
+			u2t3string = argv[++i];
 			command_found++;
 		} else if (!strcmp(argv[i], "getaddr3")) {
 			getaddr3 = 1;
@@ -325,6 +359,13 @@ int main(int argc _U_, char *argv[] _U_)
 	if (gettime3) {
 		if (rpc_pmap3_gettime_async(rpc, pmap3_gettime_cb, &client) != 0) {
 			printf("Failed to send GETTIME3 request\n");
+			exit(10);
+		}
+		wait_until_finished(rpc, &client);
+	}
+	if (u2t3) {
+		if (rpc_pmap3_uaddr2taddr_async(rpc, u2t3string, pmap3_uaddr2taddr_cb, &client) != 0) {
+			printf("Failed to send UADDR2TADDR3 request\n");
 			exit(10);
 		}
 		wait_until_finished(rpc, &client);

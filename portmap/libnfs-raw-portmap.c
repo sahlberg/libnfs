@@ -277,3 +277,16 @@ zdr_pmap3_call_result (ZDR *zdrs, pmap3_call_result *objp)
 		 return FALSE;
 	return TRUE;
 }
+
+bool_t
+zdr_pmap3_netbuf (ZDR *zdrs, pmap3_netbuf *objp)
+{
+	register int32_t *buf;
+	buf = NULL;
+
+	 if (!zdr_u_int (zdrs, &objp->maxlen))
+		 return FALSE;
+	 if (!zdr_bytes (zdrs, (char **)&objp->buf.buf_val, (u_int *) &objp->buf.buf_len, ~0))
+		 return FALSE;
+	return TRUE;
+}
