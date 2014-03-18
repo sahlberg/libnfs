@@ -180,6 +180,9 @@ extern  u_int * pmap3_gettime_3_svc(void *, struct svc_req *);
 #define PMAP3_UADDR2TADDR 7
 extern  pmap3_netbuf * pmap3_uaddr2taddr_3(char **, CLIENT *);
 extern  pmap3_netbuf * pmap3_uaddr2taddr_3_svc(char **, struct svc_req *);
+#define PMAP3_TADDR2UADDR 8
+extern  struct pmap3_getaddr_result * pmap3_taddr2uaddr_3(pmap3_netbuf *, CLIENT *);
+extern  struct pmap3_getaddr_result * pmap3_taddr2uaddr_3_svc(pmap3_netbuf *, struct svc_req *);
 extern int pmap_program_3_freeresult (SVCXPRT *, zdrproc_t, caddr_t);
 
 #else /* K&R C */
@@ -207,6 +210,9 @@ extern  u_int * pmap3_gettime_3_svc();
 #define PMAP3_UADDR2TADDR 7
 extern  pmap3_netbuf * pmap3_uaddr2taddr_3();
 extern  pmap3_netbuf * pmap3_uaddr2taddr_3_svc();
+#define PMAP3_TADDR2UADDR 8
+extern  struct pmap3_getaddr_result * pmap3_taddr2uaddr_3();
+extern  struct pmap3_getaddr_result * pmap3_taddr2uaddr_3_svc();
 extern int pmap_program_3_freeresult ();
 #endif /* K&R C */
 

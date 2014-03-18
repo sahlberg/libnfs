@@ -114,6 +114,9 @@ program PMAP_PROGRAM {
 
 		pmap3_netbuf
 		PMAP3_UADDR2TADDR(string)     = 7;
+
+		struct pmap3_getaddr_result
+		PMAP3_TADDR2UADDR(pmap3_netbuf) = 8;
 	} = 3;
 } = 100000;
 

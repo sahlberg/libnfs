@@ -376,3 +376,27 @@ int rpc_pmap3_uaddr2taddr_async(struct rpc_context *rpc, char *uaddr, rpc_cb cb,
 
 	return 0;
 }
+
+int rpc_pmap3_taddr2uaddr_async(struct rpc_context *rpc, struct pmap3_netbuf *nb, rpc_cb cb, void *private_data)
+{
+	struct rpc_pdu *pdu;
+
+	pdu = rpc_allocate_pdu(rpc, PMAP_PROGRAM, PMAP_V3, PMAP3_TADDR2UADDR, cb, private_data, (zdrproc_t)zdr_pmap3_getaddr_result, sizeof(pmap3_getaddr_result));
+	if (pdu == NULL) {
+		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu for PORTMAP3/TADDR2UADDR call");
+		return -1;
+	}
+
+	if (zdr_pmap3_netbuf(&pdu->zdr, nb) == 0) {
+		rpc_set_error(rpc, "ZDR error: Failed to encode data for PORTMAP3/TADDR2UADDR call");
+		rpc_free_pdu(rpc, pdu);
+		return -1;
+	}
+
+	if (rpc_queue_pdu(rpc, pdu) != 0) {
+		rpc_set_error(rpc, "Failed to queue PORTMAP3/TADDR2UADDR pdu: %s", rpc_get_error(rpc));
+		return -1;
+	}
+
+	return 0;
+}
