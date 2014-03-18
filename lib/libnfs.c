@@ -1664,8 +1664,7 @@ int nfs_pread_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t offse
 
 	assert(data->num_calls == 0);
 
-	/* trying to read more than maximum server read size, we has to chop it up into smaller
-	 * reads and collect into a reassembly buffer.
+	/* chop requests into chunks of at most READMAX bytes if necessary.
 	 * we send all reads in parallel so that performance is still good.
 	 */
 	data->max_offset = offset;
@@ -1688,6 +1687,7 @@ int nfs_pread_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t offse
 				return -1;
 			}
 			data->oom = 1;
+			break;
 		}
 		memset(mdata, 0, sizeof(struct nfs_mcb_data));
 		mdata->data   = data;
@@ -1704,6 +1704,7 @@ int nfs_pread_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t offse
 				return -1;
 			}
 			data->oom = 1;
+			break;
 		}
 
 		count               -= readcount;
@@ -1843,8 +1844,7 @@ int nfs_pwrite_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t offs
 	/* hello, clang-analyzer */
 	assert(data->num_calls == 0);
 
-	/* trying to write more than maximum server write size, we has to chop it up into smaller
-	 * chunks.
+	/* chop requests into chunks of at most WRITEMAX bytes if necessary.
 	 * we send all writes in parallel so that performance is still good.
 	 */
 	data->max_offset = offset;
@@ -1867,6 +1867,7 @@ int nfs_pwrite_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t offs
 				return -1;
 			}
 			data->oom = 1;
+			break;
 		}
 		memset(mdata, 0, sizeof(struct nfs_mcb_data));
 		mdata->data   = data;
@@ -1883,6 +1884,7 @@ int nfs_pwrite_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t offs
 				return -1;
 			}
 			data->oom = 1;
+			break;
 		}
 
 		count               -= writecount;
