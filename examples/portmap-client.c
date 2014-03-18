@@ -108,7 +108,7 @@ void pmap3_dump_cb(struct rpc_context *rpc, int status, void *data, void *privat
 void pmap3_getaddr_cb(struct rpc_context *rpc, int status, void *data, void *private_data)
 {
 	struct client *client = private_data;
-	struct pmap3_getaddr_result *gar = data;
+	struct pmap3_string_result *gar = data;
 
 	if (status == RPC_STATUS_ERROR) {
 		printf("PORTMAP3/GETADDR call failed with \"%s\"\n", (char *)data);

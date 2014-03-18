@@ -32,7 +32,7 @@ struct pmap2_dump_result {
        struct pmap2_mapping_list *list;
 };
 
-struct pmap3_getaddr_result {
+struct pmap3_string_result {
        string addr<>;
 };
 
@@ -100,7 +100,7 @@ program PMAP_PROGRAM {
 		bool
 		PMAP3_UNSET(pmap3_mapping)    = 2;
 
-		pmap3_getaddr_result
+		pmap3_string_result
 		PMAP3_GETADDR(pmap3_mapping)  = 3;
 
 		pmap3_dump_result
@@ -115,7 +115,7 @@ program PMAP_PROGRAM {
 		pmap3_netbuf
 		PMAP3_UADDR2TADDR(string)     = 7;
 
-		struct pmap3_getaddr_result
+		struct pmap3_string_result
 		PMAP3_TADDR2UADDR(pmap3_netbuf) = 8;
 	} = 3;
 } = 100000;

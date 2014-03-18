@@ -54,10 +54,10 @@ struct pmap2_dump_result {
 };
 typedef struct pmap2_dump_result pmap2_dump_result;
 
-struct pmap3_getaddr_result {
+struct pmap3_string_result {
 	char *addr;
 };
-typedef struct pmap3_getaddr_result pmap3_getaddr_result;
+typedef struct pmap3_string_result pmap3_string_result;
 
 struct pmap3_mapping {
 	u_int prog;
@@ -166,8 +166,8 @@ extern  bool_t * pmap3_set_3_svc(pmap3_mapping *, struct svc_req *);
 extern  bool_t * pmap3_unset_3(pmap3_mapping *, CLIENT *);
 extern  bool_t * pmap3_unset_3_svc(pmap3_mapping *, struct svc_req *);
 #define PMAP3_GETADDR 3
-extern  pmap3_getaddr_result * pmap3_getaddr_3(pmap3_mapping *, CLIENT *);
-extern  pmap3_getaddr_result * pmap3_getaddr_3_svc(pmap3_mapping *, struct svc_req *);
+extern  pmap3_string_result * pmap3_getaddr_3(pmap3_mapping *, CLIENT *);
+extern  pmap3_string_result * pmap3_getaddr_3_svc(pmap3_mapping *, struct svc_req *);
 #define PMAP3_DUMP 4
 extern  pmap3_dump_result * pmap3_dump_3(void *, CLIENT *);
 extern  pmap3_dump_result * pmap3_dump_3_svc(void *, struct svc_req *);
@@ -181,8 +181,8 @@ extern  u_int * pmap3_gettime_3_svc(void *, struct svc_req *);
 extern  pmap3_netbuf * pmap3_uaddr2taddr_3(char **, CLIENT *);
 extern  pmap3_netbuf * pmap3_uaddr2taddr_3_svc(char **, struct svc_req *);
 #define PMAP3_TADDR2UADDR 8
-extern  struct pmap3_getaddr_result * pmap3_taddr2uaddr_3(pmap3_netbuf *, CLIENT *);
-extern  struct pmap3_getaddr_result * pmap3_taddr2uaddr_3_svc(pmap3_netbuf *, struct svc_req *);
+extern  struct pmap3_string_result * pmap3_taddr2uaddr_3(pmap3_netbuf *, CLIENT *);
+extern  struct pmap3_string_result * pmap3_taddr2uaddr_3_svc(pmap3_netbuf *, struct svc_req *);
 extern int pmap_program_3_freeresult (SVCXPRT *, zdrproc_t, caddr_t);
 
 #else /* K&R C */
@@ -196,8 +196,8 @@ extern  bool_t * pmap3_set_3_svc();
 extern  bool_t * pmap3_unset_3();
 extern  bool_t * pmap3_unset_3_svc();
 #define PMAP3_GETADDR 3
-extern  pmap3_getaddr_result * pmap3_getaddr_3();
-extern  pmap3_getaddr_result * pmap3_getaddr_3_svc();
+extern  pmap3_string_result * pmap3_getaddr_3();
+extern  pmap3_string_result * pmap3_getaddr_3_svc();
 #define PMAP3_DUMP 4
 extern  pmap3_dump_result * pmap3_dump_3();
 extern  pmap3_dump_result * pmap3_dump_3_svc();
@@ -211,8 +211,8 @@ extern  u_int * pmap3_gettime_3_svc();
 extern  pmap3_netbuf * pmap3_uaddr2taddr_3();
 extern  pmap3_netbuf * pmap3_uaddr2taddr_3_svc();
 #define PMAP3_TADDR2UADDR 8
-extern  struct pmap3_getaddr_result * pmap3_taddr2uaddr_3();
-extern  struct pmap3_getaddr_result * pmap3_taddr2uaddr_3_svc();
+extern  struct pmap3_string_result * pmap3_taddr2uaddr_3();
+extern  struct pmap3_string_result * pmap3_taddr2uaddr_3_svc();
 extern int pmap_program_3_freeresult ();
 #endif /* K&R C */
 
@@ -224,7 +224,7 @@ extern  bool_t zdr_pmap2_call_args (ZDR *, pmap2_call_args*);
 extern  bool_t zdr_pmap2_call_result (ZDR *, pmap2_call_result*);
 extern  bool_t zdr_pmap2_mapping_list (ZDR *, pmap2_mapping_list*);
 extern  bool_t zdr_pmap2_dump_result (ZDR *, pmap2_dump_result*);
-extern  bool_t zdr_pmap3_getaddr_result (ZDR *, pmap3_getaddr_result*);
+extern  bool_t zdr_pmap3_string_result (ZDR *, pmap3_string_result*);
 extern  bool_t zdr_pmap3_mapping (ZDR *, pmap3_mapping*);
 extern  bool_t zdr_pmap3_mapping_list (ZDR *, pmap3_mapping_list*);
 extern  bool_t zdr_pmap3_dump_result (ZDR *, pmap3_dump_result*);
@@ -238,7 +238,7 @@ extern bool_t zdr_pmap2_call_args ();
 extern bool_t zdr_pmap2_call_result ();
 extern bool_t zdr_pmap2_mapping_list ();
 extern bool_t zdr_pmap2_dump_result ();
-extern bool_t zdr_pmap3_getaddr_result ();
+extern bool_t zdr_pmap3_string_result ();
 extern bool_t zdr_pmap3_mapping ();
 extern bool_t zdr_pmap3_mapping_list ();
 extern bool_t zdr_pmap3_dump_result ();

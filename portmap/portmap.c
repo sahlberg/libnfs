@@ -263,7 +263,7 @@ int rpc_pmap3_getaddr_async(struct rpc_context *rpc, struct pmap3_mapping *map, 
 {
 	struct rpc_pdu *pdu;
 
-	pdu = rpc_allocate_pdu(rpc, PMAP_PROGRAM, PMAP_V3, PMAP3_GETADDR, cb, private_data, (zdrproc_t)zdr_pmap3_getaddr_result, sizeof(pmap3_getaddr_result));
+	pdu = rpc_allocate_pdu(rpc, PMAP_PROGRAM, PMAP_V3, PMAP3_GETADDR, cb, private_data, (zdrproc_t)zdr_pmap3_string_result, sizeof(pmap3_string_result));
 	if (pdu == NULL) {
 		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu for PORTMAP3/GETADDR call");
 		return -1;
@@ -381,7 +381,7 @@ int rpc_pmap3_taddr2uaddr_async(struct rpc_context *rpc, struct pmap3_netbuf *nb
 {
 	struct rpc_pdu *pdu;
 
-	pdu = rpc_allocate_pdu(rpc, PMAP_PROGRAM, PMAP_V3, PMAP3_TADDR2UADDR, cb, private_data, (zdrproc_t)zdr_pmap3_getaddr_result, sizeof(pmap3_getaddr_result));
+	pdu = rpc_allocate_pdu(rpc, PMAP_PROGRAM, PMAP_V3, PMAP3_TADDR2UADDR, cb, private_data, (zdrproc_t)zdr_pmap3_string_result, sizeof(pmap3_string_result));
 	if (pdu == NULL) {
 		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu for PORTMAP3/TADDR2UADDR call");
 		return -1;

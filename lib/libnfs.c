@@ -465,7 +465,7 @@ static void rpc_connect_program_4_cb(struct rpc_context *rpc, int status, void *
 static void rpc_connect_program_3_cb(struct rpc_context *rpc, int status, void *command_data, void *private_data)
 {
 	struct rpc_cb_data *data = private_data;
-	struct pmap3_getaddr_result *gar;
+	struct pmap3_string_result *gar;
 	uint32_t rpc_port = 0;
 	unsigned char *ptr;
 

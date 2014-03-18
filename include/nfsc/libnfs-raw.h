@@ -280,7 +280,7 @@ EXTERN int rpc_pmap3_unset_async(struct rpc_context *rpc, struct pmap3_mapping *
  *
  * When the callback is invoked, status indicates the result:
  * RPC_STATUS_SUCCESS : We got a successful response from the portmapper daemon.
- *                      data is struct pmap3_getaddr_result.
+ *                      data is struct pmap3_string_result.
  * RPC_STATUS_ERROR   : An error occured when trying to contact the portmapper.
  *                      data is the error string.
  * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
@@ -360,7 +360,7 @@ EXTERN int rpc_pmap3_uaddr2taddr_async(struct rpc_context *rpc, char *uaddr, rpc
  *
  * When the callback is invoked, status indicates the result:
  * RPC_STATUS_SUCCESS : We got a successful response from the portmapper daemon.
- *                      data is a struct pmap3_getaddr_result *.
+ *                      data is a struct pmap3_string_result *.
  * RPC_STATUS_ERROR   : An error occured when trying to contact the portmapper.
  *                      data is the error string.
  * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
