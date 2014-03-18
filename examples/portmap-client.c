@@ -125,6 +125,46 @@ void pmap3_getaddr_cb(struct rpc_context *rpc, int status, void *data, void *pri
 	client->is_finished = 1;
 }
 
+void pmap3_set_cb(struct rpc_context *rpc, int status, void *data, void *private_data)
+{
+	struct client *client = private_data;
+	uint32_t res = *(uint32_t *)data;
+
+	if (status == RPC_STATUS_ERROR) {
+		printf("PORTMAP3/SET call failed with \"%s\"\n", (char *)data);
+		exit(10);
+	}
+	if (status != RPC_STATUS_SUCCESS) {
+		printf("PORTMAP3/SET call failed, status:%d\n", status);
+		exit(10);
+	}
+
+	printf("PORTMAP3/SET:\n");
+	printf("	Res:%d\n", res);
+
+	client->is_finished = 1;
+}
+
+void pmap3_unset_cb(struct rpc_context *rpc, int status, void *data, void *private_data)
+{
+	struct client *client = private_data;
+	uint32_t res = *(uint32_t *)data;
+
+	if (status == RPC_STATUS_ERROR) {
+		printf("PORTMAP3/UNSET call failed with \"%s\"\n", (char *)data);
+		exit(10);
+	}
+	if (status != RPC_STATUS_SUCCESS) {
+		printf("PORTMAP3/UNSET call failed, status:%d\n", status);
+		exit(10);
+	}
+
+	printf("PORTMAP3/UNSET:\n");
+	printf("	Res:%d\n", res);
+
+	client->is_finished = 1;
+}
+
 void pmap3_gettime_cb(struct rpc_context *rpc, int status, void *data, void *private_data)
 {
 	struct client *client = private_data;
@@ -271,14 +311,20 @@ int main(int argc _U_, char *argv[] _U_)
 	int null2 = 0;
 	int dump2 = 0;
 	int null3 = 0;
+	int set3 = 0;
+	int unset3 = 0;
 	int getaddr3 = 0;
 	int dump3 = 0;
 	int gettime3 = 0;
 	int u2t3 = 0;
 	int command_found = 0;
 
+	int set3prog, set3vers;
+	char *set3netid, *set3addr, *set3owner;
+	int unset3prog, unset3vers;
+	char *unset3netid, *unset3addr, *unset3owner;
 	int getaddr3prog, getaddr3vers;
-	char *getaddr3netid;
+	char *getaddr3netid, *getaddr3addr, *getaddr3owner;
 	char *u2t3string;
 
 	rpc = rpc_init_context();
@@ -309,6 +355,16 @@ int main(int argc _U_, char *argv[] _U_)
 			getaddr3prog = atoi(argv[++i]);
 			getaddr3vers = atoi(argv[++i]);
 			getaddr3netid = argv[++i];
+			getaddr3addr  = argv[++i];
+			getaddr3owner = argv[++i];
+			command_found++;
+		} else if (!strcmp(argv[i], "set3")) {
+			set3 = 1;
+			set3prog = atoi(argv[++i]);
+			set3vers = atoi(argv[++i]);
+			set3netid = argv[++i];
+			set3addr  = argv[++i];
+			set3owner = argv[++i];
 			command_found++;
 		} else if (!strcmp(argv[i], "null3")) {
 			null3 = 1;
@@ -373,13 +429,41 @@ int main(int argc _U_, char *argv[] _U_)
 	if (getaddr3) {
 		struct pmap3_mapping map;
 
-		map.prog=getaddr3prog;
-		map.vers=getaddr3vers;
-		map.netid=getaddr3netid;
-		map.addr="";
-		map.owner="";
+		map.prog  = getaddr3prog;
+		map.vers  = getaddr3vers;
+		map.netid = getaddr3netid;
+		map.addr  = getaddr3addr;
+		map.owner = getaddr3owner;
 		if (rpc_pmap3_getaddr_async(rpc, &map, pmap3_getaddr_cb, &client) != 0) {
 			printf("Failed to send GETADDR3 request\n");
+			exit(10);
+		}
+		wait_until_finished(rpc, &client);
+	}
+	if (set3) {
+		struct pmap3_mapping map;
+
+		map.prog  = set3prog;
+		map.vers  = set3vers;
+		map.netid = set3netid;
+		map.addr  = set3addr;
+		map.owner = set3owner;
+		if (rpc_pmap3_set_async(rpc, &map, pmap3_set_cb, &client) != 0) {
+			printf("Failed to send SET3 request\n");
+			exit(10);
+		}
+		wait_until_finished(rpc, &client);
+	}
+	if (unset3) {
+		struct pmap3_mapping map;
+
+		map.prog  = unset3prog;
+		map.vers  = unset3vers;
+		map.netid = unset3netid;
+		map.addr  = unset3addr;
+		map.owner = unset3owner;
+		if (rpc_pmap3_unset_async(rpc, &map, pmap3_unset_cb, &client) != 0) {
+			printf("Failed to send UNSET3 request\n");
 			exit(10);
 		}
 		wait_until_finished(rpc, &client);
