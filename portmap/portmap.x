@@ -53,6 +53,18 @@ struct pmap3_dump_result {
        struct pmap3_mapping_list *list;
 };
 
+struct pmap3_call_args {
+       unsigned int prog;
+       unsigned int vers;
+       unsigned int proc;
+       opaque args<>;
+};
+
+struct pmap3_call_result {
+	unsigned int port;
+	opaque res<>;
+};
+
 program PMAP_PROGRAM {
 	version PMAP_V2 {
         	void
@@ -88,6 +100,9 @@ program PMAP_PROGRAM {
 
 		pmap3_dump_result
 		PMAP3_DUMP(void)              = 4;
+
+		pmap3_call_result
+		PMAP3_CALLIT(pmap3_call_args) = 5;
 
 		unsigned int
 		PMAP3_GETTIME(void)           = 6;

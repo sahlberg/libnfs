@@ -321,3 +321,34 @@ int rpc_pmap3_gettime_async(struct rpc_context *rpc, rpc_cb cb, void *private_da
 
 	return 0;
 }
+
+int rpc_pmap3_callit_async(struct rpc_context *rpc, int program, int version, int procedure, char *data, int datalen, rpc_cb cb, void *private_data)
+{
+	struct rpc_pdu *pdu;
+	struct pmap3_call_args ca;
+
+	pdu = rpc_allocate_pdu(rpc, PMAP_PROGRAM, PMAP_V3, PMAP3_CALLIT, cb, private_data, (zdrproc_t)zdr_pmap3_call_result, sizeof(pmap3_call_result));
+	if (pdu == NULL) {
+		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu for PORTMAP3/CALLIT call");
+		return -1;
+	}
+
+	ca.prog = program;
+	ca.vers = version;
+	ca.proc = procedure;
+	ca.args.args_len = datalen;
+	ca.args.args_val = data;
+
+	if (zdr_pmap3_call_args(&pdu->zdr, &ca) == 0) {
+		rpc_set_error(rpc, "ZDR error: Failed to encode data for PORTMAP3/CALLIT call");
+		rpc_free_pdu(rpc, pdu);
+		return -1;
+	}
+
+	if (rpc_queue_pdu(rpc, pdu) != 0) {
+		rpc_set_error(rpc, "Failed to queue PORTMAP3/CALLIT pdu: %s", rpc_get_error(rpc));
+		return -1;
+	}
+
+	return 0;
+}
