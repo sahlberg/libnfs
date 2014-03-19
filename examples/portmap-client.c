@@ -216,7 +216,7 @@ void pmap3_uaddr2taddr_cb(struct rpc_context *rpc, int status, void *data, void 
 	printf("\n");
 	printf("        ---\n");
 	ss = (struct sockaddr_storage *)&nb->buf.buf_val[0];
-	getnameinfo((struct sockaddr *)ss, sizeof(struct sockaddr_in6),
+	getnameinfo((struct sockaddr *)ss, sizeof(struct sockaddr_storage),
 		&host[0], sizeof(host), &port[0], sizeof(port),
 		NI_NUMERICHOST|NI_NUMERICSERV);
 	switch (ss->ss_family) {
