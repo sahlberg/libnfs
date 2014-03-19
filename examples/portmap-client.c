@@ -34,9 +34,11 @@
 #include <netinet/in.h>
 #endif
 
+#include <netdb.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/socket.h>
 #include <time.h>
 #include "libnfs-zdr.h"
 #include "libnfs.h"
@@ -189,6 +191,8 @@ void pmap3_uaddr2taddr_cb(struct rpc_context *rpc, int status, void *data, void 
 {
 	struct client *client = private_data;
 	struct pmap3_netbuf *nb = data;
+	struct sockaddr_storage *ss;
+	char host[256], port[6];
 	int i;
 
 	if (status == RPC_STATUS_ERROR) {
@@ -210,6 +214,19 @@ void pmap3_uaddr2taddr_cb(struct rpc_context *rpc, int status, void *data, void 
 		}
 	}
 	printf("\n");
+	printf("        ---\n");
+	ss = (struct sockaddr_storage *)&nb->buf.buf_val[0];
+	getnameinfo((struct sockaddr *)ss, sizeof(struct sockaddr_in6),
+		&host[0], sizeof(host), &port[0], sizeof(port),
+		NI_NUMERICHOST|NI_NUMERICSERV);
+	switch (ss->ss_family) {
+	case AF_INET:
+		printf("        IPv4: %s:%s\n", &host[0], &port[0]);
+		break;
+	case AF_INET6:
+		printf("        IPv6: %s:%s\n", &host[0], &port[0]);
+		break;
+	}
 	client->is_finished = 1;
 }
 
