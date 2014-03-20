@@ -96,6 +96,15 @@ development libraries for LibNFS
 %{_libdir}/pkgconfig/libnfs.pc
 
 %changelog
+* Wed Mar 19 2014: Version 1.9.3
+ - Add O_TRUNC support to nfs_open()
+ - Add a simple but incomplete LD_PRELOAD tool
+ - Fixes for some memory leaks and C++ compile support
+ - Make ANDROID default uid/gid to 65534
+ - Allow the READDIRPLUS emulation to still work if some objects
+   in the direcotry can not be lookedup (NFSv4 ACL denying READ-ATTRIBUTES)
+ - Have libnfs retry any read/write operations where the server responds
+   with a short read/write. Some servers do this when they are overloaded?
 * Thu Jan 30 2014 : Version 1.9.2
  - Remove chdir change. This needs more testing.
 * Tue Jan 28 2014 : Version 1.9.1
