@@ -1,5 +1,6 @@
 /*
  * From RFC1833
+ * and http://tools.ietf.org/html/draft-ietf-oncrpc-rpcbind-00
  */
 
 const PMAP_PORT = 111;      /* portmapper port number */
@@ -67,6 +68,10 @@ struct pmap3_call_result {
 
 struct pmap3_netbuf {
 	unsigned int maxlen;
+	/* This pretty much contains a sockaddr_storage.
+	 * Beware differences in endianess for ss_family
+	 * and whether or not ss_len exists.
+	 */
 	opaque buf<>;
 };
 
