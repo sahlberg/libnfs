@@ -164,6 +164,7 @@ AC_CONFIG_FILES([Makefile]
                 [nsm/Makefile]
                 [portmap/Makefile]
                 [rquota/Makefile]
+                [utils/Makefile]
                 [examples/Makefile]
                )
 
