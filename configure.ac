@@ -155,6 +155,7 @@ AC_CHECK_MEMBER([struct sockaddr_storage.ss_family],
 
 #output
 AC_CONFIG_FILES([Makefile]
+                [doc/Makefile]
                 [include/Makefile]
                 [lib/Makefile]
                 [mount/Makefile]
