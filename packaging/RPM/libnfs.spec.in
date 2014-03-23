@@ -96,7 +96,7 @@ development libraries for LibNFS
 %{_libdir}/pkgconfig/libnfs.pc
 
 %changelog
-* Wed Mar 19 2014: Version 1.9.3
+* Wed Mar 19 2014 : Version 1.9.3
  - Add O_TRUNC support to nfs_open()
  - Add a simple but incomplete LD_PRELOAD tool
  - Fixes for some memory leaks and C++ compile support
