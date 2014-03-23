@@ -95,6 +95,18 @@ development libraries for LibNFS
 %{_libdir}/libnfs.la
 %{_libdir}/pkgconfig/libnfs.pc
 
+%package utils
+Summary: Utility programs for LibNFS
+Group: Applications/System
+
+%description utils
+Utility programs for LibNFS
+
+%files utils
+%defattr(-,root,root)
+%{_bindir}/nfs-ls
+%{_mandir}/man1/nfs-ls.1.gz
+
 %changelog
 * Wed Mar 19 2014 : Version 1.9.3
  - Add O_TRUNC support to nfs_open()
@@ -120,7 +132,7 @@ development libraries for LibNFS
  - RPC layer support for NSM
  - Add example FUSE filesystem.
  - Minor fixes.
-* Sun Oct 30 2013 : Version 1.8
+* Wed Oct 30 2013 : Version 1.8
  - Fix nasty memory leak in read_from_socket
  - minor updates
 * Sun Oct 20 2013 : Version 1.7
