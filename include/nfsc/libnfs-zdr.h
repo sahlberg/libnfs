@@ -266,11 +266,13 @@ uint32_t libnfs_zdr_getpos(ZDR *zdrs);
 #define zdr_free libnfs_zdr_free
 void libnfs_zdr_free(zdrproc_t proc, char *objp);
 
+struct rpc_context;
+
 #define zdr_callmsg libnfs_zdr_callmsg
-bool_t libnfs_zdr_callmsg(ZDR *zdrs, struct rpc_msg *msg);
+bool_t libnfs_zdr_callmsg(struct rpc_context *rpc, ZDR *zdrs, struct rpc_msg *msg);
 
 #define zdr_replymsg libnfs_zdr_replymsg
-bool_t libnfs_zdr_replymsg(ZDR *zdrs, struct rpc_msg *msg);
+bool_t libnfs_zdr_replymsg(struct rpc_context *rpc, ZDR *zdrs, struct rpc_msg *msg);
 
 #define authnone_create libnfs_authnone_create
 struct AUTH *libnfs_authnone_create(void);

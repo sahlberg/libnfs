@@ -25,19 +25,21 @@
 #include "libnfs-private.h"
 #include "libnfs-raw-portmap.h"
 
-
-int rpc_pmap_null_async(struct rpc_context *rpc, rpc_cb cb, void *private_data)
+/*
+ * PORTMAP v2
+ */
+int rpc_pmap2_null_async(struct rpc_context *rpc, rpc_cb cb, void *private_data)
 {
 	struct rpc_pdu *pdu;
 
-	pdu = rpc_allocate_pdu(rpc, PMAP_PROGRAM, PMAP_V2, PMAP_NULL, cb, private_data, (zdrproc_t)zdr_void, 0);
+	pdu = rpc_allocate_pdu(rpc, PMAP_PROGRAM, PMAP_V2, PMAP2_NULL, cb, private_data, (zdrproc_t)zdr_void, 0);
 	if (pdu == NULL) {
-		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu for portmap/null call");
+		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu for PORTMAP2/NULL call");
 		return -1;
 	}
 
 	if (rpc_queue_pdu(rpc, pdu) != 0) {
-		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for portmap/null call");
+		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for PORTMAP2/NULL call");
 		rpc_free_pdu(rpc, pdu);
 		return -1;
 	}
@@ -45,14 +47,14 @@ int rpc_pmap_null_async(struct rpc_context *rpc, rpc_cb cb, void *private_data)
 	return 0;
 }
 
-int rpc_pmap_getport_async(struct rpc_context *rpc, int program, int version, int protocol, rpc_cb cb, void *private_data)
+int rpc_pmap2_getport_async(struct rpc_context *rpc, int program, int version, int protocol, rpc_cb cb, void *private_data)
 {
 	struct rpc_pdu *pdu;
-	struct pmap_mapping m;
+	struct pmap2_mapping m;
 
-	pdu = rpc_allocate_pdu(rpc, PMAP_PROGRAM, PMAP_V2, PMAP_GETPORT, cb, private_data, (zdrproc_t)zdr_int, sizeof(uint32_t));
+	pdu = rpc_allocate_pdu(rpc, PMAP_PROGRAM, PMAP_V2, PMAP2_GETPORT, cb, private_data, (zdrproc_t)zdr_int, sizeof(uint32_t));
 	if (pdu == NULL) {
-		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu for portmap/getport call");
+		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu for PORTMAP2/GETPORT call");
 		return -1;
 	}
 
@@ -60,14 +62,14 @@ int rpc_pmap_getport_async(struct rpc_context *rpc, int program, int version, in
 	m.vers = version;
 	m.prot = protocol;
 	m.port = 0;
-	if (zdr_pmap_mapping(&pdu->zdr, &m) == 0) {
-		rpc_set_error(rpc, "ZDR error: Failed to encode data for portmap/getport call");
+	if (zdr_pmap2_mapping(&pdu->zdr, &m) == 0) {
+		rpc_set_error(rpc, "ZDR error: Failed to encode data for PORTMAP2/GETPORT call");
 		rpc_free_pdu(rpc, pdu);
 		return -1;
 	}
 
 	if (rpc_queue_pdu(rpc, pdu) != 0) {
-		rpc_set_error(rpc, "Failed to queue portmap/getport pdu");
+		rpc_set_error(rpc, "Failed to queue PORTMAP2/GETPORT pdu");
 		rpc_free_pdu(rpc, pdu);
 		return -1;
 	}
@@ -75,14 +77,14 @@ int rpc_pmap_getport_async(struct rpc_context *rpc, int program, int version, in
 	return 0;
 }
 
-int rpc_pmap_set_async(struct rpc_context *rpc, int program, int version, int protocol, int port, rpc_cb cb, void *private_data)
+int rpc_pmap2_set_async(struct rpc_context *rpc, int program, int version, int protocol, int port, rpc_cb cb, void *private_data)
 {
 	struct rpc_pdu *pdu;
-	struct pmap_mapping m;
+	struct pmap2_mapping m;
 
-	pdu = rpc_allocate_pdu(rpc, PMAP_PROGRAM, PMAP_V2, PMAP_SET, cb, private_data, (zdrproc_t)zdr_int, sizeof(uint32_t));
+	pdu = rpc_allocate_pdu(rpc, PMAP_PROGRAM, PMAP_V2, PMAP2_SET, cb, private_data, (zdrproc_t)zdr_int, sizeof(uint32_t));
 	if (pdu == NULL) {
-		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu for portmap/set call");
+		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu for PORTMAP2/SET call");
 		return -1;
 	}
 
@@ -90,14 +92,14 @@ int rpc_pmap_set_async(struct rpc_context *rpc, int program, int version, int pr
 	m.vers = version;
 	m.prot = protocol;
 	m.port = port;
-	if (zdr_pmap_mapping(&pdu->zdr, &m) == 0) {
-		rpc_set_error(rpc, "ZDR error: Failed to encode data for portmap/set call");
+	if (zdr_pmap2_mapping(&pdu->zdr, &m) == 0) {
+		rpc_set_error(rpc, "ZDR error: Failed to encode data for PORTMAP2/SET call");
 		rpc_free_pdu(rpc, pdu);
 		return -1;
 	}
 
 	if (rpc_queue_pdu(rpc, pdu) != 0) {
-		rpc_set_error(rpc, "Failed to queue portmap/set pdu");
+		rpc_set_error(rpc, "Failed to queue PORTMAP2/SET pdu");
 		rpc_free_pdu(rpc, pdu);
 		return -1;
 	}
@@ -105,14 +107,14 @@ int rpc_pmap_set_async(struct rpc_context *rpc, int program, int version, int pr
 	return 0;
 }
 
-int rpc_pmap_unset_async(struct rpc_context *rpc, int program, int version, int protocol, int port, rpc_cb cb, void *private_data)
+int rpc_pmap2_unset_async(struct rpc_context *rpc, int program, int version, int protocol, int port, rpc_cb cb, void *private_data)
 {
 	struct rpc_pdu *pdu;
-	struct pmap_mapping m;
+	struct pmap2_mapping m;
 
-	pdu = rpc_allocate_pdu(rpc, PMAP_PROGRAM, PMAP_V2, PMAP_UNSET, cb, private_data, (zdrproc_t)zdr_int, sizeof(uint32_t));
+	pdu = rpc_allocate_pdu(rpc, PMAP_PROGRAM, PMAP_V2, PMAP2_UNSET, cb, private_data, (zdrproc_t)zdr_int, sizeof(uint32_t));
 	if (pdu == NULL) {
-		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu for portmap/unset call");
+		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu for PORTMAP2/UNSET call");
 		return -1;
 	}
 
@@ -120,14 +122,14 @@ int rpc_pmap_unset_async(struct rpc_context *rpc, int program, int version, int 
 	m.vers = version;
 	m.prot = protocol;
 	m.port = port;
-	if (zdr_pmap_mapping(&pdu->zdr, &m) == 0) {
-		rpc_set_error(rpc, "ZDR error: Failed to encode data for portmap/unset call");
+	if (zdr_pmap2_mapping(&pdu->zdr, &m) == 0) {
+		rpc_set_error(rpc, "ZDR error: Failed to encode data for PORTMAP2/UNSET call");
 		rpc_free_pdu(rpc, pdu);
 		return -1;
 	}
 
 	if (rpc_queue_pdu(rpc, pdu) != 0) {
-		rpc_set_error(rpc, "Failed to queue portmap/unset pdu");
+		rpc_set_error(rpc, "Failed to queue PORTMAP2/UNSET pdu");
 		rpc_free_pdu(rpc, pdu);
 		return -1;
 	}
@@ -135,14 +137,33 @@ int rpc_pmap_unset_async(struct rpc_context *rpc, int program, int version, int 
 	return 0;
 }
 
-int rpc_pmap_callit_async(struct rpc_context *rpc, int program, int version, int procedure, char *data, int datalen, rpc_cb cb, void *private_data)
+int rpc_pmap2_dump_async(struct rpc_context *rpc, rpc_cb cb, void *private_data)
 {
 	struct rpc_pdu *pdu;
-	struct pmap_call_args ca;
 
-	pdu = rpc_allocate_pdu(rpc, PMAP_PROGRAM, PMAP_V2, PMAP_CALLIT, cb, private_data, (zdrproc_t)zdr_pmap_call_result, sizeof(pmap_call_result));
+	pdu = rpc_allocate_pdu(rpc, PMAP_PROGRAM, PMAP_V2, PMAP2_DUMP, cb, private_data, (zdrproc_t)zdr_pmap2_dump_result, sizeof(pmap2_dump_result));
 	if (pdu == NULL) {
-		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu for portmap/callit call");
+		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu for PORTMAP2/DUMP call");
+		return -1;
+	}
+
+	if (rpc_queue_pdu(rpc, pdu) != 0) {
+		rpc_set_error(rpc, "Failed to queue PORTMAP2/DUMP pdu");
+		rpc_free_pdu(rpc, pdu);
+		return -1;
+	}
+
+	return 0;
+}
+
+int rpc_pmap2_callit_async(struct rpc_context *rpc, int program, int version, int procedure, char *data, int datalen, rpc_cb cb, void *private_data)
+{
+	struct rpc_pdu *pdu;
+	struct pmap2_call_args ca;
+
+	pdu = rpc_allocate_pdu(rpc, PMAP_PROGRAM, PMAP_V2, PMAP2_CALLIT, cb, private_data, (zdrproc_t)zdr_pmap2_call_result, sizeof(pmap2_call_result));
+	if (pdu == NULL) {
+		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu for PORTMAP2/CALLIT call");
 		return -1;
 	}
 
@@ -152,14 +173,228 @@ int rpc_pmap_callit_async(struct rpc_context *rpc, int program, int version, int
 	ca.args.args_len = datalen;
 	ca.args.args_val = data;
 
-	if (zdr_pmap_call_args(&pdu->zdr, &ca) == 0) {
-		rpc_set_error(rpc, "ZDR error: Failed to encode data for portmap/callit call");
+	if (zdr_pmap2_call_args(&pdu->zdr, &ca) == 0) {
+		rpc_set_error(rpc, "ZDR error: Failed to encode data for PORTMAP2/CALLIT call");
 		rpc_free_pdu(rpc, pdu);
 		return -1;
 	}
 
 	if (rpc_queue_pdu(rpc, pdu) != 0) {
-		rpc_set_error(rpc, "Failed to queue portmap/callit pdu: %s", rpc_get_error(rpc));
+		rpc_set_error(rpc, "Failed to queue PORTMAP2/CALLIT pdu: %s", rpc_get_error(rpc));
+		return -1;
+	}
+
+	return 0;
+}
+
+/*
+ * PORTMAP v3
+ */
+int rpc_pmap3_null_async(struct rpc_context *rpc, rpc_cb cb, void *private_data)
+{
+	struct rpc_pdu *pdu;
+
+	pdu = rpc_allocate_pdu(rpc, PMAP_PROGRAM, PMAP_V3, PMAP3_NULL, cb, private_data, (zdrproc_t)zdr_void, 0);
+	if (pdu == NULL) {
+		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu for PORTMAP3/NULL call");
+		return -1;
+	}
+
+	if (rpc_queue_pdu(rpc, pdu) != 0) {
+		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for PORTMAP3/NULL call");
+		rpc_free_pdu(rpc, pdu);
+		return -1;
+	}
+
+	return 0;
+}
+
+int rpc_pmap3_set_async(struct rpc_context *rpc, struct pmap3_mapping *map, rpc_cb cb, void *private_data)
+{
+	struct rpc_pdu *pdu;
+
+	pdu = rpc_allocate_pdu(rpc, PMAP_PROGRAM, PMAP_V3, PMAP3_SET, cb, private_data, (zdrproc_t)zdr_int, sizeof(uint32_t));
+	if (pdu == NULL) {
+		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu for PORTMAP3/SET call");
+		return -1;
+	}
+
+	if (zdr_pmap3_mapping(&pdu->zdr, map) == 0) {
+		rpc_set_error(rpc, "ZDR error: Failed to encode data for PORTMAP3/SET call");
+		rpc_free_pdu(rpc, pdu);
+		return -1;
+	}
+
+	if (rpc_queue_pdu(rpc, pdu) != 0) {
+		rpc_set_error(rpc, "Failed to queue PORTMAP3/SET pdu");
+		rpc_free_pdu(rpc, pdu);
+		return -1;
+	}
+
+	return 0;
+}
+
+int rpc_pmap3_unset_async(struct rpc_context *rpc, struct pmap3_mapping *map, rpc_cb cb, void *private_data)
+{
+	struct rpc_pdu *pdu;
+
+	pdu = rpc_allocate_pdu(rpc, PMAP_PROGRAM, PMAP_V3, PMAP3_UNSET, cb, private_data, (zdrproc_t)zdr_int, sizeof(uint32_t));
+	if (pdu == NULL) {
+		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu for PORTMAP3/UNSET call");
+		return -1;
+	}
+
+	if (zdr_pmap3_mapping(&pdu->zdr, map) == 0) {
+		rpc_set_error(rpc, "ZDR error: Failed to encode data for PORTMAP3/UNSET call");
+		rpc_free_pdu(rpc, pdu);
+		return -1;
+	}
+
+	if (rpc_queue_pdu(rpc, pdu) != 0) {
+		rpc_set_error(rpc, "Failed to queue PORTMAP3/UNSET pdu");
+		rpc_free_pdu(rpc, pdu);
+		return -1;
+	}
+
+	return 0;
+}
+
+int rpc_pmap3_getaddr_async(struct rpc_context *rpc, struct pmap3_mapping *map, rpc_cb cb, void *private_data)
+{
+	struct rpc_pdu *pdu;
+
+	pdu = rpc_allocate_pdu(rpc, PMAP_PROGRAM, PMAP_V3, PMAP3_GETADDR, cb, private_data, (zdrproc_t)zdr_pmap3_string_result, sizeof(pmap3_string_result));
+	if (pdu == NULL) {
+		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu for PORTMAP3/GETADDR call");
+		return -1;
+	}
+
+	if (zdr_pmap3_mapping(&pdu->zdr, map) == 0) {
+		rpc_set_error(rpc, "ZDR error: Failed to encode data for PORTMAP3/GETADDR call");
+		rpc_free_pdu(rpc, pdu);
+		return -1;
+	}
+
+	if (rpc_queue_pdu(rpc, pdu) != 0) {
+		rpc_set_error(rpc, "Failed to queue PORTMAP3/GETADDR pdu");
+		rpc_free_pdu(rpc, pdu);
+		return -1;
+	}
+
+	return 0;
+}
+
+int rpc_pmap3_dump_async(struct rpc_context *rpc, rpc_cb cb, void *private_data)
+{
+	struct rpc_pdu *pdu;
+
+	pdu = rpc_allocate_pdu(rpc, PMAP_PROGRAM, PMAP_V3, PMAP3_DUMP, cb, private_data, (zdrproc_t)zdr_pmap3_dump_result, sizeof(pmap3_dump_result));
+	if (pdu == NULL) {
+		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu for PORTMAP3/DUMP call");
+		return -1;
+	}
+
+	if (rpc_queue_pdu(rpc, pdu) != 0) {
+		rpc_set_error(rpc, "Failed to queue PORTMAP3/DUMP pdu");
+		rpc_free_pdu(rpc, pdu);
+		return -1;
+	}
+
+	return 0;
+}
+
+int rpc_pmap3_gettime_async(struct rpc_context *rpc, rpc_cb cb, void *private_data)
+{
+	struct rpc_pdu *pdu;
+
+	pdu = rpc_allocate_pdu(rpc, PMAP_PROGRAM, PMAP_V3, PMAP3_GETTIME, cb, private_data, (zdrproc_t)zdr_int, sizeof(uint32_t));
+	if (pdu == NULL) {
+		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu for PORTMAP3/GETTIME call");
+		return -1;
+	}
+
+	if (rpc_queue_pdu(rpc, pdu) != 0) {
+		rpc_set_error(rpc, "Failed to queue PORTMAP3/GETTIME pdu");
+		rpc_free_pdu(rpc, pdu);
+		return -1;
+	}
+
+	return 0;
+}
+
+int rpc_pmap3_callit_async(struct rpc_context *rpc, int program, int version, int procedure, char *data, int datalen, rpc_cb cb, void *private_data)
+{
+	struct rpc_pdu *pdu;
+	struct pmap3_call_args ca;
+
+	pdu = rpc_allocate_pdu(rpc, PMAP_PROGRAM, PMAP_V3, PMAP3_CALLIT, cb, private_data, (zdrproc_t)zdr_pmap3_call_result, sizeof(pmap3_call_result));
+	if (pdu == NULL) {
+		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu for PORTMAP3/CALLIT call");
+		return -1;
+	}
+
+	ca.prog = program;
+	ca.vers = version;
+	ca.proc = procedure;
+	ca.args.args_len = datalen;
+	ca.args.args_val = data;
+
+	if (zdr_pmap3_call_args(&pdu->zdr, &ca) == 0) {
+		rpc_set_error(rpc, "ZDR error: Failed to encode data for PORTMAP3/CALLIT call");
+		rpc_free_pdu(rpc, pdu);
+		return -1;
+	}
+
+	if (rpc_queue_pdu(rpc, pdu) != 0) {
+		rpc_set_error(rpc, "Failed to queue PORTMAP3/CALLIT pdu: %s", rpc_get_error(rpc));
+		return -1;
+	}
+
+	return 0;
+}
+
+int rpc_pmap3_uaddr2taddr_async(struct rpc_context *rpc, char *uaddr, rpc_cb cb, void *private_data)
+{
+	struct rpc_pdu *pdu;
+
+	pdu = rpc_allocate_pdu(rpc, PMAP_PROGRAM, PMAP_V3, PMAP3_UADDR2TADDR, cb, private_data, (zdrproc_t)zdr_pmap3_netbuf, sizeof(pmap3_netbuf));
+	if (pdu == NULL) {
+		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu for PORTMAP3/UADDR2TADDR call");
+		return -1;
+	}
+
+	if (zdr_string(&pdu->zdr, &uaddr, 255) == 0) {
+		rpc_set_error(rpc, "ZDR error: Failed to encode data for PORTMAP3/UADDR2TADDR call");
+		rpc_free_pdu(rpc, pdu);
+		return -1;
+	}
+
+	if (rpc_queue_pdu(rpc, pdu) != 0) {
+		rpc_set_error(rpc, "Failed to queue PORTMAP3/UADDR2TADDR pdu: %s", rpc_get_error(rpc));
+		return -1;
+	}
+
+	return 0;
+}
+
+int rpc_pmap3_taddr2uaddr_async(struct rpc_context *rpc, struct pmap3_netbuf *nb, rpc_cb cb, void *private_data)
+{
+	struct rpc_pdu *pdu;
+
+	pdu = rpc_allocate_pdu(rpc, PMAP_PROGRAM, PMAP_V3, PMAP3_TADDR2UADDR, cb, private_data, (zdrproc_t)zdr_pmap3_string_result, sizeof(pmap3_string_result));
+	if (pdu == NULL) {
+		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu for PORTMAP3/TADDR2UADDR call");
+		return -1;
+	}
+
+	if (zdr_pmap3_netbuf(&pdu->zdr, nb) == 0) {
+		rpc_set_error(rpc, "ZDR error: Failed to encode data for PORTMAP3/TADDR2UADDR call");
+		rpc_free_pdu(rpc, pdu);
+		return -1;
+	}
+
+	if (rpc_queue_pdu(rpc, pdu) != 0) {
+		rpc_set_error(rpc, "Failed to queue PORTMAP3/TADDR2UADDR pdu: %s", rpc_get_error(rpc));
 		return -1;
 	}
 

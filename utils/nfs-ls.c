@@ -91,7 +91,7 @@ void process_dir(struct nfs_context *nfs, char *dir, int level) {
 	struct nfsdirent *nfsdirent;
 	struct statvfs svfs;
 	struct nfsdir *nfsdir;
-	struct stat st;
+	struct nfs_stat_64 st;
 	
 	if (!level) {
 		printf("Recursion detected!\n");
@@ -111,13 +111,13 @@ void process_dir(struct nfs_context *nfs, char *dir, int level) {
 		}
 
 		snprintf(path, 1024, "%s/%s", dir, nfsdirent->name);
-		ret = nfs_stat(nfs, path, &st);
+		ret = nfs_stat64(nfs, path, &st);
 		if (ret != 0) {
 			fprintf(stderr, "Failed to stat(%s) %s\n", path, nfs_get_error(nfs));
 			continue;
 		}
 
-		switch (st.st_mode & S_IFMT) {
+		switch (st.nfs_mode & S_IFMT) {
 #ifndef WIN32
 		case S_IFLNK:
 			printf("l");
@@ -137,28 +137,28 @@ void process_dir(struct nfs_context *nfs, char *dir, int level) {
 			break;
 		}
 		printf("%c%c%c",
-			"-r"[!!(st.st_mode & S_IRUSR)],
-			"-w"[!!(st.st_mode & S_IWUSR)],
-			"-x"[!!(st.st_mode & S_IXUSR)]
+			"-r"[!!(st.nfs_mode & S_IRUSR)],
+			"-w"[!!(st.nfs_mode & S_IWUSR)],
+			"-x"[!!(st.nfs_mode & S_IXUSR)]
 		);
 		printf("%c%c%c",
-			"-r"[!!(st.st_mode & S_IRGRP)],
-			"-w"[!!(st.st_mode & S_IWGRP)],
-			"-x"[!!(st.st_mode & S_IXGRP)]
+			"-r"[!!(st.nfs_mode & S_IRGRP)],
+			"-w"[!!(st.nfs_mode & S_IWGRP)],
+			"-x"[!!(st.nfs_mode & S_IXGRP)]
 		);
 		printf("%c%c%c",
-			"-r"[!!(st.st_mode & S_IROTH)],
-			"-w"[!!(st.st_mode & S_IWOTH)],
-			"-x"[!!(st.st_mode & S_IXOTH)]
+			"-r"[!!(st.nfs_mode & S_IROTH)],
+			"-w"[!!(st.nfs_mode & S_IWOTH)],
+			"-x"[!!(st.nfs_mode & S_IXOTH)]
 		);
-		printf(" %2d", (int) st.st_nlink);
-		printf(" %5d", st.st_uid);
-		printf(" %5d", st.st_gid);
-		printf(" %12" PRId64, st.st_size);
+		printf(" %2d", (int)st.nfs_nlink);
+		printf(" %5d", (int)st.nfs_uid);
+		printf(" %5d", (int)st.nfs_gid);
+		printf(" %12" PRId64, st.nfs_size);
 
 		printf(" %s\n", path + 1);
 		
-		if (recursive && (st.st_mode & S_IFMT) == S_IFDIR) {
+		if (recursive && (st.nfs_mode & S_IFMT) == S_IFDIR) {
 			process_dir(nfs, path, level - 1);
 		}
 	}
@@ -260,7 +260,7 @@ int main(int argc, char *argv[])
 	process_dir(nfs, "", 16);
 
 	if (summary) {
-		if (nfs_statvfs(nfs, "/", &stvfs) != 0) {
+		if (nfs_statvfs(nfs, "", &stvfs) != 0) {
 			goto finished;
 		}
 		printf("\n%12" PRId64 " of %12" PRId64 " bytes free.\n",

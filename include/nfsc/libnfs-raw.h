@@ -110,7 +110,7 @@ int rpc_connect_async(struct rpc_context *rpc, const char *server, int port, rpc
  * RPC_STATUS_CANCEL  : The connection attempt was aborted before it could complete.
  *                    : data is NULL.
  */
-int rpc_connect_program_async(struct rpc_context *rpc, char *server, int program, int version, rpc_cb cb, void *private_data);
+int rpc_connect_program_async(struct rpc_context *rpc, const char *server, int program, int version, rpc_cb cb, void *private_data);
 /*
  * When disconnecting a connection in flight. All commands in flight will be called with the callback
  * and status RPC_STATUS_ERROR. Data will be the error string for the disconnection.
@@ -119,11 +119,11 @@ int rpc_disconnect(struct rpc_context *rpc, char *error);
 
 
 /*
- * PORTMAP FUNCTIONS
+ * PORTMAP v2 FUNCTIONS
  */
 
 /*
- * Call PORTMAPPER/NULL
+ * Call PORTMAPPER2/NULL
  * Function returns
  *  0 : The connection was initiated. Once the connection establish finishes, the callback will be invoked.
  * <0 : An error occured when trying to set up the connection. The callback will not be invoked.
@@ -136,11 +136,11 @@ int rpc_disconnect(struct rpc_context *rpc, char *error);
  * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
  *                     data is NULL.
  */
-EXTERN int rpc_pmap_null_async(struct rpc_context *rpc, rpc_cb cb, void *private_data);
+EXTERN int rpc_pmap2_null_async(struct rpc_context *rpc, rpc_cb cb, void *private_data);
 
 
 /*
- * Call PORTMAPPER/GETPORT.
+ * Call PORTMAPPER2/GETPORT.
  * Function returns
  *  0 : The connection was initiated. Once the connection establish finishes, the callback will be invoked.
  * <0 : An error occured when trying to set up the connection. The callback will not be invoked.
@@ -153,10 +153,10 @@ EXTERN int rpc_pmap_null_async(struct rpc_context *rpc, rpc_cb cb, void *private
  * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
  *                     data is NULL.
  */
-EXTERN int rpc_pmap_getport_async(struct rpc_context *rpc, int program, int version, int protocol, rpc_cb cb, void *private_data);
+EXTERN int rpc_pmap2_getport_async(struct rpc_context *rpc, int program, int version, int protocol, rpc_cb cb, void *private_data);
 
 /*
- * Call PORTMAPPER/SET
+ * Call PORTMAPPER2/SET
  * Function returns
  *  0 : The connection was initiated. Once the connection establish finishes, the callback will be invoked.
  * <0 : An error occured when trying to set up the connection. The callback will not be invoked.
@@ -169,10 +169,10 @@ EXTERN int rpc_pmap_getport_async(struct rpc_context *rpc, int program, int vers
  * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
  *                     data is NULL.
  */
-EXTERN int rpc_pmap_set_async(struct rpc_context *rpc, int program, int version, int protocol, int port, rpc_cb cb, void *private_data);
+EXTERN int rpc_pmap2_set_async(struct rpc_context *rpc, int program, int version, int protocol, int port, rpc_cb cb, void *private_data);
 
 /*
- * Call PORTMAPPER/UNSET
+ * Call PORTMAPPER2/UNSET
  * Function returns
  *  0 : The connection was initiated. Once the connection establish finishes, the callback will be invoked.
  * <0 : An error occured when trying to set up the connection. The callback will not be invoked.
@@ -185,25 +185,194 @@ EXTERN int rpc_pmap_set_async(struct rpc_context *rpc, int program, int version,
  * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
  *                     data is NULL.
  */
-EXTERN int rpc_pmap_unset_async(struct rpc_context *rpc, int program, int version, int protocol, int port, rpc_cb cb, void *private_data);
+EXTERN int rpc_pmap2_unset_async(struct rpc_context *rpc, int program, int version, int protocol, int port, rpc_cb cb, void *private_data);
 
 /*
- * Call PORTMAPPER/CALLIT.
+ * Call PORTMAPPER2/DUMP.
+ * Function returns
+ *  0 : The connection was initiated. Once the connection establish finishes, the callback will be invoked.
+ * <0 : An error occured when trying to set up the connection. The callback will not be invoked.
+ *
+ * When the callback is invoked, status indicates the result:
+ * RPC_STATUS_SUCCESS : We got a successful response from the portmapper daemon.
+ *                      data is struct pmap2_dump_result.
+ * RPC_STATUS_ERROR   : An error occured when trying to contact the portmapper.
+ *                      data is the error string.
+ * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
+ *                     data is NULL.
+ */
+EXTERN int rpc_pmap2_dump_async(struct rpc_context *rpc, rpc_cb cb, void *private_data);
+
+/*
+ * Call PORTMAPPER2/CALLIT.
  * Function returns
  *  0 : The connection was initiated. Once the connection establish finishes, the callback will be invoked.
  * <0 : An error occured when trying to set up the connection. The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
  * RPC_STATUS_SUCCESS : We got a successful response from the portmapper daemon
- *                      data is a 'pmap_call_result' pointer.
+ *                      data is a 'pmap2_call_result' pointer.
  * RPC_STATUS_ERROR   : An error occured when trying to contact the portmapper.
  *                      data is the error string.
  * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
  *                     data is NULL.
  */
-EXTERN int rpc_pmap_callit_async(struct rpc_context *rpc, int program, int version, int procedure, char *data, int datalen, rpc_cb cb, void *private_data);
+EXTERN int rpc_pmap2_callit_async(struct rpc_context *rpc, int program, int version, int procedure, char *data, int datalen, rpc_cb cb, void *private_data);
 
 /*
+ * PORTMAP v3 FUNCTIONS
+ */
+
+/*
+ * Call PORTMAPPER3/NULL
+ * Function returns
+ *  0 : The connection was initiated. Once the connection establish finishes, the callback will be invoked.
+ * <0 : An error occured when trying to set up the connection. The callback will not be invoked.
+ *
+ * When the callback is invoked, status indicates the result:
+ * RPC_STATUS_SUCCESS : We got a successful response from the portmapper daemon.
+ *                      data is NULL.
+ * RPC_STATUS_ERROR   : An error occured when trying to contact the portmapper.
+ *                      data is the error string.
+ * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
+ *                     data is NULL.
+ */
+EXTERN int rpc_pmap3_null_async(struct rpc_context *rpc, rpc_cb cb, void *private_data);
+
+/*
+ * Call PORTMAPPER3/SET.
+ * Function returns
+ *  0 : The connection was initiated. Once the connection establish finishes, the callback will be invoked.
+ * <0 : An error occured when trying to set up the connection. The callback will not be invoked.
+ *
+ * When the callback is invoked, status indicates the result:
+ * RPC_STATUS_SUCCESS : We got a successful response from the portmapper daemon.
+ *                      data is uint32_t *
+ * RPC_STATUS_ERROR   : An error occured when trying to contact the portmapper.
+ *                      data is the error string.
+ * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
+ *                     data is NULL.
+ */
+struct pmap3_mapping;
+EXTERN int rpc_pmap3_set_async(struct rpc_context *rpc, struct pmap3_mapping *map, rpc_cb cb, void *private_data);
+
+/*
+ * Call PORTMAPPER3/UNSET.
+ * Function returns
+ *  0 : The connection was initiated. Once the connection establish finishes, the callback will be invoked.
+ * <0 : An error occured when trying to set up the connection. The callback will not be invoked.
+ *
+ * When the callback is invoked, status indicates the result:
+ * RPC_STATUS_SUCCESS : We got a successful response from the portmapper daemon.
+ *                      data is uint32_t *
+ * RPC_STATUS_ERROR   : An error occured when trying to contact the portmapper.
+ *                      data is the error string.
+ * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
+ *                     data is NULL.
+ */
+EXTERN int rpc_pmap3_unset_async(struct rpc_context *rpc, struct pmap3_mapping *map, rpc_cb cb, void *private_data);
+
+/*
+ * Call PORTMAPPER3/GETADDR.
+ * Function returns
+ *  0 : The connection was initiated. Once the connection establish finishes, the callback will be invoked.
+ * <0 : An error occured when trying to set up the connection. The callback will not be invoked.
+ *
+ * When the callback is invoked, status indicates the result:
+ * RPC_STATUS_SUCCESS : We got a successful response from the portmapper daemon.
+ *                      data is struct pmap3_string_result.
+ * RPC_STATUS_ERROR   : An error occured when trying to contact the portmapper.
+ *                      data is the error string.
+ * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
+ *                     data is NULL.
+ */
+EXTERN int rpc_pmap3_getaddr_async(struct rpc_context *rpc, struct pmap3_mapping *map, rpc_cb cb, void *private_data);
+
+/*
+ * Call PORTMAPPER3/DUMP.
+ * Function returns
+ *  0 : The connection was initiated. Once the connection establish finishes, the callback will be invoked.
+ * <0 : An error occured when trying to set up the connection. The callback will not be invoked.
+ *
+ * When the callback is invoked, status indicates the result:
+ * RPC_STATUS_SUCCESS : We got a successful response from the portmapper daemon.
+ *                      data is struct pmap3_dump_result.
+ * RPC_STATUS_ERROR   : An error occured when trying to contact the portmapper.
+ *                      data is the error string.
+ * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
+ *                     data is NULL.
+ */
+EXTERN int rpc_pmap3_dump_async(struct rpc_context *rpc, rpc_cb cb, void *private_data);
+
+/*
+ * Call PORTMAPPER3/CALLIT.
+ * Function returns
+ *  0 : The connection was initiated. Once the connection establish finishes, the callback will be invoked.
+ * <0 : An error occured when trying to set up the connection. The callback will not be invoked.
+ *
+ * When the callback is invoked, status indicates the result:
+ * RPC_STATUS_SUCCESS : We got a successful response from the portmapper daemon
+ *                      data is a 'pmap3_call_result' pointer.
+ * RPC_STATUS_ERROR   : An error occured when trying to contact the portmapper.
+ *                      data is the error string.
+ * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
+ *                     data is NULL.
+ */
+EXTERN int rpc_pmap3_callit_async(struct rpc_context *rpc, int program, int version, int procedure, char *data, int datalen, rpc_cb cb, void *private_data);
+
+/*
+<<<<<<< HEAD
+=======
+ * Call PORTMAPPER3/GETTIME.
+ * Function returns
+ *  0 : The connection was initiated. Once the connection establish finishes, the callback will be invoked.
+ * <0 : An error occured when trying to set up the connection. The callback will not be invoked.
+ *
+ * When the callback is invoked, status indicates the result:
+ * RPC_STATUS_SUCCESS : We got a successful response from the portmapper daemon.
+ *                      data is a uint32_t *.
+ * RPC_STATUS_ERROR   : An error occured when trying to contact the portmapper.
+ *                      data is the error string.
+ * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
+ *                     data is NULL.
+ */
+EXTERN int rpc_pmap3_gettime_async(struct rpc_context *rpc, rpc_cb cb, void *private_data);
+
+/*
+ * Call PORTMAPPER3/UADDR2TADDR.
+ * Function returns
+ *  0 : The connection was initiated. Once the connection establish finishes, the callback will be invoked.
+ * <0 : An error occured when trying to set up the connection. The callback will not be invoked.
+ *
+ * When the callback is invoked, status indicates the result:
+ * RPC_STATUS_SUCCESS : We got a successful response from the portmapper daemon.
+ *                      data is a struct pmap3_netbuf *.
+ * RPC_STATUS_ERROR   : An error occured when trying to contact the portmapper.
+ *                      data is the error string.
+ * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
+ *                     data is NULL.
+ */
+EXTERN int rpc_pmap3_uaddr2taddr_async(struct rpc_context *rpc, char *uaddr, rpc_cb cb, void *private_data);
+
+/*
+ * Call PORTMAPPER3/TADDR2UADDR.
+ * Function returns
+ *  0 : The connection was initiated. Once the connection establish finishes, the callback will be invoked.
+ * <0 : An error occured when trying to set up the connection. The callback will not be invoked.
+ *
+ * When the callback is invoked, status indicates the result:
+ * RPC_STATUS_SUCCESS : We got a successful response from the portmapper daemon.
+ *                      data is a struct pmap3_string_result *.
+ * RPC_STATUS_ERROR   : An error occured when trying to contact the portmapper.
+ *                      data is the error string.
+ * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
+ *                     data is NULL.
+ */
+struct pmap3_netbuf;
+EXTERN int rpc_pmap3_taddr2uaddr_async(struct rpc_context *rpc, struct pmap3_netbuf *netbuf, rpc_cb cb, void *private_data);
+
+/*
+>>>>>>> 2c0f57fa33371a55b798a9cca14a3d58e6b3cb26
  * MOUNT v3 FUNCTIONS
  */
 char *mountstat3_to_str(int stat);

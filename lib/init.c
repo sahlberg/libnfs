@@ -76,7 +76,7 @@ struct rpc_context *rpc_init_context(void)
 	salt += 0x01000000;
 	rpc->fd = -1;
 	rpc->tcp_syncnt = RPC_PARAM_UNDEFINED;
-#ifdef WIN32
+#if defined(WIN32) || defined(ANDROID)
 	rpc->uid = 65534;
 	rpc->gid = 65534;
 #else
@@ -132,16 +132,18 @@ void rpc_set_gid(struct rpc_context *rpc, int gid) {
 void rpc_set_error(struct rpc_context *rpc, char *error_string, ...)
 {
         va_list ap;
+	char *old_error_string = rpc->error_string;
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
-	if (rpc->error_string != NULL) {
-		free(rpc->error_string);
-	}
         va_start(ap, error_string);
 	rpc->error_string = malloc(1024);
 	vsnprintf(rpc->error_string, 1024, error_string, ap);
         va_end(ap);
+
+	if (old_error_string != NULL) {
+		free(old_error_string);
+	}
 }
 
 char *rpc_get_error(struct rpc_context *rpc)

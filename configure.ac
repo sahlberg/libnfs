@@ -1,5 +1,5 @@
 AC_PREREQ(2.50)
-AC_INIT([libnfs], [1.9.2], [ronniesahlberg@gmail.com])
+AC_INIT([libnfs], [1.9.3], [ronniesahlberg@gmail.com])
 AC_CONFIG_HEADERS([config.h])
 AM_INIT_AUTOMAKE([foreign])
 AC_CANONICAL_HOST
@@ -155,6 +155,7 @@ AC_CHECK_MEMBER([struct sockaddr_storage.ss_family],
 
 #output
 AC_CONFIG_FILES([Makefile]
+                [doc/Makefile]
                 [include/Makefile]
                 [lib/Makefile]
                 [mount/Makefile]
@@ -163,6 +164,7 @@ AC_CONFIG_FILES([Makefile]
                 [nsm/Makefile]
                 [portmap/Makefile]
                 [rquota/Makefile]
+                [utils/Makefile]
                 [examples/Makefile]
                )
 

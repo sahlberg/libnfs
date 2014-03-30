@@ -1,4 +1,4 @@
-SUBDIRS = mount nfs nlm nsm portmap rquota lib include . $(MAYBE_EXAMPLES)
+SUBDIRS = doc mount nfs nlm nsm portmap rquota lib include utils . $(MAYBE_EXAMPLES)
 
 pkgconfigdir = $(libdir)/pkgconfig
 pkgconfig_DATA = libnfs.pc

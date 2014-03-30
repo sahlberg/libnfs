@@ -73,6 +73,7 @@
 #include "libnfs-raw.h"
 #include "libnfs-raw-mount.h"
 #include "libnfs-raw-nfs.h"
+#include "libnfs-raw-portmap.h"
 #include "libnfs-private.h"
 
 struct nfsdir {
@@ -130,9 +131,12 @@ struct nfs_cb_data {
        /* for multi-read/write calls. */
        int error;
        int cancel;
+       int oom;
        int num_calls;
        uint64_t start_offset, max_offset;
        char *buffer;
+       size_t request_size;
+       char *usrbuf;
 };
 
 struct nfs_mcb_data {
@@ -391,7 +395,7 @@ void free_rpc_cb_data(struct rpc_cb_data *data)
 	free(data);
 }
 
-static void rpc_connect_program_4_cb(struct rpc_context *rpc, int status, void *command_data, void *private_data)
+static void rpc_connect_program_5_cb(struct rpc_context *rpc, int status, void *command_data, void *private_data)
 {
 	struct rpc_cb_data *data = private_data;
 
@@ -415,10 +419,55 @@ static void rpc_connect_program_4_cb(struct rpc_context *rpc, int status, void *
 	free_rpc_cb_data(data);
 }
 
+static void rpc_connect_program_4_cb(struct rpc_context *rpc, int status, void *command_data, void *private_data)
+{
+	struct rpc_cb_data *data = private_data;
+
+	assert(rpc->magic == RPC_CONTEXT_MAGIC);
+
+	/* Dont want any more callbacks even if the socket is closed */
+	rpc->connect_cb = NULL;
+
+	if (status == RPC_STATUS_ERROR) {
+		data->cb(rpc, status, command_data, data->private_data);
+		free_rpc_cb_data(data);
+		return;
+	}
+	if (status == RPC_STATUS_CANCEL) {
+		data->cb(rpc, status, "Command was cancelled", data->private_data);
+		free_rpc_cb_data(data);
+		return;
+	}
+
+	switch (data->program) {
+	case MOUNT_PROGRAM:
+		if (rpc_mount3_null_async(rpc, rpc_connect_program_5_cb,
+					data) != 0) {
+			data->cb(rpc, status, command_data, data->private_data);
+			free_rpc_cb_data(data);
+			return;
+		}
+		return;
+	case NFS_PROGRAM:
+		if (rpc_nfs3_null_async(rpc, rpc_connect_program_5_cb,
+					data) != 0) {
+			data->cb(rpc, status, command_data, data->private_data);
+			free_rpc_cb_data(data);
+			return;
+		}
+		return;
+	}
+
+	data->cb(rpc, status, NULL, data->private_data);
+	free_rpc_cb_data(data);
+}
+
 static void rpc_connect_program_3_cb(struct rpc_context *rpc, int status, void *command_data, void *private_data)
 {
 	struct rpc_cb_data *data = private_data;
-	uint32_t rpc_port;
+	struct pmap3_string_result *gar;
+	uint32_t rpc_port = 0;
+	unsigned char *ptr;
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
@@ -433,7 +482,29 @@ static void rpc_connect_program_3_cb(struct rpc_context *rpc, int status, void *
 		return;
 	}
 
-	rpc_port = *(uint32_t *)command_data;
+	switch (rpc->s.ss_family) {
+	case AF_INET:
+		rpc_port = *(uint32_t *)command_data;
+		break;
+	case AF_INET6:
+		/* ouch. portmapper and ipv6 are not great */
+		gar = command_data;
+		if (gar->addr == NULL) {
+			break;
+		}
+		ptr = strrchr(gar->addr, '.');
+		if (ptr == NULL) {
+			break;
+		}
+		rpc_port = atoi(ptr + 1);
+		*ptr = 0;
+		ptr = strrchr(gar->addr, '.');
+		if (ptr == NULL) {
+			break;
+		}
+		rpc_port += 256 * atoi(ptr + 1);
+		break;
+	}
 	if (rpc_port == 0) {
 		rpc_set_error(rpc, "RPC error. Program is not available on %s", data->server);
 		data->cb(rpc, RPC_STATUS_ERROR, rpc_get_error(rpc), data->private_data);
@@ -452,6 +523,7 @@ static void rpc_connect_program_3_cb(struct rpc_context *rpc, int status, void *
 static void rpc_connect_program_2_cb(struct rpc_context *rpc, int status, void *command_data, void *private_data)
 {
 	struct rpc_cb_data *data = private_data;
+	struct pmap3_mapping map;
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
@@ -466,10 +538,26 @@ static void rpc_connect_program_2_cb(struct rpc_context *rpc, int status, void *
 		return;
 	}
 
-	if (rpc_pmap_getport_async(rpc, data->program, data->version, IPPROTO_TCP, rpc_connect_program_3_cb, private_data) != 0) {
-		data->cb(rpc, status, command_data, data->private_data);
-		free_rpc_cb_data(data);
-		return;
+	switch (rpc->s.ss_family) {
+	case AF_INET:
+		if (rpc_pmap2_getport_async(rpc, data->program, data->version, IPPROTO_TCP, rpc_connect_program_3_cb, private_data) != 0) {
+			data->cb(rpc, status, command_data, data->private_data);
+			free_rpc_cb_data(data);
+			return;
+		}
+		break;
+	case AF_INET6:
+		map.prog=data->program;
+		map.vers=data->version;
+		map.netid="";
+		map.addr="";
+		map.owner="";
+		if (rpc_pmap3_getaddr_async(rpc, &map, rpc_connect_program_3_cb, private_data) != 0) {
+			data->cb(rpc, status, command_data, data->private_data);
+			free_rpc_cb_data(data);
+			return;
+		}
+		break;
 	}
 }
 
@@ -493,14 +581,25 @@ static void rpc_connect_program_1_cb(struct rpc_context *rpc, int status, void *
 		return;
 	}
 
-	if (rpc_pmap_null_async(rpc, rpc_connect_program_2_cb, data) != 0) {
-		data->cb(rpc, status, command_data, data->private_data);
-		free_rpc_cb_data(data);
-		return;
+	switch (rpc->s.ss_family) {
+	case AF_INET:
+		if (rpc_pmap2_null_async(rpc, rpc_connect_program_2_cb, data) != 0) {
+			data->cb(rpc, status, command_data, data->private_data);
+			free_rpc_cb_data(data);
+			return;
+		}
+		break;
+	case AF_INET6:
+		if (rpc_pmap3_null_async(rpc, rpc_connect_program_2_cb, data) != 0) {
+			data->cb(rpc, status, command_data, data->private_data);
+			free_rpc_cb_data(data);
+			return;
+		}
+		break;
 	}
 }
 
-int rpc_connect_program_async(struct rpc_context *rpc, char *server, int program, int version, rpc_cb cb, void *private_data)
+int rpc_connect_program_async(struct rpc_context *rpc, const char *server, int program, int version, rpc_cb cb, void *private_data)
 {
 	struct rpc_cb_data *data;
 
@@ -624,36 +723,6 @@ static void nfs_mount_8_cb(struct rpc_context *rpc, int status, void *command_da
 	}
 }
 
-
-static void nfs_mount_7_cb(struct rpc_context *rpc, int status, void *command_data, void *private_data)
-{
-	struct nfs_cb_data *data = private_data;
-	struct nfs_context *nfs = data->nfs;
-
-	assert(rpc->magic == RPC_CONTEXT_MAGIC);
-
-	/* Dont want any more callbacks even if the socket is closed */
-	rpc->connect_cb = NULL;
-
-	if (status == RPC_STATUS_ERROR) {
-		data->cb(-EFAULT, nfs, command_data, data->private_data);
-		free_nfs_cb_data(data);
-		return;
-	}
-	if (status == RPC_STATUS_CANCEL) {
-		data->cb(-EINTR, nfs, "Command was cancelled", data->private_data);
-		free_nfs_cb_data(data);
-		return;
-	}
-
-	if (rpc_nfs3_null_async(rpc, nfs_mount_8_cb, data) != 0) {
-		data->cb(-ENOMEM, nfs, command_data, data->private_data);
-		free_nfs_cb_data(data);
-		return;
-	}
-}
-
-
 static void nfs_mount_6_cb(struct rpc_context *rpc, int status, void *command_data, void *private_data)
 {
 	struct nfs_cb_data *data = private_data;
@@ -692,11 +761,13 @@ static void nfs_mount_6_cb(struct rpc_context *rpc, int status, void *command_da
 	memcpy(nfs->rootfh.data.data_val, res->mountres3_u.mountinfo.fhandle.fhandle3_val, nfs->rootfh.data.data_len);
 
 	rpc_disconnect(rpc, "normal disconnect");
-	if (rpc_connect_async(rpc, nfs->server, 2049, nfs_mount_7_cb, data) != 0) {
+
+	if (rpc_connect_program_async(nfs->rpc, nfs->server, NFS_PROGRAM, NFS_V3, nfs_mount_8_cb, data) != 0) {
 		data->cb(-ENOMEM, nfs, command_data, data->private_data);
 		free_nfs_cb_data(data);
 		return;
 	}
+
 	/* NFS TCP connections we want to autoreconnect after sessions are torn down (due to inactivity or error) */
 	rpc_set_autoreconnect(rpc);
 }
@@ -721,123 +792,6 @@ static void nfs_mount_5_cb(struct rpc_context *rpc, int status, void *command_da
 	}
 
 	if (rpc_mount3_mnt_async(rpc, nfs_mount_6_cb, nfs->export, data) != 0) {
-		data->cb(-ENOMEM, nfs, command_data, data->private_data);
-		free_nfs_cb_data(data);
-		return;
-	}
-}
-
-static void nfs_mount_4_cb(struct rpc_context *rpc, int status, void *command_data, void *private_data)
-{
-	struct nfs_cb_data *data = private_data;
-	struct nfs_context *nfs = data->nfs;
-
-	assert(rpc->magic == RPC_CONTEXT_MAGIC);
-
-	/* Dont want any more callbacks even if the socket is closed */
-	rpc->connect_cb = NULL;
-
-	if (status == RPC_STATUS_ERROR) {
-		data->cb(-EFAULT, nfs, command_data, data->private_data);
-		free_nfs_cb_data(data);
-		return;
-	}
-	if (status == RPC_STATUS_CANCEL) {
-		data->cb(-EINTR, nfs, "Command was cancelled", data->private_data);
-		free_nfs_cb_data(data);
-		return;
-	}
-
-	if (rpc_mount3_null_async(rpc, nfs_mount_5_cb, data) != 0) {
-		data->cb(-ENOMEM, nfs, command_data, data->private_data);
-		free_nfs_cb_data(data);
-		return;
-	}
-}
-
-static void nfs_mount_3_cb(struct rpc_context *rpc, int status, void *command_data, void *private_data)
-{
-	struct nfs_cb_data *data = private_data;
-	struct nfs_context *nfs = data->nfs;
-	uint32_t mount_port;
-
-	assert(rpc->magic == RPC_CONTEXT_MAGIC);
-
-	if (status == RPC_STATUS_ERROR) {
-		data->cb(-EFAULT, nfs, command_data, data->private_data);
-		free_nfs_cb_data(data);
-		return;
-	}
-	if (status == RPC_STATUS_CANCEL) {
-		data->cb(-EINTR, nfs, "Command was cancelled", data->private_data);
-		free_nfs_cb_data(data);
-		return;
-	}
-
-	mount_port = *(uint32_t *)command_data;
-	if (mount_port == 0) {
-		rpc_set_error(rpc, "RPC error. Mount program is not available on %s", nfs->server);
-		data->cb(-ENOENT, nfs, command_data, data->private_data);
-		free_nfs_cb_data(data);
-		return;
-	}
-
-	rpc_disconnect(rpc, "normal disconnect");
-	if (rpc_connect_async(rpc, nfs->server, mount_port, nfs_mount_4_cb, data) != 0) {
-		data->cb(-ENOMEM, nfs, command_data, data->private_data);
-		free_nfs_cb_data(data);
-		return;
-	}
-}
-
-
-static void nfs_mount_2_cb(struct rpc_context *rpc, int status, void *command_data, void *private_data)
-{
-	struct nfs_cb_data *data = private_data;
-	struct nfs_context *nfs = data->nfs;
-
-	assert(rpc->magic == RPC_CONTEXT_MAGIC);
-
-	if (status == RPC_STATUS_ERROR) {
-		data->cb(-EFAULT, nfs, command_data, data->private_data);
-		free_nfs_cb_data(data);
-		return;
-	}
-	if (status == RPC_STATUS_CANCEL) {
-		data->cb(-EINTR, nfs, "Command was cancelled", data->private_data);
-		free_nfs_cb_data(data);
-		return;
-	}
-
-	if (rpc_pmap_getport_async(rpc, MOUNT_PROGRAM, MOUNT_V3, IPPROTO_TCP, nfs_mount_3_cb, private_data) != 0) {
-		data->cb(-ENOMEM, nfs, command_data, data->private_data);
-		free_nfs_cb_data(data);
-		return;
-	}
-}
-
-static void nfs_mount_1_cb(struct rpc_context *rpc, int status, void *command_data, void *private_data)
-{
-	struct nfs_cb_data *data = private_data;
-	struct nfs_context *nfs = data->nfs;
-
-	assert(rpc->magic == RPC_CONTEXT_MAGIC);
-
-	/* Dont want any more callbacks even if the socket is closed */
-	rpc->connect_cb = NULL;
-
-	if (status == RPC_STATUS_ERROR) {
-		data->cb(-EFAULT, nfs, command_data, data->private_data);
-		free_nfs_cb_data(data);
-		return;
-	}
-	if (status == RPC_STATUS_CANCEL) {
-		data->cb(-EINTR, nfs, "Command was cancelled", data->private_data);
-		free_nfs_cb_data(data);
-		return;
-	}
-
-	if (rpc_pmap_null_async(rpc, nfs_mount_2_cb, data) != 0) {
 		data->cb(-ENOMEM, nfs, command_data, data->private_data);
 		free_nfs_cb_data(data);
 		return;
@@ -872,7 +826,7 @@ int nfs_mount_async(struct nfs_context *nfs, const char *server, const char *exp
 	data->cb           = cb;
 	data->private_data = private_data;
 
-	if (rpc_connect_async(nfs->rpc, server, 111, nfs_mount_1_cb, data) != 0) {
+	if (rpc_connect_program_async(nfs->rpc, server, MOUNT_PROGRAM, MOUNT_V3, nfs_mount_5_cb, data) != 0) {
 		rpc_set_error(nfs->rpc, "Failed to start connection");
 		free_nfs_cb_data(data);
 		return -1;
@@ -1230,6 +1184,84 @@ int nfs_stat_async(struct nfs_context *nfs, const char *path, nfs_cb cb, void *p
 }
 
 
+/*
+ * Async nfs_stat64()
+ */
+static void nfs_stat64_1_cb(struct rpc_context *rpc, int status, void *command_data, void *private_data)
+{
+	GETATTR3res *res;
+	struct nfs_cb_data *data = private_data;
+	struct nfs_context *nfs = data->nfs;
+	struct nfs_stat_64 st;
+
+	assert(rpc->magic == RPC_CONTEXT_MAGIC);
+
+	if (status == RPC_STATUS_ERROR) {
+		data->cb(-EFAULT, nfs, command_data, data->private_data);
+		free_nfs_cb_data(data);
+		return;
+	}
+	if (status == RPC_STATUS_CANCEL) {
+		data->cb(-EINTR, nfs, "Command was cancelled", data->private_data);
+		free_nfs_cb_data(data);
+		return;
+	}
+
+	res = command_data;
+	if (res->status != NFS3_OK) {
+		rpc_set_error(nfs->rpc, "NFS: GETATTR of %s failed with %s(%d)", data->saved_path, nfsstat3_to_str(res->status), nfsstat3_to_errno(res->status));
+		data->cb(nfsstat3_to_errno(res->status), nfs, rpc_get_error(nfs->rpc), data->private_data);
+		free_nfs_cb_data(data);
+		return;
+	}
+
+        st.nfs_dev     = -1;
+        st.nfs_ino     = res->GETATTR3res_u.resok.obj_attributes.fileid;
+        st.nfs_mode    = res->GETATTR3res_u.resok.obj_attributes.mode;
+	if (res->GETATTR3res_u.resok.obj_attributes.type == NF3DIR) {
+		st.nfs_mode |= S_IFDIR ;
+	}
+	if (res->GETATTR3res_u.resok.obj_attributes.type == NF3REG) {
+		st.nfs_mode |= S_IFREG ;
+	}
+        st.nfs_nlink   = res->GETATTR3res_u.resok.obj_attributes.nlink;
+        st.nfs_uid     = res->GETATTR3res_u.resok.obj_attributes.uid;
+        st.nfs_gid     = res->GETATTR3res_u.resok.obj_attributes.gid;
+        st.nfs_rdev    = 0;
+        st.nfs_size    = res->GETATTR3res_u.resok.obj_attributes.size;
+        st.nfs_atime   = res->GETATTR3res_u.resok.obj_attributes.atime.seconds;
+        st.nfs_mtime   = res->GETATTR3res_u.resok.obj_attributes.mtime.seconds;
+        st.nfs_ctime   = res->GETATTR3res_u.resok.obj_attributes.ctime.seconds;
+
+	data->cb(0, nfs, &st, data->private_data);
+	free_nfs_cb_data(data);
+}
+
+static int nfs_stat64_continue_internal(struct nfs_context *nfs, struct nfs_cb_data *data)
+{
+	struct GETATTR3args args;
+
+	memset(&args, 0, sizeof(GETATTR3args));
+	args.object = data->fh;
+
+	if (rpc_nfs3_getattr_async(nfs->rpc, nfs_stat64_1_cb, &args, data) != 0) {
+		rpc_set_error(nfs->rpc, "RPC error: Failed to send STAT GETATTR call for %s", data->path);
+		data->cb(-ENOMEM, nfs, rpc_get_error(nfs->rpc), data->private_data);
+		free_nfs_cb_data(data);
+		return -1;
+	}
+	return 0;
+}
+
+int nfs_stat64_async(struct nfs_context *nfs, const char *path, nfs_cb cb, void *private_data)
+{
+	if (nfs_lookuppath_async(nfs, path, cb, private_data, nfs_stat64_continue_internal, NULL, NULL, 0) != 0) {
+		rpc_set_error(nfs->rpc, "Out of memory: failed to start parsing the path components");
+		return -1;
+	}
+
+	return 0;
+}
 
 /*
  * Async open()
@@ -1450,36 +1482,12 @@ int nfs_chdir_async(struct nfs_context *nfs, const char *path, nfs_cb cb, void *
 /*
  * Async pread()
  */
-static void nfs_pread_cb(struct rpc_context *rpc, int status, void *command_data, void *private_data)
+static void nfs_fill_READ3args(READ3args *args, struct nfsfh *fh, uint64_t offset, uint64_t count)
 {
-	struct nfs_cb_data *data = private_data;
-	struct nfs_context *nfs = data->nfs;
-	READ3res *res;
-
-	assert(rpc->magic == RPC_CONTEXT_MAGIC);
-
-	if (status == RPC_STATUS_ERROR) {
-		data->cb(-EFAULT, nfs, command_data, data->private_data);
-		free_nfs_cb_data(data);
-		return;
-	}
-	if (status == RPC_STATUS_CANCEL) {
-		data->cb(-EINTR, nfs, "Command was cancelled", data->private_data);
-		free_nfs_cb_data(data);
-		return;
-	}
-
-	res = command_data;
-	if (res->status != NFS3_OK) {
-		rpc_set_error(nfs->rpc, "NFS: Read failed with %s(%d)", nfsstat3_to_str(res->status), nfsstat3_to_errno(res->status));
-		data->cb(nfsstat3_to_errno(res->status), nfs, rpc_get_error(nfs->rpc), data->private_data);
-		free_nfs_cb_data(data);
-		return;
-	}
-
-	data->nfsfh->offset += res->READ3res_u.resok.count;
-	data->cb(res->READ3res_u.resok.count, nfs, res->READ3res_u.resok.data.data_val, data->private_data);
-	free_nfs_cb_data(data);
+	memset(args, 0, sizeof(READ3args));
+	args->file = fh->fh;
+	args->offset = offset;
+	args->count = count;
 }
 
 static void nfs_pread_mcb(struct rpc_context *rpc, int status, void *command_data, void *private_data)
@@ -1502,46 +1510,89 @@ static void nfs_pread_mcb(struct rpc_context *rpc, int status, void *command_dat
 		data->cancel = 1;
 	}
 
-	/* reassemble the data into the buffer */
 	if (status == RPC_STATUS_SUCCESS) {
 		res = command_data;
 		if (res->status != NFS3_OK) {
 			rpc_set_error(nfs->rpc, "NFS: Read failed with %s(%d)", nfsstat3_to_str(res->status), nfsstat3_to_errno(res->status));
 			data->error = 1;
 		} else  {
+			/* if we have more than one call or we have received a short read we need a reassembly buffer */
+			if (data->num_calls || (res->READ3res_u.resok.count < mdata->count && !res->READ3res_u.resok.eof)) {
+				if (data->buffer == NULL) {
+					data->buffer = 	malloc(data->request_size);
+					if (data->buffer == NULL) {
+						rpc_set_error(nfs->rpc, "Out-Of-Memory: Failed to allocate reassembly buffer for %d bytes", (int)data->request_size);
+						data->oom = 1;
+					}
+				}
+			}
 			if (res->READ3res_u.resok.count > 0) {
-				memcpy(&data->buffer[mdata->offset - data->start_offset], res->READ3res_u.resok.data.data_val, res->READ3res_u.resok.count);
-				if ((unsigned)data->max_offset < mdata->offset + res->READ3res_u.resok.count) {
-					data->max_offset = mdata->offset + res->READ3res_u.resok.count;
+				if (res->READ3res_u.resok.count <= mdata->count) {
+					/* copy data into reassembly buffer if we have one */
+					if (data->buffer != NULL) {
+						memcpy(&data->buffer[mdata->offset - data->start_offset], res->READ3res_u.resok.data.data_val, res->READ3res_u.resok.count);
+					}
+					if (data->max_offset < mdata->offset + res->READ3res_u.resok.count) {
+						data->max_offset = mdata->offset + res->READ3res_u.resok.count;
+					}
+				} else {
+					rpc_set_error(nfs->rpc, "NFS: Read overflow. Server has sent more data than requested!");
+					data->error = 1;
+				}
+			}
+			/* check if we have received a short read */
+			if (res->READ3res_u.resok.count < mdata->count && !res->READ3res_u.resok.eof) {
+				if (res->READ3res_u.resok.count == 0) {
+					rpc_set_error(nfs->rpc, "NFS: Read failed. No bytes read and not at EOF!");
+					data->error = 1;
+				} else {
+					/* reissue reminder of this read request */
+					READ3args args;
+					mdata->offset += res->READ3res_u.resok.count;
+					mdata->count -= res->READ3res_u.resok.count;
+					nfs_fill_READ3args(&args, data->nfsfh, mdata->offset, mdata->count);
+					if (rpc_nfs3_read_async(nfs->rpc, nfs_pread_mcb, &args, mdata) == 0) {
+						data->num_calls++;
+						return;
+					} else {
+						rpc_set_error(nfs->rpc, "RPC error: Failed to send READ call for %s", data->path);
+						data->oom = 1;
+					}
 				}
 			}
 		}
 	}
 
+	free(mdata);
+
 	if (data->num_calls > 0) {
 		/* still waiting for more replies */
-		free(mdata);
 		return;
 	}
-
+	if (data->oom != 0) {
+		data->cb(-ENOMEM, nfs, command_data, data->private_data);
+		free_nfs_cb_data(data);
+		return;
+	}
 	if (data->error != 0) {
 		data->cb(-EFAULT, nfs, command_data, data->private_data);
 		free_nfs_cb_data(data);
-		free(mdata);
 		return;
 	}
 	if (data->cancel != 0) {
 		data->cb(-EINTR, nfs, "Command was cancelled", data->private_data);
 		free_nfs_cb_data(data);
-		free(mdata);
 		return;
 	}
 
 	data->nfsfh->offset = data->max_offset;
-	data->cb(data->max_offset - data->start_offset, nfs, data->buffer, data->private_data);
+	if (data->buffer) {
+		data->cb(data->max_offset - data->start_offset, nfs, data->buffer, data->private_data);
+	} else {
+		data->cb(res->READ3res_u.resok.count, nfs, res->READ3res_u.resok.data.data_val, data->private_data);
+	}
 
 	free_nfs_cb_data(data);
-	free(mdata);
 }
 
 int nfs_pread_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t offset, uint64_t count, nfs_cb cb, void *private_data)
@@ -1558,45 +1609,19 @@ int nfs_pread_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t offse
 	data->cb           = cb;
 	data->private_data = private_data;
 	data->nfsfh        = nfsfh;
+	data->request_size = count;
 
 	nfsfh->offset = offset;
 
-	if (count <= nfs_get_readmax(nfs)) {
-		READ3args args;
-
-		memset(&args, 0, sizeof(READ3args));
-		args.file = nfsfh->fh;
-		args.offset = offset;
-		args.count = count;
-
-		if (rpc_nfs3_read_async(nfs->rpc, nfs_pread_cb, &args, data) != 0) {
-			rpc_set_error(nfs->rpc, "RPC error: Failed to send READ call for %s", data->path);
-			data->cb(-ENOMEM, nfs, rpc_get_error(nfs->rpc), data->private_data);
-			free_nfs_cb_data(data);
-			return -1;
-		}
-		return 0;
-	}
-
-	assert(count > 0);
 	assert(data->num_calls == 0);
 
-	/* trying to read more than maximum server read size, we has to chop it up into smaller
-	 * reads and collect into a reassembly buffer.
+	/* chop requests into chunks of at most READMAX bytes if necessary.
 	 * we send all reads in parallel so that performance is still good.
 	 */
 	data->max_offset = offset;
 	data->start_offset = offset;
 
-	data->buffer = 	malloc(count);
-	if (data->buffer == NULL) {
-		rpc_set_error(nfs->rpc, "Out-Of-Memory: Failed to allocate reassembly buffer for %d bytes", (int)count);
-		data->cb(-ENOMEM, nfs, rpc_get_error(nfs->rpc), data->private_data);
-		free_nfs_cb_data(data);
-		return -1;
-	}
-
-	while (count > 0) {
+	do {
 		uint64_t readcount = count;
 		struct nfs_mcb_data *mdata;
 		READ3args args;
@@ -1608,33 +1633,35 @@ int nfs_pread_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t offse
 		mdata = malloc(sizeof(struct nfs_mcb_data));
 		if (mdata == NULL) {
 			rpc_set_error(nfs->rpc, "out of memory: failed to allocate nfs_mcb_data structure");
-			if (data->num_calls == 0)
+			if (data->num_calls == 0) {
 				free_nfs_cb_data(data);
-			return -1;
+				return -1;
+			}
+			data->oom = 1;
+			break;
 		}
 		memset(mdata, 0, sizeof(struct nfs_mcb_data));
 		mdata->data   = data;
 		mdata->offset = offset;
 		mdata->count  = readcount;
 
-		memset(&args, 0, sizeof(READ3args));
-		args.file = nfsfh->fh;
-		args.offset = offset;
-		args.count = readcount;
+		nfs_fill_READ3args(&args, nfsfh, offset, readcount);
 
 		if (rpc_nfs3_read_async(nfs->rpc, nfs_pread_mcb, &args, mdata) != 0) {
 			rpc_set_error(nfs->rpc, "RPC error: Failed to send READ call for %s", data->path);
-			data->cb(-ENOMEM, nfs, rpc_get_error(nfs->rpc), data->private_data);
 			free(mdata);
-			if (data->num_calls == 0)
+			if (data->num_calls == 0) {
 				free_nfs_cb_data(data);
-			return -1;
+				return -1;
+			}
+			data->oom = 1;
+			break;
 		}
 
 		count               -= readcount;
 		offset              += readcount;
 		data->num_calls++;
-	 }
+	 } while (count > 0);
 
 	 return 0;
 }
@@ -1652,36 +1679,16 @@ int nfs_read_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t count,
 /*
  * Async pwrite()
  */
-static void nfs_pwrite_cb(struct rpc_context *rpc, int status, void *command_data, void *private_data)
+static void nfs_fill_WRITE3args (WRITE3args *args, struct nfsfh *fh, uint64_t offset, uint64_t count,
+                                 void *buf)
 {
-	struct nfs_cb_data *data = private_data;
-	struct nfs_context *nfs = data->nfs;
-	WRITE3res *res;
-
-	assert(rpc->magic == RPC_CONTEXT_MAGIC);
-
-	if (status == RPC_STATUS_ERROR) {
-		data->cb(-EFAULT, nfs, command_data, data->private_data);
-		free_nfs_cb_data(data);
-		return;
-	}
-	if (status == RPC_STATUS_CANCEL) {
-		data->cb(-EINTR, nfs, "Command was cancelled", data->private_data);
-		free_nfs_cb_data(data);
-		return;
-	}
-
-	res = command_data;
-	if (res->status != NFS3_OK) {
-		rpc_set_error(nfs->rpc, "NFS: Write failed with %s(%d)", nfsstat3_to_str(res->status), nfsstat3_to_errno(res->status));
-		data->cb(nfsstat3_to_errno(res->status), nfs, rpc_get_error(nfs->rpc), data->private_data);
-		free_nfs_cb_data(data);
-		return;
-	}
-
-	data->nfsfh->offset += res->WRITE3res_u.resok.count;
-	data->cb(res->WRITE3res_u.resok.count, nfs, NULL, data->private_data);
-	free_nfs_cb_data(data);
+	memset(args, 0, sizeof(WRITE3args));
+	args->file = fh->fh;
+	args->offset = offset;
+	args->count  = count;
+	args->stable = fh->is_sync?FILE_SYNC:UNSTABLE;
+	args->data.data_len = count;
+	args->data.data_val = buf;
 }
 
 static void nfs_pwrite_mcb(struct rpc_context *rpc, int status, void *command_data, void *private_data)
@@ -1710,30 +1717,53 @@ static void nfs_pwrite_mcb(struct rpc_context *rpc, int status, void *command_da
 			rpc_set_error(nfs->rpc, "NFS: Write failed with %s(%d)", nfsstat3_to_str(res->status), nfsstat3_to_errno(res->status));
 			data->error = 1;
 		} else  {
+			if (res->WRITE3res_u.resok.count < mdata->count) {
+				if (res->WRITE3res_u.resok.count == 0) {
+					rpc_set_error(nfs->rpc, "NFS: Write failed. No bytes written!");
+					data->error = 1;
+				} else {
+					/* reissue reminder of this write request */
+					WRITE3args args;
+					mdata->offset += res->WRITE3res_u.resok.count;
+					mdata->count -= res->WRITE3res_u.resok.count;
+					nfs_fill_WRITE3args(&args, data->nfsfh, mdata->offset, mdata->count,
+										&data->usrbuf[mdata->offset - data->start_offset]);
+					if (rpc_nfs3_write_async(nfs->rpc, nfs_pwrite_mcb, &args, mdata) == 0) {
+						data->num_calls++;
+						return;
+					} else {
+						rpc_set_error(nfs->rpc, "RPC error: Failed to send WRITE call for %s", data->path);
+						data->oom = 1;
+					}
+				}
+			}
 			if (res->WRITE3res_u.resok.count > 0) {
-				if ((unsigned)data->max_offset < mdata->offset + res->WRITE3res_u.resok.count) {
+				if (data->max_offset < mdata->offset + res->WRITE3res_u.resok.count) {
 					data->max_offset = mdata->offset + res->WRITE3res_u.resok.count;
 				}
 			}
 		}
 	}
 
+	free(mdata);
+
 	if (data->num_calls > 0) {
 		/* still waiting for more replies */
-		free(mdata);
 		return;
 	}
-
+	if (data->oom != 0) {
+		data->cb(-ENOMEM, nfs, command_data, data->private_data);
+		free_nfs_cb_data(data);
+		return;
+	}
 	if (data->error != 0) {
 		data->cb(-EFAULT, nfs, command_data, data->private_data);
 		free_nfs_cb_data(data);
-		free(mdata);
 		return;
 	}
 	if (data->cancel != 0) {
 		data->cb(-EINTR, nfs, "Command was cancelled", data->private_data);
 		free_nfs_cb_data(data);
-		free(mdata);
 		return;
 	}
 
@@ -1741,7 +1771,6 @@ static void nfs_pwrite_mcb(struct rpc_context *rpc, int status, void *command_da
 	data->cb(data->max_offset - data->start_offset, nfs, NULL, data->private_data);
 
 	free_nfs_cb_data(data);
-	free(mdata);
 }
 
 
@@ -1759,41 +1788,20 @@ int nfs_pwrite_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t offs
 	data->cb           = cb;
 	data->private_data = private_data;
 	data->nfsfh        = nfsfh;
+	data->usrbuf       = buf;
 
 	nfsfh->offset = offset;
 
-	if (count <= nfs_get_writemax(nfs)) {
-		WRITE3args args;
-
-		memset(&args, 0, sizeof(WRITE3args));
-		args.file = nfsfh->fh;
-		args.offset = offset;
-		args.count  = count;
-		args.stable = nfsfh->is_sync?FILE_SYNC:UNSTABLE;
-		args.data.data_len = count;
-		args.data.data_val = buf;
-
-		if (rpc_nfs3_write_async(nfs->rpc, nfs_pwrite_cb, &args, data) != 0) {
-			rpc_set_error(nfs->rpc, "RPC error: Failed to send WRITE call for %s", data->path);
-			data->cb(-ENOMEM, nfs, rpc_get_error(nfs->rpc), data->private_data);
-			free_nfs_cb_data(data);
-			return -1;
-		}
-		return 0;
-	}
-
 	/* hello, clang-analyzer */
-	assert(count > 0);
 	assert(data->num_calls == 0);
 
-	/* trying to write more than maximum server write size, we has to chop it up into smaller
-	 * chunks.
+	/* chop requests into chunks of at most WRITEMAX bytes if necessary.
 	 * we send all writes in parallel so that performance is still good.
 	 */
 	data->max_offset = offset;
 	data->start_offset = offset;
 
-	while (count > 0) {
+	do {
 		uint64_t writecount = count;
 		struct nfs_mcb_data *mdata;
 		WRITE3args args;
@@ -1805,37 +1813,35 @@ int nfs_pwrite_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t offs
 		mdata = malloc(sizeof(struct nfs_mcb_data));
 		if (mdata == NULL) {
 			rpc_set_error(nfs->rpc, "out of memory: failed to allocate nfs_mcb_data structure");
-			if (data->num_calls == 0)
+			if (data->num_calls == 0) {
 				free_nfs_cb_data(data);
-			return -1;
+				return -1;
+			}
+			data->oom = 1;
+			break;
 		}
 		memset(mdata, 0, sizeof(struct nfs_mcb_data));
 		mdata->data   = data;
 		mdata->offset = offset;
 		mdata->count  = writecount;
 
-		memset(&args, 0, sizeof(WRITE3args));
-		args.file = nfsfh->fh;
-		args.offset = offset;
-		args.count  = writecount;
-		args.stable = nfsfh->is_sync?FILE_SYNC:UNSTABLE;
-		args.data.data_len = writecount;
-		args.data.data_val = &buf[offset - data->start_offset];
+		nfs_fill_WRITE3args(&args, nfsfh, offset, writecount, &buf[offset - data->start_offset]);
 
 		if (rpc_nfs3_write_async(nfs->rpc, nfs_pwrite_mcb, &args, mdata) != 0) {
 			rpc_set_error(nfs->rpc, "RPC error: Failed to send WRITE call for %s", data->path);
-			data->cb(-ENOMEM, nfs, rpc_get_error(nfs->rpc), data->private_data);
 			free(mdata);
-			if (data->num_calls == 0)
+			if (data->num_calls == 0) {
 				free_nfs_cb_data(data);
-
-			return -1;
+				return -1;
+			}
+			data->oom = 1;
+			break;
 		}
 
 		count               -= writecount;
 		offset              += writecount;
 		data->num_calls++;
-	}
+	} while (count > 0);
 
 	return 0;
 }
@@ -2654,13 +2660,14 @@ static void nfs_opendir3_cb(struct rpc_context *rpc, int status, void *command_d
 	rdpe_cb_data->getattrcount--;
 
 	if (status == RPC_STATUS_ERROR) {
+		rpc_set_error(nfs->rpc, "LOOKUP during READDIRPLUS emulation "
+			      "failed with RPC_STATUS_ERROR");
 		rdpe_cb_data->status = RPC_STATUS_ERROR;
 	}
 	if (status == RPC_STATUS_CANCEL) {
+		rpc_set_error(nfs->rpc, "LOOKUP during READDIRPLUS emulation "
+			      "failed with RPC_STATUS_CANCEL");
 		rdpe_cb_data->status = RPC_STATUS_CANCEL;
-	}
-	if (status == RPC_STATUS_SUCCESS && res->status != NFS3_OK) {
-		rdpe_cb_data->status = RPC_STATUS_ERROR;
 	}
 	if (status == RPC_STATUS_SUCCESS && res->status == NFS3_OK) {
 		if (res->LOOKUP3res_u.resok.obj_attributes.attributes_follow) {
@@ -2683,7 +2690,10 @@ static void nfs_opendir3_cb(struct rpc_context *rpc, int status, void *command_d
 
 	if (rdpe_cb_data->getattrcount == 0) {
 		if (rdpe_cb_data->status != RPC_STATUS_SUCCESS) {
-			data->cb(-ENOMEM, nfs, rpc_get_error(nfs->rpc), data->private_data);
+			rpc_set_error(nfs->rpc, "READDIRPLUS emulation "
+			      "failed: %s", rpc_get_error(rpc));
+			data->cb(-ENOMEM, nfs, rpc_get_error(nfs->rpc),
+				data->private_data);
 			nfs_free_nfsdir(nfsdir);
 		} else {
 			data->cb(0, nfs, nfsdir, data->private_data);
@@ -4260,91 +4270,6 @@ static void mount_export_4_cb(struct rpc_context *rpc, int status, void *command
 	}
 }
 
-static void mount_export_3_cb(struct rpc_context *rpc, int status, void *command_data, void *private_data)
-{
-	struct mount_cb_data *data = private_data;
-	uint32_t mount_port;
-
-	assert(rpc->magic == RPC_CONTEXT_MAGIC);
-
-	if (status == RPC_STATUS_ERROR) {
-		data->cb(rpc, -EFAULT, command_data, data->private_data);
-		free_mount_cb_data(data);
-		return;
-	}
-	if (status == RPC_STATUS_CANCEL) {
-		data->cb(rpc, -EINTR, "Command was cancelled", data->private_data);
-		free_mount_cb_data(data);
-		return;
-	}
-
-	mount_port = *(uint32_t *)command_data;
-	if (mount_port == 0) {
-		rpc_set_error(rpc, "RPC error. Mount program is not available");
-		data->cb(rpc, -ENOENT, command_data, data->private_data);
-		free_mount_cb_data(data);
-		return;
-	}
-
-	rpc_disconnect(rpc, "normal disconnect");
-	if (rpc_connect_async(rpc, data->server, mount_port, mount_export_4_cb, data) != 0) {
-		data->cb(rpc, -ENOMEM, command_data, data->private_data);
-		free_mount_cb_data(data);
-		return;
-	}
-}
-
-static void mount_export_2_cb(struct rpc_context *rpc, int status, void *command_data, void *private_data)
-{
-	struct mount_cb_data *data = private_data;
-
-	assert(rpc->magic == RPC_CONTEXT_MAGIC);
-
-	if (status == RPC_STATUS_ERROR) {
-		data->cb(rpc, -EFAULT, command_data, data->private_data);
-		free_mount_cb_data(data);
-		return;
-	}
-	if (status == RPC_STATUS_CANCEL) {
-		data->cb(rpc, -EINTR, "Command was cancelled", data->private_data);
-		free_mount_cb_data(data);
-		return;
-	}
-
-	if (rpc_pmap_getport_async(rpc, MOUNT_PROGRAM, MOUNT_V3, IPPROTO_TCP, mount_export_3_cb, private_data) != 0) {
-		data->cb(rpc, -ENOMEM, command_data, data->private_data);
-		free_mount_cb_data(data);
-		return;
-	}
-}
-
-static void mount_export_1_cb(struct rpc_context *rpc, int status, void *command_data, void *private_data)
-{
-	struct mount_cb_data *data = private_data;
-
-	assert(rpc->magic == RPC_CONTEXT_MAGIC);
-
-	/* Dont want any more callbacks even if the socket is closed */
-	rpc->connect_cb = NULL;
-
-	if (status == RPC_STATUS_ERROR) {
-		data->cb(rpc, -EFAULT, command_data, data->private_data);
-		free_mount_cb_data(data);
-		return;
-	}
-	if (status == RPC_STATUS_CANCEL) {
-		data->cb(rpc, -EINTR, "Command was cancelled", data->private_data);
-		free_mount_cb_data(data);
-		return;
-	}
-
-	if (rpc_pmap_null_async(rpc, mount_export_2_cb, data) != 0) {
-		data->cb(rpc, -ENOMEM, command_data, data->private_data);
-		free_mount_cb_data(data);
-		return;
-	}
-}
-
 int mount_getexports_async(struct rpc_context *rpc, const char *server, rpc_cb cb, void *private_data)
 {
 	struct mount_cb_data *data;
@@ -4363,7 +4288,8 @@ int mount_getexports_async(struct rpc_context *rpc, const char *server, rpc_cb c
 		free_mount_cb_data(data);
 		return -1;
 	}
-	if (rpc_connect_async(rpc, data->server, 111, mount_export_1_cb, data) != 0) {
+	if (rpc_connect_program_async(rpc, data->server, MOUNT_PROGRAM, MOUNT_V3, mount_export_4_cb, data) != 0) {
+		rpc_set_error(rpc, "Failed to start connection");
 		free_mount_cb_data(data);
 		return -1;
 	}

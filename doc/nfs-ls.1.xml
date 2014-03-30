@@ -1,0 +1,126 @@
+<?xml version="1.0" encoding="iso-8859-1"?>
+<refentry id="nfs-ls.1">
+
+<refmeta>
+	<refentrytitle>nfs-ls</refentrytitle>
+	<manvolnum>1</manvolnum>
+	<refmiscinfo class="source">nfs-ls</refmiscinfo>
+	<refmiscinfo class="manual">nfs-ls: list servers, exports and directories</refmiscinfo>
+</refmeta>
+
+
+<refnamediv>
+	<refname>nfs-ls</refname>
+        <refpurpose>Utility to list NFS servers, exports and directories</refpurpose>
+</refnamediv>
+
+<refsynopsisdiv>
+	<cmdsynopsis>
+		<command>nfs-ls [ OPTIONS ] &lt;NFS-URL&gt;</command>
+	</cmdsynopsis>
+	
+	<cmdsynopsis>
+		<command>nfs-ls</command>
+		<arg choice="opt">-R --recursive</arg>
+		<arg choice="opt">-s --summary</arg>
+		<arg choice="opt">-D --discovery</arg>
+		<arg choice="opt">-? --help</arg>
+		<arg choice="opt">--usage</arg>
+	</cmdsynopsis>
+	
+</refsynopsisdiv>
+
+  <refsect1><title>DESCRIPTION</title>
+    <para>
+      nfs-ls is a utility to list NFS servers, exports or directories.
+    </para>
+    <para>
+      Example: List the content of a directory on the NFS server
+      <screen format="linespecific">
+$ nfs-ls nfs://127.0.0.1/data/tmp
+-rwxrwxr-x  1  1000  1000      1190802 a.out
+-rwxr-xr-x  1  1000  1000           13 foo123.copy
+-rwxrwxrwx  1  1000  1000            8 foo123.writtenx
+      </screen>
+    </para>
+  </refsect1>
+
+  <refsect1>
+    <title>OPTIONS</title>
+
+    <variablelist>
+
+      <varlistentry><term>-s --summary</term>
+        <listitem>
+          <para>
+	    Print a summary line at the end of output.
+	  </para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry><term>-R --recursive</term>
+        <listitem>
+          <para>
+	    Recursive listing of the specified URL.
+	  </para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry><term>-D --discovery;</term>
+        <listitem>
+          <para>
+	    This option is used to discover local NFS servers and to list
+	    the exports for specific servers.
+          </para>
+          <para>
+	    When used with the 'nfs://' URL the command will try to
+	    detect all local NFS servers and will list their IPs.
+          </para>
+          <para>
+	    When used with a 'nfs://server' the command will
+	    list all the exports on the specified server.
+          </para>
+          <para>
+	    Example: Discover and list all local NFS servers
+	    <screen format="linespecific">
+$ nfs-ls -D nfs://
+nfs://10.10.10.10
+nfs://10.0.0.10
+	    </screen>
+
+	    Example: List the exports for a server
+	    <screen format="linespecific">
+$ nfs-ls -D nfs://10.10.10.10
+nfs://10.10.10.10/foo
+nfs://10.10.10.10/bar
+	    </screen>
+	  </para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry><term>-? --help</term>
+        <listitem>
+          <para>
+	    Display basic help text.
+	  </para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry><term>--usage</term>
+        <listitem>
+          <para>
+	    Display basic usage text.
+	  </para>
+        </listitem>
+      </varlistentry>
+
+    </variablelist>
+  </refsect1>
+
+  <refsect1><title>SEE ALSO</title>
+    <para>
+      <ulink url="http://github.com/sahlberg/libnfs"/>
+    </para>
+  </refsect1>
+
+</refentry>

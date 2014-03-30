@@ -83,8 +83,9 @@ struct rpc_pdu *rpc_allocate_pdu(struct rpc_context *rpc, int program, int versi
 	msg.body.cbody.cred    = rpc->auth->ah_cred;
 	msg.body.cbody.verf    = rpc->auth->ah_verf;
 
-	if (zdr_callmsg(&pdu->zdr, &msg) == 0) {
-		rpc_set_error(rpc, "zdr_callmsg failed");
+	if (zdr_callmsg(rpc, &pdu->zdr, &msg) == 0) {
+		rpc_set_error(rpc, "zdr_callmsg failed with %s",
+			      rpc_get_error(rpc));
 		zdr_destroy(&pdu->zdr);
 		free(pdu);
 		return NULL;
@@ -180,8 +181,11 @@ static int rpc_process_reply(struct rpc_context *rpc, struct rpc_pdu *pdu, ZDR *
 		}
 		pdu->zdr_decode_buf = malloc(pdu->zdr_decode_bufsize);
 		if (pdu->zdr_decode_buf == NULL) {
-			rpc_set_error(rpc, "zdr_replymsg failed in portmap_getport_reply");
-			pdu->cb(rpc, RPC_STATUS_ERROR, "Failed to allocate buffer for decoding of ZDR reply", pdu->private_data);
+			rpc_set_error(rpc, "Failed to allocate memory for "
+				      "zdr_encode_buf in rpc_process_reply");
+			pdu->cb(rpc, RPC_STATUS_ERROR, "Failed to allocate "
+				"buffer for decoding of ZDR reply",
+				pdu->private_data);
 			return 0;
 		}
 		memset(pdu->zdr_decode_buf, 0, pdu->zdr_decode_bufsize);
@@ -189,9 +193,11 @@ static int rpc_process_reply(struct rpc_context *rpc, struct rpc_pdu *pdu, ZDR *
 	msg.body.rbody.reply.areply.reply_data.results.where = pdu->zdr_decode_buf;
 	msg.body.rbody.reply.areply.reply_data.results.proc  = pdu->zdr_decode_fn;
 
-	if (zdr_replymsg(zdr, &msg) == 0) {
-		rpc_set_error(rpc, "zdr_replymsg failed in portmap_getport_reply");
-		pdu->cb(rpc, RPC_STATUS_ERROR, "Message rejected by server", pdu->private_data);
+	if (zdr_replymsg(rpc, zdr, &msg) == 0) {
+		rpc_set_error(rpc, "zdr_replymsg failed in rpc_process_reply: "
+			      "%s", rpc_get_error(rpc));
+		pdu->cb(rpc, RPC_STATUS_ERROR, "Message rejected by server",
+			pdu->private_data);
 		if (pdu->zdr_decode_buf != NULL) {
 			free(pdu->zdr_decode_buf);
 			pdu->zdr_decode_buf = NULL;

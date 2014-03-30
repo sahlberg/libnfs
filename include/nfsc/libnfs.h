@@ -224,6 +224,7 @@ EXTERN int nfs_mount(struct nfs_context *nfs, const char *server, const char *ex
  * -errno : An error occured.
  *          data is the error string.
  */
+/* This function is deprecated. Use nfs_stat64_async() instead */
 struct stat;
 EXTERN int nfs_stat_async(struct nfs_context *nfs, const char *path, nfs_cb cb, void *private_data);
 /*
@@ -232,11 +233,58 @@ EXTERN int nfs_stat_async(struct nfs_context *nfs, const char *path, nfs_cb cb, 
  *      0 : The operation was successfull.
  * -errno : The command failed.
  */
+/* This function is deprecated. Use nfs_stat64() instead */
 #ifdef WIN32
 EXTERN int nfs_stat(struct nfs_context *nfs, const char *path, struct __stat64 *st);
 #else
 EXTERN int nfs_stat(struct nfs_context *nfs, const char *path, struct stat *st);
 #endif
+
+
+/* nfs_stat64
+ * 64 bit version if stat. All fields are always 64bit.
+ * Use these functions instead of nfs_stat[_async](), especially if you
+ * have weird stat structures.
+ */
+/*
+ * STAT()
+ */
+struct nfs_stat_64 {
+	uint64_t nfs_dev;
+	uint64_t nfs_ino;
+	uint64_t nfs_mode;
+	uint64_t nfs_nlink;
+	uint64_t nfs_uid;
+	uint64_t nfs_gid;
+	uint64_t nfs_rdev;
+	uint64_t nfs_size;
+	uint64_t nfs_blksize;
+	uint64_t nfs_blocks;
+	uint64_t nfs_atime;
+	uint64_t nfs_mtime;
+	uint64_t nfs_ctime;
+};
+
+/*
+ * Async stat(<filename>)
+ * Function returns
+ *  0 : The operation was initiated. Once the operation finishes, the callback will be invoked.
+ * <0 : An error occured when trying to set up the operation. The callback will not be invoked.
+ *
+ * When the callback is invoked, status indicates the result:
+ *      0 : Success.
+ *          data is struct nfs_stat_64 *
+ * -errno : An error occured.
+ *          data is the error string.
+ */
+EXTERN int nfs_stat64_async(struct nfs_context *nfs, const char *path, nfs_cb cb, void *private_data);
+/*
+ * Sync stat(<filename>)
+ * Function returns
+ *      0 : The operation was successfull.
+ * -errno : The command failed.
+ */
+EXTERN int nfs_stat64(struct nfs_context *nfs, const char *path, struct nfs_stat_64 *st);
 
 /*
  * FSTAT()
