@@ -1,5 +1,6 @@
 nfscdir = $(includedir)/nfsc
 dist_nfsc_HEADERS = \
+	nfsc/config.h \
 	nfsc/libnfs.h \
 	nfsc/libnfs-raw.h \
 	nfsc/libnfs-zdr.h \
