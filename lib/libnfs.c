@@ -3034,7 +3034,7 @@ void nfs_getcwd(struct nfs_context *nfs, const char **cwd)
 struct lseek_cb_data {
        struct nfs_context *nfs;
        struct nfsfh *nfsfh;
-       uint64_t offset;
+       int64_t offset;
        nfs_cb cb;
        void *private_data;
 };
@@ -3044,6 +3044,7 @@ static void nfs_lseek_1_cb(struct rpc_context *rpc, int status, void *command_da
 	GETATTR3res *res;
 	struct lseek_cb_data *data = private_data;
 	struct nfs_context *nfs = data->nfs;
+	uint64_t size = 0;
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
@@ -3066,24 +3067,41 @@ static void nfs_lseek_1_cb(struct rpc_context *rpc, int status, void *command_da
 		return;
 	}
 
-	data->nfsfh->offset = data->offset + res->GETATTR3res_u.resok.obj_attributes.size;
-	data->cb(0, nfs, &data->nfsfh->offset, data->private_data);
+	size = res->GETATTR3res_u.resok.obj_attributes.size;
+
+	if (data->offset < 0 &&
+	    (uint64_t)(-data->offset) > size) {
+		data->cb(-EINVAL, nfs, &data->nfsfh->offset, data->private_data);
+	} else {
+		data->nfsfh->offset = data->offset + size;
+		data->cb(0, nfs, &data->nfsfh->offset, data->private_data);
+	}
+
 	free(data);
 }
 
-int nfs_lseek_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t offset, int whence, nfs_cb cb, void *private_data)
+int nfs_lseek_async(struct nfs_context *nfs, struct nfsfh *nfsfh, int64_t offset, int whence, nfs_cb cb, void *private_data)
 {
 	struct lseek_cb_data *data;
 	struct GETATTR3args args;
 
 	if (whence == SEEK_SET) {
-		nfsfh->offset = offset;
-		cb(0, nfs, &nfsfh->offset, private_data);
+		if (offset < 0) {
+			cb(-EINVAL, nfs, &nfsfh->offset, private_data);
+		} else {
+			nfsfh->offset = offset;
+			cb(0, nfs, &nfsfh->offset, private_data);
+		}
 		return 0;
 	}
 	if (whence == SEEK_CUR) {
-		nfsfh->offset += offset;
-		cb(0, nfs, &nfsfh->offset, private_data);
+		if (offset < 0 &&
+		    nfsfh->offset < (uint64_t)(-offset)) {
+			cb(-EINVAL, nfs, &nfsfh->offset, private_data);
+		} else {
+			nfsfh->offset += offset;
+			cb(0, nfs, &nfsfh->offset, private_data);
+		}
 		return 0;
 	}
 
