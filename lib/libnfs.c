@@ -143,6 +143,7 @@ struct nfs_mcb_data {
        struct nfs_cb_data *data;
        uint64_t offset;
        uint64_t count;
+       int update_pos;
 };
 
 static int nfs_lookup_path_async_internal(struct nfs_context *nfs, struct nfs_cb_data *data, struct nfs_fh3 *fh);
@@ -1515,9 +1516,14 @@ static void nfs_pread_mcb(struct rpc_context *rpc, int status, void *command_dat
 		if (res->status != NFS3_OK) {
 			rpc_set_error(nfs->rpc, "NFS: Read failed with %s(%d)", nfsstat3_to_str(res->status), nfsstat3_to_errno(res->status));
 			data->error = 1;
-		} else  {
+		} else {
+			uint64_t count = res->READ3res_u.resok.count;
+
+			if (mdata->update_pos)
+				data->nfsfh->offset += count;
+
 			/* if we have more than one call or we have received a short read we need a reassembly buffer */
-			if (data->num_calls || (res->READ3res_u.resok.count < mdata->count && !res->READ3res_u.resok.eof)) {
+			if (data->num_calls || (count < mdata->count && !res->READ3res_u.resok.eof)) {
 				if (data->buffer == NULL) {
 					data->buffer = 	malloc(data->request_size);
 					if (data->buffer == NULL) {
@@ -1526,14 +1532,14 @@ static void nfs_pread_mcb(struct rpc_context *rpc, int status, void *command_dat
 					}
 				}
 			}
-			if (res->READ3res_u.resok.count > 0) {
-				if (res->READ3res_u.resok.count <= mdata->count) {
+			if (count > 0) {
+				if (count <= mdata->count) {
 					/* copy data into reassembly buffer if we have one */
 					if (data->buffer != NULL) {
-						memcpy(&data->buffer[mdata->offset - data->start_offset], res->READ3res_u.resok.data.data_val, res->READ3res_u.resok.count);
+						memcpy(&data->buffer[mdata->offset - data->start_offset], res->READ3res_u.resok.data.data_val, count);
 					}
-					if (data->max_offset < mdata->offset + res->READ3res_u.resok.count) {
-						data->max_offset = mdata->offset + res->READ3res_u.resok.count;
+					if (data->max_offset < mdata->offset + count) {
+						data->max_offset = mdata->offset + count;
 					}
 				} else {
 					rpc_set_error(nfs->rpc, "NFS: Read overflow. Server has sent more data than requested!");
@@ -1541,15 +1547,15 @@ static void nfs_pread_mcb(struct rpc_context *rpc, int status, void *command_dat
 				}
 			}
 			/* check if we have received a short read */
-			if (res->READ3res_u.resok.count < mdata->count && !res->READ3res_u.resok.eof) {
-				if (res->READ3res_u.resok.count == 0) {
+			if (count < mdata->count && !res->READ3res_u.resok.eof) {
+				if (count == 0) {
 					rpc_set_error(nfs->rpc, "NFS: Read failed. No bytes read and not at EOF!");
 					data->error = 1;
 				} else {
 					/* reissue reminder of this read request */
 					READ3args args;
-					mdata->offset += res->READ3res_u.resok.count;
-					mdata->count -= res->READ3res_u.resok.count;
+					mdata->offset += count;
+					mdata->count -= count;
 					nfs_fill_READ3args(&args, data->nfsfh, mdata->offset, mdata->count);
 					if (rpc_nfs3_read_async(nfs->rpc, nfs_pread_mcb, &args, mdata) == 0) {
 						data->num_calls++;
@@ -1585,7 +1591,6 @@ static void nfs_pread_mcb(struct rpc_context *rpc, int status, void *command_dat
 		return;
 	}
 
-	data->nfsfh->offset = data->max_offset;
 	if (data->buffer) {
 		data->cb(data->max_offset - data->start_offset, nfs, data->buffer, data->private_data);
 	} else {
@@ -1595,7 +1600,7 @@ static void nfs_pread_mcb(struct rpc_context *rpc, int status, void *command_dat
 	free_nfs_cb_data(data);
 }
 
-int nfs_pread_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t offset, uint64_t count, nfs_cb cb, void *private_data)
+static int nfs_pread_async_internal(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t offset, uint64_t count, nfs_cb cb, void *private_data, int update_pos)
 {
 	struct nfs_cb_data *data;
 
@@ -1610,8 +1615,6 @@ int nfs_pread_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t offse
 	data->private_data = private_data;
 	data->nfsfh        = nfsfh;
 	data->request_size = count;
-
-	nfsfh->offset = offset;
 
 	assert(data->num_calls == 0);
 
@@ -1644,6 +1647,7 @@ int nfs_pread_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t offse
 		mdata->data   = data;
 		mdata->offset = offset;
 		mdata->count  = readcount;
+		mdata->update_pos = update_pos;
 
 		nfs_fill_READ3args(&args, nfsfh, offset, readcount);
 
@@ -1666,12 +1670,17 @@ int nfs_pread_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t offse
 	 return 0;
 }
 
+int nfs_pread_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t offset, uint64_t count, nfs_cb cb, void *private_data)
+{
+	return nfs_pread_async_internal(nfs, nfsfh, offset, count, cb, private_data, 0);
+}
+
 /*
  * Async read()
  */
 int nfs_read_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t count, nfs_cb cb, void *private_data)
 {
-	return nfs_pread_async(nfs, nfsfh, nfsfh->offset, count, cb, private_data);
+	return nfs_pread_async_internal(nfs, nfsfh, nfsfh->offset, count, cb, private_data, 1);
 }
 
 
@@ -1717,15 +1726,21 @@ static void nfs_pwrite_mcb(struct rpc_context *rpc, int status, void *command_da
 			rpc_set_error(nfs->rpc, "NFS: Write failed with %s(%d)", nfsstat3_to_str(res->status), nfsstat3_to_errno(res->status));
 			data->error = 1;
 		} else  {
-			if (res->WRITE3res_u.resok.count < mdata->count) {
-				if (res->WRITE3res_u.resok.count == 0) {
+			uint64_t count = res->WRITE3res_u.resok.count;
+
+			if (mdata->update_pos)
+				data->nfsfh->offset += count;
+
+			if (count < mdata->count) {
+				if (count == 0) {
 					rpc_set_error(nfs->rpc, "NFS: Write failed. No bytes written!");
 					data->error = 1;
 				} else {
 					/* reissue reminder of this write request */
 					WRITE3args args;
-					mdata->offset += res->WRITE3res_u.resok.count;
-					mdata->count -= res->WRITE3res_u.resok.count;
+					mdata->offset += count;
+					mdata->count -= count;
+
 					nfs_fill_WRITE3args(&args, data->nfsfh, mdata->offset, mdata->count,
 										&data->usrbuf[mdata->offset - data->start_offset]);
 					if (rpc_nfs3_write_async(nfs->rpc, nfs_pwrite_mcb, &args, mdata) == 0) {
@@ -1737,9 +1752,9 @@ static void nfs_pwrite_mcb(struct rpc_context *rpc, int status, void *command_da
 					}
 				}
 			}
-			if (res->WRITE3res_u.resok.count > 0) {
-				if (data->max_offset < mdata->offset + res->WRITE3res_u.resok.count) {
-					data->max_offset = mdata->offset + res->WRITE3res_u.resok.count;
+			if (count > 0) {
+				if (data->max_offset < mdata->offset + count) {
+					data->max_offset = mdata->offset + count;
 				}
 			}
 		}
@@ -1767,14 +1782,13 @@ static void nfs_pwrite_mcb(struct rpc_context *rpc, int status, void *command_da
 		return;
 	}
 
-	data->nfsfh->offset = data->max_offset;
 	data->cb(data->max_offset - data->start_offset, nfs, NULL, data->private_data);
 
 	free_nfs_cb_data(data);
 }
 
 
-int nfs_pwrite_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t offset, uint64_t count, char *buf, nfs_cb cb, void *private_data)
+static int nfs_pwrite_async_internal(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t offset, uint64_t count, char *buf, nfs_cb cb, void *private_data, int update_pos)
 {
 	struct nfs_cb_data *data;
 
@@ -1789,8 +1803,6 @@ int nfs_pwrite_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t offs
 	data->private_data = private_data;
 	data->nfsfh        = nfsfh;
 	data->usrbuf       = buf;
-
-	nfsfh->offset = offset;
 
 	/* hello, clang-analyzer */
 	assert(data->num_calls == 0);
@@ -1824,6 +1836,7 @@ int nfs_pwrite_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t offs
 		mdata->data   = data;
 		mdata->offset = offset;
 		mdata->count  = writecount;
+		mdata->update_pos = update_pos;
 
 		nfs_fill_WRITE3args(&args, nfsfh, offset, writecount, &buf[offset - data->start_offset]);
 
@@ -1846,12 +1859,17 @@ int nfs_pwrite_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t offs
 	return 0;
 }
 
+int nfs_pwrite_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t offset, uint64_t count, char *buf, nfs_cb cb, void *private_data)
+{
+	return nfs_pwrite_async_internal(nfs, nfsfh, offset, count, buf, cb, private_data, 0);
+}
+
 /*
  * Async write()
  */
 int nfs_write_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t count, char *buf, nfs_cb cb, void *private_data)
 {
-	return nfs_pwrite_async(nfs, nfsfh, nfsfh->offset, count, buf, cb, private_data);
+	return nfs_pwrite_async_internal(nfs, nfsfh, nfsfh->offset, count, buf, cb, private_data, 1);
 }
 
 
