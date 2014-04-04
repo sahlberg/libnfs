@@ -1,6 +1,6 @@
 AC_PREREQ(2.50)
 AC_INIT([libnfs], [1.9.3], [ronniesahlberg@gmail.com])
-AC_CONFIG_HEADERS([config.h])
+AC_CONFIG_HEADERS([include/nfsc/config.h])
 AM_INIT_AUTOMAKE([foreign])
 AC_CANONICAL_HOST
 

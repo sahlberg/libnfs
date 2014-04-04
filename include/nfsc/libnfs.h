@@ -21,11 +21,11 @@
 #ifndef _LIBNFS_H_
 #define _LIBNFS_H_
 
+#include "config.h"
+
 #include <stdint.h>
-#if defined(ANDROID)
-#include <sys/time.h>
-#endif
-#if defined(AROS)
+
+#ifdef HAVE_SYS_TIME_H
 #include <sys/time.h>
 #endif
 

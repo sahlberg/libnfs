@@ -321,6 +321,8 @@ EXTERN int rpc_pmap3_dump_async(struct rpc_context *rpc, rpc_cb cb, void *privat
 EXTERN int rpc_pmap3_callit_async(struct rpc_context *rpc, int program, int version, int procedure, char *data, int datalen, rpc_cb cb, void *private_data);
 
 /*
+<<<<<<< HEAD
+=======
  * Call PORTMAPPER3/GETTIME.
  * Function returns
  *  0 : The connection was initiated. Once the connection establish finishes, the callback will be invoked.
@@ -370,6 +372,7 @@ struct pmap3_netbuf;
 EXTERN int rpc_pmap3_taddr2uaddr_async(struct rpc_context *rpc, struct pmap3_netbuf *netbuf, rpc_cb cb, void *private_data);
 
 /*
+>>>>>>> 2c0f57fa33371a55b798a9cca14a3d58e6b3cb26
  * MOUNT v3 FUNCTIONS
  */
 char *mountstat3_to_str(int stat);
