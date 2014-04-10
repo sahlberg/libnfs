@@ -28,6 +28,9 @@
 #if defined(AROS)
 #include <sys/time.h>
 #endif
+#if defined(__APPLE__) && defined(__MACH__)
+#include <sys/time.h>
+#endif
 
 #ifdef __cplusplus
 extern "C" {
