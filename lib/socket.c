@@ -95,6 +95,14 @@ static void set_nonblocking(int fd)
 #endif //FIXME
 }
 
+static void set_nolinger(int fd)
+{
+	struct linger lng;
+	lng.l_onoff = 1;
+	lng.l_linger = 0;
+	setsockopt(fd, SOL_SOCKET, SO_LINGER, &lng, sizeof(lng));
+}
+
 #ifdef HAVE_NETINET_TCP_H
 int set_tcp_sockopt(int sockfd, int optname, int value)
 {
@@ -504,6 +512,7 @@ static int rpc_connect_sockaddr_async(struct rpc_context *rpc, struct sockaddr_s
 	}
 
 	set_nonblocking(rpc->fd);
+	set_nolinger(rpc->fd);
 
 	if (connect(rpc->fd, (struct sockaddr *)s, socksize) != 0 && errno != EINPROGRESS) {
 		rpc_set_error(rpc, "connect() to server failed. %s(%d)", strerror(errno), errno);
