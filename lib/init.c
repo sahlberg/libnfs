@@ -49,6 +49,7 @@ struct rpc_context *rpc_init_context(void)
 {
 	struct rpc_context *rpc;
 	static uint32_t salt = 0;
+	unsigned int i;
 
 	rpc = malloc(sizeof(struct rpc_context));
 	if (rpc == NULL) {
@@ -83,6 +84,9 @@ struct rpc_context *rpc_init_context(void)
 	rpc->uid = getuid();
 	rpc->gid = getgid();
 #endif
+	rpc_reset_queue(&rpc->outqueue);
+	for (i = 0; i < HASHES; i++)
+		rpc_reset_queue(&rpc->waitpdu[i]);
 
 	return rpc;
 }
@@ -155,19 +159,27 @@ char *rpc_get_error(struct rpc_context *rpc)
 
 void rpc_error_all_pdus(struct rpc_context *rpc, char *error)
 {
-	struct rpc_pdu *pdu;
+	struct rpc_pdu *pdu, *next;
+	unsigned int i;
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
-	while((pdu = rpc->outqueue) != NULL) {
+	while ((pdu = rpc->outqueue.head) != NULL) {
 		pdu->cb(rpc, RPC_STATUS_ERROR, error, pdu->private_data);
-		SLIST_REMOVE(&rpc->outqueue, pdu);
+		rpc->outqueue.head = pdu->next;
 		rpc_free_pdu(rpc, pdu);
 	}
-	while((pdu = rpc->waitpdu) != NULL) {
-		pdu->cb(rpc, RPC_STATUS_ERROR, error, pdu->private_data);
-		SLIST_REMOVE(&rpc->waitpdu, pdu);
-		rpc_free_pdu(rpc, pdu);
+	rpc->outqueue.tail = NULL;
+
+	for (i = 0; i < HASHES; i++) {
+		struct rpc_queue *q = &rpc->waitpdu[i];
+
+		while((pdu = q->head) != NULL) {
+			pdu->cb(rpc, RPC_STATUS_ERROR, error, pdu->private_data);
+			q->head = pdu->next;
+			rpc_free_pdu(rpc, pdu);
+		}
+		q->tail = NULL;
 	}
 }
 
@@ -186,7 +198,7 @@ void rpc_free_all_fragments(struct rpc_context *rpc)
 	while (rpc->fragments != NULL) {
 	      struct rpc_fragment *fragment = rpc->fragments;
 
-	      SLIST_REMOVE(&rpc->fragments, fragment);
+	      rpc->fragments = fragment->next;
 	      rpc_free_fragment(fragment);
 	}
 }
@@ -217,18 +229,24 @@ int rpc_add_fragment(struct rpc_context *rpc, char *data, uint64_t size)
 void rpc_destroy_context(struct rpc_context *rpc)
 {
 	struct rpc_pdu *pdu;
+	unsigned int i;
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
-	while((pdu = rpc->outqueue) != NULL) {
+	while((pdu = rpc->outqueue.head) != NULL) {
 		pdu->cb(rpc, RPC_STATUS_CANCEL, NULL, pdu->private_data);
-		SLIST_REMOVE(&rpc->outqueue, pdu);
+		rpc->outqueue.head = pdu->next;
 		rpc_free_pdu(rpc, pdu);
 	}
-	while((pdu = rpc->waitpdu) != NULL) {
-		pdu->cb(rpc, RPC_STATUS_CANCEL, NULL, pdu->private_data);
-		SLIST_REMOVE(&rpc->waitpdu, pdu);
-		rpc_free_pdu(rpc, pdu);
+
+	for (i = 0; i < HASHES; i++) {
+		struct rpc_queue *q = &rpc->waitpdu[i];
+
+		while((pdu = q->head) != NULL) {
+			pdu->cb(rpc, RPC_STATUS_CANCEL, NULL, pdu->private_data);
+			rpc->outqueue.head = pdu->next;
+			rpc_free_pdu(rpc, pdu);
+		}
 	}
 
 	rpc_free_all_fragments(rpc);
