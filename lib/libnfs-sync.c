@@ -29,6 +29,10 @@
 #include "win32_compat.h"
 #endif
 
+#ifdef HAVE_SYS_SOCKET_H
+#include <sys/socket.h>
+#endif
+
 #ifdef HAVE_NET_IF_H
 #include <net/if.h>
 #endif
@@ -47,10 +51,6 @@
 
 #ifdef HAVE_SYS_IOCTL_H
 #include <sys/ioctl.h>
-#endif
-
-#ifdef HAVE_SYS_SOCKET_H
-#include <sys/socket.h>
 #endif
 
 #ifdef HAVE_POLL_H
