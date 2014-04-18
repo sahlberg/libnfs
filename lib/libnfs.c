@@ -84,6 +84,7 @@ struct nfsdir {
 struct nfsfh {
        struct nfs_fh3 fh;
        int is_sync;
+       int is_append;
        uint64_t offset;
 };
 
@@ -133,7 +134,7 @@ struct nfs_cb_data {
        int cancel;
        int oom;
        int num_calls;
-       uint64_t start_offset, max_offset;
+       uint64_t start_offset, max_offset, count;
        char *buffer;
        size_t request_size;
        char *usrbuf;
@@ -1307,6 +1308,9 @@ static void nfs_open_trunc_cb(struct rpc_context *rpc, int status, void *command
 	if (data->continue_int & O_SYNC) {
 		nfsfh->is_sync = 1;
 	}
+	if (data->continue_int & O_APPEND) {
+		nfsfh->is_append = 1;
+	}
 
 	/* steal the filehandle */
 	nfsfh->fh = data->fh;
@@ -1402,6 +1406,9 @@ static void nfs_open_cb(struct rpc_context *rpc, int status, void *command_data,
 
 	if (data->continue_int & O_SYNC) {
 		nfsfh->is_sync = 1;
+	}
+	if (data->continue_int & O_APPEND) {
+		nfsfh->is_append = 1;
 	}
 
 	/* steal the filehandle */
@@ -1695,7 +1702,7 @@ static void nfs_fill_WRITE3args (WRITE3args *args, struct nfsfh *fh, uint64_t of
 	args->file = fh->fh;
 	args->offset = offset;
 	args->count  = count;
-	args->stable = fh->is_sync?FILE_SYNC:UNSTABLE;
+	args->stable = fh->is_sync ? FILE_SYNC : UNSTABLE;
 	args->data.data_len = count;
 	args->data.data_val = buf;
 }
@@ -1867,8 +1874,70 @@ int nfs_pwrite_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t offs
 /*
  * Async write()
  */
+static void nfs_write_append_cb(struct rpc_context *rpc, int status, void *command_data, void *private_data)
+{
+	struct nfs_cb_data *data = private_data;
+	struct nfs_context *nfs = data->nfs;
+	GETATTR3res *res;
+
+	assert(rpc->magic == RPC_CONTEXT_MAGIC);
+
+	if (status == RPC_STATUS_ERROR) {
+		data->cb(-EFAULT, nfs, command_data, data->private_data);
+		free_nfs_cb_data(data);
+		return;
+	}
+	if (status == RPC_STATUS_CANCEL) {
+		data->cb(-EINTR, nfs, "Command was cancelled", data->private_data);
+		free_nfs_cb_data(data);
+		return;
+	}
+
+	res = command_data;
+	if (res->status != NFS3_OK) {
+		rpc_set_error(nfs->rpc, "NFS: GETATTR failed with %s(%d)", nfsstat3_to_str(res->status), nfsstat3_to_errno(res->status));
+		data->cb(nfsstat3_to_errno(res->status), nfs, rpc_get_error(nfs->rpc), data->private_data);
+		free_nfs_cb_data(data);
+		return;
+	}
+
+	if (nfs_pwrite_async_internal(nfs, data->nfsfh, res->GETATTR3res_u.resok.obj_attributes.size, data->count, data->usrbuf, data->cb, data->private_data, 1) != 0) {
+		data->cb(-ENOMEM, nfs, rpc_get_error(nfs->rpc), data->private_data);
+		free_nfs_cb_data(data);
+		return;
+	}
+	free_nfs_cb_data(data);
+}
+
 int nfs_write_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t count, char *buf, nfs_cb cb, void *private_data)
 {
+	if (nfsfh->is_append) {
+		struct GETATTR3args args;
+		struct nfs_cb_data *data;
+
+		data = malloc(sizeof(struct nfs_cb_data));
+		if (data == NULL) {
+			rpc_set_error(nfs->rpc, "out of memory: failed to allocate nfs_cb_data structure");
+			return -1;
+		}
+		memset(data, 0, sizeof(struct nfs_cb_data));
+		data->nfs           = nfs;
+		data->cb            = cb;
+		data->private_data  = private_data;
+		data->nfsfh         = nfsfh;
+		data->usrbuf	    = buf;
+		data->count         = count;
+
+		memset(&args, 0, sizeof(GETATTR3args));
+		args.object = nfsfh->fh;
+
+		if (rpc_nfs3_getattr_async(nfs->rpc, nfs_write_append_cb, &args, data) != 0) {
+			rpc_set_error(nfs->rpc, "out of memory: failed to send GETATTR");
+			free_nfs_cb_data(data);
+			return -1;
+		}
+		return 0;
+	}
 	return nfs_pwrite_async_internal(nfs, nfsfh, nfsfh->offset, count, buf, cb, private_data, 1);
 }
 
