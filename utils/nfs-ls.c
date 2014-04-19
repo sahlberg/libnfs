@@ -172,7 +172,7 @@ int main(int argc, char *argv[])
 	uint64_t offset;
 	struct client client;
 	struct statvfs stvfs;
-	struct nfs_url *url;
+	struct nfs_url *url = NULL;
 	exports export, tmp;
 
 #ifdef WIN32
