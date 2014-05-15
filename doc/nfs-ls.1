@@ -1,0 +1,120 @@
+'\" t
+.\"     Title: nfs-ls
+.\"    Author: [FIXME: author] [see http://docbook.sf.net/el/author]
+.\" Generator: DocBook XSL Stylesheets v1.78.1 <http://docbook.sf.net/>
+.\"      Date: 05/14/2014
+.\"    Manual: nfs-ls: list servers, exports and directories
+.\"    Source: nfs-ls
+.\"  Language: English
+.\"
+.TH "NFS\-LS" "1" "05/14/2014" "nfs\-ls" "nfs\-ls: list servers, exports"
+.\" -----------------------------------------------------------------
+.\" * Define some portability stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.ie \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH "NAME"
+nfs-ls \- Utility to list NFS servers, exports and directories
+.SH "SYNOPSIS"
+.HP \w'\fBnfs\-ls\ [\ OPTIONS\ ]\ <NFS\-URL>\fR\ 'u
+\fBnfs\-ls [ OPTIONS ] <NFS\-URL>\fR
+.HP \w'\fBnfs\-ls\fR\ 'u
+\fBnfs\-ls\fR [\-R\ \-\-recursive] [\-s\ \-\-summary] [\-D\ \-\-discovery] [\-?\ \-\-help] [\-\-usage]
+.SH "DESCRIPTION"
+.PP
+nfs\-ls is a utility to list NFS servers, exports or directories\&.
+.PP
+Example: List the content of a directory on the NFS server
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+$ nfs\-ls nfs://127\&.0\&.0\&.1/data/tmp
+\-rwxrwxr\-x  1  1000  1000      1190802 a\&.out
+\-rwxr\-xr\-x  1  1000  1000           13 foo123\&.copy
+\-rwxrwxrwx  1  1000  1000            8 foo123\&.writtenx
+      
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+.SH "OPTIONS"
+.PP
+\-s \-\-summary
+.RS 4
+Print a summary line at the end of output\&.
+.RE
+.PP
+\-R \-\-recursive
+.RS 4
+Recursive listing of the specified URL\&.
+.RE
+.PP
+\-D \-\-discovery;
+.RS 4
+This option is used to discover local NFS servers and to list the exports for specific servers\&.
+.sp
+When used with the \*(Aqnfs://\*(Aq URL the command will try to detect all local NFS servers and will list their IPs\&.
+.sp
+When used with a \*(Aqnfs://server\*(Aq the command will list all the exports on the specified server\&.
+.sp
+Example: Discover and list all local NFS servers
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+$ nfs\-ls \-D nfs://
+nfs://10\&.10\&.10\&.10
+nfs://10\&.0\&.0\&.10
+	    
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+Example: List the exports for a server
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+$ nfs\-ls \-D nfs://10\&.10\&.10\&.10
+nfs://10\&.10\&.10\&.10/foo
+nfs://10\&.10\&.10\&.10/bar
+	    
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+.RE
+.PP
+\-? \-\-help
+.RS 4
+Display basic help text\&.
+.RE
+.PP
+\-\-usage
+.RS 4
+Display basic usage text\&.
+.RE
+.SH "SEE ALSO"
+.PP
+\m[blue]\fB\%http://github.com/sahlberg/libnfs\fR\m[]

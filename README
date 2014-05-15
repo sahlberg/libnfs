@@ -62,6 +62,14 @@ This is highly non-portable so IF this works on your linux system, count
 yourself lucky.
 
 
+DOCUMENTATION
+=============
+libnfs sources ship with prebuilt manpage(s) in the doc directory.
+If you change the manpage sources you need to manually regenerate the new
+manpages by running 
+  cd doc
+  make doc
+
 FUSE
 ====
 A simple FUSE filesystem built on libnfs can be found in
