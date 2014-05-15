@@ -222,7 +222,7 @@ int rpc_add_fragment(struct rpc_context *rpc, char *data, uint64_t size)
 	}
 
 	memcpy(fragment->data, data, fragment->size);
-	SLIST_ADD_END(&rpc->fragments, fragment);
+	LIBNFS_LIST_ADD_END(&rpc->fragments, fragment);
 	return 0;
 }
 

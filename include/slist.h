@@ -18,15 +18,15 @@
 #ifndef _LIBNFS_SLIST_H_
 #define _LIBNFS_SLIST_H_
 
-#define SLIST_ADD(list, item) \
+#define LIBNFS_LIST_ADD(list, item) \
 	do {							\
 		(item)->next = (*list);				\
 		(*list) = (item);				\
 	} while (0);
 
-#define SLIST_ADD_END(list, item)				\
+#define LIBNFS_LIST_ADD_END(list, item)				\
 	if ((*list) == NULL) {	 				\
-	   SLIST_ADD((list), (item));				\
+	   LIBNFS_LIST_ADD((list), (item));				\
 	} else {						\
 	   void *head = (*list);				\
 	   while ((*list)->next)				\
@@ -36,7 +36,7 @@
 	   (*list) = head;					\
 	}
 
-#define SLIST_REMOVE(list, item) \
+#define LIBNFS_LIST_REMOVE(list, item) \
 	if ((*list) == (item)) { 				\
 	   (*list) = (item)->next;				\
 	} else {						\
