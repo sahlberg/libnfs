@@ -69,6 +69,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include "libnfs-zdr.h"
+#include "slist.h"
 #include "libnfs.h"
 #include "libnfs-raw.h"
 #include "libnfs-raw-mount.h"
@@ -76,7 +77,13 @@
 #include "libnfs-raw-portmap.h"
 #include "libnfs-private.h"
 
+#define MAX_DIR_CACHE 1024
+
 struct nfsdir {
+       struct nfs_fh3 fh;
+       fattr3 attr;
+       struct nfsdir *next;
+
        struct nfsdirent *entries;
        struct nfsdirent *current;
 };
@@ -96,6 +103,7 @@ struct nfs_context {
        uint64_t readmax;
        uint64_t writemax;
        char *cwd;
+       struct nfsdir *dircache;
 };
 
 void nfs_free_nfsdir(struct nfsdir *nfsdir)
@@ -108,7 +116,37 @@ void nfs_free_nfsdir(struct nfsdir *nfsdir)
 		free(nfsdir->entries);
 		nfsdir->entries = dirent;
 	}
+	free(nfsdir->fh.data.data_val);
 	free(nfsdir);
+}
+
+static void nfs_dircache_add(struct nfs_context *nfs, struct nfsdir *nfsdir)
+{
+	int i;
+	LIBNFS_LIST_ADD(&nfs->dircache, nfsdir);
+
+	for (nfsdir = nfs->dircache, i = 0; nfsdir; nfsdir = nfsdir->next, i++) {
+		if (i > MAX_DIR_CACHE) {
+			LIBNFS_LIST_REMOVE(&nfs->dircache, nfsdir);
+			nfs_free_nfsdir(nfsdir);
+			break;
+		}
+	}
+}
+
+static struct nfsdir *nfs_dircache_find(struct nfs_context *nfs, struct nfs_fh3 *fh)
+{
+	struct nfsdir *nfsdir;
+
+	for (nfsdir = nfs->dircache; nfsdir; nfsdir = nfsdir->next) {
+		if (nfsdir->fh.data.data_len == fh->data.data_len &&
+		    !memcmp(nfsdir->fh.data.data_val, fh->data.data_val, fh->data.data_len)) {
+			LIBNFS_LIST_REMOVE(&nfs->dircache, nfsdir);
+			return nfsdir;
+		}
+	}
+
+	return NULL;
 }
 
 struct nfs_cb_data;
@@ -377,6 +415,12 @@ void nfs_destroy_context(struct nfs_context *nfs)
 	if (nfs->rootfh.data.data_val != NULL) {
 		free(nfs->rootfh.data.data_val);
 		nfs->rootfh.data.data_val = NULL;
+	}
+
+	while (nfs->dircache) {
+		struct nfsdir *nfsdir = nfs->dircache;
+		LIBNFS_LIST_REMOVE(&nfs->dircache, nfsdir);
+		nfs_free_nfsdir(nfsdir);
 	}
 
 	free(nfs);
@@ -2923,6 +2967,9 @@ static void nfs_opendir2_cb(struct rpc_context *rpc, int status, void *command_d
 		return;
 	}
 
+	if (res->READDIR3res_u.resok.dir_attributes.attributes_follow)
+		nfsdir->attr = res->READDIR3res_u.resok.dir_attributes.post_op_attr_u.attributes;
+
 	/* steal the dirhandle */
 	nfsdir->current = nfsdir->entries;
 
@@ -3083,6 +3130,9 @@ static void nfs_opendir_cb(struct rpc_context *rpc, int status, void *command_da
 		return;
 	}
 
+	if (res->READDIRPLUS3res_u.resok.dir_attributes.attributes_follow)
+		nfsdir->attr = res->READDIRPLUS3res_u.resok.dir_attributes.post_op_attr_u.attributes;
+
 	/* steal the dirhandle */
 	data->continue_data = NULL;
 	nfsdir->current = nfsdir->entries;
@@ -3094,6 +3144,31 @@ static void nfs_opendir_cb(struct rpc_context *rpc, int status, void *command_da
 static int nfs_opendir_continue_internal(struct nfs_context *nfs, fattr3 *attr _U_, struct nfs_cb_data *data)
 {
 	READDIRPLUS3args args;
+	struct nfsdir *nfsdir = data->continue_data;;
+	struct nfsdir *cached;
+
+	cached = nfs_dircache_find(nfs, &data->fh);
+	if (cached) {
+		if (attr && attr->mtime.seconds == cached->attr.mtime.seconds) {
+			cached->current = cached->entries;
+			data->cb(0, nfs, cached, data->private_data);
+			free_nfs_cb_data(data);
+			return 0;
+		} else {
+			/* cache must be stale */
+			nfs_free_nfsdir(cached);
+		}
+	}
+
+	nfsdir->fh.data.data_len  = data->fh.data.data_len;
+	nfsdir->fh.data.data_val = malloc(nfsdir->fh.data.data_len);
+	if (nfsdir->fh.data.data_val == NULL) {
+		rpc_set_error(nfs->rpc, "OOM when allocating fh for nfsdir");
+		data->cb(-ENOMEM, nfs, rpc_get_error(nfs->rpc), data->private_data);
+		free_nfs_cb_data(data);
+		return -1;
+	}
+	memcpy(nfsdir->fh.data.data_val, data->fh.data.data_val, data->fh.data.data_len);
 
 	args.dir = data->fh;
 	args.cookie = 0;
@@ -3143,9 +3218,9 @@ struct nfsdirent *nfs_readdir(struct nfs_context *nfs _U_, struct nfsdir *nfsdir
 /*
  * closedir()
  */
-void nfs_closedir(struct nfs_context *nfs _U_, struct nfsdir *nfsdir)
+void nfs_closedir(struct nfs_context *nfs, struct nfsdir *nfsdir)
 {
-	nfs_free_nfsdir(nfsdir);
+	nfs_dircache_add(nfs, nfsdir);
 }
 
 
