@@ -235,7 +235,7 @@ void rpc_destroy_context(struct rpc_context *rpc)
 
 	while((pdu = rpc->outqueue.head) != NULL) {
 		pdu->cb(rpc, RPC_STATUS_CANCEL, NULL, pdu->private_data);
-		rpc->outqueue.head = pdu->next;
+		LIBNFS_LIST_REMOVE(&rpc->outqueue.head, pdu);
 		rpc_free_pdu(rpc, pdu);
 	}
 
@@ -244,7 +244,7 @@ void rpc_destroy_context(struct rpc_context *rpc)
 
 		while((pdu = q->head) != NULL) {
 			pdu->cb(rpc, RPC_STATUS_CANCEL, NULL, pdu->private_data);
-			rpc->outqueue.head = pdu->next;
+			LIBNFS_LIST_REMOVE(&q->head, pdu);
 			rpc_free_pdu(rpc, pdu);
 		}
 	}
