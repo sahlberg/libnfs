@@ -2861,6 +2861,7 @@ static void nfs_opendir3_cb(struct rpc_context *rpc, int status, void *command_d
 			nfsdirent->ctime.tv_usec = attributes->ctime.nseconds/1000;
 			nfsdirent->uid = attributes->uid;
 			nfsdirent->gid = attributes->gid;
+			nfsdirent->nlink = attributes->nlink;
 		}
 	}
 
@@ -3101,6 +3102,7 @@ static void nfs_opendir_cb(struct rpc_context *rpc, int status, void *command_da
 			nfsdirent->ctime.tv_usec = entry->name_attributes.post_op_attr_u.attributes.ctime.nseconds/1000;
 			nfsdirent->uid = entry->name_attributes.post_op_attr_u.attributes.uid;
 			nfsdirent->gid = entry->name_attributes.post_op_attr_u.attributes.gid;
+			nfsdirent->nlink = entry->name_attributes.post_op_attr_u.attributes.nlink;
 		}
 
 		nfsdirent->next  = nfsdir->entries;

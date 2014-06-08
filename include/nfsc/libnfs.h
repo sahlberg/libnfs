@@ -781,6 +781,7 @@ struct nfsdirent  {
        struct timeval ctime;
        uint32_t uid;
        uint32_t gid;
+       uint32_t nlink;
 };
 /*
  * nfs_readdir() never blocks, so no special sync/async versions are available

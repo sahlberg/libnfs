@@ -91,7 +91,6 @@ void process_dir(struct nfs_context *nfs, char *dir, int level) {
 	struct nfsdirent *nfsdirent;
 	struct statvfs svfs;
 	struct nfsdir *nfsdir;
-	struct nfs_stat_64 st;
 	
 	if (!level) {
 		printf("Recursion detected!\n");
@@ -109,15 +108,9 @@ void process_dir(struct nfs_context *nfs, char *dir, int level) {
 		if (!strcmp(nfsdirent->name, ".") || !strcmp(nfsdirent->name, "..")) {
 			continue;
 		}
-
 		snprintf(path, 1024, "%s/%s", dir, nfsdirent->name);
-		ret = nfs_stat64(nfs, path, &st);
-		if (ret != 0) {
-			fprintf(stderr, "Failed to stat(%s) %s\n", path, nfs_get_error(nfs));
-			continue;
-		}
 
-		switch (st.nfs_mode & S_IFMT) {
+		switch (nfsdirent->mode & S_IFMT) {
 #ifndef WIN32
 		case S_IFLNK:
 			printf("l");
@@ -137,28 +130,28 @@ void process_dir(struct nfs_context *nfs, char *dir, int level) {
 			break;
 		}
 		printf("%c%c%c",
-			"-r"[!!(st.nfs_mode & S_IRUSR)],
-			"-w"[!!(st.nfs_mode & S_IWUSR)],
-			"-x"[!!(st.nfs_mode & S_IXUSR)]
+			"-r"[!!(nfsdirent->mode & S_IRUSR)],
+			"-w"[!!(nfsdirent->mode & S_IWUSR)],
+			"-x"[!!(nfsdirent->mode & S_IXUSR)]
 		);
 		printf("%c%c%c",
-			"-r"[!!(st.nfs_mode & S_IRGRP)],
-			"-w"[!!(st.nfs_mode & S_IWGRP)],
-			"-x"[!!(st.nfs_mode & S_IXGRP)]
+			"-r"[!!(nfsdirent->mode & S_IRGRP)],
+			"-w"[!!(nfsdirent->mode & S_IWGRP)],
+			"-x"[!!(nfsdirent->mode & S_IXGRP)]
 		);
 		printf("%c%c%c",
-			"-r"[!!(st.nfs_mode & S_IROTH)],
-			"-w"[!!(st.nfs_mode & S_IWOTH)],
-			"-x"[!!(st.nfs_mode & S_IXOTH)]
+			"-r"[!!(nfsdirent->mode & S_IROTH)],
+			"-w"[!!(nfsdirent->mode & S_IWOTH)],
+			"-x"[!!(nfsdirent->mode & S_IXOTH)]
 		);
-		printf(" %2d", (int)st.nfs_nlink);
-		printf(" %5d", (int)st.nfs_uid);
-		printf(" %5d", (int)st.nfs_gid);
-		printf(" %12" PRId64, st.nfs_size);
+		printf(" %2d", (int)nfsdirent->nlink);
+		printf(" %5d", (int)nfsdirent->uid);
+		printf(" %5d", (int)nfsdirent->gid);
+		printf(" %12" PRId64, nfsdirent->size);
 
 		printf(" %s\n", path + 1);
 		
-		if (recursive && (st.nfs_mode & S_IFMT) == S_IFDIR) {
+		if (recursive && (nfsdirent->mode & S_IFMT) == S_IFDIR) {
 			process_dir(nfs, path, level - 1);
 		}
 	}
