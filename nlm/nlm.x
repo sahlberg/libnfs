@@ -27,8 +27,6 @@ of the authors and should not be interpreted as representing official policies,
 either expressed or implied, of the FreeBSD Project.
 */
 
-typedef unsigned hyper uint64;
-
 struct nlm_fh4 {
 	opaque       data<>;
 };
@@ -56,8 +54,8 @@ struct nlm4_holder {
 	bool           exclusive;
 	unsigned int   svid;
 	nlm4_oh        oh;
-	uint64         l_offset;
-	uint64         l_len;
+	u_quad_t       l_offset;
+	u_quad_t       l_len;
 };
 
 const NLM_MAXNAME = 256;
@@ -66,8 +64,8 @@ struct nlm4_lock {
 	struct nlm_fh4 fh;
 	nlm4_oh        oh;
 	unsigned int   svid;
-	uint64         l_offset;
-	uint64         l_len;
+	u_quad_t       l_offset;
+	u_quad_t       l_len;
 };
 
 struct nlm4_share {

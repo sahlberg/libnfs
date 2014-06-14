@@ -18,5 +18,7 @@ nsm-stamp : nsm.x
 	touch nsm-stamp
 
 compile_rpc:	
-	rpcgen -h nsm.x | sed -e "s/#include <rpc\/rpc.h>//" | sed -e "s/xdr/zdr/g" -e "s/XDR/ZDR/g" > libnfs-raw-nsm.h
-	rpcgen -c nsm.x | sed -e "s/#include \".*nsm.h\"/#include \"libnfs-xdr.h\"\n#include \"libnfs-raw-nsm.h\"/" -e "s/xdr/zdr/g" -e "s/XDR/ZDR/g" -e "s/register int32_t \*buf;/register int32_t *buf;\n	buf = NULL;/" > libnfs-raw-nsm.c
+	cat nsm.x | head -29 >libnfs-raw-nsm.h
+	rpcgen -h nsm.x | sed -e "s/#include <rpc\/rpc.h>//" | sed -e "s/xdr/zdr/g" -e "s/XDR/ZDR/g" >> libnfs-raw-nsm.h
+	cat nsm.x | head -29 >libnfs-raw-nsm.c
+	rpcgen -c nsm.x | sed -e "s/#include \".*nsm.h\"/#include \"libnfs-xdr.h\"\n#include \"libnfs-raw-nsm.h\"/" -e "s/xdr/zdr/g" -e "s/XDR/ZDR/g" -e "s/register int32_t \*buf;/register int32_t *buf;\n	buf = NULL;/" >> libnfs-raw-nsm.c
