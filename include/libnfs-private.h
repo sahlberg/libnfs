@@ -73,6 +73,7 @@ struct rpc_queue {
 };
 
 #define HASHES 1024
+#define NFS_RA_TIMEOUT 5
 
 struct rpc_context {
 	uint32_t magic;
@@ -115,6 +116,7 @@ struct rpc_context {
 	int tcp_syncnt;
 	int uid;
 	int gid;
+	uint32_t readahead;
 };
 
 struct rpc_pdu {
@@ -174,6 +176,7 @@ void rpc_unset_autoreconnect(struct rpc_context *rpc);
 void rpc_set_tcp_syncnt(struct rpc_context *rpc, int v);
 void rpc_set_uid(struct rpc_context *rpc, int uid);
 void rpc_set_gid(struct rpc_context *rpc, int gid);
+void rpc_set_readahead(struct rpc_context *rpc, uint32_t v);
 
 int rpc_add_fragment(struct rpc_context *rpc, char *data, uint64_t size);
 void rpc_free_all_fragments(struct rpc_context *rpc);
