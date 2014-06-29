@@ -77,7 +77,7 @@
 #include "libnfs-raw-portmap.h"
 #include "libnfs-private.h"
 
-#define MAX_DIR_CACHE 1024
+#define MAX_DIR_CACHE 128
 
 struct nfsdir {
        struct nfs_fh3 fh;
