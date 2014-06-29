@@ -94,6 +94,12 @@ struct rpc_context *rpc_init_context(void)
 	return rpc;
 }
 
+void rpc_set_readahead(struct rpc_context *rpc, uint32_t v)
+{
+	assert(rpc->magic == RPC_CONTEXT_MAGIC);
+
+	rpc->readahead = v;
+}
 
 struct rpc_context *rpc_init_udp_context(void)
 {

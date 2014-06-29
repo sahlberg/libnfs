@@ -70,6 +70,7 @@ nfs_set_auth
 nfs_set_gid
 nfs_set_tcp_syncnt
 nfs_set_uid
+nfs_set_readahead
 nfs_stat
 nfs_stat_async
 nfs_stat64
