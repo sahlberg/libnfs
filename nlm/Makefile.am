@@ -19,6 +19,6 @@ nlm-stamp : nlm.x
 
 compile_rpc:	
 	cat nlm.x | head -29 >libnfs-raw-nlm.h
-	rpcgen -h nlm.x | sed -e "s/#include <rpc\/rpc.h>//" | sed -e "s/xdr/zdr/g" -e "s/XDR/ZDR/g" >> libnfs-raw-nlm.h
+	rpcgen -h nlm.x | sed -e "s/#include <rpc\/rpc.h>//" | sed -e "s/xdr/zdr/g" -e "s/XDR/ZDR/g" -e "s/ CLIENT / void /g" >> libnfs-raw-nlm.h
 	cat nlm.x | head -29 >libnfs-raw-nlm.c
 	rpcgen -c nlm.x | sed -e "s/#include \".*nlm.h\"/#include \"libnfs-xdr.h\"\n#include \"libnfs-raw-nlm.h\"/" -e "s/xdr/zdr/g" -e "s/XDR/ZDR/g" -e "s/register int32_t \*buf;/register int32_t *buf;\n	buf = NULL;/" >> libnfs-raw-nlm.c

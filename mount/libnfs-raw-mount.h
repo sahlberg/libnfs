@@ -147,22 +147,22 @@ typedef struct mountres1 mountres1;
 
 #if defined(__STDC__) || defined(__cplusplus)
 #define MOUNT1_NULL 0
-extern  void * mount1_null_1(void *, CLIENT *);
+extern  void * mount1_null_1(void *, void *);
 extern  void * mount1_null_1_svc(void *, struct svc_req *);
 #define MOUNT1_MNT 1
-extern  mountres1 * mount1_mnt_1(dirpath *, CLIENT *);
+extern  mountres1 * mount1_mnt_1(dirpath *, void *);
 extern  mountres1 * mount1_mnt_1_svc(dirpath *, struct svc_req *);
 #define MOUNT1_DUMP 2
-extern  mountlist * mount1_dump_1(void *, CLIENT *);
+extern  mountlist * mount1_dump_1(void *, void *);
 extern  mountlist * mount1_dump_1_svc(void *, struct svc_req *);
 #define MOUNT1_UMNT 3
-extern  void * mount1_umnt_1(dirpath *, CLIENT *);
+extern  void * mount1_umnt_1(dirpath *, void *);
 extern  void * mount1_umnt_1_svc(dirpath *, struct svc_req *);
 #define MOUNT1_UMNTALL 4
-extern  void * mount1_umntall_1(void *, CLIENT *);
+extern  void * mount1_umntall_1(void *, void *);
 extern  void * mount1_umntall_1_svc(void *, struct svc_req *);
 #define MOUNT1_EXPORT 5
-extern  exports * mount1_export_1(void *, CLIENT *);
+extern  exports * mount1_export_1(void *, void *);
 extern  exports * mount1_export_1_svc(void *, struct svc_req *);
 extern int mount_program_1_freeresult (SVCXPRT *, zdrproc_t, caddr_t);
 
@@ -191,22 +191,22 @@ extern int mount_program_1_freeresult ();
 
 #if defined(__STDC__) || defined(__cplusplus)
 #define MOUNT3_NULL 0
-extern  void * mount3_null_3(void *, CLIENT *);
+extern  void * mount3_null_3(void *, void *);
 extern  void * mount3_null_3_svc(void *, struct svc_req *);
 #define MOUNT3_MNT 1
-extern  mountres3 * mount3_mnt_3(dirpath *, CLIENT *);
+extern  mountres3 * mount3_mnt_3(dirpath *, void *);
 extern  mountres3 * mount3_mnt_3_svc(dirpath *, struct svc_req *);
 #define MOUNT3_DUMP 2
-extern  mountlist * mount3_dump_3(void *, CLIENT *);
+extern  mountlist * mount3_dump_3(void *, void *);
 extern  mountlist * mount3_dump_3_svc(void *, struct svc_req *);
 #define MOUNT3_UMNT 3
-extern  void * mount3_umnt_3(dirpath *, CLIENT *);
+extern  void * mount3_umnt_3(dirpath *, void *);
 extern  void * mount3_umnt_3_svc(dirpath *, struct svc_req *);
 #define MOUNT3_UMNTALL 4
-extern  void * mount3_umntall_3(void *, CLIENT *);
+extern  void * mount3_umntall_3(void *, void *);
 extern  void * mount3_umntall_3_svc(void *, struct svc_req *);
 #define MOUNT3_EXPORT 5
-extern  exports * mount3_export_3(void *, CLIENT *);
+extern  exports * mount3_export_3(void *, void *);
 extern  exports * mount3_export_3_svc(void *, struct svc_req *);
 extern int mount_program_3_freeresult (SVCXPRT *, zdrproc_t, caddr_t);
 

@@ -190,52 +190,52 @@ typedef struct NLM4_GRANTEDres NLM4_GRANTEDres;
 
 #if defined(__STDC__) || defined(__cplusplus)
 #define NLM4_NULL 0
-extern  void * nlm4_null_4(void *, CLIENT *);
+extern  void * nlm4_null_4(void *, void *);
 extern  void * nlm4_null_4_svc(void *, struct svc_req *);
 #define NLM4_TEST 1
-extern  NLM4_TESTres * nlm4_test_4(NLM4_TESTargs *, CLIENT *);
+extern  NLM4_TESTres * nlm4_test_4(NLM4_TESTargs *, void *);
 extern  NLM4_TESTres * nlm4_test_4_svc(NLM4_TESTargs *, struct svc_req *);
 #define NLM4_LOCK 2
-extern  NLM4_LOCKres * nlm4_lock_4(NLM4_LOCKargs *, CLIENT *);
+extern  NLM4_LOCKres * nlm4_lock_4(NLM4_LOCKargs *, void *);
 extern  NLM4_LOCKres * nlm4_lock_4_svc(NLM4_LOCKargs *, struct svc_req *);
 #define NLM4_CANCEL 3
-extern  NLM4_CANCres * nlm4_cancel_4(NLM4_CANCargs *, CLIENT *);
+extern  NLM4_CANCres * nlm4_cancel_4(NLM4_CANCargs *, void *);
 extern  NLM4_CANCres * nlm4_cancel_4_svc(NLM4_CANCargs *, struct svc_req *);
 #define NLM4_UNLOCK 4
-extern  NLM4_UNLOCKres * nlm4_unlock_4(NLM4_UNLOCKargs *, CLIENT *);
+extern  NLM4_UNLOCKres * nlm4_unlock_4(NLM4_UNLOCKargs *, void *);
 extern  NLM4_UNLOCKres * nlm4_unlock_4_svc(NLM4_UNLOCKargs *, struct svc_req *);
 #define NLM4_GRANT 5
-extern  NLM4_GRANTEDres * nlm4_grant_4(NLM4_GRANTEDargs *, CLIENT *);
+extern  NLM4_GRANTEDres * nlm4_grant_4(NLM4_GRANTEDargs *, void *);
 extern  NLM4_GRANTEDres * nlm4_grant_4_svc(NLM4_GRANTEDargs *, struct svc_req *);
 #define NLM4_TEST_MSG 6
-extern  void * nlm4_test_msg_4(NLM4_TESTargs *, CLIENT *);
+extern  void * nlm4_test_msg_4(NLM4_TESTargs *, void *);
 extern  void * nlm4_test_msg_4_svc(NLM4_TESTargs *, struct svc_req *);
 #define NLM4_LOCK_MSG 7
-extern  void * nlm4_lock_msg_4(NLM4_LOCKargs *, CLIENT *);
+extern  void * nlm4_lock_msg_4(NLM4_LOCKargs *, void *);
 extern  void * nlm4_lock_msg_4_svc(NLM4_LOCKargs *, struct svc_req *);
 #define NLM4_CANCEL_MSG 8
-extern  void * nlm4_cancel_msg_4(NLM4_CANCargs *, CLIENT *);
+extern  void * nlm4_cancel_msg_4(NLM4_CANCargs *, void *);
 extern  void * nlm4_cancel_msg_4_svc(NLM4_CANCargs *, struct svc_req *);
 #define NLM4_UNLOCK_MSG 9
-extern  void * nlm4_unlock_msg_4(NLM4_UNLOCKargs *, CLIENT *);
+extern  void * nlm4_unlock_msg_4(NLM4_UNLOCKargs *, void *);
 extern  void * nlm4_unlock_msg_4_svc(NLM4_UNLOCKargs *, struct svc_req *);
 #define NLM4_GRANT_MSG 10
-extern  void * nlm4_grant_msg_4(NLM4_GRANTEDargs *, CLIENT *);
+extern  void * nlm4_grant_msg_4(NLM4_GRANTEDargs *, void *);
 extern  void * nlm4_grant_msg_4_svc(NLM4_GRANTEDargs *, struct svc_req *);
 #define NLM4_TEST_RES 11
-extern  void * nlm4_test_res_4(NLM4_TESTres *, CLIENT *);
+extern  void * nlm4_test_res_4(NLM4_TESTres *, void *);
 extern  void * nlm4_test_res_4_svc(NLM4_TESTres *, struct svc_req *);
 #define NLM4_LOCK_RES 12
-extern  void * nlm4_lock_res_4(NLM4_LOCKres *, CLIENT *);
+extern  void * nlm4_lock_res_4(NLM4_LOCKres *, void *);
 extern  void * nlm4_lock_res_4_svc(NLM4_LOCKres *, struct svc_req *);
 #define NLM4_CANCEL_RES 13
-extern  void * nlm4_cancel_res_4(NLM4_CANCres *, CLIENT *);
+extern  void * nlm4_cancel_res_4(NLM4_CANCres *, void *);
 extern  void * nlm4_cancel_res_4_svc(NLM4_CANCres *, struct svc_req *);
 #define NLM4_UNLOCK_RES 14
-extern  void * nlm4_unlock_res_4(NLM4_UNLOCKres *, CLIENT *);
+extern  void * nlm4_unlock_res_4(NLM4_UNLOCKres *, void *);
 extern  void * nlm4_unlock_res_4_svc(NLM4_UNLOCKres *, struct svc_req *);
 #define NLM4_GRANT_RES 15
-extern  void * nlm4_grant_res_4(NLM4_GRANTEDres *, CLIENT *);
+extern  void * nlm4_grant_res_4(NLM4_GRANTEDres *, void *);
 extern  void * nlm4_grant_res_4_svc(NLM4_GRANTEDres *, struct svc_req *);
 extern int nlm_program_4_freeresult (SVCXPRT *, zdrproc_t, caddr_t);
 

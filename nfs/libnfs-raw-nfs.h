@@ -1365,52 +1365,52 @@ typedef struct SETACL3res SETACL3res;
 
 #if defined(__STDC__) || defined(__cplusplus)
 #define NFS2_NULL 0
-extern  void * nfs2_null_2(void *, CLIENT *);
+extern  void * nfs2_null_2(void *, void *);
 extern  void * nfs2_null_2_svc(void *, struct svc_req *);
 #define NFS2_GETATTR 1
-extern  GETATTR2res * nfs2_getattr_2(GETATTR2args *, CLIENT *);
+extern  GETATTR2res * nfs2_getattr_2(GETATTR2args *, void *);
 extern  GETATTR2res * nfs2_getattr_2_svc(GETATTR2args *, struct svc_req *);
 #define NFS2_SETATTR 2
-extern  SETATTR2res * nfs2_setattr_2(SETATTR2args *, CLIENT *);
+extern  SETATTR2res * nfs2_setattr_2(SETATTR2args *, void *);
 extern  SETATTR2res * nfs2_setattr_2_svc(SETATTR2args *, struct svc_req *);
 #define NFS2_LOOKUP 4
-extern  LOOKUP2res * nfs2_lookup_2(LOOKUP2args *, CLIENT *);
+extern  LOOKUP2res * nfs2_lookup_2(LOOKUP2args *, void *);
 extern  LOOKUP2res * nfs2_lookup_2_svc(LOOKUP2args *, struct svc_req *);
 #define NFS2_READLINK 5
-extern  READLINK2res * nfs2_readlink_2(READLINK2args *, CLIENT *);
+extern  READLINK2res * nfs2_readlink_2(READLINK2args *, void *);
 extern  READLINK2res * nfs2_readlink_2_svc(READLINK2args *, struct svc_req *);
 #define NFS2_READ 6
-extern  READ2res * nfs2_read_2(READ2args *, CLIENT *);
+extern  READ2res * nfs2_read_2(READ2args *, void *);
 extern  READ2res * nfs2_read_2_svc(READ2args *, struct svc_req *);
 #define NFS2_WRITE 8
-extern  WRITE2res * nfs2_write_2(WRITE2args *, CLIENT *);
+extern  WRITE2res * nfs2_write_2(WRITE2args *, void *);
 extern  WRITE2res * nfs2_write_2_svc(WRITE2args *, struct svc_req *);
 #define NFS2_CREATE 9
-extern  CREATE2res * nfs2_create_2(CREATE2args *, CLIENT *);
+extern  CREATE2res * nfs2_create_2(CREATE2args *, void *);
 extern  CREATE2res * nfs2_create_2_svc(CREATE2args *, struct svc_req *);
 #define NFS2_REMOVE 10
-extern  REMOVE2res * nfs2_remove_2(REMOVE2args *, CLIENT *);
+extern  REMOVE2res * nfs2_remove_2(REMOVE2args *, void *);
 extern  REMOVE2res * nfs2_remove_2_svc(REMOVE2args *, struct svc_req *);
 #define NFS2_RENAME 11
-extern  RENAME2res * nfs2_rename_2(RENAME2args *, CLIENT *);
+extern  RENAME2res * nfs2_rename_2(RENAME2args *, void *);
 extern  RENAME2res * nfs2_rename_2_svc(RENAME2args *, struct svc_req *);
 #define NFS2_LINK 12
-extern  LINK2res * nfs2_link_2(LINK2args *, CLIENT *);
+extern  LINK2res * nfs2_link_2(LINK2args *, void *);
 extern  LINK2res * nfs2_link_2_svc(LINK2args *, struct svc_req *);
 #define NFS2_SYMLINK 13
-extern  SYMLINK2res * nfs2_symlink_2(SYMLINK2args *, CLIENT *);
+extern  SYMLINK2res * nfs2_symlink_2(SYMLINK2args *, void *);
 extern  SYMLINK2res * nfs2_symlink_2_svc(SYMLINK2args *, struct svc_req *);
 #define NFS2_MKDIR 14
-extern  MKDIR2res * nfs2_mkdir_2(MKDIR2args *, CLIENT *);
+extern  MKDIR2res * nfs2_mkdir_2(MKDIR2args *, void *);
 extern  MKDIR2res * nfs2_mkdir_2_svc(MKDIR2args *, struct svc_req *);
 #define NFS2_RMDIR 15
-extern  RMDIR2res * nfs2_rmdir_2(RMDIR2args *, CLIENT *);
+extern  RMDIR2res * nfs2_rmdir_2(RMDIR2args *, void *);
 extern  RMDIR2res * nfs2_rmdir_2_svc(RMDIR2args *, struct svc_req *);
 #define NFS2_READDIR 16
-extern  READDIR2res * nfs2_readdir_2(READDIR2args *, CLIENT *);
+extern  READDIR2res * nfs2_readdir_2(READDIR2args *, void *);
 extern  READDIR2res * nfs2_readdir_2_svc(READDIR2args *, struct svc_req *);
 #define NFS2_STATFS 17
-extern  STATFS2res * nfs2_statfs_2(STATFS2args *, CLIENT *);
+extern  STATFS2res * nfs2_statfs_2(STATFS2args *, void *);
 extern  STATFS2res * nfs2_statfs_2_svc(STATFS2args *, struct svc_req *);
 extern int nfs_program_2_freeresult (SVCXPRT *, zdrproc_t, caddr_t);
 
@@ -1469,70 +1469,70 @@ extern int nfs_program_2_freeresult ();
 
 #if defined(__STDC__) || defined(__cplusplus)
 #define NFS3_NULL 0
-extern  void * nfs3_null_3(void *, CLIENT *);
+extern  void * nfs3_null_3(void *, void *);
 extern  void * nfs3_null_3_svc(void *, struct svc_req *);
 #define NFS3_GETATTR 1
-extern  GETATTR3res * nfs3_getattr_3(GETATTR3args *, CLIENT *);
+extern  GETATTR3res * nfs3_getattr_3(GETATTR3args *, void *);
 extern  GETATTR3res * nfs3_getattr_3_svc(GETATTR3args *, struct svc_req *);
 #define NFS3_SETATTR 2
-extern  SETATTR3res * nfs3_setattr_3(SETATTR3args *, CLIENT *);
+extern  SETATTR3res * nfs3_setattr_3(SETATTR3args *, void *);
 extern  SETATTR3res * nfs3_setattr_3_svc(SETATTR3args *, struct svc_req *);
 #define NFS3_LOOKUP 3
-extern  LOOKUP3res * nfs3_lookup_3(LOOKUP3args *, CLIENT *);
+extern  LOOKUP3res * nfs3_lookup_3(LOOKUP3args *, void *);
 extern  LOOKUP3res * nfs3_lookup_3_svc(LOOKUP3args *, struct svc_req *);
 #define NFS3_ACCESS 4
-extern  ACCESS3res * nfs3_access_3(ACCESS3args *, CLIENT *);
+extern  ACCESS3res * nfs3_access_3(ACCESS3args *, void *);
 extern  ACCESS3res * nfs3_access_3_svc(ACCESS3args *, struct svc_req *);
 #define NFS3_READLINK 5
-extern  READLINK3res * nfs3_readlink_3(READLINK3args *, CLIENT *);
+extern  READLINK3res * nfs3_readlink_3(READLINK3args *, void *);
 extern  READLINK3res * nfs3_readlink_3_svc(READLINK3args *, struct svc_req *);
 #define NFS3_READ 6
-extern  READ3res * nfs3_read_3(READ3args *, CLIENT *);
+extern  READ3res * nfs3_read_3(READ3args *, void *);
 extern  READ3res * nfs3_read_3_svc(READ3args *, struct svc_req *);
 #define NFS3_WRITE 7
-extern  WRITE3res * nfs3_write_3(WRITE3args *, CLIENT *);
+extern  WRITE3res * nfs3_write_3(WRITE3args *, void *);
 extern  WRITE3res * nfs3_write_3_svc(WRITE3args *, struct svc_req *);
 #define NFS3_CREATE 8
-extern  CREATE3res * nfs3_create_3(CREATE3args *, CLIENT *);
+extern  CREATE3res * nfs3_create_3(CREATE3args *, void *);
 extern  CREATE3res * nfs3_create_3_svc(CREATE3args *, struct svc_req *);
 #define NFS3_MKDIR 9
-extern  MKDIR3res * nfs3_mkdir_3(MKDIR3args *, CLIENT *);
+extern  MKDIR3res * nfs3_mkdir_3(MKDIR3args *, void *);
 extern  MKDIR3res * nfs3_mkdir_3_svc(MKDIR3args *, struct svc_req *);
 #define NFS3_SYMLINK 10
-extern  SYMLINK3res * nfs3_symlink_3(SYMLINK3args *, CLIENT *);
+extern  SYMLINK3res * nfs3_symlink_3(SYMLINK3args *, void *);
 extern  SYMLINK3res * nfs3_symlink_3_svc(SYMLINK3args *, struct svc_req *);
 #define NFS3_MKNOD 11
-extern  MKNOD3res * nfs3_mknod_3(MKNOD3args *, CLIENT *);
+extern  MKNOD3res * nfs3_mknod_3(MKNOD3args *, void *);
 extern  MKNOD3res * nfs3_mknod_3_svc(MKNOD3args *, struct svc_req *);
 #define NFS3_REMOVE 12
-extern  REMOVE3res * nfs3_remove_3(REMOVE3args *, CLIENT *);
+extern  REMOVE3res * nfs3_remove_3(REMOVE3args *, void *);
 extern  REMOVE3res * nfs3_remove_3_svc(REMOVE3args *, struct svc_req *);
 #define NFS3_RMDIR 13
-extern  RMDIR3res * nfs3_rmdir_3(RMDIR3args *, CLIENT *);
+extern  RMDIR3res * nfs3_rmdir_3(RMDIR3args *, void *);
 extern  RMDIR3res * nfs3_rmdir_3_svc(RMDIR3args *, struct svc_req *);
 #define NFS3_RENAME 14
-extern  RENAME3res * nfs3_rename_3(RENAME3args *, CLIENT *);
+extern  RENAME3res * nfs3_rename_3(RENAME3args *, void *);
 extern  RENAME3res * nfs3_rename_3_svc(RENAME3args *, struct svc_req *);
 #define NFS3_LINK 15
-extern  LINK3res * nfs3_link_3(LINK3args *, CLIENT *);
+extern  LINK3res * nfs3_link_3(LINK3args *, void *);
 extern  LINK3res * nfs3_link_3_svc(LINK3args *, struct svc_req *);
 #define NFS3_READDIR 16
-extern  READDIR3res * nfs3_readdir_3(READDIR3args *, CLIENT *);
+extern  READDIR3res * nfs3_readdir_3(READDIR3args *, void *);
 extern  READDIR3res * nfs3_readdir_3_svc(READDIR3args *, struct svc_req *);
 #define NFS3_READDIRPLUS 17
-extern  READDIRPLUS3res * nfs3_readdirplus_3(READDIRPLUS3args *, CLIENT *);
+extern  READDIRPLUS3res * nfs3_readdirplus_3(READDIRPLUS3args *, void *);
 extern  READDIRPLUS3res * nfs3_readdirplus_3_svc(READDIRPLUS3args *, struct svc_req *);
 #define NFS3_FSSTAT 18
-extern  FSSTAT3res * nfs3_fsstat_3(FSSTAT3args *, CLIENT *);
+extern  FSSTAT3res * nfs3_fsstat_3(FSSTAT3args *, void *);
 extern  FSSTAT3res * nfs3_fsstat_3_svc(FSSTAT3args *, struct svc_req *);
 #define NFS3_FSINFO 19
-extern  FSINFO3res * nfs3_fsinfo_3(FSINFO3args *, CLIENT *);
+extern  FSINFO3res * nfs3_fsinfo_3(FSINFO3args *, void *);
 extern  FSINFO3res * nfs3_fsinfo_3_svc(FSINFO3args *, struct svc_req *);
 #define NFS3_PATHCONF 20
-extern  PATHCONF3res * nfs3_pathconf_3(PATHCONF3args *, CLIENT *);
+extern  PATHCONF3res * nfs3_pathconf_3(PATHCONF3args *, void *);
 extern  PATHCONF3res * nfs3_pathconf_3_svc(PATHCONF3args *, struct svc_req *);
 #define NFS3_COMMIT 21
-extern  COMMIT3res * nfs3_commit_3(COMMIT3args *, CLIENT *);
+extern  COMMIT3res * nfs3_commit_3(COMMIT3args *, void *);
 extern  COMMIT3res * nfs3_commit_3_svc(COMMIT3args *, struct svc_req *);
 extern int nfs_program_3_freeresult (SVCXPRT *, zdrproc_t, caddr_t);
 
@@ -1611,13 +1611,13 @@ extern int nfs_program_3_freeresult ();
 
 #if defined(__STDC__) || defined(__cplusplus)
 #define NFSACL3_NULL 0
-extern  void * nfsacl3_null_3(void *, CLIENT *);
+extern  void * nfsacl3_null_3(void *, void *);
 extern  void * nfsacl3_null_3_svc(void *, struct svc_req *);
 #define NFSACL3_GETACL 1
-extern  GETACL3res * nfsacl3_getacl_3(GETACL3args *, CLIENT *);
+extern  GETACL3res * nfsacl3_getacl_3(GETACL3args *, void *);
 extern  GETACL3res * nfsacl3_getacl_3_svc(GETACL3args *, struct svc_req *);
 #define NFSACL3_SETACL 2
-extern  SETACL3res * nfsacl3_setacl_3(SETACL3args *, CLIENT *);
+extern  SETACL3res * nfsacl3_setacl_3(SETACL3args *, void *);
 extern  SETACL3res * nfsacl3_setacl_3_svc(SETACL3args *, struct svc_req *);
 extern int nfsacl_program_3_freeresult (SVCXPRT *, zdrproc_t, caddr_t);
 

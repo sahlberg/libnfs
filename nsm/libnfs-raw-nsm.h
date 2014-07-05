@@ -118,25 +118,25 @@ typedef struct NSM1_NOTIFYargs NSM1_NOTIFYargs;
 
 #if defined(__STDC__) || defined(__cplusplus)
 #define NSM1_NULL 0
-extern  void * nsm1_null_1(void *, CLIENT *);
+extern  void * nsm1_null_1(void *, void *);
 extern  void * nsm1_null_1_svc(void *, struct svc_req *);
 #define NSM1_STAT 1
-extern  struct NSM1_STATres * nsm1_stat_1(struct NSM1_STATargs *, CLIENT *);
+extern  struct NSM1_STATres * nsm1_stat_1(struct NSM1_STATargs *, void *);
 extern  struct NSM1_STATres * nsm1_stat_1_svc(struct NSM1_STATargs *, struct svc_req *);
 #define NSM1_MON 2
-extern  struct NSM1_MONres * nsm1_mon_1(struct NSM1_MONargs *, CLIENT *);
+extern  struct NSM1_MONres * nsm1_mon_1(struct NSM1_MONargs *, void *);
 extern  struct NSM1_MONres * nsm1_mon_1_svc(struct NSM1_MONargs *, struct svc_req *);
 #define NSM1_UNMON 3
-extern  struct NSM1_UNMONres * nsm1_unmon_1(struct NSM1_UNMONargs *, CLIENT *);
+extern  struct NSM1_UNMONres * nsm1_unmon_1(struct NSM1_UNMONargs *, void *);
 extern  struct NSM1_UNMONres * nsm1_unmon_1_svc(struct NSM1_UNMONargs *, struct svc_req *);
 #define NSM1_UNMON_ALL 4
-extern  struct NSM1_UNMONALLres * nsm1_unmon_all_1(struct NSM1_UNMONALLargs *, CLIENT *);
+extern  struct NSM1_UNMONALLres * nsm1_unmon_all_1(struct NSM1_UNMONALLargs *, void *);
 extern  struct NSM1_UNMONALLres * nsm1_unmon_all_1_svc(struct NSM1_UNMONALLargs *, struct svc_req *);
 #define NSM1_SIMU_CRASH 5
-extern  void * nsm1_simu_crash_1(void *, CLIENT *);
+extern  void * nsm1_simu_crash_1(void *, void *);
 extern  void * nsm1_simu_crash_1_svc(void *, struct svc_req *);
 #define NSM1_NOTIFY 6
-extern  void * nsm1_notify_1(struct NSM1_NOTIFYargs *, CLIENT *);
+extern  void * nsm1_notify_1(struct NSM1_NOTIFYargs *, void *);
 extern  void * nsm1_notify_1_svc(struct NSM1_NOTIFYargs *, struct svc_req *);
 extern int nsm_program_1_freeresult (SVCXPRT *, zdrproc_t, caddr_t);
 
