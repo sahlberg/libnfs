@@ -27,7 +27,6 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include "libnfs-zdr.h"
 #include "libnfs.h"
 
 int main(int argc _U_, char *argv[] _U_)

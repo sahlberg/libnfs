@@ -49,7 +49,6 @@ WSADATA wsaData;
 #include <stdint.h>
 #include <sys/types.h>
 #include <fcntl.h>
-#include "libnfs-zdr.h"
 #include "libnfs.h"
 #include "libnfs-raw.h"
 #include "libnfs-raw-mount.h"
