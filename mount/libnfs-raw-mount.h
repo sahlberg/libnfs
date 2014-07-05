@@ -164,7 +164,7 @@ extern  void * mount1_umntall_1_svc(void *, struct svc_req *);
 #define MOUNT1_EXPORT 5
 extern  exports * mount1_export_1(void *, void *);
 extern  exports * mount1_export_1_svc(void *, struct svc_req *);
-extern int mount_program_1_freeresult (SVCXPRT *, zdrproc_t, caddr_t);
+extern int mount_program_1_freeresult (void *, zdrproc_t, caddr_t);
 
 #else /* K&R C */
 #define MOUNT1_NULL 0
@@ -208,7 +208,7 @@ extern  void * mount3_umntall_3_svc(void *, struct svc_req *);
 #define MOUNT3_EXPORT 5
 extern  exports * mount3_export_3(void *, void *);
 extern  exports * mount3_export_3_svc(void *, struct svc_req *);
-extern int mount_program_3_freeresult (SVCXPRT *, zdrproc_t, caddr_t);
+extern int mount_program_3_freeresult (void *, zdrproc_t, caddr_t);
 
 #else /* K&R C */
 #define MOUNT3_NULL 0

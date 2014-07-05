@@ -237,7 +237,7 @@ extern  void * nlm4_unlock_res_4_svc(NLM4_UNLOCKres *, struct svc_req *);
 #define NLM4_GRANT_RES 15
 extern  void * nlm4_grant_res_4(NLM4_GRANTEDres *, void *);
 extern  void * nlm4_grant_res_4_svc(NLM4_GRANTEDres *, struct svc_req *);
-extern int nlm_program_4_freeresult (SVCXPRT *, zdrproc_t, caddr_t);
+extern int nlm_program_4_freeresult (void *, zdrproc_t, caddr_t);
 
 #else /* K&R C */
 #define NLM4_NULL 0

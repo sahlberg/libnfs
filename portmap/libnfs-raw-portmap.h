@@ -159,7 +159,7 @@ extern  pmap2_dump_result * pmap2_dump_2_svc(void *, struct svc_req *);
 #define PMAP2_CALLIT 5
 extern  pmap2_call_result * pmap2_callit_2(pmap2_call_args *, void *);
 extern  pmap2_call_result * pmap2_callit_2_svc(pmap2_call_args *, struct svc_req *);
-extern int pmap_program_2_freeresult (SVCXPRT *, zdrproc_t, caddr_t);
+extern int pmap_program_2_freeresult (void *, zdrproc_t, caddr_t);
 
 #else /* K&R C */
 #define PMAP2_NULL 0
@@ -212,7 +212,7 @@ extern  pmap3_netbuf * pmap3_uaddr2taddr_3_svc(char **, struct svc_req *);
 #define PMAP3_TADDR2UADDR 8
 extern  struct pmap3_string_result * pmap3_taddr2uaddr_3(pmap3_netbuf *, void *);
 extern  struct pmap3_string_result * pmap3_taddr2uaddr_3_svc(pmap3_netbuf *, struct svc_req *);
-extern int pmap_program_3_freeresult (SVCXPRT *, zdrproc_t, caddr_t);
+extern int pmap_program_3_freeresult (void *, zdrproc_t, caddr_t);
 
 #else /* K&R C */
 #define PMAP3_NULL 0

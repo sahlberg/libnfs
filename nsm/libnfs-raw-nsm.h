@@ -138,7 +138,7 @@ extern  void * nsm1_simu_crash_1_svc(void *, struct svc_req *);
 #define NSM1_NOTIFY 6
 extern  void * nsm1_notify_1(struct NSM1_NOTIFYargs *, void *);
 extern  void * nsm1_notify_1_svc(struct NSM1_NOTIFYargs *, struct svc_req *);
-extern int nsm_program_1_freeresult (SVCXPRT *, zdrproc_t, caddr_t);
+extern int nsm_program_1_freeresult (void *, zdrproc_t, caddr_t);
 
 #else /* K&R C */
 #define NSM1_NULL 0

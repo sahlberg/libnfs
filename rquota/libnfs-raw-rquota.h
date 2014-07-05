@@ -107,7 +107,7 @@ extern  GETQUOTA1res * rquota1_getquota_1_svc(GETQUOTA1args *, struct svc_req *)
 #define RQUOTA1_GETACTIVEQUOTA 2
 extern  GETQUOTA1res * rquota1_getactivequota_1(GETQUOTA1args *, void *);
 extern  GETQUOTA1res * rquota1_getactivequota_1_svc(GETQUOTA1args *, struct svc_req *);
-extern int rquota_program_1_freeresult (SVCXPRT *, zdrproc_t, caddr_t);
+extern int rquota_program_1_freeresult (void *, zdrproc_t, caddr_t);
 
 #else /* K&R C */
 #define RQUOTA1_NULL 0
@@ -133,7 +133,7 @@ extern  GETQUOTA1res * rquota2_getquota_2_svc(GETQUOTA2args *, struct svc_req *)
 #define RQUOTA2_GETACTIVEQUOTA 2
 extern  GETQUOTA1res * rquota2_getactivequota_2(GETQUOTA2args *, void *);
 extern  GETQUOTA1res * rquota2_getactivequota_2_svc(GETQUOTA2args *, struct svc_req *);
-extern int rquota_program_2_freeresult (SVCXPRT *, zdrproc_t, caddr_t);
+extern int rquota_program_2_freeresult (void *, zdrproc_t, caddr_t);
 
 #else /* K&R C */
 #define RQUOTA2_NULL 0

@@ -1412,7 +1412,7 @@ extern  READDIR2res * nfs2_readdir_2_svc(READDIR2args *, struct svc_req *);
 #define NFS2_STATFS 17
 extern  STATFS2res * nfs2_statfs_2(STATFS2args *, void *);
 extern  STATFS2res * nfs2_statfs_2_svc(STATFS2args *, struct svc_req *);
-extern int nfs_program_2_freeresult (SVCXPRT *, zdrproc_t, caddr_t);
+extern int nfs_program_2_freeresult (void *, zdrproc_t, caddr_t);
 
 #else /* K&R C */
 #define NFS2_NULL 0
@@ -1534,7 +1534,7 @@ extern  PATHCONF3res * nfs3_pathconf_3_svc(PATHCONF3args *, struct svc_req *);
 #define NFS3_COMMIT 21
 extern  COMMIT3res * nfs3_commit_3(COMMIT3args *, void *);
 extern  COMMIT3res * nfs3_commit_3_svc(COMMIT3args *, struct svc_req *);
-extern int nfs_program_3_freeresult (SVCXPRT *, zdrproc_t, caddr_t);
+extern int nfs_program_3_freeresult (void *, zdrproc_t, caddr_t);
 
 #else /* K&R C */
 #define NFS3_NULL 0
@@ -1619,7 +1619,7 @@ extern  GETACL3res * nfsacl3_getacl_3_svc(GETACL3args *, struct svc_req *);
 #define NFSACL3_SETACL 2
 extern  SETACL3res * nfsacl3_setacl_3(SETACL3args *, void *);
 extern  SETACL3res * nfsacl3_setacl_3_svc(SETACL3args *, struct svc_req *);
-extern int nfsacl_program_3_freeresult (SVCXPRT *, zdrproc_t, caddr_t);
+extern int nfsacl_program_3_freeresult (void *, zdrproc_t, caddr_t);
 
 #else /* K&R C */
 #define NFSACL3_NULL 0
