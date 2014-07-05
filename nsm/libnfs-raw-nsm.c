@@ -35,7 +35,7 @@ either expressed or implied, of the FreeBSD Project.
 #include "libnfs-zdr.h"
 #include "libnfs-raw-nsm.h"
 
-bool_t
+uint32_t
 zdr_nsmstat1 (ZDR *zdrs, nsmstat1 *objp)
 {
 	register int32_t *buf;
@@ -46,7 +46,7 @@ zdr_nsmstat1 (ZDR *zdrs, nsmstat1 *objp)
 	return TRUE;
 }
 
-bool_t
+uint32_t
 zdr_nsm_my_id (ZDR *zdrs, nsm_my_id *objp)
 {
 	register int32_t *buf;
@@ -63,7 +63,7 @@ zdr_nsm_my_id (ZDR *zdrs, nsm_my_id *objp)
 	return TRUE;
 }
 
-bool_t
+uint32_t
 zdr_nsm_mon_id (ZDR *zdrs, nsm_mon_id *objp)
 {
 	register int32_t *buf;
@@ -76,7 +76,7 @@ zdr_nsm_mon_id (ZDR *zdrs, nsm_mon_id *objp)
 	return TRUE;
 }
 
-bool_t
+uint32_t
 zdr_NSM1_STATres (ZDR *zdrs, NSM1_STATres *objp)
 {
 	register int32_t *buf;
@@ -89,7 +89,7 @@ zdr_NSM1_STATres (ZDR *zdrs, NSM1_STATres *objp)
 	return TRUE;
 }
 
-bool_t
+uint32_t
 zdr_NSM1_STATargs (ZDR *zdrs, NSM1_STATargs *objp)
 {
 	register int32_t *buf;
@@ -100,7 +100,7 @@ zdr_NSM1_STATargs (ZDR *zdrs, NSM1_STATargs *objp)
 	return TRUE;
 }
 
-bool_t
+uint32_t
 zdr_NSM1_MONres (ZDR *zdrs, NSM1_MONres *objp)
 {
 	register int32_t *buf;
@@ -113,7 +113,7 @@ zdr_NSM1_MONres (ZDR *zdrs, NSM1_MONres *objp)
 	return TRUE;
 }
 
-bool_t
+uint32_t
 zdr_NSM1_MONargs (ZDR *zdrs, NSM1_MONargs *objp)
 {
 	register int32_t *buf;
@@ -127,7 +127,7 @@ zdr_NSM1_MONargs (ZDR *zdrs, NSM1_MONargs *objp)
 	return TRUE;
 }
 
-bool_t
+uint32_t
 zdr_NSM1_UNMONres (ZDR *zdrs, NSM1_UNMONres *objp)
 {
 	register int32_t *buf;
@@ -138,7 +138,7 @@ zdr_NSM1_UNMONres (ZDR *zdrs, NSM1_UNMONres *objp)
 	return TRUE;
 }
 
-bool_t
+uint32_t
 zdr_NSM1_UNMONargs (ZDR *zdrs, NSM1_UNMONargs *objp)
 {
 	register int32_t *buf;
@@ -149,7 +149,7 @@ zdr_NSM1_UNMONargs (ZDR *zdrs, NSM1_UNMONargs *objp)
 	return TRUE;
 }
 
-bool_t
+uint32_t
 zdr_NSM1_UNMONALLres (ZDR *zdrs, NSM1_UNMONALLres *objp)
 {
 	register int32_t *buf;
@@ -160,7 +160,7 @@ zdr_NSM1_UNMONALLres (ZDR *zdrs, NSM1_UNMONALLres *objp)
 	return TRUE;
 }
 
-bool_t
+uint32_t
 zdr_NSM1_UNMONALLargs (ZDR *zdrs, NSM1_UNMONALLargs *objp)
 {
 	register int32_t *buf;
@@ -171,7 +171,7 @@ zdr_NSM1_UNMONALLargs (ZDR *zdrs, NSM1_UNMONALLargs *objp)
 	return TRUE;
 }
 
-bool_t
+uint32_t
 zdr_NSM1_NOTIFYargs (ZDR *zdrs, NSM1_NOTIFYargs *objp)
 {
 	register int32_t *buf;

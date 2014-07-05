@@ -35,7 +35,7 @@ either expressed or implied, of the FreeBSD Project.
 #include "libnfs-zdr.h"
 #include "libnfs-raw-portmap.h"
 
-bool_t
+uint32_t
 zdr_pmap2_mapping (ZDR *zdrs, pmap2_mapping *objp)
 {
 	register int32_t *buf;
@@ -91,7 +91,7 @@ zdr_pmap2_mapping (ZDR *zdrs, pmap2_mapping *objp)
 	return TRUE;
 }
 
-bool_t
+uint32_t
 zdr_pmap2_call_args (ZDR *zdrs, pmap2_call_args *objp)
 {
 	register int32_t *buf;
@@ -147,7 +147,7 @@ zdr_pmap2_call_args (ZDR *zdrs, pmap2_call_args *objp)
 	return TRUE;
 }
 
-bool_t
+uint32_t
 zdr_pmap2_call_result (ZDR *zdrs, pmap2_call_result *objp)
 {
 	register int32_t *buf;
@@ -160,7 +160,7 @@ zdr_pmap2_call_result (ZDR *zdrs, pmap2_call_result *objp)
 	return TRUE;
 }
 
-bool_t
+uint32_t
 zdr_pmap2_mapping_list (ZDR *zdrs, pmap2_mapping_list *objp)
 {
 	register int32_t *buf;
@@ -173,7 +173,7 @@ zdr_pmap2_mapping_list (ZDR *zdrs, pmap2_mapping_list *objp)
 	return TRUE;
 }
 
-bool_t
+uint32_t
 zdr_pmap2_dump_result (ZDR *zdrs, pmap2_dump_result *objp)
 {
 	register int32_t *buf;
@@ -184,7 +184,7 @@ zdr_pmap2_dump_result (ZDR *zdrs, pmap2_dump_result *objp)
 	return TRUE;
 }
 
-bool_t
+uint32_t
 zdr_pmap3_string_result (ZDR *zdrs, pmap3_string_result *objp)
 {
 	register int32_t *buf;
@@ -195,7 +195,7 @@ zdr_pmap3_string_result (ZDR *zdrs, pmap3_string_result *objp)
 	return TRUE;
 }
 
-bool_t
+uint32_t
 zdr_pmap3_mapping (ZDR *zdrs, pmap3_mapping *objp)
 {
 	register int32_t *buf;
@@ -214,7 +214,7 @@ zdr_pmap3_mapping (ZDR *zdrs, pmap3_mapping *objp)
 	return TRUE;
 }
 
-bool_t
+uint32_t
 zdr_pmap3_mapping_list (ZDR *zdrs, pmap3_mapping_list *objp)
 {
 	register int32_t *buf;
@@ -227,7 +227,7 @@ zdr_pmap3_mapping_list (ZDR *zdrs, pmap3_mapping_list *objp)
 	return TRUE;
 }
 
-bool_t
+uint32_t
 zdr_pmap3_dump_result (ZDR *zdrs, pmap3_dump_result *objp)
 {
 	register int32_t *buf;
@@ -238,7 +238,7 @@ zdr_pmap3_dump_result (ZDR *zdrs, pmap3_dump_result *objp)
 	return TRUE;
 }
 
-bool_t
+uint32_t
 zdr_pmap3_call_args (ZDR *zdrs, pmap3_call_args *objp)
 {
 	register int32_t *buf;
@@ -294,7 +294,7 @@ zdr_pmap3_call_args (ZDR *zdrs, pmap3_call_args *objp)
 	return TRUE;
 }
 
-bool_t
+uint32_t
 zdr_pmap3_call_result (ZDR *zdrs, pmap3_call_result *objp)
 {
 	register int32_t *buf;
@@ -307,7 +307,7 @@ zdr_pmap3_call_result (ZDR *zdrs, pmap3_call_result *objp)
 	return TRUE;
 }
 
-bool_t
+uint32_t
 zdr_pmap3_netbuf (ZDR *zdrs, pmap3_netbuf *objp)
 {
 	register int32_t *buf;

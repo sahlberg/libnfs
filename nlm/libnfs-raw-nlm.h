@@ -76,7 +76,7 @@ enum nlmstat4 {
 typedef enum nlmstat4 nlmstat4;
 
 struct nlm4_holder {
-	bool_t exclusive;
+	uint32_t exclusive;
 	u_int svid;
 	nlm4_oh oh;
 	u_quad_t l_offset;
@@ -125,7 +125,7 @@ typedef struct NLM4_TESTres NLM4_TESTres;
 
 struct NLM4_TESTargs {
 	nlm_cookie cookie;
-	bool_t exclusive;
+	uint32_t exclusive;
 	nlm4_lock lock;
 };
 typedef struct NLM4_TESTargs NLM4_TESTargs;
@@ -138,8 +138,8 @@ typedef struct NLM4_CANCres NLM4_CANCres;
 
 struct NLM4_CANCargs {
 	nlm_cookie cookie;
-	bool_t block;
-	bool_t exclusive;
+	uint32_t block;
+	uint32_t exclusive;
 	nlm4_lock lock;
 };
 typedef struct NLM4_CANCargs NLM4_CANCargs;
@@ -164,17 +164,17 @@ typedef struct NLM4_LOCKres NLM4_LOCKres;
 
 struct NLM4_LOCKargs {
 	nlm_cookie cookie;
-	bool_t block;
-	bool_t exclusive;
+	uint32_t block;
+	uint32_t exclusive;
 	nlm4_lock lock;
-	bool_t reclaim;
+	uint32_t reclaim;
 	int state;
 };
 typedef struct NLM4_LOCKargs NLM4_LOCKargs;
 
 struct NLM4_GRANTEDargs {
 	nlm_cookie cookie;
-	bool_t exclusive;
+	uint32_t exclusive;
 	nlm4_lock lock;
 };
 typedef struct NLM4_GRANTEDargs NLM4_GRANTEDargs;
@@ -294,46 +294,46 @@ extern int nlm_program_4_freeresult ();
 /* the zdr functions */
 
 #if defined(__STDC__) || defined(__cplusplus)
-extern  bool_t zdr_nlm_fh4 (ZDR *, nlm_fh4*);
-extern  bool_t zdr_nlm4_oh (ZDR *, nlm4_oh*);
-extern  bool_t zdr_nlm_cookie (ZDR *, nlm_cookie*);
-extern  bool_t zdr_nlmstat4 (ZDR *, nlmstat4*);
-extern  bool_t zdr_nlm4_holder (ZDR *, nlm4_holder*);
-extern  bool_t zdr_nlm4_lock (ZDR *, nlm4_lock*);
-extern  bool_t zdr_nlm4_share (ZDR *, nlm4_share*);
-extern  bool_t zdr_nlm4_testres_denied (ZDR *, nlm4_testres_denied*);
-extern  bool_t zdr_nlm4_testreply (ZDR *, nlm4_testreply*);
-extern  bool_t zdr_NLM4_TESTres (ZDR *, NLM4_TESTres*);
-extern  bool_t zdr_NLM4_TESTargs (ZDR *, NLM4_TESTargs*);
-extern  bool_t zdr_NLM4_CANCres (ZDR *, NLM4_CANCres*);
-extern  bool_t zdr_NLM4_CANCargs (ZDR *, NLM4_CANCargs*);
-extern  bool_t zdr_NLM4_UNLOCKres (ZDR *, NLM4_UNLOCKres*);
-extern  bool_t zdr_NLM4_UNLOCKargs (ZDR *, NLM4_UNLOCKargs*);
-extern  bool_t zdr_NLM4_LOCKres (ZDR *, NLM4_LOCKres*);
-extern  bool_t zdr_NLM4_LOCKargs (ZDR *, NLM4_LOCKargs*);
-extern  bool_t zdr_NLM4_GRANTEDargs (ZDR *, NLM4_GRANTEDargs*);
-extern  bool_t zdr_NLM4_GRANTEDres (ZDR *, NLM4_GRANTEDres*);
+extern  uint32_t zdr_nlm_fh4 (ZDR *, nlm_fh4*);
+extern  uint32_t zdr_nlm4_oh (ZDR *, nlm4_oh*);
+extern  uint32_t zdr_nlm_cookie (ZDR *, nlm_cookie*);
+extern  uint32_t zdr_nlmstat4 (ZDR *, nlmstat4*);
+extern  uint32_t zdr_nlm4_holder (ZDR *, nlm4_holder*);
+extern  uint32_t zdr_nlm4_lock (ZDR *, nlm4_lock*);
+extern  uint32_t zdr_nlm4_share (ZDR *, nlm4_share*);
+extern  uint32_t zdr_nlm4_testres_denied (ZDR *, nlm4_testres_denied*);
+extern  uint32_t zdr_nlm4_testreply (ZDR *, nlm4_testreply*);
+extern  uint32_t zdr_NLM4_TESTres (ZDR *, NLM4_TESTres*);
+extern  uint32_t zdr_NLM4_TESTargs (ZDR *, NLM4_TESTargs*);
+extern  uint32_t zdr_NLM4_CANCres (ZDR *, NLM4_CANCres*);
+extern  uint32_t zdr_NLM4_CANCargs (ZDR *, NLM4_CANCargs*);
+extern  uint32_t zdr_NLM4_UNLOCKres (ZDR *, NLM4_UNLOCKres*);
+extern  uint32_t zdr_NLM4_UNLOCKargs (ZDR *, NLM4_UNLOCKargs*);
+extern  uint32_t zdr_NLM4_LOCKres (ZDR *, NLM4_LOCKres*);
+extern  uint32_t zdr_NLM4_LOCKargs (ZDR *, NLM4_LOCKargs*);
+extern  uint32_t zdr_NLM4_GRANTEDargs (ZDR *, NLM4_GRANTEDargs*);
+extern  uint32_t zdr_NLM4_GRANTEDres (ZDR *, NLM4_GRANTEDres*);
 
 #else /* K&R C */
-extern bool_t zdr_nlm_fh4 ();
-extern bool_t zdr_nlm4_oh ();
-extern bool_t zdr_nlm_cookie ();
-extern bool_t zdr_nlmstat4 ();
-extern bool_t zdr_nlm4_holder ();
-extern bool_t zdr_nlm4_lock ();
-extern bool_t zdr_nlm4_share ();
-extern bool_t zdr_nlm4_testres_denied ();
-extern bool_t zdr_nlm4_testreply ();
-extern bool_t zdr_NLM4_TESTres ();
-extern bool_t zdr_NLM4_TESTargs ();
-extern bool_t zdr_NLM4_CANCres ();
-extern bool_t zdr_NLM4_CANCargs ();
-extern bool_t zdr_NLM4_UNLOCKres ();
-extern bool_t zdr_NLM4_UNLOCKargs ();
-extern bool_t zdr_NLM4_LOCKres ();
-extern bool_t zdr_NLM4_LOCKargs ();
-extern bool_t zdr_NLM4_GRANTEDargs ();
-extern bool_t zdr_NLM4_GRANTEDres ();
+extern uint32_t zdr_nlm_fh4 ();
+extern uint32_t zdr_nlm4_oh ();
+extern uint32_t zdr_nlm_cookie ();
+extern uint32_t zdr_nlmstat4 ();
+extern uint32_t zdr_nlm4_holder ();
+extern uint32_t zdr_nlm4_lock ();
+extern uint32_t zdr_nlm4_share ();
+extern uint32_t zdr_nlm4_testres_denied ();
+extern uint32_t zdr_nlm4_testreply ();
+extern uint32_t zdr_NLM4_TESTres ();
+extern uint32_t zdr_NLM4_TESTargs ();
+extern uint32_t zdr_NLM4_CANCres ();
+extern uint32_t zdr_NLM4_CANCargs ();
+extern uint32_t zdr_NLM4_UNLOCKres ();
+extern uint32_t zdr_NLM4_UNLOCKargs ();
+extern uint32_t zdr_NLM4_LOCKres ();
+extern uint32_t zdr_NLM4_LOCKargs ();
+extern uint32_t zdr_NLM4_GRANTEDargs ();
+extern uint32_t zdr_NLM4_GRANTEDres ();
 
 #endif /* K&R C */
 

@@ -35,7 +35,7 @@ either expressed or implied, of the FreeBSD Project.
 #include "libnfs-zdr.h"
 #include "libnfs-raw-nlm.h"
 
-bool_t
+uint32_t
 zdr_nlm_fh4 (ZDR *zdrs, nlm_fh4 *objp)
 {
 	register int32_t *buf;
@@ -46,7 +46,7 @@ zdr_nlm_fh4 (ZDR *zdrs, nlm_fh4 *objp)
 	return TRUE;
 }
 
-bool_t
+uint32_t
 zdr_nlm4_oh (ZDR *zdrs, nlm4_oh *objp)
 {
 	register int32_t *buf;
@@ -57,7 +57,7 @@ zdr_nlm4_oh (ZDR *zdrs, nlm4_oh *objp)
 	return TRUE;
 }
 
-bool_t
+uint32_t
 zdr_nlm_cookie (ZDR *zdrs, nlm_cookie *objp)
 {
 	register int32_t *buf;
@@ -68,7 +68,7 @@ zdr_nlm_cookie (ZDR *zdrs, nlm_cookie *objp)
 	return TRUE;
 }
 
-bool_t
+uint32_t
 zdr_nlmstat4 (ZDR *zdrs, nlmstat4 *objp)
 {
 	register int32_t *buf;
@@ -79,7 +79,7 @@ zdr_nlmstat4 (ZDR *zdrs, nlmstat4 *objp)
 	return TRUE;
 }
 
-bool_t
+uint32_t
 zdr_nlm4_holder (ZDR *zdrs, nlm4_holder *objp)
 {
 	register int32_t *buf;
@@ -98,7 +98,7 @@ zdr_nlm4_holder (ZDR *zdrs, nlm4_holder *objp)
 	return TRUE;
 }
 
-bool_t
+uint32_t
 zdr_nlm4_lock (ZDR *zdrs, nlm4_lock *objp)
 {
 	register int32_t *buf;
@@ -119,7 +119,7 @@ zdr_nlm4_lock (ZDR *zdrs, nlm4_lock *objp)
 	return TRUE;
 }
 
-bool_t
+uint32_t
 zdr_nlm4_share (ZDR *zdrs, nlm4_share *objp)
 {
 	register int32_t *buf;
@@ -138,7 +138,7 @@ zdr_nlm4_share (ZDR *zdrs, nlm4_share *objp)
 	return TRUE;
 }
 
-bool_t
+uint32_t
 zdr_nlm4_testres_denied (ZDR *zdrs, nlm4_testres_denied *objp)
 {
 	register int32_t *buf;
@@ -149,7 +149,7 @@ zdr_nlm4_testres_denied (ZDR *zdrs, nlm4_testres_denied *objp)
 	return TRUE;
 }
 
-bool_t
+uint32_t
 zdr_nlm4_testreply (ZDR *zdrs, nlm4_testreply *objp)
 {
 	register int32_t *buf;
@@ -168,7 +168,7 @@ zdr_nlm4_testreply (ZDR *zdrs, nlm4_testreply *objp)
 	return TRUE;
 }
 
-bool_t
+uint32_t
 zdr_NLM4_TESTres (ZDR *zdrs, NLM4_TESTres *objp)
 {
 	register int32_t *buf;
@@ -181,7 +181,7 @@ zdr_NLM4_TESTres (ZDR *zdrs, NLM4_TESTres *objp)
 	return TRUE;
 }
 
-bool_t
+uint32_t
 zdr_NLM4_TESTargs (ZDR *zdrs, NLM4_TESTargs *objp)
 {
 	register int32_t *buf;
@@ -196,7 +196,7 @@ zdr_NLM4_TESTargs (ZDR *zdrs, NLM4_TESTargs *objp)
 	return TRUE;
 }
 
-bool_t
+uint32_t
 zdr_NLM4_CANCres (ZDR *zdrs, NLM4_CANCres *objp)
 {
 	register int32_t *buf;
@@ -209,7 +209,7 @@ zdr_NLM4_CANCres (ZDR *zdrs, NLM4_CANCres *objp)
 	return TRUE;
 }
 
-bool_t
+uint32_t
 zdr_NLM4_CANCargs (ZDR *zdrs, NLM4_CANCargs *objp)
 {
 	register int32_t *buf;
@@ -226,7 +226,7 @@ zdr_NLM4_CANCargs (ZDR *zdrs, NLM4_CANCargs *objp)
 	return TRUE;
 }
 
-bool_t
+uint32_t
 zdr_NLM4_UNLOCKres (ZDR *zdrs, NLM4_UNLOCKres *objp)
 {
 	register int32_t *buf;
@@ -239,7 +239,7 @@ zdr_NLM4_UNLOCKres (ZDR *zdrs, NLM4_UNLOCKres *objp)
 	return TRUE;
 }
 
-bool_t
+uint32_t
 zdr_NLM4_UNLOCKargs (ZDR *zdrs, NLM4_UNLOCKargs *objp)
 {
 	register int32_t *buf;
@@ -252,7 +252,7 @@ zdr_NLM4_UNLOCKargs (ZDR *zdrs, NLM4_UNLOCKargs *objp)
 	return TRUE;
 }
 
-bool_t
+uint32_t
 zdr_NLM4_LOCKres (ZDR *zdrs, NLM4_LOCKres *objp)
 {
 	register int32_t *buf;
@@ -265,7 +265,7 @@ zdr_NLM4_LOCKres (ZDR *zdrs, NLM4_LOCKres *objp)
 	return TRUE;
 }
 
-bool_t
+uint32_t
 zdr_NLM4_LOCKargs (ZDR *zdrs, NLM4_LOCKargs *objp)
 {
 	register int32_t *buf;
@@ -286,7 +286,7 @@ zdr_NLM4_LOCKargs (ZDR *zdrs, NLM4_LOCKargs *objp)
 	return TRUE;
 }
 
-bool_t
+uint32_t
 zdr_NLM4_GRANTEDargs (ZDR *zdrs, NLM4_GRANTEDargs *objp)
 {
 	register int32_t *buf;
@@ -301,7 +301,7 @@ zdr_NLM4_GRANTEDargs (ZDR *zdrs, NLM4_GRANTEDargs *objp)
 	return TRUE;
 }
 
-bool_t
+uint32_t
 zdr_NLM4_GRANTEDres (ZDR *zdrs, NLM4_GRANTEDres *objp)
 {
 	register int32_t *buf;

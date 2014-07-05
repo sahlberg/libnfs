@@ -168,32 +168,32 @@ extern int nsm_program_1_freeresult ();
 /* the zdr functions */
 
 #if defined(__STDC__) || defined(__cplusplus)
-extern  bool_t zdr_nsmstat1 (ZDR *, nsmstat1*);
-extern  bool_t zdr_nsm_my_id (ZDR *, nsm_my_id*);
-extern  bool_t zdr_nsm_mon_id (ZDR *, nsm_mon_id*);
-extern  bool_t zdr_NSM1_STATres (ZDR *, NSM1_STATres*);
-extern  bool_t zdr_NSM1_STATargs (ZDR *, NSM1_STATargs*);
-extern  bool_t zdr_NSM1_MONres (ZDR *, NSM1_MONres*);
-extern  bool_t zdr_NSM1_MONargs (ZDR *, NSM1_MONargs*);
-extern  bool_t zdr_NSM1_UNMONres (ZDR *, NSM1_UNMONres*);
-extern  bool_t zdr_NSM1_UNMONargs (ZDR *, NSM1_UNMONargs*);
-extern  bool_t zdr_NSM1_UNMONALLres (ZDR *, NSM1_UNMONALLres*);
-extern  bool_t zdr_NSM1_UNMONALLargs (ZDR *, NSM1_UNMONALLargs*);
-extern  bool_t zdr_NSM1_NOTIFYargs (ZDR *, NSM1_NOTIFYargs*);
+extern  uint32_t zdr_nsmstat1 (ZDR *, nsmstat1*);
+extern  uint32_t zdr_nsm_my_id (ZDR *, nsm_my_id*);
+extern  uint32_t zdr_nsm_mon_id (ZDR *, nsm_mon_id*);
+extern  uint32_t zdr_NSM1_STATres (ZDR *, NSM1_STATres*);
+extern  uint32_t zdr_NSM1_STATargs (ZDR *, NSM1_STATargs*);
+extern  uint32_t zdr_NSM1_MONres (ZDR *, NSM1_MONres*);
+extern  uint32_t zdr_NSM1_MONargs (ZDR *, NSM1_MONargs*);
+extern  uint32_t zdr_NSM1_UNMONres (ZDR *, NSM1_UNMONres*);
+extern  uint32_t zdr_NSM1_UNMONargs (ZDR *, NSM1_UNMONargs*);
+extern  uint32_t zdr_NSM1_UNMONALLres (ZDR *, NSM1_UNMONALLres*);
+extern  uint32_t zdr_NSM1_UNMONALLargs (ZDR *, NSM1_UNMONALLargs*);
+extern  uint32_t zdr_NSM1_NOTIFYargs (ZDR *, NSM1_NOTIFYargs*);
 
 #else /* K&R C */
-extern bool_t zdr_nsmstat1 ();
-extern bool_t zdr_nsm_my_id ();
-extern bool_t zdr_nsm_mon_id ();
-extern bool_t zdr_NSM1_STATres ();
-extern bool_t zdr_NSM1_STATargs ();
-extern bool_t zdr_NSM1_MONres ();
-extern bool_t zdr_NSM1_MONargs ();
-extern bool_t zdr_NSM1_UNMONres ();
-extern bool_t zdr_NSM1_UNMONargs ();
-extern bool_t zdr_NSM1_UNMONALLres ();
-extern bool_t zdr_NSM1_UNMONALLargs ();
-extern bool_t zdr_NSM1_NOTIFYargs ();
+extern uint32_t zdr_nsmstat1 ();
+extern uint32_t zdr_nsm_my_id ();
+extern uint32_t zdr_nsm_mon_id ();
+extern uint32_t zdr_NSM1_STATres ();
+extern uint32_t zdr_NSM1_STATargs ();
+extern uint32_t zdr_NSM1_MONres ();
+extern uint32_t zdr_NSM1_MONargs ();
+extern uint32_t zdr_NSM1_UNMONres ();
+extern uint32_t zdr_NSM1_UNMONargs ();
+extern uint32_t zdr_NSM1_UNMONALLres ();
+extern uint32_t zdr_NSM1_UNMONALLargs ();
+extern uint32_t zdr_NSM1_NOTIFYargs ();
 
 #endif /* K&R C */
 

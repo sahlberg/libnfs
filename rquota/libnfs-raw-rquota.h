@@ -151,22 +151,22 @@ extern int rquota_program_2_freeresult ();
 /* the zdr functions */
 
 #if defined(__STDC__) || defined(__cplusplus)
-extern  bool_t zdr_rquotastat (ZDR *, rquotastat*);
-extern  bool_t zdr_exportpath (ZDR *, exportpath*);
-extern  bool_t zdr_GETQUOTA1args (ZDR *, GETQUOTA1args*);
-extern  bool_t zdr_quotatype (ZDR *, quotatype*);
-extern  bool_t zdr_GETQUOTA2args (ZDR *, GETQUOTA2args*);
-extern  bool_t zdr_GETQUOTA1res_ok (ZDR *, GETQUOTA1res_ok*);
-extern  bool_t zdr_GETQUOTA1res (ZDR *, GETQUOTA1res*);
+extern  uint32_t zdr_rquotastat (ZDR *, rquotastat*);
+extern  uint32_t zdr_exportpath (ZDR *, exportpath*);
+extern  uint32_t zdr_GETQUOTA1args (ZDR *, GETQUOTA1args*);
+extern  uint32_t zdr_quotatype (ZDR *, quotatype*);
+extern  uint32_t zdr_GETQUOTA2args (ZDR *, GETQUOTA2args*);
+extern  uint32_t zdr_GETQUOTA1res_ok (ZDR *, GETQUOTA1res_ok*);
+extern  uint32_t zdr_GETQUOTA1res (ZDR *, GETQUOTA1res*);
 
 #else /* K&R C */
-extern bool_t zdr_rquotastat ();
-extern bool_t zdr_exportpath ();
-extern bool_t zdr_GETQUOTA1args ();
-extern bool_t zdr_quotatype ();
-extern bool_t zdr_GETQUOTA2args ();
-extern bool_t zdr_GETQUOTA1res_ok ();
-extern bool_t zdr_GETQUOTA1res ();
+extern uint32_t zdr_rquotastat ();
+extern uint32_t zdr_exportpath ();
+extern uint32_t zdr_GETQUOTA1args ();
+extern uint32_t zdr_quotatype ();
+extern uint32_t zdr_GETQUOTA2args ();
+extern uint32_t zdr_GETQUOTA1res_ok ();
+extern uint32_t zdr_GETQUOTA1res ();
 
 #endif /* K&R C */
 
