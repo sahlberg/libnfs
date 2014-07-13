@@ -147,24 +147,24 @@ typedef struct mountres1 mountres1;
 
 #if defined(__STDC__) || defined(__cplusplus)
 #define MOUNT1_NULL 0
-extern  void * mount1_null_1(void *, CLIENT *);
+extern  void * mount1_null_1(void *, void *);
 extern  void * mount1_null_1_svc(void *, struct svc_req *);
 #define MOUNT1_MNT 1
-extern  mountres1 * mount1_mnt_1(dirpath *, CLIENT *);
+extern  mountres1 * mount1_mnt_1(dirpath *, void *);
 extern  mountres1 * mount1_mnt_1_svc(dirpath *, struct svc_req *);
 #define MOUNT1_DUMP 2
-extern  mountlist * mount1_dump_1(void *, CLIENT *);
+extern  mountlist * mount1_dump_1(void *, void *);
 extern  mountlist * mount1_dump_1_svc(void *, struct svc_req *);
 #define MOUNT1_UMNT 3
-extern  void * mount1_umnt_1(dirpath *, CLIENT *);
+extern  void * mount1_umnt_1(dirpath *, void *);
 extern  void * mount1_umnt_1_svc(dirpath *, struct svc_req *);
 #define MOUNT1_UMNTALL 4
-extern  void * mount1_umntall_1(void *, CLIENT *);
+extern  void * mount1_umntall_1(void *, void *);
 extern  void * mount1_umntall_1_svc(void *, struct svc_req *);
 #define MOUNT1_EXPORT 5
-extern  exports * mount1_export_1(void *, CLIENT *);
+extern  exports * mount1_export_1(void *, void *);
 extern  exports * mount1_export_1_svc(void *, struct svc_req *);
-extern int mount_program_1_freeresult (SVCXPRT *, zdrproc_t, caddr_t);
+extern int mount_program_1_freeresult (void *, zdrproc_t, caddr_t);
 
 #else /* K&R C */
 #define MOUNT1_NULL 0
@@ -191,24 +191,24 @@ extern int mount_program_1_freeresult ();
 
 #if defined(__STDC__) || defined(__cplusplus)
 #define MOUNT3_NULL 0
-extern  void * mount3_null_3(void *, CLIENT *);
+extern  void * mount3_null_3(void *, void *);
 extern  void * mount3_null_3_svc(void *, struct svc_req *);
 #define MOUNT3_MNT 1
-extern  mountres3 * mount3_mnt_3(dirpath *, CLIENT *);
+extern  mountres3 * mount3_mnt_3(dirpath *, void *);
 extern  mountres3 * mount3_mnt_3_svc(dirpath *, struct svc_req *);
 #define MOUNT3_DUMP 2
-extern  mountlist * mount3_dump_3(void *, CLIENT *);
+extern  mountlist * mount3_dump_3(void *, void *);
 extern  mountlist * mount3_dump_3_svc(void *, struct svc_req *);
 #define MOUNT3_UMNT 3
-extern  void * mount3_umnt_3(dirpath *, CLIENT *);
+extern  void * mount3_umnt_3(dirpath *, void *);
 extern  void * mount3_umnt_3_svc(dirpath *, struct svc_req *);
 #define MOUNT3_UMNTALL 4
-extern  void * mount3_umntall_3(void *, CLIENT *);
+extern  void * mount3_umntall_3(void *, void *);
 extern  void * mount3_umntall_3_svc(void *, struct svc_req *);
 #define MOUNT3_EXPORT 5
-extern  exports * mount3_export_3(void *, CLIENT *);
+extern  exports * mount3_export_3(void *, void *);
 extern  exports * mount3_export_3_svc(void *, struct svc_req *);
-extern int mount_program_3_freeresult (SVCXPRT *, zdrproc_t, caddr_t);
+extern int mount_program_3_freeresult (void *, zdrproc_t, caddr_t);
 
 #else /* K&R C */
 #define MOUNT3_NULL 0
@@ -235,40 +235,40 @@ extern int mount_program_3_freeresult ();
 /* the zdr functions */
 
 #if defined(__STDC__) || defined(__cplusplus)
-extern  bool_t zdr_fhandle3 (ZDR *, fhandle3*);
-extern  bool_t zdr_dirpath (ZDR *, dirpath*);
-extern  bool_t zdr_name (ZDR *, name*);
-extern  bool_t zdr_mountstat3 (ZDR *, mountstat3*);
-extern  bool_t zdr_mountlist (ZDR *, mountlist*);
-extern  bool_t zdr_mountbody (ZDR *, mountbody*);
-extern  bool_t zdr_groups (ZDR *, groups*);
-extern  bool_t zdr_groupnode (ZDR *, groupnode*);
-extern  bool_t zdr_exports (ZDR *, exports*);
-extern  bool_t zdr_exportnode (ZDR *, exportnode*);
-extern  bool_t zdr_mountres3_ok (ZDR *, mountres3_ok*);
-extern  bool_t zdr_mountres3 (ZDR *, mountres3*);
-extern  bool_t zdr_mountstat1 (ZDR *, mountstat1*);
-extern  bool_t zdr_fhandle1 (ZDR *, fhandle1);
-extern  bool_t zdr_mountres1_ok (ZDR *, mountres1_ok*);
-extern  bool_t zdr_mountres1 (ZDR *, mountres1*);
+extern  uint32_t zdr_fhandle3 (ZDR *, fhandle3*);
+extern  uint32_t zdr_dirpath (ZDR *, dirpath*);
+extern  uint32_t zdr_name (ZDR *, name*);
+extern  uint32_t zdr_mountstat3 (ZDR *, mountstat3*);
+extern  uint32_t zdr_mountlist (ZDR *, mountlist*);
+extern  uint32_t zdr_mountbody (ZDR *, mountbody*);
+extern  uint32_t zdr_groups (ZDR *, groups*);
+extern  uint32_t zdr_groupnode (ZDR *, groupnode*);
+extern  uint32_t zdr_exports (ZDR *, exports*);
+extern  uint32_t zdr_exportnode (ZDR *, exportnode*);
+extern  uint32_t zdr_mountres3_ok (ZDR *, mountres3_ok*);
+extern  uint32_t zdr_mountres3 (ZDR *, mountres3*);
+extern  uint32_t zdr_mountstat1 (ZDR *, mountstat1*);
+extern  uint32_t zdr_fhandle1 (ZDR *, fhandle1);
+extern  uint32_t zdr_mountres1_ok (ZDR *, mountres1_ok*);
+extern  uint32_t zdr_mountres1 (ZDR *, mountres1*);
 
 #else /* K&R C */
-extern bool_t zdr_fhandle3 ();
-extern bool_t zdr_dirpath ();
-extern bool_t zdr_name ();
-extern bool_t zdr_mountstat3 ();
-extern bool_t zdr_mountlist ();
-extern bool_t zdr_mountbody ();
-extern bool_t zdr_groups ();
-extern bool_t zdr_groupnode ();
-extern bool_t zdr_exports ();
-extern bool_t zdr_exportnode ();
-extern bool_t zdr_mountres3_ok ();
-extern bool_t zdr_mountres3 ();
-extern bool_t zdr_mountstat1 ();
-extern bool_t zdr_fhandle1 ();
-extern bool_t zdr_mountres1_ok ();
-extern bool_t zdr_mountres1 ();
+extern uint32_t zdr_fhandle3 ();
+extern uint32_t zdr_dirpath ();
+extern uint32_t zdr_name ();
+extern uint32_t zdr_mountstat3 ();
+extern uint32_t zdr_mountlist ();
+extern uint32_t zdr_mountbody ();
+extern uint32_t zdr_groups ();
+extern uint32_t zdr_groupnode ();
+extern uint32_t zdr_exports ();
+extern uint32_t zdr_exportnode ();
+extern uint32_t zdr_mountres3_ok ();
+extern uint32_t zdr_mountres3 ();
+extern uint32_t zdr_mountstat1 ();
+extern uint32_t zdr_fhandle1 ();
+extern uint32_t zdr_mountres1_ok ();
+extern uint32_t zdr_mountres1 ();
 
 #endif /* K&R C */
 

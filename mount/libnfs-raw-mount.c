@@ -35,7 +35,7 @@ either expressed or implied, of the FreeBSD Project.
 #include "libnfs-zdr.h"
 #include "libnfs-raw-mount.h"
 
-bool_t
+uint32_t
 zdr_fhandle3 (ZDR *zdrs, fhandle3 *objp)
 {
 	register int32_t *buf;
@@ -46,7 +46,7 @@ zdr_fhandle3 (ZDR *zdrs, fhandle3 *objp)
 	return TRUE;
 }
 
-bool_t
+uint32_t
 zdr_dirpath (ZDR *zdrs, dirpath *objp)
 {
 	register int32_t *buf;
@@ -57,7 +57,7 @@ zdr_dirpath (ZDR *zdrs, dirpath *objp)
 	return TRUE;
 }
 
-bool_t
+uint32_t
 zdr_name (ZDR *zdrs, name *objp)
 {
 	register int32_t *buf;
@@ -68,7 +68,7 @@ zdr_name (ZDR *zdrs, name *objp)
 	return TRUE;
 }
 
-bool_t
+uint32_t
 zdr_mountstat3 (ZDR *zdrs, mountstat3 *objp)
 {
 	register int32_t *buf;
@@ -79,7 +79,7 @@ zdr_mountstat3 (ZDR *zdrs, mountstat3 *objp)
 	return TRUE;
 }
 
-bool_t
+uint32_t
 zdr_mountlist (ZDR *zdrs, mountlist *objp)
 {
 	register int32_t *buf;
@@ -90,7 +90,7 @@ zdr_mountlist (ZDR *zdrs, mountlist *objp)
 	return TRUE;
 }
 
-bool_t
+uint32_t
 zdr_mountbody (ZDR *zdrs, mountbody *objp)
 {
 	register int32_t *buf;
@@ -105,7 +105,7 @@ zdr_mountbody (ZDR *zdrs, mountbody *objp)
 	return TRUE;
 }
 
-bool_t
+uint32_t
 zdr_groups (ZDR *zdrs, groups *objp)
 {
 	register int32_t *buf;
@@ -116,7 +116,7 @@ zdr_groups (ZDR *zdrs, groups *objp)
 	return TRUE;
 }
 
-bool_t
+uint32_t
 zdr_groupnode (ZDR *zdrs, groupnode *objp)
 {
 	register int32_t *buf;
@@ -129,7 +129,7 @@ zdr_groupnode (ZDR *zdrs, groupnode *objp)
 	return TRUE;
 }
 
-bool_t
+uint32_t
 zdr_exports (ZDR *zdrs, exports *objp)
 {
 	register int32_t *buf;
@@ -140,7 +140,7 @@ zdr_exports (ZDR *zdrs, exports *objp)
 	return TRUE;
 }
 
-bool_t
+uint32_t
 zdr_exportnode (ZDR *zdrs, exportnode *objp)
 {
 	register int32_t *buf;
@@ -155,7 +155,7 @@ zdr_exportnode (ZDR *zdrs, exportnode *objp)
 	return TRUE;
 }
 
-bool_t
+uint32_t
 zdr_mountres3_ok (ZDR *zdrs, mountres3_ok *objp)
 {
 	register int32_t *buf;
@@ -169,7 +169,7 @@ zdr_mountres3_ok (ZDR *zdrs, mountres3_ok *objp)
 	return TRUE;
 }
 
-bool_t
+uint32_t
 zdr_mountres3 (ZDR *zdrs, mountres3 *objp)
 {
 	register int32_t *buf;
@@ -188,7 +188,7 @@ zdr_mountres3 (ZDR *zdrs, mountres3 *objp)
 	return TRUE;
 }
 
-bool_t
+uint32_t
 zdr_mountstat1 (ZDR *zdrs, mountstat1 *objp)
 {
 	register int32_t *buf;
@@ -199,7 +199,7 @@ zdr_mountstat1 (ZDR *zdrs, mountstat1 *objp)
 	return TRUE;
 }
 
-bool_t
+uint32_t
 zdr_fhandle1 (ZDR *zdrs, fhandle1 objp)
 {
 	register int32_t *buf;
@@ -210,7 +210,7 @@ zdr_fhandle1 (ZDR *zdrs, fhandle1 objp)
 	return TRUE;
 }
 
-bool_t
+uint32_t
 zdr_mountres1_ok (ZDR *zdrs, mountres1_ok *objp)
 {
 	register int32_t *buf;
@@ -221,7 +221,7 @@ zdr_mountres1_ok (ZDR *zdrs, mountres1_ok *objp)
 	return TRUE;
 }
 
-bool_t
+uint32_t
 zdr_mountres1 (ZDR *zdrs, mountres1 *objp)
 {
 	register int32_t *buf;

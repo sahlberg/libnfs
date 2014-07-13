@@ -35,7 +35,7 @@ either expressed or implied, of the FreeBSD Project.
 #include "libnfs-zdr.h"
 #include "libnfs-raw-rquota.h"
 
-bool_t
+uint32_t
 zdr_rquotastat (ZDR *zdrs, rquotastat *objp)
 {
 	register int32_t *buf;
@@ -46,7 +46,7 @@ zdr_rquotastat (ZDR *zdrs, rquotastat *objp)
 	return TRUE;
 }
 
-bool_t
+uint32_t
 zdr_exportpath (ZDR *zdrs, exportpath *objp)
 {
 	register int32_t *buf;
@@ -57,7 +57,7 @@ zdr_exportpath (ZDR *zdrs, exportpath *objp)
 	return TRUE;
 }
 
-bool_t
+uint32_t
 zdr_GETQUOTA1args (ZDR *zdrs, GETQUOTA1args *objp)
 {
 	register int32_t *buf;
@@ -70,7 +70,7 @@ zdr_GETQUOTA1args (ZDR *zdrs, GETQUOTA1args *objp)
 	return TRUE;
 }
 
-bool_t
+uint32_t
 zdr_quotatype (ZDR *zdrs, quotatype *objp)
 {
 	register int32_t *buf;
@@ -81,7 +81,7 @@ zdr_quotatype (ZDR *zdrs, quotatype *objp)
 	return TRUE;
 }
 
-bool_t
+uint32_t
 zdr_GETQUOTA2args (ZDR *zdrs, GETQUOTA2args *objp)
 {
 	register int32_t *buf;
@@ -96,7 +96,7 @@ zdr_GETQUOTA2args (ZDR *zdrs, GETQUOTA2args *objp)
 	return TRUE;
 }
 
-bool_t
+uint32_t
 zdr_GETQUOTA1res_ok (ZDR *zdrs, GETQUOTA1res_ok *objp)
 {
 	register int32_t *buf;
@@ -200,7 +200,7 @@ zdr_GETQUOTA1res_ok (ZDR *zdrs, GETQUOTA1res_ok *objp)
 	return TRUE;
 }
 
-bool_t
+uint32_t
 zdr_GETQUOTA1res (ZDR *zdrs, GETQUOTA1res *objp)
 {
 	register int32_t *buf;
