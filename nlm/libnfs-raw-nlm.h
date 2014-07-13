@@ -35,7 +35,7 @@ either expressed or implied, of the FreeBSD Project.
 #ifndef _NLM_H_RPCGEN
 #define _NLM_H_RPCGEN
 
-
+#include <nfsc/libnfs-zdr.h>
 
 
 #ifdef __cplusplus

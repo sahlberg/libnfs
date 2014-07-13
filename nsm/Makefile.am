@@ -19,6 +19,6 @@ nsm-stamp : nsm.x
 
 compile_rpc:	
 	cat nsm.x | head -29 >libnfs-raw-nsm.h
-	rpcgen -h nsm.x | sed -e "s/#include <rpc\/rpc.h>//" | sed -e "s/xdr/zdr/g" -e "s/XDR/ZDR/g" -e "s/ CLIENT / void /g" -e "s/SVCXPRT /void /g" -e "s/bool_t/uint32_t/g" >> libnfs-raw-nsm.h
+	rpcgen -h nsm.x | sed -e "s/#include <rpc\/rpc.h>/#include <nfsc\/libnfs-zdr.h>/" | sed -e "s/xdr/zdr/g" -e "s/XDR/ZDR/g" -e "s/ CLIENT / void /g" -e "s/SVCXPRT /void /g" -e "s/bool_t/uint32_t/g" >> libnfs-raw-nsm.h
 	cat nsm.x | head -29 >libnfs-raw-nsm.c
 	rpcgen -c nsm.x | sed -e "s/#include \".*nsm.h\"/#include \"libnfs-xdr.h\"\n#include \"libnfs-raw-nsm.h\"/" -e "s/xdr/zdr/g" -e "s/XDR/ZDR/g" -e "s/register int32_t \*buf;/register int32_t *buf;\n	buf = NULL;/" -e "s/bool_t/uint32_t/g" >> libnfs-raw-nsm.c
