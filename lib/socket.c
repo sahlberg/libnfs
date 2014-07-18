@@ -506,7 +506,7 @@ static int rpc_connect_sockaddr_async(struct rpc_context *rpc, struct sockaddr_s
 					((struct sockaddr_in6 *)&ss)->sin6_port = port;
 					((struct sockaddr_in6 *)&ss)->sin6_family      = AF_INET6;
 #ifdef HAVE_SOCKADDR_LEN
-					((struct sockaddr_in6 *)&ss)->sin6_len = sizeof(struct sockaddr6_in);
+					((struct sockaddr_in6 *)&ss)->sin6_len = sizeof(struct sockaddr_in6);
 #endif
 					break;
 				}
