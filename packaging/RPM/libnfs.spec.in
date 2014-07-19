@@ -108,6 +108,8 @@ Utility programs for LibNFS
 %{_mandir}/man1/nfs-ls.1.gz
 
 %changelog
+* Sat Jul 19 2014 : Version 1.9.5
+ - Remove old ONC-RPC symbols
 * Wed Mar 19 2014 : Version 1.9.3
  - Add O_TRUNC support to nfs_open()
  - Add a simple but incomplete LD_PRELOAD tool
