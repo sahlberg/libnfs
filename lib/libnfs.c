@@ -771,6 +771,9 @@ static void nfs_mount_8_cb(struct rpc_context *rpc, int status, void *command_da
 		return;
 	}
 
+	/* NFS TCP connections we want to autoreconnect after sessions are torn down (due to inactivity or error) */
+	rpc_set_autoreconnect(rpc);
+
 	args.fsroot = nfs->rootfh;
 	if (rpc_nfs3_fsinfo_async(rpc, nfs_mount_9_cb, &args, data) != 0) {
 		data->cb(-ENOMEM, nfs, command_data, data->private_data);
@@ -823,9 +826,6 @@ static void nfs_mount_6_cb(struct rpc_context *rpc, int status, void *command_da
 		free_nfs_cb_data(data);
 		return;
 	}
-
-	/* NFS TCP connections we want to autoreconnect after sessions are torn down (due to inactivity or error) */
-	rpc_set_autoreconnect(rpc);
 }
 
 
