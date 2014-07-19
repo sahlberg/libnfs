@@ -2527,13 +2527,28 @@ int nfs_rmdir_async(struct nfs_context *nfs, const char *path, nfs_cb cb, void *
 /*
  * Async creat()
  */
+struct create_cb_data {
+       char *path;
+       int flags;
+       int mode;
+};
+
+static void free_create_cb_data(void *ptr)
+{
+	struct create_cb_data *data = ptr;
+
+	free(data->path);
+	free(data);
+}
+
 static void nfs_create_2_cb(struct rpc_context *rpc, int status, void *command_data, void *private_data)
 {
 	LOOKUP3res *res;
 	struct nfs_cb_data *data = private_data;
 	struct nfs_context *nfs = data->nfs;
 	struct nfsfh *nfsfh;
-	char *str = data->continue_data;
+	struct create_cb_data *cb_data = data->continue_data;
+	char *str = cb_data->path;
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
@@ -2566,6 +2581,13 @@ static void nfs_create_2_cb(struct rpc_context *rpc, int status, void *command_d
 	}
 	memset(nfsfh, 0, sizeof(struct nfsfh));
 
+	if (cb_data->flags & O_SYNC) {
+		nfsfh->is_sync = 1;
+	}
+	if (cb_data->flags & O_APPEND) {
+		nfsfh->is_append = 1;
+	}
+
 	/* copy the filehandle */
 	nfsfh->fh.data.data_len = res->LOOKUP3res_u.resok.object.data.data_len;
 	nfsfh->fh.data.data_val = malloc(nfsfh->fh.data.data_len);
@@ -2577,12 +2599,13 @@ static void nfs_create_2_cb(struct rpc_context *rpc, int status, void *command_d
 
 
 
-static void nfs_creat_1_cb(struct rpc_context *rpc, int status, void *command_data, void *private_data)
+static void nfs_create_1_cb(struct rpc_context *rpc, int status, void *command_data, void *private_data)
 {
 	CREATE3res *res;
 	struct nfs_cb_data *data = private_data;
 	struct nfs_context *nfs = data->nfs;
-	char *str = data->continue_data;
+	struct create_cb_data *cb_data = data->continue_data;
+	char *str = cb_data->path;
 	LOOKUP3args args;
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
@@ -2620,9 +2643,10 @@ static void nfs_creat_1_cb(struct rpc_context *rpc, int status, void *command_da
 	return;
 }
 
-static int nfs_creat_continue_internal(struct nfs_context *nfs, fattr3 *attr _U_, struct nfs_cb_data *data)
+static int nfs_create_continue_internal(struct nfs_context *nfs, fattr3 *attr _U_, struct nfs_cb_data *data)
 {
-	char *str = data->continue_data;
+	struct create_cb_data *cb_data = data->continue_data;
+	char *str = cb_data->path;
 	CREATE3args args;
 
 	str = &str[strlen(str) + 1];
@@ -2630,11 +2654,11 @@ static int nfs_creat_continue_internal(struct nfs_context *nfs, fattr3 *attr _U_
 	memset(&args, 0, sizeof(CREATE3args));
 	args.where.dir = data->fh;
 	args.where.name = str;
-	args.how.mode = UNCHECKED;
+	args.how.mode = (cb_data->flags & O_EXCL) ? GUARDED : UNCHECKED;
 	args.how.createhow3_u.obj_attributes.mode.set_it = 1;
-	args.how.createhow3_u.obj_attributes.mode.set_mode3_u.mode = data->continue_int;
+	args.how.createhow3_u.obj_attributes.mode.set_mode3_u.mode = cb_data->mode;
 
-	if (rpc_nfs3_create_async(nfs->rpc, nfs_creat_1_cb, &args, data) != 0) {
+	if (rpc_nfs3_create_async(nfs->rpc, nfs_create_1_cb, &args, data) != 0) {
 		rpc_set_error(nfs->rpc, "RPC error: Failed to send CREATE call for %s/%s", data->path, str);
 		data->cb(-ENOMEM, nfs, rpc_get_error(nfs->rpc), data->private_data);
 		free_nfs_cb_data(data);
@@ -2643,32 +2667,47 @@ static int nfs_creat_continue_internal(struct nfs_context *nfs, fattr3 *attr _U_
 	return 0;
 }
 
-int nfs_creat_async(struct nfs_context *nfs, const char *path, int mode, nfs_cb cb, void *private_data)
+int nfs_create_async(struct nfs_context *nfs, const char *path, int flags, int mode, nfs_cb cb, void *private_data)
 {
-	char *new_path;
+	struct create_cb_data *cb_data;
 	char *ptr;
 
-	new_path = strdup(path);
-	if (new_path == NULL) {
-		rpc_set_error(nfs->rpc, "Out of memory, failed to allocate mode buffer for path");
+	cb_data = malloc(sizeof(struct create_cb_data));
+	if (cb_data == NULL) {
+		rpc_set_error(nfs->rpc, "Out of memory, failed to allocate mode buffer for cb data");
 		return -1;
 	}
 
-	ptr = strrchr(new_path, '/');
+	cb_data->path = strdup(path);
+	if (cb_data->path == NULL) {
+		rpc_set_error(nfs->rpc, "Out of memory, failed to allocate mode buffer for path");
+		free(cb_data);
+		return -1;
+	}
+
+	ptr = strrchr(cb_data->path, '/');
 	if (ptr == NULL) {
 		rpc_set_error(nfs->rpc, "Invalid path %s", path);
-		free(new_path);
+		free_create_cb_data(cb_data);
 		return -1;
 	}
 	*ptr = 0;
 
+	cb_data->flags = flags;
+	cb_data->mode = mode;
+
 	/* new_path now points to the parent directory,  and beyond the nul terminator is the new directory to create */
-	if (nfs_lookuppath_async(nfs, new_path, cb, private_data, nfs_creat_continue_internal, new_path, free, mode) != 0) {
+	if (nfs_lookuppath_async(nfs, cb_data->path, cb, private_data, nfs_create_continue_internal, cb_data, free_create_cb_data, 0) != 0) {
 		rpc_set_error(nfs->rpc, "Out of memory: failed to start parsing the path components");
 		return -1;
 	}
 
 	return 0;
+}
+
+int nfs_creat_async(struct nfs_context *nfs, const char *path, int mode, nfs_cb cb, void *private_data)
+{
+	return nfs_create_async(nfs, path, 0, mode, cb, private_data);
 }
 
 

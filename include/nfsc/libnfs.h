@@ -682,6 +682,33 @@ EXTERN int nfs_creat_async(struct nfs_context *nfs, const char *path, int mode, 
  */
 EXTERN int nfs_creat(struct nfs_context *nfs, const char *path, int mode, struct nfsfh **nfsfh);
 
+/*
+ * Async create()
+ *
+ * Same as nfs_creat_async but allows passing flags:
+ * O_APPEND
+ * O_SYNC
+ * O_EXCL
+ *
+ * Function returns
+ *  0 : The operation was initiated. Once the operation finishes, the callback will be invoked.
+ * <0 : An error occured when trying to set up the operation. The callback will not be invoked.
+ *
+ * When the callback is invoked, status indicates the result:
+ *      0 : Success.
+ *          data is a struct *nfsfh;
+ * -errno : An error occured.
+ *          data is the error string.
+ */
+EXTERN int nfs_create_async(struct nfs_context *nfs, const char *path, int flags, int mode, nfs_cb cb, void *private_data);
+/*
+ * Sync create()
+ * Function returns
+ *      0 : Success
+ * -errno : An error occured.
+ */
+EXTERN int nfs_create(struct nfs_context *nfs, const char *path, int flags, int mode, struct nfsfh **nfsfh);
+
 
 /*
  * MKNOD()
