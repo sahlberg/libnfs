@@ -2630,6 +2630,13 @@ static void nfs_create_2_cb(struct rpc_context *rpc, int status, void *command_d
 	/* copy the filehandle */
 	nfsfh->fh.data.data_len = res->LOOKUP3res_u.resok.object.data.data_len;
 	nfsfh->fh.data.data_val = malloc(nfsfh->fh.data.data_len);
+	if (nfsfh->fh.data.data_val == NULL) {
+		rpc_set_error(nfs->rpc, "Out of memory: Failed to allocate fh structure");
+		data->cb(-ENOMEM, nfs, rpc_get_error(nfs->rpc), data->private_data);
+		free_nfs_cb_data(data);
+		free(nfsfh);
+		return -1;
+	}
 	memcpy(nfsfh->fh.data.data_val, res->LOOKUP3res_u.resok.object.data.data_val, nfsfh->fh.data.data_len);
 
 	/* Try to truncate it if we were requested to */
