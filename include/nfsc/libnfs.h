@@ -330,7 +330,7 @@ EXTERN int nfs_fstat(struct nfs_context *nfs, struct nfsfh *nfsfh, struct stat *
  * Async open(<filename>)
  *
  * mode is a combination of the flags :
- * O_RDOLNY, O_WRONLY, O_RDWR , O_SYNC, O_APPEND
+ * O_RDOLNY, O_WRONLY, O_RDWR , O_SYNC, O_APPEND, O_TRUNC
  *
  * Function returns
  *  0 : The operation was initiated. Once the operation finishes, the callback will be invoked.
@@ -341,6 +341,7 @@ EXTERN int nfs_fstat(struct nfs_context *nfs, struct nfsfh *nfsfh, struct stat *
  * O_RDONLY
  * O_WRONLY
  * O_RDWR
+ * O_SYNC
  * O_TRUNC (Only valid with O_RDWR or O_WRONLY. Ignored otherwise.)
  *
  * When the callback is invoked, status indicates the result:
