@@ -59,6 +59,14 @@
 #include <strings.h>
 #endif
 
+#ifdef MAJOR_IN_MKDEV
+#include <sys/mkdev.h>
+#endif
+
+#ifdef MAJOR_IN_SYSMACROS
+#include <sys/sysmacros.h>
+#endif
+
 #include <stdio.h>
 #include <stdarg.h>
 #include <stdlib.h>
@@ -1202,6 +1210,15 @@ static int nfs_lookuppath_async(struct nfs_context *nfs, const char *path, nfs_c
 /*
  * Async stat()
  */
+static dev_t specdata3_to_rdev(struct specdata3 *rdev)
+{
+#ifdef makedev
+	return makedev(rdev->specdata1, rdev->specdata2);
+#else
+	return 0;
+#endif
+}
+
 static void nfs_stat_1_cb(struct rpc_context *rpc, int status, void *command_data, void *private_data)
 {
 	GETATTR3res *res;
@@ -1234,27 +1251,49 @@ static void nfs_stat_1_cb(struct rpc_context *rpc, int status, void *command_dat
 		return;
 	}
 
-        st.st_dev     = -1;
+	st.st_dev     = res->GETATTR3res_u.resok.obj_attributes.fsid;
         st.st_ino     = res->GETATTR3res_u.resok.obj_attributes.fileid;
         st.st_mode    = res->GETATTR3res_u.resok.obj_attributes.mode;
-	if (res->GETATTR3res_u.resok.obj_attributes.type == NF3DIR) {
-		st.st_mode |= S_IFDIR ;
-	}
-	if (res->GETATTR3res_u.resok.obj_attributes.type == NF3REG) {
-		st.st_mode |= S_IFREG ;
+	switch (res->GETATTR3res_u.resok.obj_attributes.type) {
+	case NF3REG:
+		st.st_mode |= S_IFREG;
+		break;
+	case NF3DIR:
+		st.st_mode |= S_IFDIR;
+		break;
+	case NF3BLK:
+		st.st_mode |= S_IFBLK;
+		break;
+	case NF3CHR:
+		st.st_mode |= S_IFCHR;
+		break;
+	case NF3LNK:
+		st.st_mode |= S_IFLNK;
+		break;
+	case NF3SOCK:
+		st.st_mode |= S_IFSOCK;
+		break;
+	case NF3FIFO:
+		st.st_mode |= S_IFIFO;
+		break;
 	}
         st.st_nlink   = res->GETATTR3res_u.resok.obj_attributes.nlink;
         st.st_uid     = res->GETATTR3res_u.resok.obj_attributes.uid;
         st.st_gid     = res->GETATTR3res_u.resok.obj_attributes.gid;
-        st.st_rdev    = 0;
+	st.st_rdev    = specdata3_to_rdev(&res->GETATTR3res_u.resok.obj_attributes.rdev);
         st.st_size    = res->GETATTR3res_u.resok.obj_attributes.size;
 #ifndef WIN32
         st.st_blksize = NFS_BLKSIZE;
-        st.st_blocks  = res->GETATTR3res_u.resok.obj_attributes.size / NFS_BLKSIZE;
+	st.st_blocks  = (res->GETATTR3res_u.resok.obj_attributes.used + 512 - 1) / 512;
 #endif//WIN32
         st.st_atime   = res->GETATTR3res_u.resok.obj_attributes.atime.seconds;
         st.st_mtime   = res->GETATTR3res_u.resok.obj_attributes.mtime.seconds;
         st.st_ctime   = res->GETATTR3res_u.resok.obj_attributes.ctime.seconds;
+#ifdef HAVE_STRUCT_STAT_ST_MTIM_TV_NSEC
+	st.st_atim.tv_nsec = res->GETATTR3res_u.resok.obj_attributes.atime.nseconds;
+	st.st_mtim.tv_nsec = res->GETATTR3res_u.resok.obj_attributes.mtime.nseconds;
+	st.st_ctim.tv_nsec = res->GETATTR3res_u.resok.obj_attributes.ctime.nseconds;
+#endif
 
 	data->cb(0, nfs, &st, data->private_data);
 	free_nfs_cb_data(data);
@@ -1318,23 +1357,46 @@ static void nfs_stat64_1_cb(struct rpc_context *rpc, int status, void *command_d
 		return;
 	}
 
-        st.nfs_dev     = -1;
+	st.nfs_dev     = res->GETATTR3res_u.resok.obj_attributes.fsid;
         st.nfs_ino     = res->GETATTR3res_u.resok.obj_attributes.fileid;
         st.nfs_mode    = res->GETATTR3res_u.resok.obj_attributes.mode;
-	if (res->GETATTR3res_u.resok.obj_attributes.type == NF3DIR) {
-		st.nfs_mode |= S_IFDIR ;
-	}
-	if (res->GETATTR3res_u.resok.obj_attributes.type == NF3REG) {
-		st.nfs_mode |= S_IFREG ;
+	switch (res->GETATTR3res_u.resok.obj_attributes.type) {
+	case NF3REG:
+		st.nfs_mode |= S_IFREG;
+		break;
+	case NF3DIR:
+		st.nfs_mode |= S_IFDIR;
+		break;
+	case NF3BLK:
+		st.nfs_mode |= S_IFBLK;
+		break;
+	case NF3CHR:
+		st.nfs_mode |= S_IFCHR;
+		break;
+	case NF3LNK:
+		st.nfs_mode |= S_IFLNK;
+		break;
+	case NF3SOCK:
+		st.nfs_mode |= S_IFSOCK;
+		break;
+	case NF3FIFO:
+		st.nfs_mode |= S_IFIFO;
+		break;
 	}
         st.nfs_nlink   = res->GETATTR3res_u.resok.obj_attributes.nlink;
         st.nfs_uid     = res->GETATTR3res_u.resok.obj_attributes.uid;
         st.nfs_gid     = res->GETATTR3res_u.resok.obj_attributes.gid;
-        st.nfs_rdev    = 0;
+	st.nfs_rdev    = specdata3_to_rdev(&res->GETATTR3res_u.resok.obj_attributes.rdev);
         st.nfs_size    = res->GETATTR3res_u.resok.obj_attributes.size;
+	st.nfs_blksize = NFS_BLKSIZE;
+	st.nfs_blocks  = (res->GETATTR3res_u.resok.obj_attributes.used + 512 - 1) / 512;
         st.nfs_atime   = res->GETATTR3res_u.resok.obj_attributes.atime.seconds;
         st.nfs_mtime   = res->GETATTR3res_u.resok.obj_attributes.mtime.seconds;
         st.nfs_ctime   = res->GETATTR3res_u.resok.obj_attributes.ctime.seconds;
+	st.nfs_atime_nsec = res->GETATTR3res_u.resok.obj_attributes.atime.nseconds;
+	st.nfs_mtime_nsec = res->GETATTR3res_u.resok.obj_attributes.mtime.nseconds;
+	st.nfs_ctime_nsec = res->GETATTR3res_u.resok.obj_attributes.ctime.nseconds;
+	st.nfs_used    = res->GETATTR3res_u.resok.obj_attributes.used;
 
 	data->cb(0, nfs, &st, data->private_data);
 	free_nfs_cb_data(data);
@@ -2991,13 +3053,21 @@ static void nfs_opendir3_cb(struct rpc_context *rpc, int status, void *command_d
 
 			nfsdirent->atime.tv_sec  = attributes->atime.seconds;
 			nfsdirent->atime.tv_usec = attributes->atime.nseconds/1000;
+			nfsdirent->atime_nsec = attributes->atime.nseconds;
 			nfsdirent->mtime.tv_sec  = attributes->mtime.seconds;
 			nfsdirent->mtime.tv_usec = attributes->mtime.nseconds/1000;
+			nfsdirent->mtime_nsec = attributes->mtime.nseconds;
 			nfsdirent->ctime.tv_sec  = attributes->ctime.seconds;
 			nfsdirent->ctime.tv_usec = attributes->ctime.nseconds/1000;
+			nfsdirent->ctime_nsec = attributes->ctime.nseconds;
 			nfsdirent->uid = attributes->uid;
 			nfsdirent->gid = attributes->gid;
 			nfsdirent->nlink = attributes->nlink;
+			nfsdirent->dev = attributes->fsid;
+			nfsdirent->rdev = specdata3_to_rdev(&attributes->rdev);
+			nfsdirent->blksize = NFS_BLKSIZE;
+			nfsdirent->blocks = (attributes->used + 512 - 1) / 512;
+			nfsdirent->used = attributes->used;
 		}
 	}
 
@@ -3232,13 +3302,21 @@ static void nfs_opendir_cb(struct rpc_context *rpc, int status, void *command_da
 
 			nfsdirent->atime.tv_sec  = entry->name_attributes.post_op_attr_u.attributes.atime.seconds;
 			nfsdirent->atime.tv_usec = entry->name_attributes.post_op_attr_u.attributes.atime.nseconds/1000;
+			nfsdirent->atime_nsec = entry->name_attributes.post_op_attr_u.attributes.atime.nseconds;
 			nfsdirent->mtime.tv_sec  = entry->name_attributes.post_op_attr_u.attributes.mtime.seconds;
 			nfsdirent->mtime.tv_usec = entry->name_attributes.post_op_attr_u.attributes.mtime.nseconds/1000;
+			nfsdirent->mtime_nsec = entry->name_attributes.post_op_attr_u.attributes.mtime.nseconds;
 			nfsdirent->ctime.tv_sec  = entry->name_attributes.post_op_attr_u.attributes.ctime.seconds;
 			nfsdirent->ctime.tv_usec = entry->name_attributes.post_op_attr_u.attributes.ctime.nseconds/1000;
+			nfsdirent->ctime_nsec = entry->name_attributes.post_op_attr_u.attributes.ctime.nseconds;
 			nfsdirent->uid = entry->name_attributes.post_op_attr_u.attributes.uid;
 			nfsdirent->gid = entry->name_attributes.post_op_attr_u.attributes.gid;
 			nfsdirent->nlink = entry->name_attributes.post_op_attr_u.attributes.nlink;
+			nfsdirent->dev = entry->name_attributes.post_op_attr_u.attributes.fsid;
+			nfsdirent->rdev = specdata3_to_rdev(&entry->name_attributes.post_op_attr_u.attributes.rdev);
+			nfsdirent->blksize = NFS_BLKSIZE;
+			nfsdirent->blocks = (entry->name_attributes.post_op_attr_u.attributes.used + 512 - 1) / 512;
+			nfsdirent->used = entry->name_attributes.post_op_attr_u.attributes.used;
 		}
 
 		nfsdirent->next  = nfsdir->entries;

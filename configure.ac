@@ -153,6 +153,11 @@ AC_CHECK_MEMBER([struct sockaddr_storage.ss_family],
 #include <sys/socket.h>
 ])
 
+AC_CHECK_MEMBERS([struct stat.st_mtim.tv_nsec])
+
+# check where makedev is defined
+AC_HEADER_MAJOR
+
 #output
 AC_CONFIG_FILES([Makefile]
                 [doc/Makefile]

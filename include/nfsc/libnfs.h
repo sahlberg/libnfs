@@ -270,6 +270,10 @@ struct nfs_stat_64 {
 	uint64_t nfs_atime;
 	uint64_t nfs_mtime;
 	uint64_t nfs_ctime;
+	uint64_t nfs_atime_nsec;
+	uint64_t nfs_mtime_nsec;
+	uint64_t nfs_ctime_nsec;
+	uint64_t nfs_used;
 };
 
 /*
@@ -813,6 +817,14 @@ struct nfsdirent  {
        uint32_t uid;
        uint32_t gid;
        uint32_t nlink;
+       uint64_t dev;
+       uint64_t rdev;
+       uint64_t blksize;
+       uint64_t blocks;
+       uint64_t used;
+       uint32_t atime_nsec;
+       uint32_t mtime_nsec;
+       uint32_t ctime_nsec;
 };
 /*
  * nfs_readdir() never blocks, so no special sync/async versions are available
