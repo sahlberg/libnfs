@@ -453,6 +453,26 @@ int nfs_fstat(struct nfs_context *nfs, struct nfsfh *nfsfh, struct stat *st)
 	return cb_data.status;
 }
 
+/*
+ * fstat64()
+ */
+int nfs_fstat64(struct nfs_context *nfs, struct nfsfh *nfsfh, struct nfs_stat_64 *st)
+{
+	struct sync_cb_data cb_data;
+
+	cb_data.is_finished = 0;
+	cb_data.return_data = st;
+
+	if (nfs_fstat64_async(nfs, nfsfh, stat64_cb, &cb_data) != 0) {
+		nfs_set_error(nfs, "nfs_fstat64_async failed");
+		return -1;
+	}
+
+	wait_for_nfs_reply(nfs, &cb_data);
+
+	return cb_data.status;
+}
+
 
 /*
  * pwrite()

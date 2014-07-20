@@ -2242,6 +2242,36 @@ int nfs_fstat_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_cb cb, voi
 	return 0;
 }
 
+/*
+ * Async fstat64()
+ */
+int nfs_fstat64_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_cb cb, void *private_data)
+{
+	struct nfs_cb_data *data;
+	struct GETATTR3args args;
+
+	data = malloc(sizeof(struct nfs_cb_data));
+	if (data == NULL) {
+		rpc_set_error(nfs->rpc, "out of memory: failed to allocate nfs_cb_data structure");
+		return -1;
+	}
+	memset(data, 0, sizeof(struct nfs_cb_data));
+	data->nfs          = nfs;
+	data->cb           = cb;
+	data->private_data = private_data;
+
+	memset(&args, 0, sizeof(GETATTR3args));
+	args.object = nfsfh->fh;
+
+	if (rpc_nfs3_getattr_async(nfs->rpc, nfs_stat64_1_cb, &args, data) != 0) {
+		rpc_set_error(nfs->rpc, "RPC error: Failed to send STAT GETATTR call for %s", data->path);
+		data->cb(-ENOMEM, nfs, rpc_get_error(nfs->rpc), data->private_data);
+		free_nfs_cb_data(data);
+		return -1;
+	}
+	return 0;
+}
+
 
 
 /*

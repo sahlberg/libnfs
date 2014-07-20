@@ -312,6 +312,7 @@ EXTERN int nfs_stat64(struct nfs_context *nfs, const char *path, struct nfs_stat
  * -errno : An error occured.
  *          data is the error string.
  */
+/* This function is deprecated. Use nfs_fstat64_async() instead */
 EXTERN int nfs_fstat_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_cb cb, void *private_data);
 /*
  * Sync fstat(nfsfh *)
@@ -324,6 +325,35 @@ EXTERN int nfs_fstat(struct nfs_context *nfs, struct nfsfh *nfsfh, struct __stat
 #else
 EXTERN int nfs_fstat(struct nfs_context *nfs, struct nfsfh *nfsfh, struct stat *st);
 #endif
+
+/* nfs_fstat64
+ * 64 bit version of fstat. All fields are always 64bit.
+ * Use these functions instead of nfs_fstat[_async](), especially if you
+ * have weird stat structures.
+ */
+/*
+ * FSTAT()
+ */
+/*
+ * Async fstat(nfsfh *)
+ * Function returns
+ *  0 : The operation was initiated. Once the operation finishes, the callback will be invoked.
+ * <0 : An error occured when trying to set up the operation. The callback will not be invoked.
+ *
+ * When the callback is invoked, status indicates the result:
+ *      0 : Success.
+ *          data is struct stat *
+ * -errno : An error occured.
+ *          data is the error string.
+ */
+EXTERN int nfs_fstat64_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_cb cb, void *private_data);
+/*
+ * Sync fstat(nfsfh *)
+ * Function returns
+ *      0 : The operation was successfull.
+ * -errno : The command failed.
+ */
+EXTERN int nfs_fstat64(struct nfs_context *nfs, struct nfsfh *nfsfh, struct nfs_stat_64 *st);
 
 
 
