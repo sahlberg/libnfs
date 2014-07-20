@@ -696,6 +696,16 @@ static void free_nfs_cb_data(struct nfs_cb_data *data)
 	free(data);
 }
 
+static void free_nfsfh(struct nfsfh *nfsfh)
+{
+	if (nfsfh->fh.data.data_val != NULL) {
+		free(nfsfh->fh.data.data_val);
+		nfsfh->fh.data.data_val = NULL;
+	}
+	free(nfsfh->ra.buf);
+	free(nfsfh);
+}
+
 
 static void nfs_mount_10_cb(struct rpc_context *rpc, int status, void *command_data, void *private_data)
 {
@@ -2135,13 +2145,7 @@ int nfs_write_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t count
 
 int nfs_close_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_cb cb, void *private_data)
 {
-	if (nfsfh->fh.data.data_val != NULL){
-		free(nfsfh->fh.data.data_val);
-		nfsfh->fh.data.data_val = NULL;
-	}
-	free(nfsfh->ra.buf);
-	free(nfsfh);
-
+	free_nfsfh(nfsfh);
 	cb(0, nfs, NULL, private_data);
 	return 0;
 };
@@ -2541,6 +2545,41 @@ static void free_create_cb_data(void *ptr)
 	free(data);
 }
 
+static void nfs_create_trunc_cb(struct rpc_context *rpc, int status, void *command_data, void *private_data)
+{
+	struct nfs_cb_data *data = private_data;
+	struct nfs_context *nfs = data->nfs;
+	struct nfsfh *nfsfh;
+	SETATTR3res *res;
+
+	assert(rpc->magic == RPC_CONTEXT_MAGIC);
+
+	if (status == RPC_STATUS_ERROR) {
+		data->cb(-EFAULT, nfs, command_data, data->private_data);
+		free_nfs_cb_data(data);
+		free_nfsfh(nfsfh);
+		return;
+	}
+	if (status == RPC_STATUS_CANCEL) {
+		data->cb(-EINTR, nfs, "Command was cancelled", data->private_data);
+		free_nfs_cb_data(data);
+		free_nfsfh(nfsfh);
+		return;
+	}
+
+	res = command_data;
+	if (res->status != NFS3_OK) {
+		rpc_set_error(nfs->rpc, "NFS: Setattr failed with %s(%d)", nfsstat3_to_str(res->status), nfsstat3_to_errno(res->status));
+		data->cb(nfsstat3_to_errno(res->status), nfs, rpc_get_error(nfs->rpc), data->private_data);
+		free_nfs_cb_data(data);
+		free_nfsfh(nfsfh);
+		return;
+	}
+
+	data->cb(0, nfs, data->nfsfh, data->private_data);
+	free_nfs_cb_data(data);
+}
+
 static void nfs_create_2_cb(struct rpc_context *rpc, int status, void *command_data, void *private_data)
 {
 	LOOKUP3res *res;
@@ -2592,6 +2631,30 @@ static void nfs_create_2_cb(struct rpc_context *rpc, int status, void *command_d
 	nfsfh->fh.data.data_len = res->LOOKUP3res_u.resok.object.data.data_len;
 	nfsfh->fh.data.data_val = malloc(nfsfh->fh.data.data_len);
 	memcpy(nfsfh->fh.data.data_val, res->LOOKUP3res_u.resok.object.data.data_val, nfsfh->fh.data.data_len);
+
+	/* Try to truncate it if we were requested to */
+	if (cb_data->flags & O_TRUNC) {
+		SETATTR3args args;
+
+		data->nfsfh = nfsfh;
+
+		memset(&args, 0, sizeof(SETATTR3args));
+		args.object = nfsfh->fh;
+		args.new_attributes.size.set_it = 1;
+		args.new_attributes.size.set_size3_u.size = 0;
+
+		if (rpc_nfs3_setattr_async(nfs->rpc, nfs_create_trunc_cb,
+				&args, data) != 0) {
+			rpc_set_error(nfs->rpc, "RPC error: Failed to send "
+				"SETATTR call for %s", data->path);
+			data->cb(-ENOMEM, nfs, rpc_get_error(nfs->rpc),
+				data->private_data);
+			free_nfs_cb_data(data);
+			free_nfsfh(nfsfh);
+			return;
+		}
+		return;
+	}
 
 	data->cb(0, nfs, nfsfh, data->private_data);
 	free_nfs_cb_data(data);

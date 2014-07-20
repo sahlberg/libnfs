@@ -689,6 +689,7 @@ EXTERN int nfs_creat(struct nfs_context *nfs, const char *path, int mode, struct
  * O_APPEND
  * O_SYNC
  * O_EXCL
+ * O_TRUNC
  *
  * Function returns
  *  0 : The operation was initiated. Once the operation finishes, the callback will be invoked.
