@@ -270,6 +270,10 @@ struct nfs_stat_64 {
 	uint64_t nfs_atime;
 	uint64_t nfs_mtime;
 	uint64_t nfs_ctime;
+	uint64_t nfs_atime_nsec;
+	uint64_t nfs_mtime_nsec;
+	uint64_t nfs_ctime_nsec;
+	uint64_t nfs_used;
 };
 
 /*
@@ -308,6 +312,7 @@ EXTERN int nfs_stat64(struct nfs_context *nfs, const char *path, struct nfs_stat
  * -errno : An error occured.
  *          data is the error string.
  */
+/* This function is deprecated. Use nfs_fstat64_async() instead */
 EXTERN int nfs_fstat_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_cb cb, void *private_data);
 /*
  * Sync fstat(nfsfh *)
@@ -320,6 +325,35 @@ EXTERN int nfs_fstat(struct nfs_context *nfs, struct nfsfh *nfsfh, struct __stat
 #else
 EXTERN int nfs_fstat(struct nfs_context *nfs, struct nfsfh *nfsfh, struct stat *st);
 #endif
+
+/* nfs_fstat64
+ * 64 bit version of fstat. All fields are always 64bit.
+ * Use these functions instead of nfs_fstat[_async](), especially if you
+ * have weird stat structures.
+ */
+/*
+ * FSTAT()
+ */
+/*
+ * Async fstat(nfsfh *)
+ * Function returns
+ *  0 : The operation was initiated. Once the operation finishes, the callback will be invoked.
+ * <0 : An error occured when trying to set up the operation. The callback will not be invoked.
+ *
+ * When the callback is invoked, status indicates the result:
+ *      0 : Success.
+ *          data is struct stat *
+ * -errno : An error occured.
+ *          data is the error string.
+ */
+EXTERN int nfs_fstat64_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_cb cb, void *private_data);
+/*
+ * Sync fstat(nfsfh *)
+ * Function returns
+ *      0 : The operation was successfull.
+ * -errno : The command failed.
+ */
+EXTERN int nfs_fstat64(struct nfs_context *nfs, struct nfsfh *nfsfh, struct nfs_stat_64 *st);
 
 
 
@@ -815,6 +849,14 @@ struct nfsdirent  {
        uint32_t uid;
        uint32_t gid;
        uint32_t nlink;
+       uint64_t dev;
+       uint64_t rdev;
+       uint64_t blksize;
+       uint64_t blocks;
+       uint64_t used;
+       uint32_t atime_nsec;
+       uint32_t mtime_nsec;
+       uint32_t ctime_nsec;
 };
 /*
  * nfs_readdir() never blocks, so no special sync/async versions are available
