@@ -2727,7 +2727,7 @@ static void nfs_create_2_cb(struct rpc_context *rpc, int status, void *command_d
 		data->cb(-ENOMEM, nfs, rpc_get_error(nfs->rpc), data->private_data);
 		free_nfs_cb_data(data);
 		free(nfsfh);
-		return -1;
+		return;
 	}
 	memcpy(nfsfh->fh.data.data_val, res->LOOKUP3res_u.resok.object.data.data_val, nfsfh->fh.data.data_len);
 
