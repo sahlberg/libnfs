@@ -1157,6 +1157,34 @@ EXTERN int nfs_utimes_async(struct nfs_context *nfs, const char *path, struct ti
  * -errno : The command failed.
  */
 EXTERN int nfs_utimes(struct nfs_context *nfs, const char *path, struct timeval *times);
+/*
+ * Async utimes(<path>)
+ *
+ * Like utimes except if the destination is a symbolic link, it acts on the
+ * symbolic link itself.
+ *
+ * Function returns
+ *  0 : The operation was initiated. Once the operation finishes, the callback will be invoked.
+ * <0 : An error occured when trying to set up the operation. The callback will not be invoked.
+ *
+ * When the callback is invoked, status indicates the result:
+ *      0 : Success.
+ *          data is NULL
+ * -errno : An error occured.
+ *          data is the error string.
+ */
+EXTERN int nfs_lutimes_async(struct nfs_context *nfs, const char *path, struct timeval *times, nfs_cb cb, void *private_data);
+/*
+ * Sync utimes(<path>)
+ *
+ * Like utimes except if the destination is a symbolic link, it acts on the
+ * symbolic link itself.
+ *
+ * Function returns
+ *      0 : The operation was successfull.
+ * -errno : The command failed.
+ */
+EXTERN int nfs_lutimes(struct nfs_context *nfs, const char *path, struct timeval *times);
 
 
 /*

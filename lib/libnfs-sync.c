@@ -1170,6 +1170,22 @@ int nfs_utimes(struct nfs_context *nfs, const char *path, struct timeval *times)
 	return cb_data.status;
 }
 
+int nfs_lutimes(struct nfs_context *nfs, const char *path, struct timeval *times)
+{
+	struct sync_cb_data cb_data;
+
+	cb_data.is_finished = 0;
+
+	if (nfs_lutimes_async(nfs, path, times, utimes_cb, &cb_data) != 0) {
+		nfs_set_error(nfs, "nfs_lutimes_async failed");
+		return -1;
+	}
+
+	wait_for_nfs_reply(nfs, &cb_data);
+
+	return cb_data.status;
+}
+
 
 
 /*
