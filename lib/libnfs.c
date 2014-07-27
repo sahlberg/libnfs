@@ -1548,14 +1548,24 @@ static int nfs_stat64_continue_internal(struct nfs_context *nfs, fattr3 *attr _U
 	return 0;
 }
 
-int nfs_stat64_async(struct nfs_context *nfs, const char *path, nfs_cb cb, void *private_data)
+int nfs_stat64_async_internal(struct nfs_context *nfs, const char *path, int no_follow, nfs_cb cb, void *private_data)
 {
-	if (nfs_lookuppath_async(nfs, path, 0, cb, private_data, nfs_stat64_continue_internal, NULL, NULL, 0) != 0) {
+	if (nfs_lookuppath_async(nfs, path, no_follow, cb, private_data, nfs_stat64_continue_internal, NULL, NULL, 0) != 0) {
 		rpc_set_error(nfs->rpc, "Out of memory: failed to start parsing the path components");
 		return -1;
 	}
 
 	return 0;
+}
+
+int nfs_stat64_async(struct nfs_context *nfs, const char *path, nfs_cb cb, void *private_data)
+{
+	return nfs_stat64_async_internal(nfs, path, 0, cb, private_data);
+}
+
+int nfs_lstat64_async(struct nfs_context *nfs, const char *path, nfs_cb cb, void *private_data)
+{
+	return nfs_stat64_async_internal(nfs, path, 1, cb, private_data);
 }
 
 /*

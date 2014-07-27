@@ -268,6 +268,23 @@ int nfs_stat64(struct nfs_context *nfs, const char *path, struct nfs_stat_64 *st
 	return cb_data.status;
 }
 
+int nfs_lstat64(struct nfs_context *nfs, const char *path, struct nfs_stat_64 *st)
+{
+	struct sync_cb_data cb_data;
+
+	cb_data.is_finished = 0;
+	cb_data.return_data = st;
+
+	if (nfs_lstat64_async(nfs, path, stat64_cb, &cb_data) != 0) {
+		nfs_set_error(nfs, "nfs_lstat64_async failed");
+		return -1;
+	}
+
+	wait_for_nfs_reply(nfs, &cb_data);
+
+	return cb_data.status;
+}
+
 /*
  * open()
  */

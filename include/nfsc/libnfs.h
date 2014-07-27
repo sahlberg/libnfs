@@ -298,6 +298,35 @@ EXTERN int nfs_stat64_async(struct nfs_context *nfs, const char *path, nfs_cb cb
 EXTERN int nfs_stat64(struct nfs_context *nfs, const char *path, struct nfs_stat_64 *st);
 
 /*
+ * Async stat(<filename>)
+ *
+ * Like stat except if the destination is a symbolic link, it acts on the
+ * symbolic link itself.
+ *
+ * Function returns
+ *  0 : The operation was initiated. Once the operation finishes, the callback will be invoked.
+ * <0 : An error occured when trying to set up the operation. The callback will not be invoked.
+ *
+ * When the callback is invoked, status indicates the result:
+ *      0 : Success.
+ *          data is struct nfs_stat_64 *
+ * -errno : An error occured.
+ *          data is the error string.
+ */
+EXTERN int nfs_lstat64_async(struct nfs_context *nfs, const char *path, nfs_cb cb, void *private_data);
+/*
+ * Sync stat(<filename>)
+ *
+ * Like stat except if the destination is a symbolic link, it acts on the
+ * symbolic link itself.
+ *
+ * Function returns
+ *      0 : The operation was successfull.
+ * -errno : The command failed.
+ */
+EXTERN int nfs_lstat64(struct nfs_context *nfs, const char *path, struct nfs_stat_64 *st);
+
+/*
  * FSTAT()
  */
 /*
