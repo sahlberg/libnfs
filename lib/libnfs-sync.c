@@ -1015,6 +1015,22 @@ int nfs_chmod(struct nfs_context *nfs, const char *path, int mode)
 	return cb_data.status;
 }
 
+int nfs_lchmod(struct nfs_context *nfs, const char *path, int mode)
+{
+	struct sync_cb_data cb_data;
+
+	cb_data.is_finished = 0;
+
+	if (nfs_lchmod_async(nfs, path, mode, chmod_cb, &cb_data) != 0) {
+		nfs_set_error(nfs, "nfs_lchmod_async failed");
+		return -1;
+	}
+
+	wait_for_nfs_reply(nfs, &cb_data);
+
+	return cb_data.status;
+}
+
 
 
 

@@ -3976,14 +3976,24 @@ static int nfs_chmod_continue_internal(struct nfs_context *nfs, fattr3 *attr _U_
 }
 
 
-int nfs_chmod_async(struct nfs_context *nfs, const char *path, int mode, nfs_cb cb, void *private_data)
+int nfs_chmod_async_internal(struct nfs_context *nfs, const char *path, int no_follow, int mode, nfs_cb cb, void *private_data)
 {
-	if (nfs_lookuppath_async(nfs, path, 0, cb, private_data, nfs_chmod_continue_internal, NULL, NULL, mode) != 0) {
+	if (nfs_lookuppath_async(nfs, path, no_follow, cb, private_data, nfs_chmod_continue_internal, NULL, NULL, mode) != 0) {
 		rpc_set_error(nfs->rpc, "Out of memory: failed to start parsing the path components");
 		return -1;
 	}
 
 	return 0;
+}
+
+int nfs_chmod_async(struct nfs_context *nfs, const char *path, int mode, nfs_cb cb, void *private_data)
+{
+	return nfs_chown_async_internal(nfs, path, 0, mode, cb, private_data);
+}
+
+int nfs_lchmod_async(struct nfs_context *nfs, const char *path, int mode, nfs_cb cb, void *private_data)
+{
+	return nfs_chown_async_internal(nfs, path, 1, mode, cb, private_data);
 }
 
 /*

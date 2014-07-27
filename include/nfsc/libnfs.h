@@ -1024,6 +1024,34 @@ EXTERN int nfs_chmod_async(struct nfs_context *nfs, const char *path, int mode, 
  * -errno : The command failed.
  */
 EXTERN int nfs_chmod(struct nfs_context *nfs, const char *path, int mode);
+/*
+ * Async chmod(<name>)
+ *
+ * Like chmod except if the destination is a symbolic link, it acts on the
+ * symbolic link itself.
+ *
+ * Function returns
+ *  0 : The operation was initiated. Once the operation finishes, the callback will be invoked.
+ * <0 : An error occured when trying to set up the operation. The callback will not be invoked.
+ *
+ * When the callback is invoked, status indicates the result:
+ *      0 : Success.
+ *          data is NULL
+ * -errno : An error occured.
+ *          data is the error string.
+ */
+EXTERN int nfs_lchmod_async(struct nfs_context *nfs, const char *path, int mode, nfs_cb cb, void *private_data);
+/*
+ * Sync chmod(<name>)
+ *
+ * Like chmod except if the destination is a symbolic link, it acts on the
+ * symbolic link itself.
+ *
+ * Function returns
+ *      0 : The operation was successfull.
+ * -errno : The command failed.
+ */
+EXTERN int nfs_lchmod(struct nfs_context *nfs, const char *path, int mode);
 
 
 
