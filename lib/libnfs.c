@@ -4076,7 +4076,7 @@ static int nfs_chown_continue_internal(struct nfs_context *nfs, fattr3 *attr _U_
 }
 
 
-int nfs_chown_async(struct nfs_context *nfs, const char *path, int uid, int gid, nfs_cb cb, void *private_data)
+int nfs_chown_async_internal(struct nfs_context *nfs, const char *path, int no_follow, int uid, int gid, nfs_cb cb, void *private_data)
 {
 	struct nfs_chown_data *chown_data;
 
@@ -4089,7 +4089,7 @@ int nfs_chown_async(struct nfs_context *nfs, const char *path, int uid, int gid,
 	chown_data->uid = uid;
 	chown_data->gid = gid;
 
-	if (nfs_lookuppath_async(nfs, path, 0, cb, private_data, nfs_chown_continue_internal, chown_data, free, 0) != 0) {
+	if (nfs_lookuppath_async(nfs, path, no_follow, cb, private_data, nfs_chown_continue_internal, chown_data, free, 0) != 0) {
 		rpc_set_error(nfs->rpc, "Out of memory: failed to start parsing the path components");
 		return -1;
 	}
@@ -4097,6 +4097,15 @@ int nfs_chown_async(struct nfs_context *nfs, const char *path, int uid, int gid,
 	return 0;
 }
 
+int nfs_chown_async(struct nfs_context *nfs, const char *path, int uid, int gid, nfs_cb cb, void *private_data)
+{
+	return nfs_chown_async_internal(nfs, path, 0, uid, gid, cb, private_data);
+}
+
+int nfs_lchown_async(struct nfs_context *nfs, const char *path, int uid, int gid, nfs_cb cb, void *private_data)
+{
+	return nfs_chown_async_internal(nfs, path, 1, uid, gid, cb, private_data);
+}
 
 /*
  * Async fchown()

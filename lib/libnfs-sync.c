@@ -1069,6 +1069,25 @@ int nfs_chown(struct nfs_context *nfs, const char *path, int uid, int gid)
 }
 
 /*
+ * lchown()
+ */
+int nfs_lchown(struct nfs_context *nfs, const char *path, int uid, int gid)
+{
+	struct sync_cb_data cb_data;
+
+	cb_data.is_finished = 0;
+
+	if (nfs_lchown_async(nfs, path, uid, gid, chown_cb, &cb_data) != 0) {
+		nfs_set_error(nfs, "nfs_lchown_async failed");
+		return -1;
+	}
+
+	wait_for_nfs_reply(nfs, &cb_data);
+
+	return cb_data.status;
+}
+
+/*
  * fchown()
  */
 static void fchown_cb(int status, struct nfs_context *nfs, void *data, void *private_data)
