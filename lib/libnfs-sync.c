@@ -268,6 +268,23 @@ int nfs_stat64(struct nfs_context *nfs, const char *path, struct nfs_stat_64 *st
 	return cb_data.status;
 }
 
+int nfs_lstat64(struct nfs_context *nfs, const char *path, struct nfs_stat_64 *st)
+{
+	struct sync_cb_data cb_data;
+
+	cb_data.is_finished = 0;
+	cb_data.return_data = st;
+
+	if (nfs_lstat64_async(nfs, path, stat64_cb, &cb_data) != 0) {
+		nfs_set_error(nfs, "nfs_lstat64_async failed");
+		return -1;
+	}
+
+	wait_for_nfs_reply(nfs, &cb_data);
+
+	return cb_data.status;
+}
+
 /*
  * open()
  */
@@ -998,6 +1015,22 @@ int nfs_chmod(struct nfs_context *nfs, const char *path, int mode)
 	return cb_data.status;
 }
 
+int nfs_lchmod(struct nfs_context *nfs, const char *path, int mode)
+{
+	struct sync_cb_data cb_data;
+
+	cb_data.is_finished = 0;
+
+	if (nfs_lchmod_async(nfs, path, mode, chmod_cb, &cb_data) != 0) {
+		nfs_set_error(nfs, "nfs_lchmod_async failed");
+		return -1;
+	}
+
+	wait_for_nfs_reply(nfs, &cb_data);
+
+	return cb_data.status;
+}
+
 
 
 
@@ -1069,6 +1102,25 @@ int nfs_chown(struct nfs_context *nfs, const char *path, int uid, int gid)
 }
 
 /*
+ * lchown()
+ */
+int nfs_lchown(struct nfs_context *nfs, const char *path, int uid, int gid)
+{
+	struct sync_cb_data cb_data;
+
+	cb_data.is_finished = 0;
+
+	if (nfs_lchown_async(nfs, path, uid, gid, chown_cb, &cb_data) != 0) {
+		nfs_set_error(nfs, "nfs_lchown_async failed");
+		return -1;
+	}
+
+	wait_for_nfs_reply(nfs, &cb_data);
+
+	return cb_data.status;
+}
+
+/*
  * fchown()
  */
 static void fchown_cb(int status, struct nfs_context *nfs, void *data, void *private_data)
@@ -1126,6 +1178,22 @@ int nfs_utimes(struct nfs_context *nfs, const char *path, struct timeval *times)
 
 	if (nfs_utimes_async(nfs, path, times, utimes_cb, &cb_data) != 0) {
 		nfs_set_error(nfs, "nfs_utimes_async failed");
+		return -1;
+	}
+
+	wait_for_nfs_reply(nfs, &cb_data);
+
+	return cb_data.status;
+}
+
+int nfs_lutimes(struct nfs_context *nfs, const char *path, struct timeval *times)
+{
+	struct sync_cb_data cb_data;
+
+	cb_data.is_finished = 0;
+
+	if (nfs_lutimes_async(nfs, path, times, utimes_cb, &cb_data) != 0) {
+		nfs_set_error(nfs, "nfs_lutimes_async failed");
 		return -1;
 	}
 

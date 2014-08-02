@@ -298,6 +298,35 @@ EXTERN int nfs_stat64_async(struct nfs_context *nfs, const char *path, nfs_cb cb
 EXTERN int nfs_stat64(struct nfs_context *nfs, const char *path, struct nfs_stat_64 *st);
 
 /*
+ * Async stat(<filename>)
+ *
+ * Like stat except if the destination is a symbolic link, it acts on the
+ * symbolic link itself.
+ *
+ * Function returns
+ *  0 : The operation was initiated. Once the operation finishes, the callback will be invoked.
+ * <0 : An error occured when trying to set up the operation. The callback will not be invoked.
+ *
+ * When the callback is invoked, status indicates the result:
+ *      0 : Success.
+ *          data is struct nfs_stat_64 *
+ * -errno : An error occured.
+ *          data is the error string.
+ */
+EXTERN int nfs_lstat64_async(struct nfs_context *nfs, const char *path, nfs_cb cb, void *private_data);
+/*
+ * Sync stat(<filename>)
+ *
+ * Like stat except if the destination is a symbolic link, it acts on the
+ * symbolic link itself.
+ *
+ * Function returns
+ *      0 : The operation was successfull.
+ * -errno : The command failed.
+ */
+EXTERN int nfs_lstat64(struct nfs_context *nfs, const char *path, struct nfs_stat_64 *st);
+
+/*
  * FSTAT()
  */
 /*
@@ -995,6 +1024,34 @@ EXTERN int nfs_chmod_async(struct nfs_context *nfs, const char *path, int mode, 
  * -errno : The command failed.
  */
 EXTERN int nfs_chmod(struct nfs_context *nfs, const char *path, int mode);
+/*
+ * Async chmod(<name>)
+ *
+ * Like chmod except if the destination is a symbolic link, it acts on the
+ * symbolic link itself.
+ *
+ * Function returns
+ *  0 : The operation was initiated. Once the operation finishes, the callback will be invoked.
+ * <0 : An error occured when trying to set up the operation. The callback will not be invoked.
+ *
+ * When the callback is invoked, status indicates the result:
+ *      0 : Success.
+ *          data is NULL
+ * -errno : An error occured.
+ *          data is the error string.
+ */
+EXTERN int nfs_lchmod_async(struct nfs_context *nfs, const char *path, int mode, nfs_cb cb, void *private_data);
+/*
+ * Sync chmod(<name>)
+ *
+ * Like chmod except if the destination is a symbolic link, it acts on the
+ * symbolic link itself.
+ *
+ * Function returns
+ *      0 : The operation was successfull.
+ * -errno : The command failed.
+ */
+EXTERN int nfs_lchmod(struct nfs_context *nfs, const char *path, int mode);
 
 
 
@@ -1047,6 +1104,34 @@ EXTERN int nfs_chown_async(struct nfs_context *nfs, const char *path, int uid, i
  * -errno : The command failed.
  */
 EXTERN int nfs_chown(struct nfs_context *nfs, const char *path, int uid, int gid);
+/*
+ * Async chown(<name>)
+ *
+ * Like chown except if the destination is a symbolic link, it acts on the
+ * symbolic link itself.
+ *
+ * Function returns
+ *  0 : The operation was initiated. Once the operation finishes, the callback will be invoked.
+ * <0 : An error occured when trying to set up the operation. The callback will not be invoked.
+ *
+ * When the callback is invoked, status indicates the result:
+ *      0 : Success.
+ *          data is NULL
+ * -errno : An error occured.
+ *          data is the error string.
+ */
+EXTERN int nfs_lchown_async(struct nfs_context *nfs, const char *path, int uid, int gid, nfs_cb cb, void *private_data);
+/*
+ * Sync chown(<name>)
+ *
+ * Like chown except if the destination is a symbolic link, it acts on the
+ * symbolic link itself.
+ *
+ * Function returns
+ *      0 : The operation was successfull.
+ * -errno : The command failed.
+ */
+EXTERN int nfs_lchown(struct nfs_context *nfs, const char *path, int uid, int gid);
 
 
 
@@ -1100,6 +1185,34 @@ EXTERN int nfs_utimes_async(struct nfs_context *nfs, const char *path, struct ti
  * -errno : The command failed.
  */
 EXTERN int nfs_utimes(struct nfs_context *nfs, const char *path, struct timeval *times);
+/*
+ * Async utimes(<path>)
+ *
+ * Like utimes except if the destination is a symbolic link, it acts on the
+ * symbolic link itself.
+ *
+ * Function returns
+ *  0 : The operation was initiated. Once the operation finishes, the callback will be invoked.
+ * <0 : An error occured when trying to set up the operation. The callback will not be invoked.
+ *
+ * When the callback is invoked, status indicates the result:
+ *      0 : Success.
+ *          data is NULL
+ * -errno : An error occured.
+ *          data is the error string.
+ */
+EXTERN int nfs_lutimes_async(struct nfs_context *nfs, const char *path, struct timeval *times, nfs_cb cb, void *private_data);
+/*
+ * Sync utimes(<path>)
+ *
+ * Like utimes except if the destination is a symbolic link, it acts on the
+ * symbolic link itself.
+ *
+ * Function returns
+ *      0 : The operation was successfull.
+ * -errno : The command failed.
+ */
+EXTERN int nfs_lutimes(struct nfs_context *nfs, const char *path, struct timeval *times);
 
 
 /*
