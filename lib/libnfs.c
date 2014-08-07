@@ -2771,7 +2771,7 @@ static void nfs_create_trunc_cb(struct rpc_context *rpc, int status, void *comma
 {
 	struct nfs_cb_data *data = private_data;
 	struct nfs_context *nfs = data->nfs;
-	struct nfsfh *nfsfh;
+	struct nfsfh *nfsfh = data->nfsfh;
 	SETATTR3res *res;
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
@@ -2798,7 +2798,7 @@ static void nfs_create_trunc_cb(struct rpc_context *rpc, int status, void *comma
 		return;
 	}
 
-	data->cb(0, nfs, data->nfsfh, data->private_data);
+	data->cb(0, nfs, nfsfh, data->private_data);
 	free_nfs_cb_data(data);
 }
 
