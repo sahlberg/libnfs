@@ -3989,12 +3989,12 @@ int nfs_chmod_async_internal(struct nfs_context *nfs, const char *path, int no_f
 
 int nfs_chmod_async(struct nfs_context *nfs, const char *path, int mode, nfs_cb cb, void *private_data)
 {
-	return nfs_chown_async_internal(nfs, path, 0, mode, cb, private_data);
+	return nfs_chmod_async_internal(nfs, path, 0, mode, cb, private_data);
 }
 
 int nfs_lchmod_async(struct nfs_context *nfs, const char *path, int mode, nfs_cb cb, void *private_data)
 {
-	return nfs_chown_async_internal(nfs, path, 1, mode, cb, private_data);
+	return nfs_chmod_async_internal(nfs, path, 1, mode, cb, private_data);
 }
 
 /*
