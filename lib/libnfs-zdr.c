@@ -41,6 +41,9 @@
 #include <time.h>
 #include <unistd.h>
 #include "libnfs-zdr.h"
+#include "libnfs.h"
+#include "libnfs-raw.h"
+#include "libnfs-private.h"
 
 struct opaque_auth _null_auth;
 
