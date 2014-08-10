@@ -1807,6 +1807,8 @@ static void nfs_pread_mcb(struct rpc_context *rpc, int status, void *command_dat
 	struct nfs_cb_data *data = mdata->data;
 	struct nfs_context *nfs = data->nfs;
 	READ3res *res;
+	int cb_err;
+	void *cb_data;
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
@@ -1905,9 +1907,11 @@ static void nfs_pread_mcb(struct rpc_context *rpc, int status, void *command_dat
 		if (data->max_offset > data->org_offset + data->org_count) {
 			data->max_offset = data->org_offset + data->org_count;
 		}
-		data->cb(data->max_offset - data->org_offset, nfs, data->buffer + (data->org_offset - data->offset), data->private_data);
+		cb_err = data->max_offset - data->org_offset;
+		cb_data = data->buffer + (data->org_offset - data->offset);
 	} else {
-		data->cb(res->READ3res_u.resok.count, nfs, res->READ3res_u.resok.data.data_val, data->private_data);
+		cb_err = res->READ3res_u.resok.count;
+		cb_data = res->READ3res_u.resok.data.data_val;
 	}
 
 	data->nfsfh->ra.fh_offset = data->max_offset;
@@ -1919,6 +1923,8 @@ static void nfs_pread_mcb(struct rpc_context *rpc, int status, void *command_dat
 		data->nfsfh->ra.buf_ts = time(NULL);
 		data->buffer = NULL;
 	}
+
+	data->cb(cb_err, nfs, cb_data, data->private_data);
 	free_nfs_cb_data(data);
 }
 
