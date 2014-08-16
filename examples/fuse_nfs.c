@@ -248,11 +248,13 @@ int main(int argc, char *argv[])
 
 	if (url == NULL) {
 		fprintf(stderr, "-n was not specified.\n");
+		print_usage(argv[0]);
 		ret = 10;
 		goto finished;
 	}
 	if (mnt == NULL) {
 		fprintf(stderr, "-m was not specified.\n");
+		print_usage(argv[0]);
 		ret = 10;
 		goto finished;
 	}
