@@ -19,6 +19,6 @@ nfs-stamp : nfs.x
 
 compile_rpc:	
 	cat nfs.x | head -29 >libnfs-raw-nfs.h
-	rpcgen -h nfs.x | sed -e "s/#include <rpc\/rpc.h>/#include <nfsc\/libnfs-zdr.h>/" -e "s/xdr/zdr/g" -e "s/XDR/ZDR/g" -e "s/#define _NFS_H_RPCGEN/#define _NFS_H_RPCGEN\n#include <nfsc\/libnfs-zdr.h>/g" -e "s/#define NFS3_COOKIEVERFSIZE 8/#define NFS3_COOKIEVERFSIZE 8\n\n#if defined(ANDROID)\ntypedef long long int quad_t;\ntypedef long long unsigned u_quad_t;\n#endif\n#if defined(WIN32)\ntypedef long long int quad_t;\ntypedef long long unsigned u_quad_t;\n#endif/g" -e "s/ CLIENT / void /g" -e "s/SVCXPRT /void /g" -e "s/bool_t/uint32_t/g" >> libnfs-raw-nfs.h
+	rpcgen -h nfs.x | sed -e "s/#include <rpc\/rpc.h>/#include <nfsc\/libnfs-zdr.h>/" -e "s/xdr/zdr/g" -e "s/XDR/ZDR/g" -e "s/#define _NFS_H_RPCGEN/#define _NFS_H_RPCGEN\n#include <nfsc\/libnfs-zdr.h>/g" -e "s/#define NFS3_COOKIEVERFSIZE 8/#define NFS3_COOKIEVERFSIZE 8\n\n/g" -e "s/ CLIENT / void /g" -e "s/SVCXPRT /void /g" -e "s/bool_t/uint32_t/g" >> libnfs-raw-nfs.h
 	cat nfs.x | head -29 >libnfs-raw-nfs.c
 	rpcgen -c nfs.x | sed -e "s/#include \".*nfs.h\"/#include \"libnfs-xdr.h\"\n#include \"libnfs-raw-nfs.h\"/" -e "s/xdr/zdr/g" -e "s/XDR/ZDR/g" -e "s/register int32_t \*buf;/register int32_t *buf;\n	buf = NULL;/" -e "s/bool_t/uint32_t/g" >> libnfs-raw-nfs.c

@@ -37,7 +37,7 @@ const NFS3_COOKIEVERFSIZE = 8;
 
 typedef opaque cookieverf3[NFS3_COOKIEVERFSIZE];
 
-typedef u_quad_t cookie3;
+typedef uint64_t cookie3;
 
 struct nfs_fh3 {
 	opaque       data<NFS3_FHSIZE>;
@@ -66,9 +66,9 @@ typedef unsigned int uid3;
 
 typedef unsigned int gid3;
 
-typedef u_quad_t size3;
+typedef uint64_t size3;
 
-typedef u_quad_t fileid3;
+typedef uint64_t fileid3;
 
 struct specdata3 {
 	unsigned int specdata1;
@@ -89,7 +89,7 @@ struct fattr3 {
 	size3        size;
 	size3        used;
 	specdata3    rdev;
-	u_quad_t       fsid;
+	uint64_t     fsid;
 	fileid3      fileid;
 	nfstime3     atime;
 	nfstime3     mtime;
@@ -142,7 +142,7 @@ enum stable_how {
 	FILE_SYNC = 2
 };
 
-typedef u_quad_t offset3;
+typedef uint64_t offset3;
 
 typedef unsigned int count3;
 

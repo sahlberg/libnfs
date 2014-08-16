@@ -48,18 +48,11 @@ extern "C" {
 #define NFS3_CREATEVERFSIZE 8
 #define NFS3_COOKIEVERFSIZE 8
 
-#if defined(ANDROID)
-typedef long long int quad_t;
-typedef long long unsigned u_quad_t;
-#endif
-#if defined(WIN32)
-typedef long long int quad_t;
-typedef long long unsigned u_quad_t;
-#endif
+
 
 typedef char cookieverf3[NFS3_COOKIEVERFSIZE];
 
-typedef u_quad_t cookie3;
+typedef uint64_t cookie3;
 
 struct nfs_fh3 {
 	struct {
@@ -94,9 +87,9 @@ typedef u_int uid3;
 
 typedef u_int gid3;
 
-typedef u_quad_t size3;
+typedef uint64_t size3;
 
-typedef u_quad_t fileid3;
+typedef uint64_t fileid3;
 
 struct specdata3 {
 	u_int specdata1;
@@ -119,7 +112,7 @@ struct fattr3 {
 	size3 size;
 	size3 used;
 	specdata3 rdev;
-	u_quad_t fsid;
+	uint64_t fsid;
 	fileid3 fileid;
 	nfstime3 atime;
 	nfstime3 mtime;
@@ -175,7 +168,7 @@ enum stable_how {
 };
 typedef enum stable_how stable_how;
 
-typedef u_quad_t offset3;
+typedef uint64_t offset3;
 
 typedef u_int count3;
 

@@ -52,7 +52,7 @@ zdr_cookie3 (ZDR *zdrs, cookie3 *objp)
 	register int32_t *buf;
 	buf = NULL;
 
-	 if (!zdr_u_quad_t (zdrs, objp))
+	 if (!zdr_uint64_t (zdrs, objp))
 		 return FALSE;
 	return TRUE;
 }
@@ -142,7 +142,7 @@ zdr_size3 (ZDR *zdrs, size3 *objp)
 	register int32_t *buf;
 	buf = NULL;
 
-	 if (!zdr_u_quad_t (zdrs, objp))
+	 if (!zdr_uint64_t (zdrs, objp))
 		 return FALSE;
 	return TRUE;
 }
@@ -153,7 +153,7 @@ zdr_fileid3 (ZDR *zdrs, fileid3 *objp)
 	register int32_t *buf;
 	buf = NULL;
 
-	 if (!zdr_u_quad_t (zdrs, objp))
+	 if (!zdr_uint64_t (zdrs, objp))
 		 return FALSE;
 	return TRUE;
 }
@@ -206,7 +206,7 @@ zdr_fattr3 (ZDR *zdrs, fattr3 *objp)
 		 return FALSE;
 	 if (!zdr_specdata3 (zdrs, &objp->rdev))
 		 return FALSE;
-	 if (!zdr_u_quad_t (zdrs, &objp->fsid))
+	 if (!zdr_uint64_t (zdrs, &objp->fsid))
 		 return FALSE;
 	 if (!zdr_fileid3 (zdrs, &objp->fileid))
 		 return FALSE;
@@ -268,7 +268,7 @@ zdr_offset3 (ZDR *zdrs, offset3 *objp)
 	register int32_t *buf;
 	buf = NULL;
 
-	 if (!zdr_u_quad_t (zdrs, objp))
+	 if (!zdr_uint64_t (zdrs, objp))
 		 return FALSE;
 	return TRUE;
 }

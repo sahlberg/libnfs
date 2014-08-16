@@ -91,9 +91,9 @@ zdr_nlm4_holder (ZDR *zdrs, nlm4_holder *objp)
 		 return FALSE;
 	 if (!zdr_nlm4_oh (zdrs, &objp->oh))
 		 return FALSE;
-	 if (!zdr_u_quad_t (zdrs, &objp->l_offset))
+	 if (!zdr_uint64_t (zdrs, &objp->l_offset))
 		 return FALSE;
-	 if (!zdr_u_quad_t (zdrs, &objp->l_len))
+	 if (!zdr_uint64_t (zdrs, &objp->l_len))
 		 return FALSE;
 	return TRUE;
 }
@@ -112,9 +112,9 @@ zdr_nlm4_lock (ZDR *zdrs, nlm4_lock *objp)
 		 return FALSE;
 	 if (!zdr_u_int (zdrs, &objp->svid))
 		 return FALSE;
-	 if (!zdr_u_quad_t (zdrs, &objp->l_offset))
+	 if (!zdr_uint64_t (zdrs, &objp->l_offset))
 		 return FALSE;
-	 if (!zdr_u_quad_t (zdrs, &objp->l_len))
+	 if (!zdr_uint64_t (zdrs, &objp->l_len))
 		 return FALSE;
 	return TRUE;
 }

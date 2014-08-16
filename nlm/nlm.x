@@ -54,8 +54,8 @@ struct nlm4_holder {
 	bool           exclusive;
 	unsigned int   svid;
 	nlm4_oh        oh;
-	u_quad_t       l_offset;
-	u_quad_t       l_len;
+	uint64_t       l_offset;
+	uint64_t       l_len;
 };
 
 const NLM_MAXNAME = 256;
@@ -64,8 +64,8 @@ struct nlm4_lock {
 	struct nlm_fh4 fh;
 	nlm4_oh        oh;
 	unsigned int   svid;
-	u_quad_t       l_offset;
-	u_quad_t       l_len;
+	uint64_t       l_offset;
+	uint64_t       l_len;
 };
 
 struct nlm4_share {
