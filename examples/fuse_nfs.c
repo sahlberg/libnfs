@@ -191,7 +191,7 @@ static struct fuse_operations nfs_oper = {
 
 void print_usage(char *name)
 {
-	printf("Usage: %s [-?|--help] [-n|--nfs-share=nfs-url] mountpoint\n",
+	printf("Usage: %s [-?|--help] [-n|--nfs-share=nfs-url] [-m|--mountpoint=mountpoint]\n",
 		name);
 	exit(0);
 }
