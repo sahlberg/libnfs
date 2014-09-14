@@ -1278,6 +1278,40 @@ int nfs_access(struct nfs_context *nfs, const char *path, int mode)
 
 
 /*
+ * access2()
+ */
+static void access2_cb(int status, struct nfs_context *nfs, void *data, void *private_data)
+{
+	struct sync_cb_data *cb_data = private_data;
+
+	cb_data->is_finished = 1;
+	cb_data->status = status;
+
+	if (status < 0) {
+		nfs_set_error(nfs, "access2 call failed with \"%s\"", (char *)data);
+		return;
+	}
+}
+
+int nfs_access2(struct nfs_context *nfs, const char *path)
+{
+	struct sync_cb_data cb_data;
+
+	cb_data.is_finished = 0;
+
+	if (nfs_access2_async(nfs, path, access2_cb, &cb_data) != 0) {
+		nfs_set_error(nfs, "nfs_access2_async failed");
+		return -1;
+	}
+
+	wait_for_nfs_reply(nfs, &cb_data);
+
+	return cb_data.status;
+}
+
+
+
+/*
  * symlink()
  */
 static void symlink_cb(int status, struct nfs_context *nfs, void *data, void *private_data)

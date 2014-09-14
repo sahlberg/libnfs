@@ -1270,6 +1270,36 @@ EXTERN int nfs_access(struct nfs_context *nfs, const char *path, int mode);
 
 
 
+
+/*
+ * ACCESS2()
+ */
+/*
+ * Async access2(<path>)
+ * Function returns
+ *  0 : The operation was initiated. Once the operation finishes, the callback will be invoked.
+ * <0 : An error occured when trying to set up the operation. The callback will not be invoked.
+ *
+ * When the callback is invoked, status indicates the result:
+ *      >= 0 : A mask of R_OK, W_OK and X_OK indicating which permissions are
+ *             available.
+ *             data is NULL
+ * -errno : An error occured.
+ *          data is the error string.
+ */
+EXTERN int nfs_access2_async(struct nfs_context *nfs, const char *path, nfs_cb cb, void *private_data);
+/*
+ * Sync access(<path>)
+ * Function returns
+ *      >= 0 : A mask of R_OK, W_OK and X_OK indicating which permissions are
+ *             available.
+ * -errno : The command failed.
+ */
+EXTERN int nfs_access2(struct nfs_context *nfs, const char *path);
+
+
+
+
 /*
  * SYMLINK()
  */
