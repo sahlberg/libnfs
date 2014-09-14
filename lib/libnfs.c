@@ -4405,6 +4405,80 @@ int nfs_access_async(struct nfs_context *nfs, const char *path, int mode, nfs_cb
 
 
 /*
+ * Async access2()
+ */
+static void nfs_access2_cb(struct rpc_context *rpc, int status, void *command_data, void *private_data)
+{
+	ACCESS3res *res;
+	struct nfs_cb_data *data = private_data;
+	struct nfs_context *nfs = data->nfs;
+	unsigned int result = 0;
+
+	assert(rpc->magic == RPC_CONTEXT_MAGIC);
+
+	if (status == RPC_STATUS_ERROR) {
+		data->cb(-EFAULT, nfs, command_data, data->private_data);
+		free_nfs_cb_data(data);
+		return;
+	}
+	if (status == RPC_STATUS_CANCEL) {
+		data->cb(-EINTR, nfs, "Command was cancelled", data->private_data);
+		free_nfs_cb_data(data);
+		return;
+	}
+
+	res = command_data;
+	if (res->status != NFS3_OK) {
+		rpc_set_error(nfs->rpc, "NFS: ACCESS of %s failed with %s(%d)", data->saved_path, nfsstat3_to_str(res->status), nfsstat3_to_errno(res->status));
+		data->cb(nfsstat3_to_errno(res->status), nfs, rpc_get_error(nfs->rpc), data->private_data);
+		free_nfs_cb_data(data);
+		return;
+	}
+
+	if (res->ACCESS3res_u.resok.access & ACCESS3_READ) {
+		result |= R_OK;
+	}
+	if (res->ACCESS3res_u.resok.access & (ACCESS3_MODIFY | ACCESS3_EXTEND | ACCESS3_DELETE)) {
+		result |= W_OK;
+	}
+	if (res->ACCESS3res_u.resok.access & (ACCESS3_LOOKUP | ACCESS3_EXECUTE)) {
+		result |= X_OK;
+	}
+
+	data->cb(result, nfs, NULL, data->private_data);
+	free_nfs_cb_data(data);
+}
+
+static int nfs_access2_continue_internal(struct nfs_context *nfs, fattr3 *attr _U_, struct nfs_cb_data *data)
+{
+	ACCESS3args args;
+
+	memset(&args, 0, sizeof(ACCESS3args));
+	args.object = data->fh;
+	args.access = ACCESS3_READ | ACCESS3_LOOKUP | ACCESS3_MODIFY | ACCESS3_EXTEND | ACCESS3_DELETE | ACCESS3_EXECUTE;
+
+	if (rpc_nfs3_access_async(nfs->rpc, nfs_access2_cb, &args, data) != 0) {
+		rpc_set_error(nfs->rpc, "RPC error: Failed to send OPEN ACCESS call for %s", data->path);
+		data->cb(-ENOMEM, nfs, rpc_get_error(nfs->rpc), data->private_data);
+		free_nfs_cb_data(data);
+		return -1;
+	}
+	return 0;
+}
+
+int nfs_access2_async(struct nfs_context *nfs, const char *path, nfs_cb cb, void *private_data)
+{
+	if (nfs_lookuppath_async(nfs, path, 0, cb, private_data, nfs_access2_continue_internal, NULL, NULL, 0) != 0) {
+		rpc_set_error(nfs->rpc, "Out of memory: failed to start parsing the path components");
+		return -1;
+	}
+
+	return 0;
+}
+
+
+
+/*
  * Async symlink()
  */
 struct nfs_symlink_data {
