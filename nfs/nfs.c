@@ -697,7 +697,7 @@ int rpc_nfs_readdirplus_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3
 	args.cookie = cookie;
 	memcpy(&args.cookieverf, cookieverf, sizeof(cookieverf3)); 
 	args.dircount = count;
-	args.maxcount = count;
+	args.maxcount = count * 8;
 
 	return rpc_nfs3_readdirplus_async(rpc, cb, &args, private_data);
 }
