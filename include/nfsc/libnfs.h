@@ -142,6 +142,8 @@ EXTERN void nfs_destroy_context(struct nfs_context *nfs);
  *                     default it 65534 on Windows and getuid() on unixen.
  * gid=<int>         : GID value to use when talking to the server.
  *                     default it 65534 on Windows and getgid() on unixen.
+ * readahead=<int>   : Enable readahead for files and set the maximum amount
+ *                     of readahead to <int>.
  */
 /*
  * Parse a complete NFS URL including, server, path and
