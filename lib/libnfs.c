@@ -248,7 +248,7 @@ static int nfs_set_context_args(struct nfs_context *nfs, char *arg, char *val)
 		rpc_set_uid(nfs_get_rpc_context(nfs), atoi(val));
 	} else if (!strcmp(arg, "gid")) {
 		rpc_set_gid(nfs_get_rpc_context(nfs), atoi(val));
-	} else if (!strcmp(arg, "readahaed")) {
+	} else if (!strcmp(arg, "readahead")) {
 		rpc_set_readahead(nfs_get_rpc_context(nfs), atoi(val));
 	}
 	return 0;
