@@ -125,6 +125,7 @@ struct nfs_context {
        uint64_t writemax;
        char *cwd;
        struct nfsdir *dircache;
+       uint16_t	mask;
 };
 
 void nfs_free_nfsdir(struct nfsdir *nfsdir)
@@ -412,7 +413,7 @@ struct nfs_context *nfs_init_context(void)
 	}
 
 	nfs->cwd = strdup("/");
-
+	nfs->mask = 022;
 	return nfs;
 }
 
@@ -5094,4 +5095,10 @@ const struct nfs_fh3 *nfs_get_rootfh(struct nfs_context *nfs) {
 
 struct nfs_fh3 *nfs_get_fh(struct nfsfh *nfsfh) {
        return &nfsfh->fh;
+}
+
+uint16_t nfs_umask(struct nfs_context *nfs, uint16_t mask) {
+	 uint16_t tmp = nfs->mask;
+	 nfs->mask = mask;
+	 return tmp;
 }

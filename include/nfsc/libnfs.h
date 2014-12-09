@@ -386,7 +386,14 @@ EXTERN int nfs_fstat64_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_c
  */
 EXTERN int nfs_fstat64(struct nfs_context *nfs, struct nfsfh *nfsfh, struct nfs_stat_64 *st);
 
-
+/*
+ * UMASK() never blocks, so no special aync/async versions are available
+ */
+/*
+ * Sync umask(<mask>)
+ * Function returns the old mask.
+ */
+EXTERN uint16_t nfs_umask(struct nfs_context *nfs, uint16_t mask);
 
 /*
  * OPEN()
