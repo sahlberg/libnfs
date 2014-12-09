@@ -4930,13 +4930,6 @@ int nfs_link_async(struct nfs_context *nfs, const char *oldpath, const char *new
 }
 
 
-//qqq replace later with lseek()
-uint64_t nfs_get_current_offset(struct nfsfh *nfsfh)
-{
-	return nfsfh->offset;
-}
-
-
 
 /*
  * Get the maximum supported READ3 size by the server

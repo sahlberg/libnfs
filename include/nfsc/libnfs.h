@@ -1413,13 +1413,6 @@ EXTERN struct exportnode *mount_getexports(const char *server);
 EXTERN void mount_free_export_list(struct exportnode *exports);
 
 
-//qqq replace later with lseek(cur, 0)
-uint64_t nfs_get_current_offset(struct nfsfh *nfsfh);
-
-
-
-
-
 struct nfs_server_list {
        struct nfs_server_list *next;
        char *addr;
