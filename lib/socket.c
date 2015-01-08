@@ -109,7 +109,7 @@ static void set_nolinger(int fd)
 }
 
 #ifdef HAVE_NETINET_TCP_H
-int set_tcp_sockopt(int sockfd, int optname, int value)
+static int set_tcp_sockopt(int sockfd, int optname, int value)
 {
 	int level;
 
