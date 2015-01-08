@@ -35,9 +35,13 @@ WSADATA wsaData;
 #include <inttypes.h>
 #include <string.h>
 #include <sys/stat.h>
-#include <sys/statvfs.h>
 #ifndef AROS
+#ifdef ANDROID
+#define statvfs statfs
+#include <sys/vfs.h>
+#else
 #include <sys/statvfs.h>
+#endif
 #endif
 #endif
 
