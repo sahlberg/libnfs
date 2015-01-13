@@ -3287,6 +3287,15 @@ static void nfs_opendir3_cb(struct rpc_context *rpc, int status, void *command_d
 
 			nfsdirent->type = attributes->type;
 			nfsdirent->mode = attributes->mode;
+			switch (nfsdirent->type) {
+			case NF3REG:  nfsdirent->mode |= S_IFREG; break;
+			case NF3DIR:  nfsdirent->mode |= S_IFDIR; break;
+			case NF3BLK:  nfsdirent->mode |= S_IFBLK; break;
+			case NF3CHR:  nfsdirent->mode |= S_IFCHR; break;
+			case NF3LNK:  nfsdirent->mode |= S_IFLNK; break;
+			case NF3SOCK: nfsdirent->mode |= S_IFSOCK; break;
+			case NF3FIFO: nfsdirent->mode |= S_IFIFO; break;
+			};
 			nfsdirent->size = attributes->size;
 
 			nfsdirent->atime.tv_sec  = attributes->atime.seconds;
@@ -3536,6 +3545,15 @@ static void nfs_opendir_cb(struct rpc_context *rpc, int status, void *command_da
 		if (entry->name_attributes.attributes_follow) {
 			nfsdirent->type = entry->name_attributes.post_op_attr_u.attributes.type;
 			nfsdirent->mode = entry->name_attributes.post_op_attr_u.attributes.mode;
+			switch (nfsdirent->type) {
+			case NF3REG:  nfsdirent->mode |= S_IFREG; break;
+			case NF3DIR:  nfsdirent->mode |= S_IFDIR; break;
+			case NF3BLK:  nfsdirent->mode |= S_IFBLK; break;
+			case NF3CHR:  nfsdirent->mode |= S_IFCHR; break;
+			case NF3LNK:  nfsdirent->mode |= S_IFLNK; break;
+			case NF3SOCK: nfsdirent->mode |= S_IFSOCK; break;
+			case NF3FIFO: nfsdirent->mode |= S_IFIFO; break;
+			};
 			nfsdirent->size = entry->name_attributes.post_op_attr_u.attributes.size;
 
 			nfsdirent->atime.tv_sec  = entry->name_attributes.post_op_attr_u.attributes.atime.seconds;
