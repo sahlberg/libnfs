@@ -1553,6 +1553,7 @@ static int nfs_lookuppath_async(struct nfs_context *nfs, const char *path, int n
 {
 	struct nfs_cb_data *data;
 	struct GETATTR3args args;
+	struct nfs_fh3 *fh;
 
 	if (path[0] == '\0') {
 		path = ".";
@@ -1599,11 +1600,39 @@ static int nfs_lookuppath_async(struct nfs_context *nfs, const char *path, int n
 	}
 
 	data->path = data->saved_path;
+	fh = &nfs->rootfh;
+
 	if (data->path[0]) {
+		struct nested_mounts *mnt;
+		/* Make sure we match on longest nested export.
+		 * TODO: If we make sure the list is sorted we can skip this
+		 * check and end the loop on first match.
+		 */
+		int max_match_len = 0;
+
+		/* Do we need to switch to a different nested export ? */
+		for (mnt = nfs->nested_mounts; mnt; mnt = mnt->next) {
+			if (strlen(mnt->path) < max_match_len)
+				continue;
+			if (strncmp(mnt->path, data->saved_path,
+				     strlen(mnt->path)))
+				continue;
+			if (data->saved_path[strlen(mnt->path)] != '\0'
+			    && data->saved_path[strlen(mnt->path)] != '/')
+				continue;
+
+			free(data->saved_path);
+			data->saved_path = strdup(data->saved_path
+						  + strlen(mnt->path));
+			data->path = data->saved_path;
+			fh = &mnt->fh;
+			max_match_len = strlen(mnt->path);
+		}
+
 		/* This function will always invoke the callback and cleanup
 		 * for failures. So no need to check the return value.
 		 */
-		nfs_lookup_path_async_internal(nfs, NULL, data, &nfs->rootfh);
+		nfs_lookup_path_async_internal(nfs, NULL, data, fh);
 		return 0;
 	}
 
@@ -1611,7 +1640,7 @@ static int nfs_lookuppath_async(struct nfs_context *nfs, const char *path, int n
 	 * return the attributes to the caller.
 	 */
 	memset(&args, 0, sizeof(GETATTR3args));
-	args.object = nfs->rootfh;
+	args.object = *fh;
 	if (rpc_nfs3_getattr_async(nfs->rpc, nfs_lookup_path_getattr_cb, &args, data) != 0) {
 		free_nfs_cb_data(data);
 		return -1;
