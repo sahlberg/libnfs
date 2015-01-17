@@ -40,6 +40,25 @@ Arguments supported by libnfs are :
                      default it 65534 on Windows and getgid() on unixen.
  readahead=<int>   : Enable readahead for files and set the maximum amount
                      of readahead to <int>.
+ auto-traverse-mounts=<0|1>
+                   : Should libnfs try to traverse across nested mounts
+		     automatically or not. Default is 1 == enabled.
+
+Auto_traverse_mounts
+====================
+Normally in NFSv3 if a server has nested exports, for example if it would
+export both /data and /data/tmp then a client would need to mount
+both these exports as well.
+The reason is because the NFSv3 protocol does not allow a client request
+to return data for an object in a different filesystem/mount.
+(legacy, but it is what it is. One reason for this restriction is to
+guarantee that inodes are uniqe across the mounted system.)
+
+This option, when enabled will make libnfs perform all these mounts
+internally for you. This means that one libnfs mount may now have files
+with duplicate inode values so if you cache files based on inode
+make sure you cache files based on BOTH st.st_ino and st.st_dev.
+
 
 ROOT vs NON-ROOT
 ================

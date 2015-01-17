@@ -261,6 +261,8 @@ static int nfs_set_context_args(struct nfs_context *nfs, char *arg, char *val)
 		rpc_set_gid(nfs_get_rpc_context(nfs), atoi(val));
 	} else if (!strcmp(arg, "readahead")) {
 		rpc_set_readahead(nfs_get_rpc_context(nfs), atoi(val));
+	} else if (!strcmp(arg, "auto-traverse-mounts")) {
+		nfs->auto_traverse_mounts = atoi(val);
 	}
 	return 0;
 }
@@ -424,6 +426,7 @@ struct nfs_context *nfs_init_context(void)
 
 	nfs->cwd = strdup("/");
 	nfs->mask = 022;
+	nfs->auto_traverse_mounts = 1;
 	return nfs;
 }
 
