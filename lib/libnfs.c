@@ -116,6 +116,13 @@ struct nfsfh {
        struct nfs_readahead ra;
 };
 
+struct nested_mounts {
+       struct nested_mounts *next;
+       char *path;
+       struct nfs_fh3 fh;
+       fattr3 attr;
+};
+
 struct nfs_context {
        struct rpc_context *rpc;
        char *server;
@@ -126,6 +133,9 @@ struct nfs_context {
        char *cwd;
        struct nfsdir *dircache;
        uint16_t	mask;
+
+       int auto_traverse_mounts;
+       struct nested_mounts *nested_mounts;
 };
 
 void nfs_free_nfsdir(struct nfsdir *nfsdir)
@@ -419,6 +429,14 @@ struct nfs_context *nfs_init_context(void)
 
 void nfs_destroy_context(struct nfs_context *nfs)
 {
+	while (nfs->nested_mounts) {
+		struct nested_mounts *mnt = nfs->nested_mounts;
+
+		LIBNFS_LIST_REMOVE(&nfs->nested_mounts, mnt);
+		free(mnt->path);
+		free(mnt->fh.data.data_val);
+	}
+
 	rpc_destroy_context(nfs->rpc);
 	nfs->rpc = NULL;
 
@@ -805,6 +823,176 @@ static void nfs_mount_9_cb(struct rpc_context *rpc, int status, void *command_da
 	}
 }
 
+struct mount_discovery_cb {
+	int wait_count;
+	struct nfs_cb_data *data;
+};
+
+struct mount_discovery_item_cb {
+	struct mount_discovery_cb *md_cb;
+	char *path;
+};
+
+static void nfs_mount_8_cb(struct rpc_context *rpc, int status, void *command_data, void *private_data)
+{
+	struct mount_discovery_item_cb *md_item_cb = private_data;
+	struct mount_discovery_cb *md_cb = md_item_cb->md_cb;
+	struct nfs_cb_data *data = md_cb->data;
+	struct nfs_context *nfs = data->nfs;
+	mountres3 *res;
+	struct nested_mounts *mnt;
+
+	assert(rpc->magic == RPC_CONTEXT_MAGIC);
+
+	if (status == RPC_STATUS_ERROR)
+		goto finished;
+	if (status == RPC_STATUS_CANCEL)
+		goto finished;
+
+	res = command_data;
+	if (res->fhs_status != MNT3_OK)
+		goto finished;
+
+	mnt = malloc(sizeof(*mnt));
+	if (mnt == NULL)
+		goto finished;
+	memset(mnt, 0, sizeof(*mnt));
+
+	mnt->fh.data.data_len = res->mountres3_u.mountinfo.fhandle.fhandle3_len;
+	mnt->fh.data.data_val = malloc(mnt->fh.data.data_len);
+	if (mnt->fh.data.data_val == NULL) {
+		free(mnt);
+		goto finished;
+	}
+	memcpy(mnt->fh.data.data_val,
+	       res->mountres3_u.mountinfo.fhandle.fhandle3_val,
+	       mnt->fh.data.data_len);
+
+	mnt->path = md_item_cb->path;
+	md_item_cb->path = NULL;
+
+	LIBNFS_LIST_ADD(&nfs->nested_mounts, mnt);
+
+finished:
+	free(md_item_cb->path);
+	free(md_item_cb);
+	md_cb->wait_count--;
+	if (md_cb->wait_count > 0)
+		return;
+	free(md_cb);
+
+	rpc_disconnect(rpc, "normal disconnect");
+
+	if (rpc_connect_program_async(nfs->rpc, nfs->server, NFS_PROGRAM, NFS_V3, nfs_mount_9_cb, data) != 0) {
+		data->cb(-ENOMEM, nfs, command_data, data->private_data);
+		free_nfs_cb_data(data);
+		return;
+	}
+}
+
+static void nfs_mount_7_cb(struct rpc_context *rpc, int status, void *command_data, void *private_data)
+{
+	struct nfs_cb_data *data = private_data;
+	struct nfs_context *nfs = data->nfs;
+	exports res;
+	int len;
+	struct mount_discovery_cb *md_cb = NULL;
+
+	assert(rpc->magic == RPC_CONTEXT_MAGIC);
+
+	if (status == RPC_STATUS_ERROR) {
+		data->cb(-EFAULT, nfs, command_data, data->private_data);
+		free_nfs_cb_data(data);
+		return;
+	}
+	if (status == RPC_STATUS_CANCEL) {
+		data->cb(-EINTR, nfs, "Command was cancelled", data->private_data);
+		free_nfs_cb_data(data);
+		return;
+	}
+
+	/* iterate over all exporst and check if we any exports nested
+	 * below out mount.
+	 */
+	len = strlen(nfs->export);
+	if (!len) {
+		data->cb(-EFAULT, nfs, "Export is empty", data->private_data);
+		free_nfs_cb_data(data);
+		return;
+	}
+	res = *(exports *)command_data;
+	while (res) {
+		struct mount_discovery_item_cb *md_item_cb;
+
+		if (strncmp(nfs->export, res->ex_dir, len)) {
+			res = res->ex_next;
+			continue;
+		}
+		if (res->ex_dir[len - 1] != '/' && res->ex_dir[len] != '/') {
+			res = res->ex_next;
+			continue;
+		}
+
+		/* There is no need to fail the whole mount if anything
+		 * below fails. Just clean up and continue. At worst it
+		 * just mean that we might not be able to access any nested
+		 * mounts.
+		 */
+		md_item_cb = malloc(sizeof(*md_item_cb));
+		if (md_item_cb == NULL)
+			continue;
+
+		memset(md_item_cb, 0, sizeof(*md_item_cb));
+
+		md_item_cb->path = strdup(res->ex_dir + len
+					  - (nfs->export[len -1] == '/'));
+		if (md_item_cb->path == NULL) {
+			free(md_item_cb);
+			continue;
+		}
+
+		if (md_cb == NULL) {
+			md_cb = malloc(sizeof(*md_cb));
+			if (md_cb == NULL) {
+				free(md_item_cb->path);
+				free(md_item_cb);
+				continue;
+			}
+			memset(md_cb, 0, sizeof(*md_cb));
+			md_cb->data = data;
+		}
+		md_item_cb->md_cb = md_cb;
+
+		if (rpc_mount3_mnt_async(rpc, nfs_mount_8_cb,
+					 res->ex_dir, md_item_cb) != 0) {
+			if (md_cb->wait_count == 0) {
+				free(md_cb);
+				md_cb = NULL;
+			}
+			free(md_item_cb->path);
+			free(md_item_cb);
+			continue;
+		}
+		md_cb->wait_count++;
+
+		res = res->ex_next;
+	}
+
+	if (md_cb)
+		return;
+
+	/* We did not have any nested mounts to check so we can proceed straight
+	 * to reconnecting to NFSd.
+	 */
+	rpc_disconnect(rpc, "normal disconnect");
+
+	if (rpc_connect_program_async(nfs->rpc, nfs->server, NFS_PROGRAM, NFS_V3, nfs_mount_9_cb, data) != 0) {
+		data->cb(-ENOMEM, nfs, command_data, data->private_data);
+		free_nfs_cb_data(data);
+		return;
+	}
+}
+
 static void nfs_mount_6_cb(struct rpc_context *rpc, int status, void *command_data, void *private_data)
 {
 	struct nfs_cb_data *data = private_data;
@@ -841,6 +1029,15 @@ static void nfs_mount_6_cb(struct rpc_context *rpc, int status, void *command_da
 		return;
 	}
 	memcpy(nfs->rootfh.data.data_val, res->mountres3_u.mountinfo.fhandle.fhandle3_val, nfs->rootfh.data.data_len);
+
+	if (nfs->auto_traverse_mounts) {
+		if (rpc_mount3_export_async(rpc, nfs_mount_7_cb, data) != 0) {
+			data->cb(-ENOMEM, nfs, command_data, data->private_data);
+			free_nfs_cb_data(data);
+			return;
+		}
+		return;
+	}
 
 	rpc_disconnect(rpc, "normal disconnect");
 
