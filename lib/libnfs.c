@@ -720,7 +720,7 @@ static void free_nfsfh(struct nfsfh *nfsfh)
 }
 
 
-static void nfs_mount_10_cb(struct rpc_context *rpc, int status, void *command_data, void *private_data)
+static void nfs_mount_11_cb(struct rpc_context *rpc, int status, void *command_data, void *private_data)
 {
 	struct nfs_cb_data *data = private_data;
 	struct nfs_context *nfs = data->nfs;
@@ -742,7 +742,7 @@ static void nfs_mount_10_cb(struct rpc_context *rpc, int status, void *command_d
 	free_nfs_cb_data(data);
 }
 
-static void nfs_mount_9_cb(struct rpc_context *rpc, int status, void *command_data, void *private_data)
+static void nfs_mount_10_cb(struct rpc_context *rpc, int status, void *command_data, void *private_data)
 {
 	struct nfs_cb_data *data = private_data;
 	struct nfs_context *nfs = data->nfs;
@@ -768,14 +768,14 @@ static void nfs_mount_9_cb(struct rpc_context *rpc, int status, void *command_da
 	memset(&args, 0, sizeof(GETATTR3args));
 	args.object = nfs->rootfh;
 
-	if (rpc_nfs3_getattr_async(rpc, nfs_mount_10_cb, &args, data) != 0) {
+	if (rpc_nfs3_getattr_async(rpc, nfs_mount_11_cb, &args, data) != 0) {
 		data->cb(-ENOMEM, nfs, command_data, data->private_data);
 		free_nfs_cb_data(data);
 		return;
 	}
 }
 
-static void nfs_mount_8_cb(struct rpc_context *rpc, int status, void *command_data, void *private_data)
+static void nfs_mount_9_cb(struct rpc_context *rpc, int status, void *command_data, void *private_data)
 {
 	struct nfs_cb_data *data = private_data;
 	struct nfs_context *nfs = data->nfs;
@@ -798,7 +798,7 @@ static void nfs_mount_8_cb(struct rpc_context *rpc, int status, void *command_da
 	rpc_set_autoreconnect(rpc);
 
 	args.fsroot = nfs->rootfh;
-	if (rpc_nfs3_fsinfo_async(rpc, nfs_mount_9_cb, &args, data) != 0) {
+	if (rpc_nfs3_fsinfo_async(rpc, nfs_mount_10_cb, &args, data) != 0) {
 		data->cb(-ENOMEM, nfs, command_data, data->private_data);
 		free_nfs_cb_data(data);
 		return;
@@ -844,7 +844,7 @@ static void nfs_mount_6_cb(struct rpc_context *rpc, int status, void *command_da
 
 	rpc_disconnect(rpc, "normal disconnect");
 
-	if (rpc_connect_program_async(nfs->rpc, nfs->server, NFS_PROGRAM, NFS_V3, nfs_mount_8_cb, data) != 0) {
+	if (rpc_connect_program_async(nfs->rpc, nfs->server, NFS_PROGRAM, NFS_V3, nfs_mount_9_cb, data) != 0) {
 		data->cb(-ENOMEM, nfs, command_data, data->private_data);
 		free_nfs_cb_data(data);
 		return;
