@@ -3856,6 +3856,22 @@ static void nfs_opendir_cb(struct rpc_context *rpc, int status, void *command_da
 
 		if (entry->name_attributes.attributes_follow)
 			attr = &entry->name_attributes.post_op_attr_u.attributes;
+		if (attr == NULL) {
+			struct nested_mounts *mnt;
+			int splen = strlen(data->saved_path);
+
+			/* No name attributes. Is it a nested mount then?*/
+			for(mnt = nfs->nested_mounts; mnt; mnt = mnt->next) {
+				if (strncmp(data->saved_path, mnt->path, splen))
+					continue;
+				if (mnt->path[splen] != '/')
+					continue;
+				if (strcmp(mnt->path + splen + 1, entry->name))
+					continue;
+				attr = &mnt->attr;
+				break;
+			}
+		}
 
 		if (attr) {
 			nfsdirent->type = attr->type;
