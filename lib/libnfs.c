@@ -738,10 +738,54 @@ static void free_nfsfh(struct nfsfh *nfsfh)
 }
 
 
+struct mount_attr_cb {
+	int wait_count;
+	struct nfs_cb_data *data;
+};
+
+struct mount_attr_item_cb {
+	struct mount_attr_cb *ma;
+	struct nested_mounts *mnt;
+};
+
+static void nfs_mount_12_cb(struct rpc_context *rpc, int status, void *command_data, void *private_data)
+{
+	struct mount_attr_item_cb *ma_item = private_data;
+	struct mount_attr_cb *ma = ma_item->ma;
+	struct nfs_cb_data *data = ma->data;
+	struct nfs_context *nfs = data->nfs;
+	GETATTR3res *res;
+
+	assert(rpc->magic == RPC_CONTEXT_MAGIC);
+
+	if (status == RPC_STATUS_ERROR)
+		goto finished;
+	if (status == RPC_STATUS_CANCEL)
+		goto finished;
+
+	res = command_data;
+	if (res->status != NFS3_OK)
+		goto finished;
+
+	ma_item->mnt->attr = res->GETATTR3res_u.resok.obj_attributes;
+
+finished:
+	free(ma_item);
+	ma->wait_count--;
+	if (ma->wait_count > 0)
+		return;
+
+	free(ma);
+	data->cb(0, nfs, NULL, data->private_data);
+	free_nfs_cb_data(data);
+}
+
 static void nfs_mount_11_cb(struct rpc_context *rpc, int status, void *command_data, void *private_data)
 {
 	struct nfs_cb_data *data = private_data;
 	struct nfs_context *nfs = data->nfs;
+	struct mount_attr_cb *ma = NULL;
+	struct nested_mounts *mnt;
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
@@ -756,6 +800,46 @@ static void nfs_mount_11_cb(struct rpc_context *rpc, int status, void *command_d
 		return;
 	}
 
+	if (!nfs->nested_mounts)
+		goto finished;
+
+	/* nested mount traversals are best-effort only, so any
+	 * failures just means that we don't get traversal for that
+	 * particular mount. We do not fail the call from the application.
+	 */
+	ma = malloc(sizeof(struct mount_attr_cb));
+	if (ma == NULL)
+		goto finished;
+	memset(ma, 0, sizeof(struct mount_attr_cb));
+	ma->data = data;
+
+	for(mnt = nfs->nested_mounts; mnt; mnt = mnt->next) {
+		struct mount_attr_item_cb *ma_item;
+		struct GETATTR3args args;
+
+		ma_item = malloc(sizeof(struct mount_attr_item_cb));
+		if (ma_item == NULL)
+			goto finished;
+		ma_item->mnt = mnt;
+		ma_item->ma = ma;
+
+		memset(&args, 0, sizeof(GETATTR3args));
+		args.object = mnt->fh;
+
+		if (rpc_nfs3_getattr_async(rpc, nfs_mount_12_cb, &args,
+					   ma_item) != 0) {
+			free(ma_item);
+			continue;
+		}
+
+		ma->wait_count++;
+	}
+
+finished:
+	if (ma && ma->wait_count)
+		return;
+
+	free(ma);
 	data->cb(0, nfs, NULL, data->private_data);
 	free_nfs_cb_data(data);
 }
