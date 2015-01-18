@@ -3863,6 +3863,11 @@ static void nfs_opendir_cb(struct rpc_context *rpc, int status, void *command_da
 			struct nested_mounts *mnt;
 			int splen = strlen(data->saved_path);
 
+			/* A single '/' is a special case, treat it as
+			 * zero-length below. */
+			if (splen == 1)
+				splen = 0;
+
 			/* No name attributes. Is it a nested mount then?*/
 			for(mnt = nfs->nested_mounts; mnt; mnt = mnt->next) {
 				if (strncmp(data->saved_path, mnt->path, splen))
