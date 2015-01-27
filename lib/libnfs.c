@@ -197,7 +197,7 @@ struct nfs_cb_data {
        continue_func continue_cb;
        void *continue_data;
        void (*free_continue_data)(void *);
-       int continue_int;
+       uint64_t continue_int;
 
        struct nfs_fh3 fh;
 
@@ -1552,7 +1552,7 @@ static void nfs_lookup_path_getattr_cb(struct rpc_context *rpc, int status, void
 	nfs_lookup_path_async_internal(nfs, attr, data, &nfs->rootfh);
 }
 
-static int nfs_lookuppath_async(struct nfs_context *nfs, const char *path, int no_follow, nfs_cb cb, void *private_data, continue_func continue_cb, void *continue_data, void (*free_continue_data)(void *), int continue_int)
+static int nfs_lookuppath_async(struct nfs_context *nfs, const char *path, int no_follow, nfs_cb cb, void *private_data, continue_func continue_cb, void *continue_data, void (*free_continue_data)(void *), uint64_t continue_int)
 {
 	struct nfs_cb_data *data;
 	struct GETATTR3args args;
