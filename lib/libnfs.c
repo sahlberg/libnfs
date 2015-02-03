@@ -1624,9 +1624,9 @@ static int nfs_lookuppath_async(struct nfs_context *nfs, const char *path, int n
 			    && data->saved_path[strlen(mnt->path)] != '/')
 				continue;
 
-			free(data->saved_path);
-			data->saved_path = strdup(data->saved_path
+			data->saved_path = strdup(data->path
 						  + strlen(mnt->path));
+			free(data->path);
 			data->path = data->saved_path;
 			fh = &mnt->fh;
 			max_match_len = strlen(mnt->path);
