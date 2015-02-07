@@ -83,6 +83,15 @@ struct utimbuf {
 EXTERN int nfs_get_fd(struct nfs_context *nfs);
 EXTERN int nfs_which_events(struct nfs_context *nfs);
 EXTERN int nfs_service(struct nfs_context *nfs, int revents);
+
+/* Return the number of PDUs in the outqueue.
+ * This is the count of PDUs not yet written to the socket.
+ */
+EXTERN int nfs_outqueue_length(struct nfs_context *nfs);
+/* Return the number all in flight PDUs.
+ * This includes both the PDUs not yet written to the socket as well as
+ * all PDUs we have sent to the server but not yet received a reply to.
+ */
 EXTERN int nfs_queue_length(struct nfs_context *nfs);
 
 /*
@@ -190,6 +199,11 @@ EXTERN void nfs_set_tcp_syncnt(struct nfs_context *nfs, int v);
 EXTERN void nfs_set_uid(struct nfs_context *nfs, int uid);
 EXTERN void nfs_set_gid(struct nfs_context *nfs, int gid);
 EXTERN void nfs_set_readahead(struct nfs_context *nfs, uint32_t v);
+
+/* Optimize for sequentianl streaming reads. size is the amount
+ * of buffering.
+ */
+EXTERN int nfs_set_streaming_mode(struct nfsfh *nfsfh, uint32_t size);
 
 /*
  * MOUNT THE EXPORT

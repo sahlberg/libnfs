@@ -44,6 +44,15 @@ int rpc_get_fd(struct rpc_context *rpc);
 int rpc_which_events(struct rpc_context *rpc);
 int rpc_service(struct rpc_context *rpc, int revents);
 char *rpc_get_error(struct rpc_context *rpc);
+
+/* Return the number of PDUs in the outqueue.
+ * This is the count of PDUs not yet written to the socket.
+ */
+int rpc_outqueue_length(struct rpc_context *rpc);
+/* Return the number all in flight PDUs.
+ * This includes both the PDUs not yet written to the socket as well as
+ * all PDUs we have sent to the server but not yet received a reply to.
+ */
 int rpc_queue_length(struct rpc_context *rpc);
 
 /* Utility function to get an RPC context from a NFS context. Useful for doing low level NFSACL

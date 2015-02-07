@@ -137,9 +137,14 @@ static void wait_for_reply(struct rpc_context *rpc, struct sync_cb_data *cb_data
 static void wait_for_nfs_reply(struct nfs_context *nfs, struct sync_cb_data *cb_data)
 {
 	struct pollfd pfd;
+	int available;
 
-	while (!cb_data->is_finished) {
-
+	/* loop until the command has completed, and we have written all
+	 * queued PDUs to the socket, and we have read and processed all
+	 * data in the socket receive buffer.
+	 */
+	ioctl(nfs_get_fd(nfs), FIONREAD, &available);
+	while (!cb_data->is_finished || nfs_outqueue_length(nfs) || available) {
 		pfd.fd = nfs_get_fd(nfs);
 		pfd.events = nfs_which_events(nfs);
 		if (poll(&pfd, 1, -1) < 0) {
@@ -152,6 +157,7 @@ static void wait_for_nfs_reply(struct nfs_context *nfs, struct sync_cb_data *cb_
 			cb_data->status = -EIO;
 			break;
 		}
+		ioctl(nfs_get_fd(nfs), FIONREAD, &available);
 	}
 }
 

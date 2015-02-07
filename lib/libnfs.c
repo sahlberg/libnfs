@@ -108,12 +108,37 @@ struct nfs_readahead {
        uint32_t cur_ra;
 };
 
+/* Store streaming cache in blocks of this size */
+#define NFS_STREAM_BUF_SIZE (32768 * 4)
+/* Skip trying to streaming caching for reads greater than this */
+#define NFS_MAX_STREAMING_SIZE (1024 * 1024)
+
+#define BSS_UNUSED  0
+#define BSS_PENDING 1
+#define BSS_VALID   2
+struct nfs_streaming_block {
+       int state;
+       unsigned char *ptr;
+};
+
+struct nfs_streaming_read {
+       uint64_t next_offset;
+       int num_seq;
+
+       int num_blocks; /* number of buffer blocks */
+       uint64_t buf_offset;
+       struct nfs_streaming_block *blocks;
+       unsigned char *buf;
+};
+
 struct nfsfh {
        struct nfs_fh3 fh;
        int is_sync;
        int is_append;
        uint64_t offset;
-       struct nfs_readahead ra;
+
+       struct nfs_streaming_read *sr;
+       struct nfs_readahead ra; /* broken? */
 };
 
 struct nested_mounts {
@@ -229,6 +254,11 @@ void nfs_set_auth(struct nfs_context *nfs, struct AUTH *auth)
 int nfs_get_fd(struct nfs_context *nfs)
 {
 	return rpc_get_fd(nfs->rpc);
+}
+
+int nfs_outqueue_length(struct nfs_context *nfs)
+{
+	return rpc_outqueue_length(nfs->rpc);
 }
 
 int nfs_queue_length(struct nfs_context *nfs)
@@ -730,11 +760,51 @@ static void free_nfs_cb_data(struct nfs_cb_data *data)
 	free(data);
 }
 
+int nfs_set_streaming_mode(struct nfsfh *nfsfh, uint32_t size)
+{
+	struct nfs_streaming_read *sr;
+	int i;
+
+	sr = malloc(sizeof(struct nfs_streaming_read));
+	if (sr == NULL) {
+		return -1;
+	}
+	memset(sr, 0, sizeof(struct nfs_streaming_read));
+	sr->num_blocks = size / NFS_STREAM_BUF_SIZE;
+
+	sr->buf = malloc(sr->num_blocks * NFS_STREAM_BUF_SIZE);
+	if (sr->buf == NULL) {
+		free(sr);
+		return -1;
+	}
+	memset(sr->buf, 0, sr->num_blocks * NFS_STREAM_BUF_SIZE);
+
+	sr->blocks = malloc(sr->num_blocks * sizeof(struct nfs_streaming_block))
+;
+	if (sr->blocks == NULL) {
+		free(sr->buf);
+		free(sr);
+		return -1;
+	}
+	for (i = 0; i < sr->num_blocks; i++) {
+		sr->blocks[i].state = BSS_UNUSED;
+		sr->blocks[i].ptr = &sr->buf[i * NFS_STREAM_BUF_SIZE];
+	}
+	nfsfh->sr = sr;
+
+	return 0;
+}
+
 static void free_nfsfh(struct nfsfh *nfsfh)
 {
 	if (nfsfh->fh.data.data_val != NULL) {
 		free(nfsfh->fh.data.data_val);
 		nfsfh->fh.data.data_val = NULL;
+	}
+	if (nfsfh->sr != NULL) {
+		free(nfsfh->sr->blocks);
+		free(nfsfh->sr->buf);
+		free(nfsfh->sr);
 	}
 	free(nfsfh->ra.buf);
 	free(nfsfh);
@@ -2033,6 +2103,8 @@ static void nfs_open_cb(struct rpc_context *rpc, int status, void *command_data,
 	nfsfh->fh = data->fh;
 	data->fh.data.data_val = NULL;
 
+	nfs_set_streaming_mode(nfsfh, 200 * NFS_STREAM_BUF_SIZE);
+
 	data->cb(0, nfs, nfsfh, data->private_data);
 	free_nfs_cb_data(data);
 }
@@ -2252,9 +2324,193 @@ static void nfs_ra_invalidate(struct nfsfh *nfsfh) {
 	nfsfh->ra.cur_ra = NFS_BLKSIZE;
 }
 
+struct stream_cb_data {
+       uint64_t offset;
+       struct nfsfh *nfsfh;
+};
+
+static void nfs_stream_cb(struct rpc_context *rpc, int status, void *command_data, void *private_data)
+{
+	struct stream_cb_data *stream_data = private_data;
+	struct nfsfh *nfsfh = stream_data->nfsfh;
+	READ3res *res;
+	int i;
+
+	assert(rpc->magic == RPC_CONTEXT_MAGIC);
+
+	if (stream_data->offset < nfsfh->sr->buf_offset) {
+		free(stream_data);
+		return;
+	}
+	if (stream_data->offset >= nfsfh->sr->buf_offset + nfsfh->sr->num_blocks * NFS_STREAM_BUF_SIZE) {
+		free(stream_data);
+		return;
+	}
+
+	i = (stream_data->offset - nfsfh->sr->buf_offset) / NFS_STREAM_BUF_SIZE;
+	nfsfh->sr->blocks[i].state = BSS_UNUSED;
+	free(stream_data);
+
+	if (status == RPC_STATUS_ERROR) {
+		return;
+	}
+	if (status == RPC_STATUS_CANCEL) {
+		return;
+	}
+	if (status == RPC_STATUS_SUCCESS) {
+		res = command_data;
+		if (res->status != NFS3_OK) {
+			return;
+		}
+		if (res->READ3res_u.resok.count != NFS_STREAM_BUF_SIZE) {
+			return;
+		}
+		memcpy(nfsfh->sr->blocks[i].ptr,
+			res->READ3res_u.resok.data.data_val,
+			NFS_STREAM_BUF_SIZE);
+		nfsfh->sr->blocks[i].state = BSS_VALID;
+	}
+}
+
+static void prefetch_streaming_blocks(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t next_offset, int num_blocks)
+{
+	int i;
+
+	for (i = 0; i < nfsfh->sr->num_blocks && num_blocks; i++) {
+		struct stream_cb_data *stream_data;
+		READ3args args;
+
+		if (nfsfh->sr->blocks[i].state != BSS_UNUSED) {
+			continue;
+		}
+
+		stream_data = malloc(sizeof(struct stream_cb_data));
+		if (stream_data == NULL) {
+			return;
+		}
+		stream_data->offset = i * NFS_STREAM_BUF_SIZE + nfsfh->sr->buf_offset;
+		stream_data->nfsfh = nfsfh;
+
+		nfs_fill_READ3args(&args, nfsfh, stream_data->offset, NFS_STREAM_BUF_SIZE);
+		if (rpc_nfs3_read_async(nfs->rpc, nfs_stream_cb, &args, stream_data) != 0) {
+			free(stream_data);
+			return;
+		}
+
+		nfsfh->sr->blocks[i].state = BSS_PENDING;
+		num_blocks--;
+	}
+}
+
 static int nfs_pread_async_internal(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t offset, uint64_t count, nfs_cb cb, void *private_data, int update_pos)
 {
 	struct nfs_cb_data *data;
+
+	if (nfsfh->sr != NULL && count <= NFS_MAX_STREAMING_SIZE) {
+		int i, len, remaining, first_block, last_block;
+		unsigned char *buf, *pos;
+
+		/* track sequential access */
+		if (offset == nfsfh->sr->next_offset) {
+			nfsfh->sr->num_seq++;
+		} else {
+			if (nfsfh->sr->blocks[0].state != BSS_UNUSED) {
+				for (i = 0; i < nfsfh->sr->num_blocks; i++) {
+					nfsfh->sr->blocks[i].state = BSS_UNUSED;
+				}
+			}
+			nfsfh->sr->num_seq = 0;
+		}
+		nfsfh->sr->next_offset = offset + count;
+
+		if (nfsfh->sr->num_seq < 5) {
+			goto end_of_streaming;
+		}
+
+		/* If we do not have any cached data yet, reset buffer
+		 * offset to point slightly ahead of the current read.
+		 */
+		if (nfsfh->sr->blocks[0].state == BSS_UNUSED) {
+			nfsfh->sr->buf_offset = (offset / NFS_STREAM_BUF_SIZE + 1) * NFS_STREAM_BUF_SIZE ;
+		}
+
+		/* Prune head blocks we have read past */
+		while (nfsfh->sr->blocks[0].state != BSS_UNUSED &&
+			offset >= (nfsfh->sr->buf_offset + NFS_STREAM_BUF_SIZE)) {
+			unsigned char *ptr;
+
+			ptr = nfsfh->sr->blocks[0].ptr;
+			memmove(&nfsfh->sr->blocks[0], &nfsfh->sr->blocks[1],
+				(nfsfh->sr->num_blocks - 1)
+				* sizeof(struct nfs_streaming_block));
+			nfsfh->sr->buf_offset += NFS_STREAM_BUF_SIZE;
+			nfsfh->sr->blocks[nfsfh->sr->num_blocks - 1].state = BSS_UNUSED;
+			nfsfh->sr->blocks[nfsfh->sr->num_blocks - 1].ptr = ptr;
+		}
+
+		/* try to prefetch four more blocks */
+		prefetch_streaming_blocks(nfs, nfsfh, offset + count, 4);
+
+		/* can we service the request straight out of cache ? */
+		if (offset < nfsfh->sr->buf_offset) {
+			goto end_of_streaming;
+		}
+		first_block = (offset - nfsfh->sr->buf_offset) / NFS_STREAM_BUF_SIZE;
+		if (first_block >= nfsfh->sr->num_blocks) {
+			goto end_of_streaming;
+		}
+
+		if (offset + count > nfsfh->sr->buf_offset + nfsfh->sr->num_blocks * NFS_STREAM_BUF_SIZE) {
+			goto end_of_streaming;
+		}
+		last_block = (offset + count - nfsfh->sr->buf_offset - 1) / NFS_STREAM_BUF_SIZE;
+		if (last_block >= nfsfh->sr->num_blocks) {
+			goto end_of_streaming;
+		}
+		if (last_block < first_block) {
+			goto end_of_streaming;
+		}
+		for (i = first_block; i <= last_block; i++) {
+			if (nfsfh->sr->blocks[i].state != BSS_VALID) {
+				goto end_of_streaming;
+			}
+		}
+		if (first_block == last_block) {
+			if (update_pos) {
+				nfsfh->offset += count;
+			}
+			cb(count, nfs, &nfsfh->sr->blocks[first_block].ptr[offset % NFS_STREAM_BUF_SIZE], private_data);
+			return 0;
+		}
+
+		buf = malloc(count);
+		if (buf == NULL) {
+			goto end_of_streaming;
+		}
+		remaining = count;
+		pos = buf;
+		len = NFS_STREAM_BUF_SIZE - offset % NFS_STREAM_BUF_SIZE;
+		if (len > count) {
+			len = count;
+		}
+		memcpy(pos, &nfsfh->sr->blocks[first_block].ptr[offset % NFS_STREAM_BUF_SIZE], len);
+		remaining -= len;
+		pos += len;
+
+		for (i = first_block + 1; remaining; i++) {
+			len = (remaining >= NFS_STREAM_BUF_SIZE) ? NFS_STREAM_BUF_SIZE : remaining;
+			memcpy(pos, &nfsfh->sr->blocks[i].ptr[0], len);
+			remaining -= len;
+			pos += len;
+		}
+		if (update_pos) {
+			nfsfh->offset += count;
+		}
+		cb(count, nfs, buf, private_data);
+		free(buf);
+		return 0;
+	}
+end_of_streaming:
 
 	data = malloc(sizeof(struct nfs_cb_data));
 	if (data == NULL) {

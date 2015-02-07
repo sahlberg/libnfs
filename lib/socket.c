@@ -755,7 +755,7 @@ struct sockaddr *rpc_get_recv_sockaddr(struct rpc_context *rpc)
 	return (struct sockaddr *)&rpc->udp_src;
 }
 
-int rpc_queue_length(struct rpc_context *rpc)
+int rpc_outqueue_length(struct rpc_context *rpc)
 {
 	int i=0;
 	struct rpc_pdu *pdu;
@@ -766,6 +766,19 @@ int rpc_queue_length(struct rpc_context *rpc)
 	for(pdu = rpc->outqueue.head; pdu; pdu = pdu->next) {
 		i++;
 	}
+
+	return i;
+}
+
+int rpc_queue_length(struct rpc_context *rpc)
+{
+	int i=0;
+	struct rpc_pdu *pdu;
+	unsigned int n;
+
+	assert(rpc->magic == RPC_CONTEXT_MAGIC);
+
+	i = rpc_outqueue_length(rpc);
 
 	for (n = 0; n < HASHES; n++) {
 		struct rpc_queue *q = &rpc->waitpdu[n];

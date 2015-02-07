@@ -48,6 +48,7 @@ nfs_open
 nfs_open_async
 nfs_opendir
 nfs_opendir_async
+nfs_outqueue_length
 nfs_parse_url_full
 nfs_parse_url_dir
 nfs_parse_url_incomplete
@@ -56,6 +57,7 @@ nfs_pread
 nfs_pread_async
 nfs_pwrite
 nfs_pwrite_async
+nfs_queue_length
 nfs_read
 nfs_read_async
 nfs_readdir
@@ -71,6 +73,7 @@ nfs_set_gid
 nfs_set_tcp_syncnt
 nfs_set_uid
 nfs_set_readahead
+nfs_set_streaming_mode
 nfs_stat
 nfs_stat_async
 nfs_stat64
@@ -205,6 +208,8 @@ rpc_nsm1_unmon_async
 rpc_nsm1_unmonall_async
 rpc_nsm1_simucrash_async
 rpc_nsm1_notify_async
+rpc_outqueue_length
+rpc_queue_length
 rpc_rquota1_null_async
 rpc_rquota1_getquota_async
 rpc_rquota1_getactivequota_async
