@@ -2448,8 +2448,8 @@ static int nfs_pread_async_internal(struct nfs_context *nfs, struct nfsfh *nfsfh
 			nfsfh->sr->blocks[nfsfh->sr->num_blocks - 1].ptr = ptr;
 		}
 
-		/* try to prefetch four more blocks */
-		prefetch_streaming_blocks(nfs, nfsfh, offset + count, 4);
+		/* try to prefetch to more blocks */
+		prefetch_streaming_blocks(nfs, nfsfh, offset + count, 2);
 
 		/* can we service the request straight out of cache ? */
 		if (offset < nfsfh->sr->buf_offset) {
