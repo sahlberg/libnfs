@@ -47,13 +47,13 @@ int main(int argc, char *argv[])
 	printf("Read one 32kb chunk every %d us\n", (int)tpc);
 	for (offset = 0; offset < st.nfs_size; offset += 32768) {
 		gettimeofday(&t1, NULL);
-		nfs_read(nfs, nfsfh, 8192, buf);
+		nfs_read(nfs, nfsfh, 32768, buf);
 		gettimeofday(&t2, NULL);
 		delta = t2.tv_sec * 1000000LL + t2.tv_usec -
 		  t1.tv_sec * 1000000LL - t1.tv_usec;
 		printf("Read latency:%lld us\n", (long long)delta);
 		if (tpc > delta) {
-			printf("Sleep for %d us\n", (int)(tpc - delta));
+			//printf("Sleep for %d us\n", (int)(tpc - delta));
 			usleep(tpc - delta);
 		}
 	}
