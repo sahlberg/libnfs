@@ -2103,8 +2103,6 @@ static void nfs_open_cb(struct rpc_context *rpc, int status, void *command_data,
 	nfsfh->fh = data->fh;
 	data->fh.data.data_val = NULL;
 
-	nfs_set_streaming_mode(nfsfh, 200 * NFS_STREAM_BUF_SIZE);
-
 	data->cb(0, nfs, nfsfh, data->private_data);
 	free_nfs_cb_data(data);
 }
@@ -2374,12 +2372,24 @@ static void nfs_stream_cb(struct rpc_context *rpc, int status, void *command_dat
 
 static void prefetch_streaming_blocks(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t next_offset, int num_blocks)
 {
-	int i;
+	int i, num_pending = 0;
 
 	for (i = 0; i < nfsfh->sr->num_blocks && num_blocks; i++) {
 		struct stream_cb_data *stream_data;
 		READ3args args;
 
+		/*
+		 * BSS_PENDING means we have a request for prefetch in flight.
+		 * We don't want an unlimited amount of requests in flight
+		 * since it can cause wild latency spikes while initially
+		 * filling the prefetch buffer.
+		 */
+		if (nfsfh->sr->blocks[i].state == BSS_PENDING) {
+			num_pending++;
+		}
+		if (num_pending >= num_blocks) {
+			continue;
+		}
 		if (nfsfh->sr->blocks[i].state != BSS_UNUSED) {
 			continue;
 		}

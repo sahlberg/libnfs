@@ -18,6 +18,11 @@ int main(int argc, char *argv[])
 	struct timeval t1, t2;
 	uint64_t delta, tpc;
 
+	if (argc != 3) {
+		fprintf(stderr, "Usage: nfs-stream <nfs-url> <bytes-per-second>\n");
+		exit(1);
+	}
+
 	nfs = nfs_init_context();
 	url = nfs_parse_url_full(nfs, argv[1]);
 	if (!url) {
@@ -36,6 +41,8 @@ int main(int argc, char *argv[])
 			nfs_get_error(nfs));
 		exit(1);
 	}
+	nfs_set_streaming_mode(nfsfh, 5 * 1024 * 1024);
+
 	if (nfs_fstat64(nfs, nfsfh, &st)) {
 		fprintf(stderr, "Failed to stat file %s: %s\n",
 			url->file,
