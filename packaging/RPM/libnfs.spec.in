@@ -108,6 +108,16 @@ Utility programs for LibNFS
 %{_mandir}/man1/nfs-ls.1.gz
 
 %changelog
+* Mon Feb 9 2015 : Version 1.9.7
+ - Auto-traverse mounts. With this option (default to on) libnfs will
+   autodiscover and handle any nested submounts.
+ - Remove nfs_get_current_offset. Applications should use seek instead of this function.
+ - Add umask() support.
+ - Change set_tcp_sockopt() to be static.
+ - Android fix for nfs-ls
+ - Make S_IFLNK available on windows.
+ - Fix a use after free.
+ - Fix a bug where truncate() treated offset as 32bit.
 * Tue Nov 25 2014 : Version 1.9.6
  - Add O_TRUNC support for nfs_create
  - Handle OOM during create
