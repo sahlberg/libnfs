@@ -2433,7 +2433,7 @@ static int nfs_pread_async_internal(struct nfs_context *nfs, struct nfsfh *nfsfh
 		}
 		nfsfh->sr->next_offset = offset + count;
 
-		if (nfsfh->sr->num_seq < 5) {
+		if (nfsfh->sr->num_seq < 10) {
 			goto end_of_streaming;
 		}
 
