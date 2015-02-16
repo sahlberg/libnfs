@@ -210,14 +210,14 @@ int main(int argc, char *argv[])
 	char *url = NULL;
 	char *mnt = NULL;
 	char *server = NULL, *export = NULL, *strp;
-	int fuse_nfs_argc = 5;
+	int fuse_nfs_argc = 6;
 	char *fuse_nfs_argv[16] = {
 		"fuse-nfs",
 		"<export>",
 		"-oallow_other",
 		"-odefault_permissions",
 		"-omax_write=32768",
-		NULL,
+		"-s",
 		NULL,
 		NULL,
 		NULL,
