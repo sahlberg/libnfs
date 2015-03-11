@@ -74,7 +74,7 @@ AC_ARG_ENABLE([werror], [AS_HELP_STRING([--disable-werror],
               [Disables building with -Werror by default])])
 
 if test "$ac_cv_prog_gcc" = yes; then
-   WARN_CFLAGS="-Wall -Werror -Wshadow -Wno-write-strings -Wstrict-prototypes -Wpointer-arith -Wcast-align -Wno-strict-aliasing"
+   WARN_CFLAGS="-Wall -Wshadow -Wno-write-strings -Wstrict-prototypes -Wpointer-arith -Wcast-align -Wno-strict-aliasing"
    if test "x$enable_werror" != "xno"; then
        WARN_CFLAGS="$WARN_CFLAGS -Werror"
    fi
