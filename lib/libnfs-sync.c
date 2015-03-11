@@ -1463,12 +1463,12 @@ struct exportnode *mount_getexports(const char *server)
 	return cb_data.return_data;
 }
 
-void mount_free_export_list(struct exportnode *exports)
+void mount_free_export_list(struct exportnode *exp)
 {
 	struct exportnode *tmp;
 
-	while ((tmp = exports)) {
-		exports = exports->ex_next;
+	while ((tmp = exp)) {
+		exp = exp->ex_next;
 		free(tmp->ex_dir);
 		free(tmp);
 	}

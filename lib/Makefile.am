@@ -1,3 +1,5 @@
+AM_CFLAGS=$(WARN_CFLAGS)
+
 lib_LTLIBRARIES = libnfs.la
 
 libnfs_la_CPPFLAGS = -I$(abs_top_srcdir)/include \

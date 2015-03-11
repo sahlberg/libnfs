@@ -76,7 +76,7 @@ struct rpc_context *rpc_init_context(void)
 		free(rpc);
 		return NULL;
 	}
-	rpc->xid = salt + time(NULL) + getpid() << 16;
+	rpc->xid = salt + time(NULL) + (getpid() << 16);
 	salt += 0x01000000;
 	rpc->fd = -1;
 	rpc->tcp_syncnt = RPC_PARAM_UNDEFINED;
@@ -142,7 +142,7 @@ void rpc_set_gid(struct rpc_context *rpc, int gid) {
 	rpc_set_uid_gid(rpc, rpc->uid, gid);
 }
 
-void rpc_set_error(struct rpc_context *rpc, char *error_string, ...)
+void rpc_set_error(struct rpc_context *rpc, const char *error_string, ...)
 {
         va_list ap;
 	char *old_error_string = rpc->error_string;
@@ -166,15 +166,15 @@ char *rpc_get_error(struct rpc_context *rpc)
 	return rpc->error_string;
 }
 
-void rpc_error_all_pdus(struct rpc_context *rpc, char *error)
+void rpc_error_all_pdus(struct rpc_context *rpc, const char *error)
 {
-	struct rpc_pdu *pdu, *next;
+	struct rpc_pdu *pdu;
 	unsigned int i;
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
 	while ((pdu = rpc->outqueue.head) != NULL) {
-		pdu->cb(rpc, RPC_STATUS_ERROR, error, pdu->private_data);
+          pdu->cb(rpc, RPC_STATUS_ERROR, (void *)error, pdu->private_data);
 		rpc->outqueue.head = pdu->next;
 		rpc_free_pdu(rpc, pdu);
 	}
@@ -184,7 +184,8 @@ void rpc_error_all_pdus(struct rpc_context *rpc, char *error)
 		struct rpc_queue *q = &rpc->waitpdu[i];
 
 		while((pdu = q->head) != NULL) {
-			pdu->cb(rpc, RPC_STATUS_ERROR, error, pdu->private_data);
+                  pdu->cb(rpc, RPC_STATUS_ERROR, (void *)error,
+                          pdu->private_data);
 			q->head = pdu->next;
 			rpc_free_pdu(rpc, pdu);
 		}

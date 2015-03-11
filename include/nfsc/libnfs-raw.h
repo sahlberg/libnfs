@@ -115,7 +115,7 @@ int rpc_connect_program_async(struct rpc_context *rpc, const char *server, int p
  * When disconnecting a connection in flight. All commands in flight will be called with the callback
  * and status RPC_STATUS_ERROR. Data will be the error string for the disconnection.
  */
-int rpc_disconnect(struct rpc_context *rpc, char *error);
+int rpc_disconnect(struct rpc_context *rpc, const char *error);
 
 
 /*

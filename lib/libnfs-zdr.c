@@ -516,7 +516,7 @@ struct AUTH *authnone_create(void)
 	return auth;
 }
 
-struct AUTH *libnfs_authunix_create(char *host, uint32_t uid, uint32_t gid, uint32_t len, uint32_t *groups)
+struct AUTH *libnfs_authunix_create(const char *host, uint32_t uid, uint32_t gid, uint32_t len, uint32_t *groups)
 {
 	struct AUTH *auth;
 	int size;

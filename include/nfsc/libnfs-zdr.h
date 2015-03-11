@@ -278,7 +278,7 @@ bool_t libnfs_zdr_replymsg(struct rpc_context *rpc, ZDR *zdrs, struct rpc_msg *m
 struct AUTH *libnfs_authnone_create(void);
 
 #define authunix_create libnfs_authunix_create
-struct AUTH *libnfs_authunix_create(char *host, uint32_t uid, uint32_t gid, uint32_t len, uint32_t *groups);
+struct AUTH *libnfs_authunix_create(const char *host, uint32_t uid, uint32_t gid, uint32_t len, uint32_t *groups);
 
 #define authunix_create_default libnfs_authunix_create_default
 struct AUTH *libnfs_authunix_create_default(void);

@@ -104,7 +104,7 @@ struct nfs_readahead {
        uint64_t buf_offset;
        uint64_t buf_count;
        time_t buf_ts;
-       void *buf;
+       char *buf;
        uint32_t cur_ra;
 };
 
@@ -251,7 +251,7 @@ char *nfs_get_error(struct nfs_context *nfs)
 	return rpc_get_error(nfs->rpc);
 };
 
-static int nfs_set_context_args(struct nfs_context *nfs, char *arg, char *val)
+static int nfs_set_context_args(struct nfs_context *nfs, const char *arg, const char *val)
 {
 	if (!strcmp(arg, "tcp-syncnt")) {
 		rpc_set_tcp_syncnt(nfs_get_rpc_context(nfs), atoi(val));
@@ -560,7 +560,7 @@ static void rpc_connect_program_3_cb(struct rpc_context *rpc, int status, void *
 	struct rpc_cb_data *data = private_data;
 	struct pmap3_string_result *gar;
 	uint32_t rpc_port = 0;
-	unsigned char *ptr;
+	char *ptr;
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
@@ -1346,7 +1346,7 @@ static int nfs_lookup_path_async_internal(struct nfs_context *nfs, fattr3 *attr,
 	slash = strchr(path, '/');
 
 	if (attr && attr->type == NF3LNK && (!data->no_follow || *path != '\0')) {
-		READLINK3args args;
+		READLINK3args rl_args;
 
 		if (data->link_count++ >= MAX_LINK_COUNT) {
 			data->cb(-ELOOP, nfs, "Too many levels of symbolic links", data->private_data);
@@ -1354,9 +1354,9 @@ static int nfs_lookup_path_async_internal(struct nfs_context *nfs, fattr3 *attr,
 			return -1;
 		}
 
-		args.symlink = *fh;
+		rl_args.symlink = *fh;
 
-		if (rpc_nfs3_readlink_async(nfs->rpc, nfs_lookup_path_2_cb, &args, data) != 0) {
+		if (rpc_nfs3_readlink_async(nfs->rpc, nfs_lookup_path_2_cb, &rl_args, data) != 0) {
 			rpc_set_error(nfs->rpc, "RPC error: Failed to send READLINK call for %s", data->path);
 			data->cb(-ENOMEM, nfs, rpc_get_error(nfs->rpc), data->private_data);
 			free_nfs_cb_data(data);
@@ -2225,6 +2225,7 @@ static void nfs_pread_mcb(struct rpc_context *rpc, int status, void *command_dat
 		cb_err = data->max_offset - data->org_offset;
 		cb_data = data->buffer + (data->org_offset - data->offset);
 	} else {
+		res = command_data;
 		cb_err = res->READ3res_u.resok.count;
 		cb_data = res->READ3res_u.resok.data.data_val;
 	}

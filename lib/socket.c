@@ -273,7 +273,7 @@ static int rpc_read_from_socket(struct rpc_context *rpc)
 
 	pdu_size = rpc_get_pdu_size(rpc->inbuf);
 	if (rpc->insize < pdu_size) {
-		unsigned char *buf;
+		char *buf;
 
 		buf = malloc(pdu_size);
 		if (buf == NULL) {
@@ -592,7 +592,7 @@ int rpc_connect_async(struct rpc_context *rpc, const char *server, int port, rpc
 	return 0;
 }
 
-int rpc_disconnect(struct rpc_context *rpc, char *error)
+int rpc_disconnect(struct rpc_context *rpc, const char *error)
 {
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 

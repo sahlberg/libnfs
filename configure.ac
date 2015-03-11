@@ -1,8 +1,11 @@
 AC_PREREQ(2.50)
 AC_INIT([libnfs], [1.9.7], [ronniesahlberg@gmail.com])
 AC_CONFIG_HEADERS([config.h])
-AM_INIT_AUTOMAKE([foreign])
+AM_INIT_AUTOMAKE([-Wall -Werror foreign])
 AC_CANONICAL_HOST
+AC_CONFIG_MACRO_DIR([m4])
+m4_pattern_allow([AM_PROG_AR])
+AM_PROG_AR
 
 # Work around stupid autoconf default cflags. pt 1
 SAVE_CFLAGS="x${CFLAGS}"
@@ -66,6 +69,17 @@ fi
 fi
 
 AC_SUBST(MAYBE_EXAMPLES)
+
+AC_ARG_ENABLE([werror], [AS_HELP_STRING([--disable-werror],
+              [Disables building with -Werror by default])])
+
+if test "$ac_cv_prog_gcc" = yes; then
+   WARN_CFLAGS="-Wall -Werror -Wshadow -Wno-write-strings -Wstrict-prototypes -Wpointer-arith -Wcast-align -Wno-strict-aliasing"
+   if test "x$enable_werror" != "xno"; then
+       WARN_CFLAGS="$WARN_CFLAGS -Werror"
+   fi
+fi
+AC_SUBST(WARN_CFLAGS)
 
 
 case $host in
