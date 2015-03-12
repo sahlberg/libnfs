@@ -6,7 +6,7 @@ Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
 
 1. Redistributions of source code must retain the above copyright notice, this
-   list of conditions and the following disclaimer. 
+   list of conditions and the following disclaimer.
 2. Redistributions in binary form must reproduce the above copyright notice,
    this list of conditions and the following disclaimer in the documentation
    and/or other materials provided with the distribution.
@@ -23,7 +23,7 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 The views and conclusions contained in the software and documentation are those
-of the authors and should not be interpreted as representing official policies, 
+of the authors and should not be interpreted as representing official policies,
 either expressed or implied, of the FreeBSD Project.
 */
 
@@ -38,9 +38,6 @@ either expressed or implied, of the FreeBSD Project.
 uint32_t
 zdr_rquotastat (ZDR *zdrs, rquotastat *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
-
 	 if (!zdr_enum (zdrs, (enum_t *) objp))
 		 return FALSE;
 	return TRUE;
@@ -49,9 +46,6 @@ zdr_rquotastat (ZDR *zdrs, rquotastat *objp)
 uint32_t
 zdr_exportpath (ZDR *zdrs, exportpath *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
-
 	 if (!zdr_string (zdrs, objp, RQUOTAPATHLEN))
 		 return FALSE;
 	return TRUE;
@@ -60,9 +54,6 @@ zdr_exportpath (ZDR *zdrs, exportpath *objp)
 uint32_t
 zdr_GETQUOTA1args (ZDR *zdrs, GETQUOTA1args *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
-
 	 if (!zdr_exportpath (zdrs, &objp->export))
 		 return FALSE;
 	 if (!zdr_int (zdrs, &objp->uid))
@@ -73,9 +64,6 @@ zdr_GETQUOTA1args (ZDR *zdrs, GETQUOTA1args *objp)
 uint32_t
 zdr_quotatype (ZDR *zdrs, quotatype *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
-
 	 if (!zdr_enum (zdrs, (enum_t *) objp))
 		 return FALSE;
 	return TRUE;
@@ -84,9 +72,6 @@ zdr_quotatype (ZDR *zdrs, quotatype *objp)
 uint32_t
 zdr_GETQUOTA2args (ZDR *zdrs, GETQUOTA2args *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
-
 	 if (!zdr_exportpath (zdrs, &objp->export))
 		 return FALSE;
 	 if (!zdr_quotatype (zdrs, &objp->type))
@@ -101,7 +86,6 @@ zdr_GETQUOTA1res_ok (ZDR *zdrs, GETQUOTA1res_ok *objp)
 {
 	register int32_t *buf;
 	buf = NULL;
-
 
 	if (zdrs->x_op == ZDR_ENCODE) {
 		buf = ZDR_INLINE (zdrs, 10 * BYTES_PER_ZDR_UNIT);
@@ -203,9 +187,6 @@ zdr_GETQUOTA1res_ok (ZDR *zdrs, GETQUOTA1res_ok *objp)
 uint32_t
 zdr_GETQUOTA1res (ZDR *zdrs, GETQUOTA1res *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
-
 	 if (!zdr_rquotastat (zdrs, &objp->status))
 		 return FALSE;
 	switch (objp->status) {
