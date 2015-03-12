@@ -70,14 +70,23 @@ fi
 
 AC_SUBST(MAYBE_EXAMPLES)
 
-AC_ARG_ENABLE([werror], [AS_HELP_STRING([--disable-werror],
-              [Disables building with -Werror by default])])
+
+WERROR_CFLAGS=""
+AC_MSG_CHECKING(whether to set -Werror)
+AC_ARG_ENABLE(werror, [  --disable-werror  do not treat warnings as errors during build],
+[ case "${enableval}" in
+  no)
+    AC_MSG_RESULT(no)
+    ;;
+  *)
+    AC_MSG_RESULT(yes)
+    WERROR_CFLAGS="-Werror"
+    ;;
+  esac ],
+)
 
 if test "$ac_cv_prog_gcc" = yes; then
-   WARN_CFLAGS="-Wall -Wshadow -Wno-write-strings -Wstrict-prototypes -Wpointer-arith -Wcast-align -Wno-strict-aliasing"
-   if test "x$enable_werror" != "xno"; then
-       WARN_CFLAGS="$WARN_CFLAGS -Werror"
-   fi
+   WARN_CFLAGS="-Wall -Wshadow -Wno-write-strings -Wstrict-prototypes -Wpointer-arith -Wcast-align -Wno-strict-aliasing $WERROR_CFLAGS"
 fi
 AC_SUBST(WARN_CFLAGS)
 
