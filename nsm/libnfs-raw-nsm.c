@@ -6,7 +6,7 @@ Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
 
 1. Redistributions of source code must retain the above copyright notice, this
-   list of conditions and the following disclaimer. 
+   list of conditions and the following disclaimer.
 2. Redistributions in binary form must reproduce the above copyright notice,
    this list of conditions and the following disclaimer in the documentation
    and/or other materials provided with the distribution.
@@ -23,7 +23,7 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 The views and conclusions contained in the software and documentation are those
-of the authors and should not be interpreted as representing official policies, 
+of the authors and should not be interpreted as representing official policies,
 either expressed or implied, of the FreeBSD Project.
 */
 
@@ -38,9 +38,6 @@ either expressed or implied, of the FreeBSD Project.
 uint32_t
 zdr_nsmstat1 (ZDR *zdrs, nsmstat1 *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
-
 	 if (!zdr_enum (zdrs, (enum_t *) objp))
 		 return FALSE;
 	return TRUE;
@@ -49,9 +46,6 @@ zdr_nsmstat1 (ZDR *zdrs, nsmstat1 *objp)
 uint32_t
 zdr_nsm_my_id (ZDR *zdrs, nsm_my_id *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
-
 	 if (!zdr_string (zdrs, &objp->my_name, NSM_MAXSTRLEN))
 		 return FALSE;
 	 if (!zdr_int (zdrs, &objp->my_prog))
@@ -66,9 +60,6 @@ zdr_nsm_my_id (ZDR *zdrs, nsm_my_id *objp)
 uint32_t
 zdr_nsm_mon_id (ZDR *zdrs, nsm_mon_id *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
-
 	 if (!zdr_string (zdrs, &objp->mon_name, NSM_MAXSTRLEN))
 		 return FALSE;
 	 if (!zdr_nsm_my_id (zdrs, &objp->my_id))
@@ -79,9 +70,6 @@ zdr_nsm_mon_id (ZDR *zdrs, nsm_mon_id *objp)
 uint32_t
 zdr_NSM1_STATres (ZDR *zdrs, NSM1_STATres *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
-
 	 if (!zdr_nsmstat1 (zdrs, &objp->res))
 		 return FALSE;
 	 if (!zdr_int (zdrs, &objp->state))
@@ -92,9 +80,6 @@ zdr_NSM1_STATres (ZDR *zdrs, NSM1_STATres *objp)
 uint32_t
 zdr_NSM1_STATargs (ZDR *zdrs, NSM1_STATargs *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
-
 	 if (!zdr_string (zdrs, &objp->mon_name, NSM_MAXSTRLEN))
 		 return FALSE;
 	return TRUE;
@@ -103,9 +88,6 @@ zdr_NSM1_STATargs (ZDR *zdrs, NSM1_STATargs *objp)
 uint32_t
 zdr_NSM1_MONres (ZDR *zdrs, NSM1_MONres *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
-
 	 if (!zdr_nsmstat1 (zdrs, &objp->res))
 		 return FALSE;
 	 if (!zdr_int (zdrs, &objp->state))
@@ -116,10 +98,6 @@ zdr_NSM1_MONres (ZDR *zdrs, NSM1_MONres *objp)
 uint32_t
 zdr_NSM1_MONargs (ZDR *zdrs, NSM1_MONargs *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
-
-	int i;
 	 if (!zdr_nsm_mon_id (zdrs, &objp->mon_id))
 		 return FALSE;
 	 if (!zdr_opaque (zdrs, objp->priv, 16))
@@ -130,9 +108,6 @@ zdr_NSM1_MONargs (ZDR *zdrs, NSM1_MONargs *objp)
 uint32_t
 zdr_NSM1_UNMONres (ZDR *zdrs, NSM1_UNMONres *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
-
 	 if (!zdr_int (zdrs, &objp->state))
 		 return FALSE;
 	return TRUE;
@@ -141,9 +116,6 @@ zdr_NSM1_UNMONres (ZDR *zdrs, NSM1_UNMONres *objp)
 uint32_t
 zdr_NSM1_UNMONargs (ZDR *zdrs, NSM1_UNMONargs *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
-
 	 if (!zdr_nsm_mon_id (zdrs, &objp->mon_id))
 		 return FALSE;
 	return TRUE;
@@ -152,9 +124,6 @@ zdr_NSM1_UNMONargs (ZDR *zdrs, NSM1_UNMONargs *objp)
 uint32_t
 zdr_NSM1_UNMONALLres (ZDR *zdrs, NSM1_UNMONALLres *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
-
 	 if (!zdr_int (zdrs, &objp->state))
 		 return FALSE;
 	return TRUE;
@@ -163,9 +132,6 @@ zdr_NSM1_UNMONALLres (ZDR *zdrs, NSM1_UNMONALLres *objp)
 uint32_t
 zdr_NSM1_UNMONALLargs (ZDR *zdrs, NSM1_UNMONALLargs *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
-
 	 if (!zdr_nsm_my_id (zdrs, &objp->my_id))
 		 return FALSE;
 	return TRUE;
@@ -174,9 +140,6 @@ zdr_NSM1_UNMONALLargs (ZDR *zdrs, NSM1_UNMONALLargs *objp)
 uint32_t
 zdr_NSM1_NOTIFYargs (ZDR *zdrs, NSM1_NOTIFYargs *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
-
 	 if (!zdr_string (zdrs, &objp->mon_name, NSM_MAXSTRLEN))
 		 return FALSE;
 	 if (!zdr_int (zdrs, &objp->state))

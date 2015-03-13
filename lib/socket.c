@@ -759,7 +759,6 @@ int rpc_queue_length(struct rpc_context *rpc)
 {
 	int i=0;
 	struct rpc_pdu *pdu;
-	unsigned int n;
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 

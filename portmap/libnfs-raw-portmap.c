@@ -6,7 +6,7 @@ Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
 
 1. Redistributions of source code must retain the above copyright notice, this
-   list of conditions and the following disclaimer. 
+   list of conditions and the following disclaimer.
 2. Redistributions in binary form must reproduce the above copyright notice,
    this list of conditions and the following disclaimer in the documentation
    and/or other materials provided with the distribution.
@@ -23,7 +23,7 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 The views and conclusions contained in the software and documentation are those
-of the authors and should not be interpreted as representing official policies, 
+of the authors and should not be interpreted as representing official policies,
 either expressed or implied, of the FreeBSD Project.
 */
 
@@ -40,7 +40,6 @@ zdr_pmap2_mapping (ZDR *zdrs, pmap2_mapping *objp)
 {
 	register int32_t *buf;
 	buf = NULL;
-
 
 	if (zdrs->x_op == ZDR_ENCODE) {
 		buf = ZDR_INLINE (zdrs, 4 * BYTES_PER_ZDR_UNIT);
@@ -97,7 +96,6 @@ zdr_pmap2_call_args (ZDR *zdrs, pmap2_call_args *objp)
 	register int32_t *buf;
 	buf = NULL;
 
-
 	if (zdrs->x_op == ZDR_ENCODE) {
 		buf = ZDR_INLINE (zdrs, 3 * BYTES_PER_ZDR_UNIT);
 		if (buf == NULL) {
@@ -150,9 +148,6 @@ zdr_pmap2_call_args (ZDR *zdrs, pmap2_call_args *objp)
 uint32_t
 zdr_pmap2_call_result (ZDR *zdrs, pmap2_call_result *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
-
 	 if (!zdr_u_int (zdrs, &objp->port))
 		 return FALSE;
 	 if (!zdr_bytes (zdrs, (char **)&objp->res.res_val, (u_int *) &objp->res.res_len, ~0))
@@ -163,9 +158,6 @@ zdr_pmap2_call_result (ZDR *zdrs, pmap2_call_result *objp)
 uint32_t
 zdr_pmap2_mapping_list (ZDR *zdrs, pmap2_mapping_list *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
-
 	 if (!zdr_pmap2_mapping (zdrs, &objp->map))
 		 return FALSE;
 	 if (!zdr_pointer (zdrs, (char **)&objp->next, sizeof (pmap2_mapping_list), (zdrproc_t) zdr_pmap2_mapping_list))
@@ -176,9 +168,6 @@ zdr_pmap2_mapping_list (ZDR *zdrs, pmap2_mapping_list *objp)
 uint32_t
 zdr_pmap2_dump_result (ZDR *zdrs, pmap2_dump_result *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
-
 	 if (!zdr_pointer (zdrs, (char **)&objp->list, sizeof (pmap2_mapping_list), (zdrproc_t) zdr_pmap2_mapping_list))
 		 return FALSE;
 	return TRUE;
@@ -187,9 +176,6 @@ zdr_pmap2_dump_result (ZDR *zdrs, pmap2_dump_result *objp)
 uint32_t
 zdr_pmap3_string_result (ZDR *zdrs, pmap3_string_result *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
-
 	 if (!zdr_string (zdrs, &objp->addr, ~0))
 		 return FALSE;
 	return TRUE;
@@ -198,9 +184,6 @@ zdr_pmap3_string_result (ZDR *zdrs, pmap3_string_result *objp)
 uint32_t
 zdr_pmap3_mapping (ZDR *zdrs, pmap3_mapping *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
-
 	 if (!zdr_u_int (zdrs, &objp->prog))
 		 return FALSE;
 	 if (!zdr_u_int (zdrs, &objp->vers))
@@ -217,9 +200,6 @@ zdr_pmap3_mapping (ZDR *zdrs, pmap3_mapping *objp)
 uint32_t
 zdr_pmap3_mapping_list (ZDR *zdrs, pmap3_mapping_list *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
-
 	 if (!zdr_pmap3_mapping (zdrs, &objp->map))
 		 return FALSE;
 	 if (!zdr_pointer (zdrs, (char **)&objp->next, sizeof (pmap3_mapping_list), (zdrproc_t) zdr_pmap3_mapping_list))
@@ -230,9 +210,6 @@ zdr_pmap3_mapping_list (ZDR *zdrs, pmap3_mapping_list *objp)
 uint32_t
 zdr_pmap3_dump_result (ZDR *zdrs, pmap3_dump_result *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
-
 	 if (!zdr_pointer (zdrs, (char **)&objp->list, sizeof (pmap3_mapping_list), (zdrproc_t) zdr_pmap3_mapping_list))
 		 return FALSE;
 	return TRUE;
@@ -243,7 +220,6 @@ zdr_pmap3_call_args (ZDR *zdrs, pmap3_call_args *objp)
 {
 	register int32_t *buf;
 	buf = NULL;
-
 
 	if (zdrs->x_op == ZDR_ENCODE) {
 		buf = ZDR_INLINE (zdrs, 3 * BYTES_PER_ZDR_UNIT);
@@ -297,9 +273,6 @@ zdr_pmap3_call_args (ZDR *zdrs, pmap3_call_args *objp)
 uint32_t
 zdr_pmap3_call_result (ZDR *zdrs, pmap3_call_result *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
-
 	 if (!zdr_u_int (zdrs, &objp->port))
 		 return FALSE;
 	 if (!zdr_bytes (zdrs, (char **)&objp->res.res_val, (u_int *) &objp->res.res_len, ~0))
@@ -310,9 +283,6 @@ zdr_pmap3_call_result (ZDR *zdrs, pmap3_call_result *objp)
 uint32_t
 zdr_pmap3_netbuf (ZDR *zdrs, pmap3_netbuf *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
-
 	 if (!zdr_u_int (zdrs, &objp->maxlen))
 		 return FALSE;
 	 if (!zdr_bytes (zdrs, (char **)&objp->buf.buf_val, (u_int *) &objp->buf.buf_len, ~0))

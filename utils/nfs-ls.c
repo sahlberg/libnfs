@@ -1,16 +1,16 @@
-/* 
+/*
    Copyright (C) by Ronnie Sahlberg <ronniesahlberg@gmail.com> 2010
-   
+
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
    the Free Software Foundation; either version 3 of the License, or
    (at your option) any later version.
-   
+
    This program is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
    GNU General Public License for more details.
-   
+
    You should have received a copy of the GNU General Public License
    along with this program; if not, see <http://www.gnu.org/licenses/>.
 */
@@ -25,7 +25,7 @@
 #ifdef AROS
 #include "aros_compat.h"
 #endif
- 
+
 #ifdef WIN32
 #include "win32_compat.h"
 #pragma comment(lib, "ws2_32.lib")
@@ -92,9 +92,8 @@ int process_server(const char *server) {
 void process_dir(struct nfs_context *nfs, char *dir, int level) {
 	int ret;
 	struct nfsdirent *nfsdirent;
-	struct statvfs svfs;
 	struct nfsdir *nfsdir;
-	
+
 	if (!level) {
 		printf("Recursion detected!\n");
 		exit(10);
@@ -162,12 +161,10 @@ void process_dir(struct nfs_context *nfs, char *dir, int level) {
 int main(int argc, char *argv[])
 {
 	struct nfs_context *nfs = NULL;
-	int i, ret = 1, res;
-	uint64_t offset;
+	int i, ret = 1;
 	struct client client;
 	struct statvfs stvfs;
 	struct nfs_url *url = NULL;
-	exports export, tmp;
 
 #ifdef WIN32
 	if (WSAStartup(MAKEWORD(2,2), &wsaData) != 0) {
