@@ -3794,10 +3794,33 @@ static void nfs_opendir_cb(struct rpc_context *rpc, int status, void *command_da
 	struct nfsdir *nfsdir = data->continue_data;
 	struct entryplus3 *entry;
 	uint64_t cookie = 0;
+	int fallback_to_readdir = 0;
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
 	if (status == RPC_STATUS_ERROR || (status == RPC_STATUS_SUCCESS && res->status == NFS3ERR_NOTSUPP) ){
+		/* WTF? The server does not support READDIRPLUS at all so
+		 * we have to fallback to a READDIR plus LOOKUP loop.
+		 * Seriously.
+		 */
+		fallback_to_readdir = 1;
+	} else if (res->status == NFS3_OK) {
+		/* Ok, so we got READDIRPLUS data back, but some servers
+		 * sometimes do not provide any attributes.
+		 * Again, fallback to READDIR and LOOKUP loops for them.
+		 */
+		for (entry = res->READDIRPLUS3res_u.resok.reply.entries;
+		     entry;
+		     entry = entry->nextentry) {
+			if (entry->name_attributes.attributes_follow == 0) {
+				/* WTF? */
+				fallback_to_readdir = 1;
+				break;
+			}
+		}
+	}
+
+	if (fallback_to_readdir) {
 		READDIR3args args;
 
 		args.dir = data->fh;
@@ -3833,7 +3856,7 @@ static void nfs_opendir_cb(struct rpc_context *rpc, int status, void *command_da
 		return;
 	}
 
-	entry =res->READDIRPLUS3res_u.resok.reply.entries;
+	entry = res->READDIRPLUS3res_u.resok.reply.entries;
 	while (entry != NULL) {
 		struct nfsdirent *nfsdirent;
 		fattr3 *attr = NULL;
