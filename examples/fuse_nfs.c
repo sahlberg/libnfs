@@ -36,9 +36,26 @@ struct nfs_context *nfs = NULL;
 static int fuse_nfs_getattr(const char *path, struct stat *stbuf)
 {
 	int ret = 0;
+	struct nfs_stat_64 nfs_st;
 
-	memset(stbuf, 0, sizeof(struct stat));
-	ret = nfs_stat(nfs, path, stbuf);
+	ret = nfs_stat64(nfs, path, &nfs_st);
+
+	stbuf->st_dev          = nfs_st.nfs_dev;
+	stbuf->st_ino          = nfs_st.nfs_ino;
+	stbuf->st_mode         = nfs_st.nfs_mode;
+	stbuf->st_nlink        = nfs_st.nfs_nlink;
+	stbuf->st_uid          = nfs_st.nfs_uid;
+	stbuf->st_gid          = nfs_st.nfs_gid;
+	stbuf->st_rdev         = nfs_st.nfs_rdev;
+	stbuf->st_size         = nfs_st.nfs_size;
+	stbuf->st_blksize      = nfs_st.nfs_blksize;
+	stbuf->st_blocks       = nfs_st.nfs_blocks;
+	stbuf->st_atim.tv_sec  = nfs_st.nfs_atime;
+	stbuf->st_atim.tv_usec = nfs_st.nfs_atime_nsec / 1000;
+	stbuf->st_mtim.tv_sec  = nfs_st.nfs_mtime;
+	stbuf->st_mtim.tv_usec = nfs_st.nfs_mtime_nsec / 1000;
+	stbuf->st_ctim.tv_sec  = nfs_st.nfs_ctime;
+	stbuf->st_ctim.tv_usec = nfs_st.nfs_ctime_nsec / 1000;
 
 	return ret;
 }
