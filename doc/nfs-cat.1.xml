@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="iso-8859-1"?>
+<refentry id="nfs-ls.1">
+
+<refmeta>
+	<refentrytitle>nfs-cat</refentrytitle>
+	<manvolnum>1</manvolnum>
+	<refmiscinfo class="source">nfs-cat</refmiscinfo>
+	<refmiscinfo class="manual">nfs-cat: read a file from nfs</refmiscinfo>
+</refmeta>
+
+
+<refnamediv>
+	<refname>nfs-cat</refname>
+        <refpurpose>Utility to read a file off NFS</refpurpose>
+</refnamediv>
+
+<refsynopsisdiv>
+	<cmdsynopsis>
+		<command>nfs-cat &lt;NFS-URL&gt;</command>
+	</cmdsynopsis>
+	
+</refsynopsisdiv>
+
+  <refsect1><title>DESCRIPTION</title>
+    <para>
+      nfs-cat is a utility to read a file off an NFS server.
+    </para>
+    <para>
+      Example: Print the content of a file:
+      <screen format="linespecific">
+$ nfs-cat nfs://127.0.0.1/data/tmp/foo.c
+      </screen>
+    </para>
+  </refsect1>
+
+  <refsect1><title>SEE ALSO</title>
+    <para>
+      <ulink url="http://github.com/sahlberg/libnfs"/>
+    </para>
+  </refsect1>
+
+</refentry>

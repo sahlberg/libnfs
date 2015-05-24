@@ -105,6 +105,8 @@ Utility programs for LibNFS
 %files utils
 %defattr(-,root,root)
 %{_bindir}/nfs-ls
+%{_bindir}/nfs-cat
+%{_mandir}/man1/nfs-cat.1.gz
 %{_mandir}/man1/nfs-ls.1.gz
 
 %changelog

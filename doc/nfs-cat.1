@@ -1,0 +1,54 @@
+'\" t
+.\"     Title: nfs-cat
+.\"    Author: [FIXME: author] [see http://docbook.sf.net/el/author]
+.\" Generator: DocBook XSL Stylesheets v1.78.1 <http://docbook.sf.net/>
+.\"      Date: 05/24/2015
+.\"    Manual: nfs-cat: read a file from nfs
+.\"    Source: nfs-cat
+.\"  Language: English
+.\"
+.TH "NFS\-CAT" "1" "05/24/2015" "nfs\-cat" "nfs\-cat: read a file from nfs"
+.\" -----------------------------------------------------------------
+.\" * Define some portability stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.ie \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH "NAME"
+nfs-cat \- Utility to read a file off NFS
+.SH "SYNOPSIS"
+.HP \w'\fBnfs\-cat\ <NFS\-URL>\fR\ 'u
+\fBnfs\-cat <NFS\-URL>\fR
+.SH "DESCRIPTION"
+.PP
+nfs\-cat is a utility to read a file off an NFS server\&.
+.PP
+Example: Print the content of a file:
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+$ nfs\-cat nfs://127\&.0\&.0\&.1/data/tmp/foo\&.c
+      
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+.SH "SEE ALSO"
+.PP
+\m[blue]\fB\%http://github.com/sahlberg/libnfs\fR\m[]
