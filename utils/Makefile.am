@@ -1,4 +1,4 @@
-bin_PROGRAMS = nfs-cat nfs-ls
+bin_PROGRAMS = nfs-cat nfs-cp nfs-ls
 
 AM_CPPFLAGS = \
 	-I$(abs_top_srcdir)/include \

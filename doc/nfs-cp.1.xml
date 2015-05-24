@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="iso-8859-1"?>
+<refentry id="nfs-cp.1">
+
+<refmeta>
+	<refentrytitle>nfs-cp</refentrytitle>
+	<manvolnum>1</manvolnum>
+	<refmiscinfo class="source">nfs-cp</refmiscinfo>
+	<refmiscinfo class="manual">nfs-cp: copy files to/from an NFS share</refmiscinfo>
+</refmeta>
+
+
+<refnamediv>
+	<refname>nfs-cp</refname>
+        <refpurpose>Utility to copy files to/from and NFS server</refpurpose>
+</refnamediv>
+
+<refsynopsisdiv>
+	<cmdsynopsis>
+		<command>nfs-cp &lt;src&gt; &lt;dst&gt;</command>
+	</cmdsynopsis>
+	
+</refsynopsisdiv>
+
+  <refsect1><title>DESCRIPTION</title>
+    <para>
+      nfs-cp is a utility to copy files to/from and NFS server.
+    </para>
+    <para>
+      Examples:
+      <screen format="linespecific">
+$ nfs-cp foo.c nfs://127.0.0.1/data/tmp/foo.c
+
+$ nfs-cp nfs://127.0.0.1/data/tmp/foo.c bob.c
+
+$ nfs-cp nfs://127.0.0.1/data/tmp/foo.c nfs://127.0.0.1/data/tmp/copy-of-foo.c
+      </screen>
+    </para>
+  </refsect1>
+
+  <refsect1><title>SEE ALSO</title>
+    <para>
+      <ulink url="http://github.com/sahlberg/libnfs"/>
+    </para>
+  </refsect1>
+
+</refentry>
