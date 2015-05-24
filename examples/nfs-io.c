@@ -109,10 +109,10 @@ int main(int argc, char *argv[])
 	} else if (!strncmp(argv[1], "rmdir", 5)) {
 		ret = nfs_rmdir(nfs, url->file);
 	} else if (!strncmp(argv[1], "stat", 4)) {
-		struct stat st;
-		ret = nfs_stat(nfs, url->file, &st);
+		struct nfs_stat_64 st;
+		ret = nfs_stat64(nfs, url->file, &st);
 		if (!ret) {
-			switch (st.st_mode & S_IFMT) {
+			switch (st.nfs_mode & S_IFMT) {
 	#ifndef WIN32
 			case S_IFLNK:
 				printf("l");
@@ -132,24 +132,24 @@ int main(int argc, char *argv[])
 				break;
 			}
 			printf("%c%c%c",
-				"-r"[!!(st.st_mode & S_IRUSR)],
-				"-w"[!!(st.st_mode & S_IWUSR)],
-				"-x"[!!(st.st_mode & S_IXUSR)]
+			       "-r"[!!(st.nfs_mode & S_IRUSR)],
+			       "-w"[!!(st.nfs_mode & S_IWUSR)],
+			       "-x"[!!(st.nfs_mode & S_IXUSR)]
 			);
 			printf("%c%c%c",
-				"-r"[!!(st.st_mode & S_IRGRP)],
-				"-w"[!!(st.st_mode & S_IWGRP)],
-				"-x"[!!(st.st_mode & S_IXGRP)]
+			       "-r"[!!(st.nfs_mode & S_IRGRP)],
+			       "-w"[!!(st.nfs_mode & S_IWGRP)],
+			       "-x"[!!(st.nfs_mode & S_IXGRP)]
 			);
 			printf("%c%c%c",
-				"-r"[!!(st.st_mode & S_IROTH)],
-				"-w"[!!(st.st_mode & S_IWOTH)],
-				"-x"[!!(st.st_mode & S_IXOTH)]
+			       "-r"[!!(st.nfs_mode & S_IROTH)],
+			       "-w"[!!(st.nfs_mode & S_IWOTH)],
+			       "-x"[!!(st.nfs_mode & S_IXOTH)]
 			);
-			printf(" %2d", (int) st.st_nlink);
-			printf(" %5d", st.st_uid);
-			printf(" %5d", st.st_gid);
-			printf(" %12" PRId64, st.st_size);
+			printf(" %2d", (int)st.nfs_nlink);
+			printf(" %5d", (int)st.nfs_uid);
+			printf(" %5d", (int)st.nfs_gid);
+			printf(" %12" PRId64, st.nfs_size);
 			printf("\n");
 		}
 	} else {

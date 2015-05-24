@@ -77,7 +77,7 @@ int main(int argc, char *argv[])
 	int i, ret, res;
 	uint64_t offset;
 	struct client client;
-	struct stat st;
+	struct nfs_stat_64 st;
 	struct nfsfh  *nfsfh;
 	struct nfsdir *nfsdir;
 	struct nfsdirent *nfsdirent;
@@ -173,13 +173,13 @@ int main(int argc, char *argv[])
 		}
 
 		sprintf(path, "%s/%s", "/", nfsdirent->name);
-		ret = nfs_stat(nfs, path, &st);
+		ret = nfs_stat64(nfs, path, &st);
 		if (ret != 0) {
 			fprintf(stderr, "Failed to stat(%s) %s\n", path, nfs_get_error(nfs));
 			continue;
 		}
 
-		switch (st.st_mode & S_IFMT) {
+		switch (st.nfs_mode & S_IFMT) {
 #ifndef WIN32
 		case S_IFLNK:
 #endif
@@ -197,24 +197,24 @@ int main(int argc, char *argv[])
 			break;
 		}
 		printf("%c%c%c",
-			"-r"[!!(st.st_mode & S_IRUSR)],
-			"-w"[!!(st.st_mode & S_IWUSR)],
-			"-x"[!!(st.st_mode & S_IXUSR)]
+		       "-r"[!!(st.nfs_mode & S_IRUSR)],
+		       "-w"[!!(st.nfs_mode & S_IWUSR)],
+		       "-x"[!!(st.nfs_mode & S_IXUSR)]
 		);
 		printf("%c%c%c",
-			"-r"[!!(st.st_mode & S_IRGRP)],
-			"-w"[!!(st.st_mode & S_IWGRP)],
-			"-x"[!!(st.st_mode & S_IXGRP)]
+		       "-r"[!!(st.nfs_mode & S_IRGRP)],
+		       "-w"[!!(st.nfs_mode & S_IWGRP)],
+		       "-x"[!!(st.nfs_mode & S_IXGRP)]
 		);
 		printf("%c%c%c",
-			"-r"[!!(st.st_mode & S_IROTH)],
-			"-w"[!!(st.st_mode & S_IWOTH)],
-			"-x"[!!(st.st_mode & S_IXOTH)]
+		       "-r"[!!(st.nfs_mode & S_IROTH)],
+		       "-w"[!!(st.nfs_mode & S_IWOTH)],
+		       "-x"[!!(st.nfs_mode & S_IXOTH)]
 		);
-		printf(" %2d", (int)st.st_nlink);
-		printf(" %5d", st.st_uid);
-		printf(" %5d", st.st_gid);
-		printf(" %12" PRId64, st.st_size);
+		printf(" %2d", (int)st.nfs_nlink);
+		printf(" %5d", (int)st.nfs_uid);
+		printf(" %5d", (int)st.nfs_gid);
+		printf(" %12" PRId64, st.nfs_size);
 
 		printf(" %s\n", nfsdirent->name);
 	}

@@ -121,10 +121,10 @@ void nfs_close_cb(int status, struct nfs_context *nfs, void *data, void *private
 	}
 }
 
-void nfs_fstat_cb(int status, struct nfs_context *nfs, void *data, void *private_data)
+void nfs_fstat64_cb(int status, struct nfs_context *nfs, void *data, void *private_data)
 {
 	struct client *client = private_data;
-	struct stat *st;
+	struct nfs_stat_64 *st;
  
 	if (status < 0) {
 		printf("fstat call failed with \"%s\"\n", (char *)data);
@@ -132,10 +132,10 @@ void nfs_fstat_cb(int status, struct nfs_context *nfs, void *data, void *private
 	}
 
 	printf("Got reply from server for fstat(%s).\n", NFSFILE);
-	st = (struct stat *)data;
-	printf("Mode %04o\n", st->st_mode);
-	printf("Size %d\n", (int)st->st_size);
-	printf("Inode %04o\n", (int)st->st_ino);
+	st = (struct nfs_stat_64 *)data;
+	printf("Mode %04o\n", (int)st->nfs_mode);
+	printf("Size %d\n", (int)st->nfs_size);
+	printf("Inode %04o\n", (int)st->nfs_ino);
 
 	printf("Close file\n");
 	if (nfs_close_async(nfs, client->nfsfh, nfs_close_cb, client) != 0) {
@@ -162,7 +162,7 @@ void nfs_read_cb(int status, struct nfs_context *nfs, void *data, void *private_
 	}
 	printf("\n");
 	printf("Fstat file :%s\n", NFSFILE);
-	if (nfs_fstat_async(nfs, client->nfsfh, nfs_fstat_cb, client) != 0) {
+	if (nfs_fstat64_async(nfs, client->nfsfh, nfs_fstat64_cb, client) != 0) {
 		printf("Failed to start async nfs fstat\n");
 		exit(10);
 	}
@@ -188,10 +188,10 @@ void nfs_open_cb(int status, struct nfs_context *nfs, void *data, void *private_
 	}
 }
 
-void nfs_stat_cb(int status, struct nfs_context *nfs, void *data, void *private_data)
+void nfs_stat64_cb(int status, struct nfs_context *nfs, void *data, void *private_data)
 {
 	struct client *client = private_data;
-	struct stat *st;
+	struct nfs_stat_64 *st;
  
 	if (status < 0) {
 		printf("stat call failed with \"%s\"\n", (char *)data);
@@ -200,9 +200,9 @@ void nfs_stat_cb(int status, struct nfs_context *nfs, void *data, void *private_
 
 	printf("Got reply from server for stat(%s).\n", NFSFILE);
 	st = (struct stat *)data;
-	printf("Mode %04o\n", st->st_mode);
-	printf("Size %d\n", (int)st->st_size);
-	printf("Inode %04o\n", (int)st->st_ino);
+	printf("Mode %04o\n", st->nfs_mode);
+	printf("Size %d\n", (int)st->nfs_size);
+	printf("Inode %04o\n", (int)st->nfs_ino);
 
 	printf("Open file for reading :%s\n", NFSFILE);
 	if (nfs_open_async(nfs, NFSFILE, O_RDONLY, nfs_open_cb, client) != 0) {
@@ -222,7 +222,7 @@ void nfs_mount_cb(int status, struct nfs_context *nfs, void *data, void *private
 
 	printf("Got reply from server for MOUNT/MNT procedure.\n");
 	printf("Stat file :%s\n", NFSFILE);
-	if (nfs_stat_async(nfs, NFSFILE, nfs_stat_cb, client) != 0) {
+	if (nfs_stat64_async(nfs, NFSFILE, nfs_stat64_cb, client) != 0) {
 		printf("Failed to start async nfs stat\n");
 		exit(10);
 	}

@@ -91,7 +91,24 @@ fstat_file(struct file_context *fc, struct stat *st)
 	if (fc->is_nfs == 0) {
 		return fstat(fc->fd, st);
 	} else {
-		return nfs_fstat(fc->nfs, fc->nfsfh, st);
+		int res;
+		struct nfs_stat_64 nfs_st;
+		res = nfs_fstat64(fc->nfs, fc->nfsfh, &nfs_st);
+		st->st_dev          = nfs_st.nfs_dev;
+		st->st_ino          = nfs_st.nfs_ino;
+		st->st_mode         = nfs_st.nfs_mode;
+		st->st_nlink        = nfs_st.nfs_nlink;
+		st->st_uid          = nfs_st.nfs_uid;
+		st->st_gid          = nfs_st.nfs_gid;
+		st->st_rdev         = nfs_st.nfs_rdev;
+		st->st_size         = nfs_st.nfs_size;
+		st->st_blksize      = nfs_st.nfs_blksize;
+		st->st_blocks       = nfs_st.nfs_blocks;
+		st->st_atim.tv_sec  = nfs_st.nfs_atime;
+		st->st_mtim.tv_sec  = nfs_st.nfs_mtime;
+		st->st_ctim.tv_sec  = nfs_st.nfs_ctime;
+
+		return res;
 	}
 }
 
