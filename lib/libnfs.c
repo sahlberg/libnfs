@@ -3649,6 +3649,55 @@ static void nfs_opendir3_cb(struct rpc_context *rpc, int status, void *command_d
 	}
 }
 
+static int lookup_missing_attributes(struct nfs_context *nfs,
+				     struct nfsdir *nfsdir,
+				     struct nfs_cb_data *data)
+{
+	struct rdpe_cb_data *rdpe_cb_data;
+	struct nfsdirent *nfsdirent;
+
+	rdpe_cb_data = malloc(sizeof(struct rdpe_cb_data));
+	rdpe_cb_data->getattrcount = 0;
+	rdpe_cb_data->status = RPC_STATUS_SUCCESS;
+	rdpe_cb_data->data = data;
+	for (nfsdirent = nfsdir->entries;
+	     nfsdirent;
+	     nfsdirent = nfsdirent->next) {
+		struct rdpe_lookup_cb_data *rdpe_lookup_cb_data;
+		LOOKUP3args args;
+
+		/* If type == 0 we assume it is a case of the server not
+		 * giving us the attributes for this entry during READIR[PLUS]
+		 * so we fallback to LOOKUP3
+		 */
+		if (nfsdirent->type != 0) {
+			continue;
+		}
+
+		rdpe_lookup_cb_data = malloc(sizeof(struct rdpe_lookup_cb_data));
+		rdpe_lookup_cb_data->rdpe_cb_data = rdpe_cb_data;
+		rdpe_lookup_cb_data->nfsdirent = nfsdirent;
+
+		memset(&args, 0, sizeof(LOOKUP3args));
+		args.what.dir = data->fh;
+		args.what.name = nfsdirent->name;
+
+		if (rpc_nfs3_lookup_async(nfs->rpc, nfs_opendir3_cb, &args,
+					  rdpe_lookup_cb_data) != 0) {
+			rpc_set_error(nfs->rpc, "RPC error: Failed to send "
+				      "READDIR LOOKUP call");
+
+			/* if we have already commands in flight, we cant just
+			 * stop, we have to wait for the commands in flight to
+			 * complete
+			 */
+			continue;
+		}
+		rdpe_cb_data->getattrcount++;
+	}
+	return rdpe_cb_data->getattrcount;
+}
+
 static void nfs_opendir2_cb(struct rpc_context *rpc, int status, void *command_data, void *private_data)
 {
 	READDIR3res *res = command_data;
@@ -3658,7 +3707,6 @@ static void nfs_opendir2_cb(struct rpc_context *rpc, int status, void *command_d
 	struct nfsdirent *nfsdirent;
 	struct entry3 *entry;
 	uint64_t cookie = 0;
-	struct rdpe_cb_data *rdpe_cb_data;
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
@@ -3741,48 +3789,10 @@ static void nfs_opendir2_cb(struct rpc_context *rpc, int status, void *command_d
 	/* steal the dirhandle */
 	nfsdir->current = nfsdir->entries;
 
-	if (nfsdir->entries) {
-		rdpe_cb_data = malloc(sizeof(struct rdpe_cb_data));
-		rdpe_cb_data->getattrcount = 0;
-		rdpe_cb_data->status = RPC_STATUS_SUCCESS;
-		rdpe_cb_data->data = data;
-		for (nfsdirent = nfsdir->entries; nfsdirent; nfsdirent = nfsdirent->next) {
-			struct rdpe_lookup_cb_data *rdpe_lookup_cb_data;
-			LOOKUP3args args;
-
-			rdpe_lookup_cb_data = malloc(sizeof(struct rdpe_lookup_cb_data));
-			rdpe_lookup_cb_data->rdpe_cb_data = rdpe_cb_data;
-			rdpe_lookup_cb_data->nfsdirent = nfsdirent;
-
-			memset(&args, 0, sizeof(LOOKUP3args));
-			args.what.dir = data->fh;
-			args.what.name = nfsdirent->name;
-
-			if (rpc_nfs3_lookup_async(nfs->rpc, nfs_opendir3_cb, &args, rdpe_lookup_cb_data) != 0) {
-				rpc_set_error(nfs->rpc, "RPC error: Failed to send READDIR LOOKUP call");
-
-				/* if we have already commands in flight, we cant just stop, we have to wait for the
-				 * commands in flight to complete
-				 */
-				if (rdpe_cb_data->getattrcount > 0) {
-					nfs_free_nfsdir(nfsdir);
-					data->continue_data = NULL;
-					free_nfs_cb_data(data);
-					rdpe_cb_data->status = RPC_STATUS_ERROR;
-					free(rdpe_lookup_cb_data);
-					return;
-				}
-
-				data->cb(-ENOMEM, nfs, rpc_get_error(nfs->rpc), data->private_data);
-				nfs_free_nfsdir(nfsdir);
-				data->continue_data = NULL;
-				free_nfs_cb_data(data);
-				free(rdpe_lookup_cb_data);
-				free(rdpe_cb_data);
-				return;
-			}
-			rdpe_cb_data->getattrcount++;
-		}
+	if (lookup_missing_attributes(nfs, nfsdir, data) == 0) {
+		data->cb(0, nfs, nfsdir, data->private_data);
+		free_nfs_cb_data(data);
+		return;
 	}
 }
 
@@ -3797,7 +3807,7 @@ static void nfs_opendir_cb(struct rpc_context *rpc, int status, void *command_da
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
-	if (status == RPC_STATUS_ERROR || (status == RPC_STATUS_SUCCESS && res->status == NFS3ERR_NOTSUPP) ){
+	if (status == RPC_STATUS_ERROR || (status == RPC_STATUS_SUCCESS && res->status == NFS3ERR_NOTSUPP)){
 		READDIR3args args;
 
 		args.dir = data->fh;
@@ -3860,6 +3870,7 @@ static void nfs_opendir_cb(struct rpc_context *rpc, int status, void *command_da
 
 		if (entry->name_attributes.attributes_follow)
 			attr = &entry->name_attributes.post_op_attr_u.attributes;
+
 		if (attr == NULL) {
 			struct nested_mounts *mnt;
 			int splen = strlen(data->saved_path);
@@ -3881,7 +3892,6 @@ static void nfs_opendir_cb(struct rpc_context *rpc, int status, void *command_da
 				break;
 			}
 		}
-
 		if (attr) {
 			nfsdirent->type = attr->type;
 			nfsdirent->mode = attr->mode;
@@ -3946,11 +3956,15 @@ static void nfs_opendir_cb(struct rpc_context *rpc, int status, void *command_da
 		nfsdir->attr = res->READDIRPLUS3res_u.resok.dir_attributes.post_op_attr_u.attributes;
 
 	/* steal the dirhandle */
-	data->continue_data = NULL;
 	nfsdir->current = nfsdir->entries;
 
-	data->cb(0, nfs, nfsdir, data->private_data);
-	free_nfs_cb_data(data);
+	if (lookup_missing_attributes(nfs, nfsdir, data) == 0) {
+		data->cb(0, nfs, nfsdir, data->private_data);
+		/* We can not free data->continue_data here */
+		data->continue_data = NULL;
+		free_nfs_cb_data(data);
+		return;
+	}
 }
 
 static int nfs_opendir_continue_internal(struct nfs_context *nfs, fattr3 *attr _U_, struct nfs_cb_data *data)
