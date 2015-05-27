@@ -3643,7 +3643,6 @@ static void nfs_opendir3_cb(struct rpc_context *rpc, int status, void *command_d
 			data->cb(0, nfs, nfsdir, data->private_data);
 		}
 		free(rdpe_cb_data);
-
 		data->continue_data = NULL;
 		free_nfs_cb_data(data);
 	}
@@ -3791,6 +3790,7 @@ static void nfs_opendir2_cb(struct rpc_context *rpc, int status, void *command_d
 
 	if (lookup_missing_attributes(nfs, nfsdir, data) == 0) {
 		data->cb(0, nfs, nfsdir, data->private_data);
+		data->continue_data = NULL;
 		free_nfs_cb_data(data);
 		return;
 	}
