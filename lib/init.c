@@ -154,6 +154,8 @@ void rpc_set_error(struct rpc_context *rpc, const char *error_string, ...)
 	vsnprintf(rpc->error_string, 1024, error_string, ap);
         va_end(ap);
 
+	fprintf(stderr, "libnfs error: %s\n", rpc->error_string);
+
 	if (old_error_string != NULL) {
 		free(old_error_string);
 	}

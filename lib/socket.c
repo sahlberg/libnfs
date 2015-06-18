@@ -324,7 +324,6 @@ static int rpc_read_from_socket(struct rpc_context *rpc)
 int rpc_service(struct rpc_context *rpc, int revents)
 {
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
-
 	if (revents & POLLERR) {
 #ifdef WIN32
 		char err = 0;
@@ -654,11 +653,13 @@ static int rpc_reconnect_requeue(struct rpc_context *rpc)
 
 	if (rpc->auto_reconnect != 0) {
 		rpc->connect_cb  = reconnect_cb;
-
+		fprintf(stderr, "libnfs: reconnect initiated\n");
 		if (rpc_connect_sockaddr_async(rpc, &rpc->s) != 0) {
 			rpc_error_all_pdus(rpc, "RPC ERROR: Failed to reconnect async");
 			return -1;
 		}
+	} else {
+		fprintf(stderr, "libnfs: reconnect NOT initiated, auto-reconnect is disabled\n");
 	}
 
 	return 0;
