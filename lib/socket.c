@@ -263,7 +263,7 @@ static int rpc_read_from_socket(struct rpc_context *rpc)
 				rpc_set_error(rpc, "Invalid/garbage pdu received from server. Closing socket");
 				return -1;
 			}
-			memcpy(rpc->inbuf, rpc->inbuf + pdu_size, rpc->inpos - pdu_size);
+			memmove(rpc->inbuf, rpc->inbuf + pdu_size, rpc->inpos - pdu_size);
 			rpc->inpos -= pdu_size;
 			continue;
 		}
