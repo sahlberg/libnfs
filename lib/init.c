@@ -277,20 +277,10 @@ void rpc_destroy_context(struct rpc_context *rpc)
  		close(rpc->fd);
 	}
 
-	if (rpc->encodebuf != NULL) {
-		free(rpc->encodebuf);
-		rpc->encodebuf = NULL;
-	}
-
-	if (rpc->error_string != NULL) {
-		free(rpc->error_string);
-		rpc->error_string = NULL;
-	}
-
-	if (rpc->udp_dest != NULL) {
-		free(rpc->udp_dest);
-		rpc->udp_dest = NULL;
-	}
+	free(rpc->encodebuf);
+	free(rpc->inbuf);
+	free(rpc->error_string);
+	free(rpc->udp_dest);
 
 	rpc->magic = 0;
 	free(rpc);
