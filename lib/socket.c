@@ -209,19 +209,20 @@ static int rpc_read_from_socket(struct rpc_context *rpc)
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
-	if (ioctl(rpc->fd, FIONREAD, &available) != 0) {
-		rpc_set_error(rpc, "Ioctl FIONREAD returned error : %d. Closing socket.", errno);
-		return -1;
-	}
-
-	if (available == 0) {
-		rpc_set_error(rpc, "Socket has been closed");
-		return -1;
-	}
-
 	if (rpc->is_udp) {
 		char *buf;
+		int available;
 		socklen_t socklen = sizeof(rpc->udp_src);
+
+		if (ioctl(rpc->fd, FIONREAD, &available) != 0) {
+			rpc_set_error(rpc, "Ioctl FIONREAD returned error : %d. Closing socket.", errno);
+			return -1;
+		}
+
+		if (available == 0) {
+			rpc_set_error(rpc, "Socket has been closed");
+			return -1;
+		}
 
 		buf = malloc(available);
 		if (buf == NULL) {
@@ -252,54 +253,40 @@ static int rpc_read_from_socket(struct rpc_context *rpc)
 			return -1;
 		}
 	}
+
 	if (rpc->inpos < 4) {
 		size = 4 - rpc->inpos;
 
-		count = recv(rpc->fd, rpc->inbuf + rpc->inpos, size, 0);
+		count = recv(rpc->fd, rpc->inbuf + rpc->inpos, size, MSG_DONTWAIT);
 		if (count == -1) {
-			if (errno == EINTR) {
+			if (errno == EINTR || errno == EAGAIN) {
 				return 0;
 			}
 			rpc_set_error(rpc, "Read from socket failed, errno:%d. Closing socket.", errno);
 			return -1;
 		}
-		available  -= count;
 		rpc->inpos += count;
-	}
-
-	if (available == 0) {
-		return 0;
 	}
 
 	pdu_size = rpc_get_pdu_size(rpc->inbuf);
 	if (rpc->insize < pdu_size) {
-		char *buf;
-
-		buf = malloc(pdu_size);
-		if (buf == NULL) {
+		rpc->inbuf = realloc(rpc->inbuf, pdu_size);
+		if (rpc->inbuf == NULL) {
 			rpc_set_error(rpc, "Failed to allocate buffer of %d bytes for pdu, errno:%d. Closing socket.", pdu_size, errno);
 			return -1;
 		}
-		memcpy(buf, rpc->inbuf, rpc->insize);
-		free(rpc->inbuf);
-		rpc->inbuf  = buf;
-		rpc->insize = rpc_get_pdu_size(rpc->inbuf);
+		rpc->insize = pdu_size;
 	}
 
-	size = available;
-	if (size > rpc->insize - rpc->inpos) {
-		size = rpc->insize - rpc->inpos;
-	}
-
-	count = recv(rpc->fd, rpc->inbuf + rpc->inpos, size, 0);
+	size = rpc->insize - rpc->inpos;
+	count = recv(rpc->fd, rpc->inbuf + rpc->inpos, size, MSG_DONTWAIT);
 	if (count == -1) {
-		if (errno == EINTR) {
+		if (errno == EINTR || errno == EAGAIN) {
 			return 0;
 		}
 		rpc_set_error(rpc, "Read from socket failed, errno:%d. Closing socket.", errno);
 		return -1;
 	}
-	available  -= count;
 	rpc->inpos += count;
 
 	if (rpc->inpos == rpc->insize) {
