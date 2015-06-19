@@ -199,8 +199,8 @@ void nfs_stat64_cb(int status, struct nfs_context *nfs, void *data, void *privat
 	}
 
 	printf("Got reply from server for stat(%s).\n", NFSFILE);
-	st = (struct stat *)data;
-	printf("Mode %04o\n", st->nfs_mode);
+	st = (struct nfs_stat_64 *)data;
+	printf("Mode %04o\n", (unsigned int) st->nfs_mode);
 	printf("Size %d\n", (int)st->nfs_size);
 	printf("Inode %04o\n", (int)st->nfs_ino);
 
