@@ -621,8 +621,11 @@ static int rpc_reconnect_requeue(struct rpc_context *rpc)
 		close(rpc->fd);
 	}
 	rpc->fd  = -1;
-
 	rpc->is_connected = 0;
+
+	if (rpc->outqueue.head) {
+		rpc->outqueue.head->written = 0;
+	}
 
 	/* socket is closed so we will not get any replies to any commands
 	 * in flight. Move them all over from the waitpdu queue back to the out queue
