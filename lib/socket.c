@@ -210,7 +210,6 @@ static int rpc_read_from_socket(struct rpc_context *rpc)
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
 	if (rpc->is_udp) {
-		char *buf;
 		int available;
 		socklen_t socklen = sizeof(rpc->udp_src);
 
@@ -224,69 +223,27 @@ static int rpc_read_from_socket(struct rpc_context *rpc)
 			return -1;
 		}
 
-		buf = malloc(available);
-		if (buf == NULL) {
-			rpc_set_error(rpc, "Failed to malloc buffer for recvfrom");
+		if (available > rpc->inbuflen) {
+			rpc_set_error(rpc, "RPC fragment too big");
 			return -1;
 		}
-		count = recvfrom(rpc->fd, buf, available, MSG_DONTWAIT, (struct sockaddr *)&rpc->udp_src, &socklen);
+
+		count = recvfrom(rpc->fd, rpc->inbuf, available, MSG_DONTWAIT, (struct sockaddr *)&rpc->udp_src, &socklen);
 		if (count < 0) {
 			rpc_set_error(rpc, "Failed recvfrom: %s", strerror(errno));
-			free(buf);
 			return -1;
 		}
-		if (rpc_process_pdu(rpc, buf, count) != 0) {
+		if (rpc_process_pdu(rpc, rpc->inbuf, count) != 0) {
 			rpc_set_error(rpc, "Invalid/garbage pdu received from server. Ignoring PDU");
-			free(buf);
 			return -1;
 		}
-		free(buf);
 		return 0;
 	}
 
-	/* read record marker, 4 bytes at the beginning of every pdu */
-	if (rpc->inbuf == NULL) {
-		rpc->insize = 4;
-		rpc->inbuf = malloc(rpc->insize);
-		if (rpc->inbuf == NULL) {
-			rpc_set_error(rpc, "Failed to allocate buffer for record marker, errno:%d. Closing socket.", errno);
-			return -1;
-		}
-	}
+	size = rpc->inbuflen - rpc->inpos;
 
-	if (rpc->inpos < 4) {
-		size = 4 - rpc->inpos;
-
-		count = recv(rpc->fd, rpc->inbuf + rpc->inpos, size, MSG_DONTWAIT);
-		if (count == -1) {
-			if (errno == EINTR || errno == EAGAIN) {
-				return 0;
-			}
-			rpc_set_error(rpc, "Read from socket failed, errno:%d. Closing socket.", errno);
-			return -1;
-		}
-		rpc->inpos += count;
-	}
-
-	pdu_size = rpc_get_pdu_size(rpc->inbuf);
-
-	if (pdu_size > NFS_MAX_XFER_SIZE + 4096) {
-		rpc_set_error(rpc, "Incoming PDU exceeds limit of %d bytes.", NFS_MAX_XFER_SIZE + 4096);
-		return -1;
-	}
-
-	if (rpc->insize < pdu_size) {
-		rpc->inbuf = realloc(rpc->inbuf, pdu_size);
-		if (rpc->inbuf == NULL) {
-			rpc_set_error(rpc, "Failed to allocate buffer of %d bytes for pdu, errno:%d. Closing socket.", pdu_size, errno);
-			return -1;
-		}
-		rpc->insize = pdu_size;
-	}
-
-	size = rpc->insize - rpc->inpos;
 	count = recv(rpc->fd, rpc->inbuf + rpc->inpos, size, MSG_DONTWAIT);
-	if (count == -1) {
+	if (count < 0) {
 		if (errno == EINTR || errno == EAGAIN) {
 			return 0;
 		}
@@ -295,23 +252,27 @@ static int rpc_read_from_socket(struct rpc_context *rpc)
 	}
 	rpc->inpos += count;
 
-	if (rpc->inpos == rpc->insize) {
-		char *buf = rpc->inbuf;
-
-		rpc->inbuf  = NULL;
-		rpc->insize = 0;
-		rpc->inpos  = 0;
-
-		if (rpc_process_pdu(rpc, buf, pdu_size) != 0) {
-			rpc_set_error(rpc, "Invalid/garbage pdu received from server. Closing socket");
+	while (rpc->inpos >= 4) {
+		pdu_size = rpc_get_pdu_size(rpc->inbuf);
+		if (pdu_size > NFS_MAX_XFER_SIZE + 4096) {
+			rpc_set_error(rpc, "Incoming PDU exceeds limit of %d bytes.", NFS_MAX_XFER_SIZE + 4096);
 			return -1;
 		}
-		free(buf);
-	}
+
+		if (rpc->inpos >= pdu_size) {
+			if (rpc_process_pdu(rpc, rpc->inbuf, pdu_size) != 0) {
+				rpc_set_error(rpc, "Invalid/garbage pdu received from server. Closing socket");
+				return -1;
+			}
+			memcpy(rpc->inbuf, rpc->inbuf + pdu_size, rpc->inpos - pdu_size);
+			rpc->inpos -= pdu_size;
+			continue;
+		}
+		break;
+	} 
 
 	return 0;
 }
-
 
 
 int rpc_service(struct rpc_context *rpc, int revents)
@@ -628,6 +589,7 @@ static int rpc_reconnect_requeue(struct rpc_context *rpc)
 	}
 	rpc->fd  = -1;
 	rpc->is_connected = 0;
+	rpc->inpos = 0;
 
 	if (rpc->outqueue.head) {
 		rpc->outqueue.head->written = 0;

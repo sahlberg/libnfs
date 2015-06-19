@@ -70,6 +70,13 @@ struct rpc_context *rpc_init_context(void)
 		return NULL;
 	}
 
+	rpc->inbuflen = 2 * (NFS_MAX_XFER_SIZE + 4096);
+	rpc->inbuf = malloc(rpc->inbuflen);
+	if (rpc->inbuf == NULL) {
+		free(rpc);
+		return NULL;
+	}
+
  	rpc->auth = authunix_create_default();
 	if (rpc->auth == NULL) {
 		free(rpc->encodebuf);
