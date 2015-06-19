@@ -870,6 +870,22 @@ static void nfs_mount_10_cb(struct rpc_context *rpc, int status, void *command_d
 	nfs->readmax = res->FSINFO3res_u.resok.rtmax;
 	nfs->writemax = res->FSINFO3res_u.resok.wtmax;
 
+	if (nfs->readmax > NFS_MAX_XFER_SIZE) {
+		rpc_set_error(rpc, "server max rsize of %lu is greater than libnfs supported %d bytes",
+		              nfs->readmax, NFS_MAX_XFER_SIZE);
+		data->cb(-EINVAL, nfs, command_data, data->private_data);
+		free_nfs_cb_data(data);
+		return;
+	}
+
+	if (nfs->writemax > NFS_MAX_XFER_SIZE) {
+		rpc_set_error(rpc, "server max wsize of %lu is greater than libnfs supported %d bytes",
+		              nfs->writemax, NFS_MAX_XFER_SIZE);
+		data->cb(-EINVAL, nfs, command_data, data->private_data);
+		free_nfs_cb_data(data);
+		return;
+	}
+
 	memset(&args, 0, sizeof(GETATTR3args));
 	args.object = nfs->rootfh;
 

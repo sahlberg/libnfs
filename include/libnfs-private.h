@@ -74,6 +74,7 @@ struct rpc_queue {
 
 #define HASHES 1024
 #define NFS_RA_TIMEOUT 5
+#define NFS_MAX_XFER_SIZE (1024 * 1024)
 
 struct rpc_context {
 	uint32_t magic;

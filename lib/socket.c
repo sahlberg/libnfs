@@ -269,6 +269,12 @@ static int rpc_read_from_socket(struct rpc_context *rpc)
 	}
 
 	pdu_size = rpc_get_pdu_size(rpc->inbuf);
+
+	if (pdu_size > NFS_MAX_XFER_SIZE + 4096) {
+		rpc_set_error(rpc, "Incoming PDU exceeds limit of %d bytes.", NFS_MAX_XFER_SIZE + 4096);
+		return -1;
+	}
+
 	if (rpc->insize < pdu_size) {
 		rpc->inbuf = realloc(rpc->inbuf, pdu_size);
 		if (rpc->inbuf == NULL) {

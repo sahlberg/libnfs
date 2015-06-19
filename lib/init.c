@@ -62,8 +62,8 @@ struct rpc_context *rpc_init_context(void)
 
 	rpc->magic = RPC_CONTEXT_MAGIC;
 
-	/* Allow 1M of data (for writes) and some */
-	rpc->encodebuflen = 1024 * 1024 + 4096;
+	/* Allow NFS_MAX_XFER_SIZE of data (for writes) and some */
+	rpc->encodebuflen = NFS_MAX_XFER_SIZE + 4096;
 	rpc->encodebuf = malloc(rpc->encodebuflen);
 	if (rpc->encodebuf == NULL) {
 		free(rpc);
