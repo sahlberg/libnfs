@@ -330,6 +330,7 @@ int rpc_service(struct rpc_context *rpc, int revents)
 		}
 
 		rpc->is_connected = 1;
+		RPC_LOG(rpc, 2, "connection established");
 		if (rpc->connect_cb != NULL) {
 			rpc->connect_cb(rpc, RPC_STATUS_SUCCESS, NULL, rpc->connect_data);
 		}
@@ -610,13 +611,13 @@ static int rpc_reconnect_requeue(struct rpc_context *rpc)
 
 	if (rpc->auto_reconnect != 0) {
 		rpc->connect_cb  = reconnect_cb;
-		fprintf(stderr, "libnfs: reconnect initiated\n");
+		RPC_LOG(rpc, 1, "reconnect initiated");
 		if (rpc_connect_sockaddr_async(rpc, &rpc->s) != 0) {
 			rpc_error_all_pdus(rpc, "RPC ERROR: Failed to reconnect async");
 			return -1;
 		}
 	} else {
-		fprintf(stderr, "libnfs: reconnect NOT initiated, auto-reconnect is disabled\n");
+		RPC_LOG(rpc, 1, "reconnect NOT initiated, auto-reconnect is disabled");
 	}
 
 	return 0;

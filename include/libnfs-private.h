@@ -118,6 +118,7 @@ struct rpc_context {
 	int uid;
 	int gid;
 	uint32_t readahead;
+	int debug;
 };
 
 struct rpc_pdu {
@@ -162,6 +163,13 @@ void nfs_set_error(struct nfs_context *nfs, char *error_string, ...)
 #endif
 ;
 
+#define RPC_LOG(rpc, level, format, ...) \
+	do { \
+		if (level <= rpc->debug) { \
+			fprintf(stderr, "libnfs:%d " format "\n", level, ## __VA_ARGS__); \
+		} \
+	} while (0)
+
 const char *nfs_get_server(struct nfs_context *nfs);
 const char *nfs_get_export(struct nfs_context *nfs);
 
@@ -178,6 +186,7 @@ void rpc_set_tcp_syncnt(struct rpc_context *rpc, int v);
 void rpc_set_uid(struct rpc_context *rpc, int uid);
 void rpc_set_gid(struct rpc_context *rpc, int gid);
 void rpc_set_readahead(struct rpc_context *rpc, uint32_t v);
+void rpc_set_debug(struct rpc_context *rpc, int level);
 
 int rpc_add_fragment(struct rpc_context *rpc, char *data, uint64_t size);
 void rpc_free_all_fragments(struct rpc_context *rpc);

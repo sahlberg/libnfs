@@ -261,6 +261,8 @@ static int nfs_set_context_args(struct nfs_context *nfs, const char *arg, const 
 		rpc_set_gid(nfs_get_rpc_context(nfs), atoi(val));
 	} else if (!strcmp(arg, "readahead")) {
 		rpc_set_readahead(nfs_get_rpc_context(nfs), atoi(val));
+	} else if (!strcmp(arg, "debug")) {
+		rpc_set_debug(nfs_get_rpc_context(nfs), atoi(val));
 	} else if (!strcmp(arg, "auto-traverse-mounts")) {
 		nfs->auto_traverse_mounts = atoi(val);
 	}
@@ -5350,6 +5352,10 @@ void nfs_set_gid(struct nfs_context *nfs, int gid) {
 
 void nfs_set_readahead(struct nfs_context *nfs, uint32_t v) {
 	rpc_set_readahead(nfs->rpc, v);
+}
+
+void nfs_set_debug(struct nfs_context *nfs, int level) {
+	rpc_set_debug(nfs->rpc, level);
 }
 
 void nfs_set_error(struct nfs_context *nfs, char *error_string, ...)

@@ -108,6 +108,13 @@ void rpc_set_readahead(struct rpc_context *rpc, uint32_t v)
 	rpc->readahead = v;
 }
 
+void rpc_set_debug(struct rpc_context *rpc, int level)
+{
+	assert(rpc->magic == RPC_CONTEXT_MAGIC);
+
+	rpc->debug = level;
+}
+
 struct rpc_context *rpc_init_udp_context(void)
 {
 	struct rpc_context *rpc;
