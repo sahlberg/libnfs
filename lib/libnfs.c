@@ -261,6 +261,8 @@ static int nfs_set_context_args(struct nfs_context *nfs, const char *arg, const 
 		rpc_set_gid(nfs_get_rpc_context(nfs), atoi(val));
 	} else if (!strcmp(arg, "readahead")) {
 		rpc_set_readahead(nfs_get_rpc_context(nfs), atoi(val));
+	} else if (!strcmp(arg, "debug")) {
+		rpc_set_debug(nfs_get_rpc_context(nfs), atoi(val));
 	} else if (!strcmp(arg, "auto-traverse-mounts")) {
 		nfs->auto_traverse_mounts = atoi(val);
 	}
@@ -869,6 +871,22 @@ static void nfs_mount_10_cb(struct rpc_context *rpc, int status, void *command_d
 
 	nfs->readmax = res->FSINFO3res_u.resok.rtmax;
 	nfs->writemax = res->FSINFO3res_u.resok.wtmax;
+
+	if (nfs->readmax > NFS_MAX_XFER_SIZE) {
+		rpc_set_error(rpc, "server max rsize of %lu is greater than libnfs supported %d bytes",
+		              nfs->readmax, NFS_MAX_XFER_SIZE);
+		data->cb(-EINVAL, nfs, command_data, data->private_data);
+		free_nfs_cb_data(data);
+		return;
+	}
+
+	if (nfs->writemax > NFS_MAX_XFER_SIZE) {
+		rpc_set_error(rpc, "server max wsize of %lu is greater than libnfs supported %d bytes",
+		              nfs->writemax, NFS_MAX_XFER_SIZE);
+		data->cb(-EINVAL, nfs, command_data, data->private_data);
+		free_nfs_cb_data(data);
+		return;
+	}
 
 	memset(&args, 0, sizeof(GETATTR3args));
 	args.object = nfs->rootfh;
@@ -5334,6 +5352,10 @@ void nfs_set_gid(struct nfs_context *nfs, int gid) {
 
 void nfs_set_readahead(struct nfs_context *nfs, uint32_t v) {
 	rpc_set_readahead(nfs->rpc, v);
+}
+
+void nfs_set_debug(struct nfs_context *nfs, int level) {
+	rpc_set_debug(nfs->rpc, level);
 }
 
 void nfs_set_error(struct nfs_context *nfs, char *error_string, ...)

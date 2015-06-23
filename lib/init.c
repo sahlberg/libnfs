@@ -62,10 +62,17 @@ struct rpc_context *rpc_init_context(void)
 
 	rpc->magic = RPC_CONTEXT_MAGIC;
 
-	/* Allow 1M of data (for writes) and some */
-	rpc->encodebuflen = 1024 * 1024 + 4096;
+	/* Allow NFS_MAX_XFER_SIZE of data (for writes) and some */
+	rpc->encodebuflen = NFS_MAX_XFER_SIZE + 4096;
 	rpc->encodebuf = malloc(rpc->encodebuflen);
 	if (rpc->encodebuf == NULL) {
+		free(rpc);
+		return NULL;
+	}
+
+	rpc->inbuflen = 2 * (NFS_MAX_XFER_SIZE + 4096);
+	rpc->inbuf = malloc(rpc->inbuflen);
+	if (rpc->inbuf == NULL) {
 		free(rpc);
 		return NULL;
 	}
@@ -99,6 +106,13 @@ void rpc_set_readahead(struct rpc_context *rpc, uint32_t v)
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
 	rpc->readahead = v;
+}
+
+void rpc_set_debug(struct rpc_context *rpc, int level)
+{
+	assert(rpc->magic == RPC_CONTEXT_MAGIC);
+
+	rpc->debug = level;
 }
 
 struct rpc_context *rpc_init_udp_context(void)
@@ -153,6 +167,8 @@ void rpc_set_error(struct rpc_context *rpc, const char *error_string, ...)
 	rpc->error_string = malloc(1024);
 	vsnprintf(rpc->error_string, 1024, error_string, ap);
         va_end(ap);
+
+	fprintf(stderr, "libnfs error: %s\n", rpc->error_string);
 
 	if (old_error_string != NULL) {
 		free(old_error_string);
@@ -268,20 +284,10 @@ void rpc_destroy_context(struct rpc_context *rpc)
  		close(rpc->fd);
 	}
 
-	if (rpc->encodebuf != NULL) {
-		free(rpc->encodebuf);
-		rpc->encodebuf = NULL;
-	}
-
-	if (rpc->error_string != NULL) {
-		free(rpc->error_string);
-		rpc->error_string = NULL;
-	}
-
-	if (rpc->udp_dest != NULL) {
-		free(rpc->udp_dest);
-		rpc->udp_dest = NULL;
-	}
+	free(rpc->encodebuf);
+	free(rpc->inbuf);
+	free(rpc->error_string);
+	free(rpc->udp_dest);
 
 	rpc->magic = 0;
 	free(rpc);

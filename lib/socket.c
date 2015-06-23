@@ -202,129 +202,81 @@ static int rpc_write_to_socket(struct rpc_context *rpc)
 
 static int rpc_read_from_socket(struct rpc_context *rpc)
 {
-	int available;
 	int size;
 	int pdu_size;
 	int32_t count;
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
-	if (ioctl(rpc->fd, FIONREAD, &available) != 0) {
-		rpc_set_error(rpc, "Ioctl FIONREAD returned error : %d. Closing socket.", errno);
-		return -1;
-	}
-
-	if (available == 0) {
-		rpc_set_error(rpc, "Socket has been closed");
-		return -1;
-	}
-
 	if (rpc->is_udp) {
-		char *buf;
+		int available;
 		socklen_t socklen = sizeof(rpc->udp_src);
 
-		buf = malloc(available);
-		if (buf == NULL) {
-			rpc_set_error(rpc, "Failed to malloc buffer for recvfrom");
+		if (ioctl(rpc->fd, FIONREAD, &available) != 0) {
+			rpc_set_error(rpc, "Ioctl FIONREAD returned error : %d. Closing socket.", errno);
 			return -1;
 		}
-		count = recvfrom(rpc->fd, buf, available, MSG_DONTWAIT, (struct sockaddr *)&rpc->udp_src, &socklen);
+
+		if (available == 0) {
+			rpc_set_error(rpc, "Socket has been closed");
+			return -1;
+		}
+
+		if (available > rpc->inbuflen) {
+			rpc_set_error(rpc, "RPC fragment too big");
+			return -1;
+		}
+
+		count = recvfrom(rpc->fd, rpc->inbuf, available, MSG_DONTWAIT, (struct sockaddr *)&rpc->udp_src, &socklen);
 		if (count < 0) {
 			rpc_set_error(rpc, "Failed recvfrom: %s", strerror(errno));
-			free(buf);
 			return -1;
 		}
-		if (rpc_process_pdu(rpc, buf, count) != 0) {
+		if (rpc_process_pdu(rpc, rpc->inbuf, count) != 0) {
 			rpc_set_error(rpc, "Invalid/garbage pdu received from server. Ignoring PDU");
-			free(buf);
 			return -1;
 		}
-		free(buf);
 		return 0;
 	}
 
-	/* read record marker, 4 bytes at the beginning of every pdu */
-	if (rpc->inbuf == NULL) {
-		rpc->insize = 4;
-		rpc->inbuf = malloc(rpc->insize);
-		if (rpc->inbuf == NULL) {
-			rpc_set_error(rpc, "Failed to allocate buffer for record marker, errno:%d. Closing socket.", errno);
-			return -1;
-		}
-	}
-	if (rpc->inpos < 4) {
-		size = 4 - rpc->inpos;
+	size = rpc->inbuflen - rpc->inpos;
 
-		count = recv(rpc->fd, rpc->inbuf + rpc->inpos, size, 0);
-		if (count == -1) {
-			if (errno == EINTR) {
-				return 0;
-			}
-			rpc_set_error(rpc, "Read from socket failed, errno:%d. Closing socket.", errno);
-			return -1;
-		}
-		available  -= count;
-		rpc->inpos += count;
-	}
-
-	if (available == 0) {
-		return 0;
-	}
-
-	pdu_size = rpc_get_pdu_size(rpc->inbuf);
-	if (rpc->insize < pdu_size) {
-		char *buf;
-
-		buf = malloc(pdu_size);
-		if (buf == NULL) {
-			rpc_set_error(rpc, "Failed to allocate buffer of %d bytes for pdu, errno:%d. Closing socket.", pdu_size, errno);
-			return -1;
-		}
-		memcpy(buf, rpc->inbuf, rpc->insize);
-		free(rpc->inbuf);
-		rpc->inbuf  = buf;
-		rpc->insize = rpc_get_pdu_size(rpc->inbuf);
-	}
-
-	size = available;
-	if (size > rpc->insize - rpc->inpos) {
-		size = rpc->insize - rpc->inpos;
-	}
-
-	count = recv(rpc->fd, rpc->inbuf + rpc->inpos, size, 0);
-	if (count == -1) {
-		if (errno == EINTR) {
+	count = recv(rpc->fd, rpc->inbuf + rpc->inpos, size, MSG_DONTWAIT);
+	if (count < 0) {
+		if (errno == EINTR || errno == EAGAIN) {
 			return 0;
 		}
 		rpc_set_error(rpc, "Read from socket failed, errno:%d. Closing socket.", errno);
 		return -1;
 	}
-	available  -= count;
 	rpc->inpos += count;
 
-	if (rpc->inpos == rpc->insize) {
-		char *buf = rpc->inbuf;
-
-		rpc->inbuf  = NULL;
-		rpc->insize = 0;
-		rpc->inpos  = 0;
-
-		if (rpc_process_pdu(rpc, buf, pdu_size) != 0) {
-			rpc_set_error(rpc, "Invalid/garbage pdu received from server. Closing socket");
+	while (rpc->inpos >= 4) {
+		pdu_size = rpc_get_pdu_size(rpc->inbuf);
+		if (pdu_size > NFS_MAX_XFER_SIZE + 4096) {
+			rpc_set_error(rpc, "Incoming PDU exceeds limit of %d bytes.", NFS_MAX_XFER_SIZE + 4096);
 			return -1;
 		}
-		free(buf);
-	}
+
+		if (rpc->inpos >= pdu_size) {
+			if (rpc_process_pdu(rpc, rpc->inbuf, pdu_size) != 0) {
+				rpc_set_error(rpc, "Invalid/garbage pdu received from server. Closing socket");
+				return -1;
+			}
+			memmove(rpc->inbuf, rpc->inbuf + pdu_size, rpc->inpos - pdu_size);
+			rpc->inpos -= pdu_size;
+			continue;
+		}
+		break;
+	} 
 
 	return 0;
 }
 
 
-
 int rpc_service(struct rpc_context *rpc, int revents)
 {
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
-
 	if (revents & POLLERR) {
 #ifdef WIN32
 		char err = 0;
@@ -378,6 +330,7 @@ int rpc_service(struct rpc_context *rpc, int revents)
 		}
 
 		rpc->is_connected = 1;
+		RPC_LOG(rpc, 2, "connection established");
 		if (rpc->connect_cb != NULL) {
 			rpc->connect_cb(rpc, RPC_STATUS_SUCCESS, NULL, rpc->connect_data);
 		}
@@ -635,8 +588,12 @@ static int rpc_reconnect_requeue(struct rpc_context *rpc)
 		close(rpc->fd);
 	}
 	rpc->fd  = -1;
-
 	rpc->is_connected = 0;
+	rpc->inpos = 0;
+
+	if (rpc->outqueue.head) {
+		rpc->outqueue.head->written = 0;
+	}
 
 	/* socket is closed so we will not get any replies to any commands
 	 * in flight. Move them all over from the waitpdu queue back to the out queue
@@ -654,11 +611,13 @@ static int rpc_reconnect_requeue(struct rpc_context *rpc)
 
 	if (rpc->auto_reconnect != 0) {
 		rpc->connect_cb  = reconnect_cb;
-
+		RPC_LOG(rpc, 1, "reconnect initiated");
 		if (rpc_connect_sockaddr_async(rpc, &rpc->s) != 0) {
 			rpc_error_all_pdus(rpc, "RPC ERROR: Failed to reconnect async");
 			return -1;
 		}
+	} else {
+		RPC_LOG(rpc, 1, "reconnect NOT initiated, auto-reconnect is disabled");
 	}
 
 	return 0;
