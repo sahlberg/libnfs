@@ -2348,7 +2348,7 @@ static int nfs_pread_async_internal(struct nfs_context *nfs, struct nfsfh *nfsfh
 
 	if (nfs->rpc->readahead) {
 		if (offset >= nfsfh->ra.fh_offset &&
-			offset <= nfsfh->ra.fh_offset + nfsfh->ra.cur_ra) {
+			offset - NFS_BLKSIZE <= nfsfh->ra.fh_offset + nfsfh->ra.cur_ra) {
 			if (nfs->rpc->readahead > nfsfh->ra.cur_ra) {
 				nfsfh->ra.cur_ra <<= 1;
 			}
