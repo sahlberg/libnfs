@@ -248,13 +248,13 @@ struct nfs_cb_data {
        uint64_t offset, count, max_offset, org_offset, org_count;
        char *buffer;
        char *usrbuf;
+       int update_pos;
 };
 
 struct nfs_mcb_data {
        struct nfs_cb_data *data;
        uint64_t offset;
        uint64_t count;
-       int update_pos;
 };
 
 static int nfs_lookup_path_async_internal(struct nfs_context *nfs, fattr3 *attr, struct nfs_cb_data *data, struct nfs_fh3 *fh);
@@ -2275,7 +2275,7 @@ static void nfs_pread_mcb(struct rpc_context *rpc, int status, void *command_dat
 	if (data->max_offset > data->org_offset + data->org_count) {
 		data->max_offset = data->org_offset + data->org_count;
 	}
-	if (mdata->update_pos) {
+	if (data->update_pos) {
 		data->nfsfh->offset = data->max_offset;
 	}
 
@@ -2302,6 +2302,7 @@ static int nfs_pread_async_internal(struct nfs_context *nfs, struct nfsfh *nfsfh
 	data->nfsfh        = nfsfh;
 	data->org_offset   = offset;
 	data->org_count    = count;
+	data->update_pos   = update_pos;
 
 	assert(data->num_calls == 0);
 
@@ -2387,7 +2388,6 @@ static int nfs_pread_async_internal(struct nfs_context *nfs, struct nfsfh *nfsfh
 		mdata->data   = data;
 		mdata->offset = offset;
 		mdata->count  = readcount;
-		mdata->update_pos = update_pos;
 
 		nfs_fill_READ3args(&args, nfsfh, offset, readcount);
 
@@ -2468,9 +2468,6 @@ static void nfs_pwrite_mcb(struct rpc_context *rpc, int status, void *command_da
 		} else  {
 			uint64_t count = res->WRITE3res_u.resok.count;
 
-			if (mdata->update_pos)
-				data->nfsfh->offset += count;
-
 			if (count < mdata->count) {
 				if (count == 0) {
 					rpc_set_error(nfs->rpc, "NFS: Write failed. No bytes written!");
@@ -2522,6 +2519,11 @@ static void nfs_pwrite_mcb(struct rpc_context *rpc, int status, void *command_da
 		return;
 	}
 
+
+	if (data->update_pos) {
+		data->nfsfh->offset = data->max_offset;
+	}
+
 	nfs_pagecache_put(&data->nfsfh->pagecache, data->offset, data->usrbuf, data->count);
 	data->cb(data->max_offset - data->offset, nfs, NULL, data->private_data);
 
@@ -2544,6 +2546,7 @@ static int nfs_pwrite_async_internal(struct nfs_context *nfs, struct nfsfh *nfsf
 	data->private_data = private_data;
 	data->nfsfh        = nfsfh;
 	data->usrbuf       = buf;
+	data->update_pos   = update_pos;
 
 	/* hello, clang-analyzer */
 	assert(data->num_calls == 0);
@@ -2578,7 +2581,6 @@ static int nfs_pwrite_async_internal(struct nfs_context *nfs, struct nfsfh *nfsf
 		mdata->data   = data;
 		mdata->offset = offset;
 		mdata->count  = writecount;
-		mdata->update_pos = update_pos;
 
 		nfs_fill_WRITE3args(&args, nfsfh, offset, writecount, &buf[offset - data->offset]);
 
