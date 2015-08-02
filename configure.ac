@@ -1,5 +1,5 @@
 AC_PREREQ(2.50)
-AC_INIT([libnfs], [1.9.7], [ronniesahlberg@gmail.com])
+AC_INIT([libnfs], [1.9.8], [ronniesahlberg@gmail.com])
 AC_CONFIG_HEADERS([config.h])
 AM_INIT_AUTOMAKE([-Wall foreign])
 AC_CANONICAL_HOST

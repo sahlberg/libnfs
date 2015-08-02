@@ -112,6 +112,22 @@ Utility programs for LibNFS
 %{_mandir}/man1/nfs-ls.1.gz
 
 %changelog
+* Sun Aug 2 2015 : Version 1.9.8
+ - Disable multithreading in fuse_nfs
+ - Add -Wall and -Werror compiler flags (and fix issues found by it)
+ - Add nfs-cat utility
+ - Switch to using nfs_[f]stat64 instead of the deprecated nfs_[f]stat call
+   in all examples
+ - If the server does not return any atttributes for entries in READDIRPLUS
+   then try to fetch them using lookup instead.
+ - Reconnection fixes
+ - Enforce the max pdu size and add sanity checks when reading PDUs from
+   the socket.
+ - Stop using ioctl(FIONREAD) to find out how many bytes to read, and treat
+   0 as an indication of a problem. Some applications call their POLLIN handlers
+   spuriosly even when there is no data to read, which breaks this check in
+   libnfs.
+ - Add basic support to do logging.
 * Mon Feb 9 2015 : Version 1.9.7
  - Auto-traverse mounts. With this option (default to on) libnfs will
    autodiscover and handle any nested submounts.
