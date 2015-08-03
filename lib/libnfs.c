@@ -202,9 +202,10 @@ void nfs_pagecache_put(struct nfs_pagecache *pagecache, uint64_t offset, char *b
 		uint32_t entry = nfs_pagecache_hash(pagecache, page_offset);
 		struct nfs_pagecache_entry *e = &pagecache->entries[entry];
 		uint64_t n = MIN(NFS_BLKSIZE - offset % NFS_BLKSIZE, len);
+		/* we can only write to the cache if we add a full page or
+		 * partially update a page that is still valid */
 		if (n == NFS_BLKSIZE ||
-		    (e->offset == page_offset &&
-			ts - e->ts <= NFS_PAGECACHE_TTL)) {
+		    (e->offset == page_offset && ts - e->ts <= NFS_PAGECACHE_TTL)) {
 			e->ts = ts;
 			e->offset = page_offset;
 			memcpy(e->buf + offset % NFS_BLKSIZE, buf, n);
