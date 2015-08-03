@@ -197,17 +197,21 @@ uint32_t nfs_pagecache_hash(struct nfs_pagecache *pagecache, uint64_t offset) {
 void nfs_pagecache_put(struct nfs_pagecache *pagecache, uint64_t offset, char *buf, int len) {
 	time_t ts = time(NULL);
 	if (!pagecache->num_entries) return;
-	if (offset % NFS_BLKSIZE) return;
-	assert(!(offset % NFS_BLKSIZE));
-	while (len >= NFS_BLKSIZE) {
-		uint32_t entry = nfs_pagecache_hash(pagecache, offset);
+	while (len > 0) {
+		uint64_t page_offset = offset & ~(NFS_BLKSIZE - 1);
+		uint32_t entry = nfs_pagecache_hash(pagecache, page_offset);
 		struct nfs_pagecache_entry *e = &pagecache->entries[entry];
-		e->ts = ts;
-		e->offset = offset;
-		memcpy(e->buf, buf, NFS_BLKSIZE);
-		buf += NFS_BLKSIZE;
-		offset += NFS_BLKSIZE;
-		len -= NFS_BLKSIZE;
+		uint64_t n = MIN(NFS_BLKSIZE - offset % NFS_BLKSIZE, len);
+		if (n == NFS_BLKSIZE ||
+		    (e->offset == page_offset &&
+			ts - e->ts <= NFS_PAGECACHE_TTL)) {
+			e->ts = ts;
+			e->offset = page_offset;
+			memcpy(e->buf + offset % NFS_BLKSIZE, buf, n);
+		}
+		buf += n;
+		offset += n;
+		len -= n;
 	}
 }
 
