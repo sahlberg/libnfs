@@ -249,6 +249,12 @@ static int rpc_read_from_socket(struct rpc_context *rpc)
 		rpc_set_error(rpc, "Read from socket failed, errno:%d. Closing socket.", errno);
 		return -1;
 	}
+
+	if (count == 0) {
+		/* remote side has closed the socket. Reconnect. */
+		return -1;
+	}
+
 	rpc->inpos += count;
 
 	while (rpc->inpos >= 4) {
