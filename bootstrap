@@ -1,5 +1,2 @@
-#!/bin/bash
-
-mkdir -p m4
+#!/bin/sh
 autoreconf -vif
-
