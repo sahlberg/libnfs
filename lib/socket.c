@@ -585,7 +585,7 @@ static void reconnect_cb(struct rpc_context *rpc, int status, void *data _U_, vo
 /* disconnect but do not error all PDUs, just move pdus in-flight back to the outqueue and reconnect */
 static int rpc_reconnect_requeue(struct rpc_context *rpc)
 {
-	struct rpc_pdu *pdu;
+	struct rpc_pdu *pdu, *next;
 	unsigned int i;
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
@@ -606,8 +606,8 @@ static int rpc_reconnect_requeue(struct rpc_context *rpc)
 	 */
 	for (i = 0; i < HASHES; i++) {
 		struct rpc_queue *q = &rpc->waitpdu[i];
-
-		for (pdu=q->head; pdu; pdu=pdu->next) {
+		for (pdu = q->head; pdu; pdu = next) {
+			next = pdu->next;
 			rpc_return_to_queue(&rpc->outqueue, pdu);
 			/* we have to re-send the whole pdu again */
 			pdu->written = 0;
