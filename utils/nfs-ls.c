@@ -255,7 +255,8 @@ int main(int argc, char *argv[])
 			goto finished;
 		}
 		printf("\n%12" PRId64 " of %12" PRId64 " bytes free.\n",
-		       stvfs.f_frsize * stvfs.f_bfree, stvfs.f_frsize * stvfs.f_blocks);
+		       (uint64_t)(stvfs.f_frsize * stvfs.f_bfree),
+		       (uint64_t)(stvfs.f_frsize * stvfs.f_blocks));
 	}
 
 	ret = 0;

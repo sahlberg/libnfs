@@ -104,9 +104,9 @@ fstat_file(struct file_context *fc, struct stat *st)
 		st->st_size         = nfs_st.nfs_size;
 		st->st_blksize      = nfs_st.nfs_blksize;
 		st->st_blocks       = nfs_st.nfs_blocks;
-		st->st_atim.tv_sec  = nfs_st.nfs_atime;
-		st->st_mtim.tv_sec  = nfs_st.nfs_mtime;
-		st->st_ctim.tv_sec  = nfs_st.nfs_ctime;
+		st->st_atime        = nfs_st.nfs_atime;
+		st->st_mtime        = nfs_st.nfs_mtime;
+		st->st_ctime        = nfs_st.nfs_ctime;
 
 		return res;
 	}
