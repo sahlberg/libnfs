@@ -345,15 +345,13 @@ int rpc_service(struct rpc_context *rpc, int revents)
 
 	if (revents & POLLIN) {
 		if (rpc_read_from_socket(rpc) != 0) {
-		  	rpc_reconnect_requeue(rpc);
-			return 0;
+			return rpc_reconnect_requeue(rpc);
 		}
 	}
 
 	if (revents & POLLOUT && rpc_has_queue(&rpc->outqueue)) {
 		if (rpc_write_to_socket(rpc) != 0) {
-			rpc_set_error(rpc, "write to socket failed");
-			return -1;
+			return rpc_reconnect_requeue(rpc);
 		}
 	}
 
