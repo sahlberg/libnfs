@@ -38,7 +38,7 @@ static int fuse_nfs_getattr(const char *path, struct stat *stbuf)
 	int ret = 0;
 	struct nfs_stat_64 nfs_st;
 
-	ret = nfs_stat64(nfs, path, &nfs_st);
+	ret = nfs_lstat64(nfs, path, &nfs_st);
 
 	stbuf->st_dev          = nfs_st.nfs_dev;
 	stbuf->st_ino          = nfs_st.nfs_ino;
@@ -77,6 +77,11 @@ static int fuse_nfs_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 	}
 
 	return ret;
+}
+
+static int fuse_nfs_readlink(const char *path, char *buf, size_t size)
+{
+	return nfs_readlink(nfs, path, buf, size);
 }
 
 static int fuse_nfs_open(const char *path, struct fuse_file_info *fi)
@@ -199,6 +204,7 @@ static struct fuse_operations nfs_oper = {
 	.open		= fuse_nfs_open,
 	.read		= fuse_nfs_read,
 	.readdir	= fuse_nfs_readdir,
+	.readlink	= fuse_nfs_readlink,
 	.release	= fuse_nfs_release,
 	.rmdir		= fuse_nfs_rmdir,
 	.unlink		= fuse_nfs_unlink,
