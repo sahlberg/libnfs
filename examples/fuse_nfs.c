@@ -51,11 +51,11 @@ static int fuse_nfs_getattr(const char *path, struct stat *stbuf)
 	stbuf->st_blksize      = nfs_st.nfs_blksize;
 	stbuf->st_blocks       = nfs_st.nfs_blocks;
 	stbuf->st_atim.tv_sec  = nfs_st.nfs_atime;
-	stbuf->st_atim.tv_usec = nfs_st.nfs_atime_nsec / 1000;
+	stbuf->st_atim.tv_nsec = nfs_st.nfs_atime_nsec;
 	stbuf->st_mtim.tv_sec  = nfs_st.nfs_mtime;
-	stbuf->st_mtim.tv_usec = nfs_st.nfs_mtime_nsec / 1000;
+	stbuf->st_mtim.tv_nsec = nfs_st.nfs_mtime_nsec;
 	stbuf->st_ctim.tv_sec  = nfs_st.nfs_ctime;
-	stbuf->st_ctim.tv_usec = nfs_st.nfs_ctime_nsec / 1000;
+	stbuf->st_ctim.tv_nsec = nfs_st.nfs_ctime_nsec;
 
 	return ret;
 }
