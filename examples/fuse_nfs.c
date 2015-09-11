@@ -202,6 +202,11 @@ static int fuse_nfs_mknod(const char *path, mode_t mode, dev_t rdev)
 	return nfs_mknod(nfs, path, mode, rdev);
 }
 
+static int fuse_nfs_symlink(const char *from, const char *to)
+{
+	return nfs_symlink(nfs, from, to);
+}
+
 static struct fuse_operations nfs_oper = {
 	.create		= fuse_nfs_create,
 	.getattr	= fuse_nfs_getattr,
@@ -215,6 +220,7 @@ static struct fuse_operations nfs_oper = {
 	.rmdir		= fuse_nfs_rmdir,
 	.unlink		= fuse_nfs_unlink,
 	.utime		= fuse_nfs_utime,
+	.symlink	= fuse_nfs_symlink,
 	.write		= fuse_nfs_write,
 };
 
