@@ -227,6 +227,11 @@ static int fuse_nfs_chown(const char *path, uid_t uid, gid_t gid)
 	return nfs_chown(nfs, path, uid, gid);
 }
 
+static int fuse_nfs_truncate(const char *path, off_t size)
+{
+	return nfs_truncate(nfs, path, size);
+}
+
 static struct fuse_operations nfs_oper = {
 	.chmod		= fuse_nfs_chmod,
 	.chown		= fuse_nfs_chown,
@@ -245,6 +250,7 @@ static struct fuse_operations nfs_oper = {
 	.utime		= fuse_nfs_utime,
 	.rename		= fuse_nfs_rename,
 	.symlink	= fuse_nfs_symlink,
+	.truncate	= fuse_nfs_truncate,
 	.write		= fuse_nfs_write,
 };
 
