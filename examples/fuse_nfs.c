@@ -197,10 +197,58 @@ static int fuse_nfs_mkdir(const char *path, mode_t mode)
 	return ret;
 }
 
+static int fuse_nfs_mknod(const char *path, mode_t mode, dev_t rdev)
+{
+	return nfs_mknod(nfs, path, mode, rdev);
+}
+
+static int fuse_nfs_symlink(const char *from, const char *to)
+{
+	return nfs_symlink(nfs, from, to);
+}
+
+static int fuse_nfs_rename(const char *from, const char *to)
+{
+	return nfs_rename(nfs, from, to);
+}
+
+static int fuse_nfs_link(const char *from, const char *to)
+{
+	return nfs_link(nfs, from, to);
+}
+
+static int fuse_nfs_chmod(const char *path, mode_t mode)
+{
+	return nfs_chmod(nfs, path, mode);
+}
+
+static int fuse_nfs_chown(const char *path, uid_t uid, gid_t gid)
+{
+	return nfs_chown(nfs, path, uid, gid);
+}
+
+static int fuse_nfs_truncate(const char *path, off_t size)
+{
+	return nfs_truncate(nfs, path, size);
+}
+
+static int fuse_nfs_fsync(const char *path, int isdatasync,
+			  struct fuse_file_info *fi)
+{
+	struct nfsfh *nfsfh = (struct nfsfh *)fi->fh;
+
+	return nfs_fsync(nfs, nfsfh);
+}
+
 static struct fuse_operations nfs_oper = {
+	.chmod		= fuse_nfs_chmod,
+	.chown		= fuse_nfs_chown,
 	.create		= fuse_nfs_create,
+	.fsync		= fuse_nfs_fsync,
 	.getattr	= fuse_nfs_getattr,
+	.link		= fuse_nfs_link,
 	.mkdir		= fuse_nfs_mkdir,
+	.mknod		= fuse_nfs_mknod,
 	.open		= fuse_nfs_open,
 	.read		= fuse_nfs_read,
 	.readdir	= fuse_nfs_readdir,
@@ -209,6 +257,9 @@ static struct fuse_operations nfs_oper = {
 	.rmdir		= fuse_nfs_rmdir,
 	.unlink		= fuse_nfs_unlink,
 	.utime		= fuse_nfs_utime,
+	.rename		= fuse_nfs_rename,
+	.symlink	= fuse_nfs_symlink,
+	.truncate	= fuse_nfs_truncate,
 	.write		= fuse_nfs_write,
 };
 
