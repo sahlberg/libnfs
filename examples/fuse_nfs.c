@@ -197,10 +197,16 @@ static int fuse_nfs_mkdir(const char *path, mode_t mode)
 	return ret;
 }
 
+static int fuse_nfs_mknod(const char *path, mode_t mode, dev_t rdev)
+{
+	return nfs_mknod(nfs, path, mode, rdev);
+}
+
 static struct fuse_operations nfs_oper = {
 	.create		= fuse_nfs_create,
 	.getattr	= fuse_nfs_getattr,
 	.mkdir		= fuse_nfs_mkdir,
+	.mknod		= fuse_nfs_mknod,
 	.open		= fuse_nfs_open,
 	.read		= fuse_nfs_read,
 	.readdir	= fuse_nfs_readdir,
