@@ -217,7 +217,13 @@ static int fuse_nfs_link(const char *from, const char *to)
 	return nfs_link(nfs, from, to);
 }
 
+static int fuse_nfs_chmod(const char *path, mode_t mode)
+{
+	return nfs_chmod(nfs, path, mode);
+}
+
 static struct fuse_operations nfs_oper = {
+	.chmod		= fuse_nfs_chmod,
 	.create		= fuse_nfs_create,
 	.getattr	= fuse_nfs_getattr,
 	.link		= fuse_nfs_link,
