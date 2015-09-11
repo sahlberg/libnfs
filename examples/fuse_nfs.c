@@ -212,9 +212,15 @@ static int fuse_nfs_rename(const char *from, const char *to)
 	return nfs_rename(nfs, from, to);
 }
 
+static int fuse_nfs_link(const char *from, const char *to)
+{
+	return nfs_link(nfs, from, to);
+}
+
 static struct fuse_operations nfs_oper = {
 	.create		= fuse_nfs_create,
 	.getattr	= fuse_nfs_getattr,
+	.link		= fuse_nfs_link,
 	.mkdir		= fuse_nfs_mkdir,
 	.mknod		= fuse_nfs_mknod,
 	.open		= fuse_nfs_open,
