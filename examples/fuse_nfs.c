@@ -207,6 +207,11 @@ static int fuse_nfs_symlink(const char *from, const char *to)
 	return nfs_symlink(nfs, from, to);
 }
 
+static int fuse_nfs_rename(const char *from, const char *to)
+{
+	return nfs_rename(nfs, from, to);
+}
+
 static struct fuse_operations nfs_oper = {
 	.create		= fuse_nfs_create,
 	.getattr	= fuse_nfs_getattr,
@@ -220,6 +225,7 @@ static struct fuse_operations nfs_oper = {
 	.rmdir		= fuse_nfs_rmdir,
 	.unlink		= fuse_nfs_unlink,
 	.utime		= fuse_nfs_utime,
+	.rename		= fuse_nfs_rename,
 	.symlink	= fuse_nfs_symlink,
 	.write		= fuse_nfs_write,
 };
