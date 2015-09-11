@@ -232,10 +232,19 @@ static int fuse_nfs_truncate(const char *path, off_t size)
 	return nfs_truncate(nfs, path, size);
 }
 
+static int fuse_nfs_fsync(const char *path, int isdatasync,
+			  struct fuse_file_info *fi)
+{
+	struct nfsfh *nfsfh = (struct nfsfh *)fi->fh;
+
+	return nfs_fsync(nfs, nfsfh);
+}
+
 static struct fuse_operations nfs_oper = {
 	.chmod		= fuse_nfs_chmod,
 	.chown		= fuse_nfs_chown,
 	.create		= fuse_nfs_create,
+	.fsync		= fuse_nfs_fsync,
 	.getattr	= fuse_nfs_getattr,
 	.link		= fuse_nfs_link,
 	.mkdir		= fuse_nfs_mkdir,
