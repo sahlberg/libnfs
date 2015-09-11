@@ -222,8 +222,14 @@ static int fuse_nfs_chmod(const char *path, mode_t mode)
 	return nfs_chmod(nfs, path, mode);
 }
 
+static int fuse_nfs_chown(const char *path, uid_t uid, gid_t gid)
+{
+	return nfs_chown(nfs, path, uid, gid);
+}
+
 static struct fuse_operations nfs_oper = {
 	.chmod		= fuse_nfs_chmod,
+	.chown		= fuse_nfs_chown,
 	.create		= fuse_nfs_create,
 	.getattr	= fuse_nfs_getattr,
 	.link		= fuse_nfs_link,
