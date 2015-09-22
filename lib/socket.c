@@ -336,7 +336,7 @@ int rpc_service(struct rpc_context *rpc, int revents)
 		}
 
 		rpc->is_connected = 1;
-		RPC_LOG(rpc, 2, "connection established");
+		RPC_LOG(rpc, 2, "connection established on fd %d", rpc->fd);
 		if (rpc->connect_cb != NULL) {
 			rpc->connect_cb(rpc, RPC_STATUS_SUCCESS, NULL, rpc->connect_data);
 		}
@@ -572,7 +572,8 @@ static void reconnect_cb(struct rpc_context *rpc, int status, void *data _U_, vo
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
 	if (status != RPC_STATUS_SUCCESS) {
-		rpc_error_all_pdus(rpc, "RPC ERROR: Failed to reconnect async");
+		rpc_set_error(rpc, "Failed to reconnect async");
+		rpc_reconnect_requeue(rpc);
 		return;
 	}
 
