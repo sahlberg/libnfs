@@ -79,6 +79,7 @@ struct rpc_queue {
 struct rpc_context {
 	uint32_t magic;
 	int fd;
+	int old_fd;
 	int is_connected;
 
 	char *error_string;

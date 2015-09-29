@@ -132,6 +132,10 @@ int rpc_get_fd(struct rpc_context *rpc)
 {
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
+	if (rpc->old_fd) {
+		return rpc->old_fd;
+	}
+
 	return rpc->fd;
 }
 
@@ -336,7 +340,7 @@ int rpc_service(struct rpc_context *rpc, int revents)
 		}
 
 		rpc->is_connected = 1;
-		RPC_LOG(rpc, 2, "connection established");
+		RPC_LOG(rpc, 2, "connection established on fd %d", rpc->fd);
 		if (rpc->connect_cb != NULL) {
 			rpc->connect_cb(rpc, RPC_STATUS_SUCCESS, NULL, rpc->connect_data);
 		}
@@ -416,6 +420,14 @@ static int rpc_connect_sockaddr_async(struct rpc_context *rpc, struct sockaddr_s
 	if (rpc->fd == -1) {
 		rpc_set_error(rpc, "Failed to open socket");
 		return -1;
+	}
+
+	if (rpc->old_fd) {
+		if (dup2(rpc->fd, rpc->old_fd) == -1) {
+			return -1;
+		}
+		close(rpc->fd);
+		rpc->fd = rpc->old_fd;
 	}
 
 	/* Some systems allow you to set capabilities on an executable
@@ -572,12 +584,14 @@ static void reconnect_cb(struct rpc_context *rpc, int status, void *data _U_, vo
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
 	if (status != RPC_STATUS_SUCCESS) {
-		rpc_error_all_pdus(rpc, "RPC ERROR: Failed to reconnect async");
+		rpc_set_error(rpc, "Failed to reconnect async");
+		rpc_reconnect_requeue(rpc);
 		return;
 	}
 
 	rpc->is_connected = 1;
 	rpc->connect_cb   = NULL;
+	rpc->old_fd = 0;
 }
 
 /* disconnect but do not error all PDUs, just move pdus in-flight back to the outqueue and reconnect */
@@ -589,7 +603,7 @@ static int rpc_reconnect_requeue(struct rpc_context *rpc)
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
 	if (rpc->fd != -1) {
-		close(rpc->fd);
+		rpc->old_fd = rpc->fd;
 	}
 	rpc->fd  = -1;
 	rpc->is_connected = 0;
