@@ -40,13 +40,42 @@ void rpc_destroy_context(struct rpc_context *rpc);
 
 void rpc_set_auth(struct rpc_context *rpc, struct AUTH *auth);
 
+/*
+ * Used for interfacing the api into an external eventsystem.
+ *
+ * rpc_get_fd() returns the file descriptor for the context we need to
+ * listen for events from.
+ *
+ * rpc_which_events() returns which events that we need to poll for.
+ * This is a combination of the POLLIN and POLLOUT flags.
+ *
+ * rpc_service() This function should be called once there are events triggered
+ * for the filedescriptor. This function takes POLLIN/POLLOUT/POLLHUP/POLLERR
+ * as arguments.
+ * This function returns 0 on success or -1 on error. If it returns -1 it
+ * means that the socket is in an unrecoverable error state (disconnected?)
+ * and that no further commands can be used.
+ * When this happens the application should destroy the now errored context
+ * re-create a new context and reconnect.
+ *
+ */
 int rpc_get_fd(struct rpc_context *rpc);
 int rpc_which_events(struct rpc_context *rpc);
 int rpc_service(struct rpc_context *rpc, int revents);
-char *rpc_get_error(struct rpc_context *rpc);
+
+/*
+ * Returns the number of commands in-flight. Can be used by the application
+ * to check if there are any more responses we are awaiting for the server
+ * or if the connection is completely idle.
+ */
 int rpc_queue_length(struct rpc_context *rpc);
 
-/* Utility function to get an RPC context from a NFS context. Useful for doing low level NFSACL
+/*
+ * When an operation failed, this function can extract a detailed error string.
+ */
+char *rpc_get_error(struct rpc_context *rpc);
+
+  /* Utility function to get an RPC context from a NFS context. Useful for doing low level NFSACL
  * calls on a NFS context.
  */
 struct rpc_context *nfs_get_rpc_context(struct nfs_context *nfs);
