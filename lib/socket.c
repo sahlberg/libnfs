@@ -636,6 +636,7 @@ static int rpc_reconnect_requeue(struct rpc_context *rpc)
 		}
 	} else {
 		RPC_LOG(rpc, 1, "reconnect NOT initiated, auto-reconnect is disabled");
+		return -1;
 	}
 
 	return 0;
