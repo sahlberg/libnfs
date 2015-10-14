@@ -79,11 +79,34 @@ struct utimbuf {
 #endif
 
 /*
- * Used for interfacing the async version of the api into an external eventsystem
+ * Used for interfacing the async version of the api into an external
+ * eventsystem.
+ *
+ * nfs_get_fd() returns the file descriptor for the context we need to
+ * listen for events from.
+ *
+ * nfs_which_events() returns which events that we need to poll for.
+ * This is a combination of the POLLIN and POLLOUT flags.
+ *
+ * nfs_service() This function should be called once there are events triggered
+ * for the filedescriptor. This function takes POLLIN/POLLOUT/POLLHUP/POLLERR
+ * as arguments.
+ * This function returns 0 on success or -1 on error. If it returns -1 it
+ * means that the socket is in an unrecoverable error state (disconnected?)
+ * and that no further commands can be used.
+ * When this happens the application should destroy the now errored context
+ * re-create a new context and reconnect.
+ *
  */
 EXTERN int nfs_get_fd(struct nfs_context *nfs);
 EXTERN int nfs_which_events(struct nfs_context *nfs);
 EXTERN int nfs_service(struct nfs_context *nfs, int revents);
+
+/*
+ * Returns the number of commands in-flight. Can be used by the application
+ * to check if there are any more responses we are awaiting for the server
+ * or if the connection is completely idle.
+ */
 EXTERN int nfs_queue_length(struct nfs_context *nfs);
 
 /*
