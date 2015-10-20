@@ -90,14 +90,6 @@ manpages by running
   cd doc
   make doc
 
-FUSE
-====
-A simple FUSE filesystem built on libnfs can be found in
-examples/fuse_nfs.c
-
-Compile using : gcc fuse_nfs.c -o fuse_nfs -lfuse -lnfs
-Mount using : sudo ./fuse_nfs -n nfs://<server>/<export> -m <mountpoint>
-
 
 PLATFORM support
 =================
