@@ -269,6 +269,10 @@ static int rpc_read_from_socket(struct rpc_context *rpc)
 			return -1;
 		}
 		rpc->inpos += count;
+
+		if (rpc->inpos < 4) {
+			return 0;
+		}
 	}
 
 	pdu_size = rpc_get_pdu_size(rpc->inbuf);
