@@ -204,6 +204,7 @@ static int rpc_write_to_socket(struct rpc_context *rpc)
 	return 0;
 }
 
+#define MAX_UDP_SIZE 65536
 static int rpc_read_from_socket(struct rpc_context *rpc)
 {
 	int size;
@@ -214,28 +215,20 @@ static int rpc_read_from_socket(struct rpc_context *rpc)
 
 	if (rpc->is_udp) {
 		char *buf;
-		int available;
 		socklen_t socklen = sizeof(rpc->udp_src);
 
-		if (ioctl(rpc->fd, FIONREAD, &available) != 0) {
-			rpc_set_error(rpc, "Ioctl FIONREAD returned error : %d. Closing socket.", errno);
-			return -1;
-		}
-
-		if (available == 0) {
-			rpc_set_error(rpc, "Socket has been closed");
-			return -1;
-		}
-
-		buf = malloc(available);
+		buf = malloc(MAX_UDP_SIZE);
 		if (buf == NULL) {
 			rpc_set_error(rpc, "Failed to malloc buffer for recvfrom");
 			return -1;
 		}
-		count = recvfrom(rpc->fd, buf, available, MSG_DONTWAIT, (struct sockaddr *)&rpc->udp_src, &socklen);
-		if (count < 0) {
-			rpc_set_error(rpc, "Failed recvfrom: %s", strerror(errno));
+		count = recvfrom(rpc->fd, buf, MAX_UDP_SIZE, MSG_DONTWAIT, (struct sockaddr *)&rpc->udp_src, &socklen);
+		if (count == -1) {
 			free(buf);
+			if (errno == EINTR || errno == EAGAIN) {
+				return 0;
+			}
+			rpc_set_error(rpc, "Failed recvfrom: %s", strerror(errno));
 			return -1;
 		}
 		if (rpc_process_pdu(rpc, buf, count) != 0) {
