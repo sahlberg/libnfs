@@ -70,13 +70,6 @@ struct rpc_context *rpc_init_context(void)
 		return NULL;
 	}
 
-	rpc->inbuflen = 2 * (NFS_MAX_XFER_SIZE + 4096);
-	rpc->inbuf = malloc(rpc->inbuflen);
-	if (rpc->inbuf == NULL) {
-		free(rpc);
-		return NULL;
-	}
-
  	rpc->auth = authunix_create_default();
 	if (rpc->auth == NULL) {
 		free(rpc->encodebuf);
@@ -284,10 +277,20 @@ void rpc_destroy_context(struct rpc_context *rpc)
  		close(rpc->fd);
 	}
 
-	free(rpc->encodebuf);
-	free(rpc->inbuf);
-	free(rpc->error_string);
-	free(rpc->udp_dest);
+	if (rpc->encodebuf != NULL) {
+		free(rpc->encodebuf);
+		rpc->encodebuf = NULL;
+	}
+
+	if (rpc->error_string != NULL) {
+		free(rpc->error_string);
+		rpc->error_string = NULL;
+	}
+
+	if (rpc->udp_dest != NULL) {
+		free(rpc->udp_dest);
+		rpc->udp_dest = NULL;
+	}
 
 	rpc->magic = 0;
 	free(rpc);

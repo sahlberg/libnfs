@@ -99,8 +99,8 @@ struct rpc_context {
 	struct rpc_queue waitpdu[HASHES];
 
 	uint32_t inpos;
+	uint32_t insize;
 	char *inbuf;
-	uint32_t inbuflen;
 
 	/* special fields for UDP, which can sometimes be BROADCASTed */
 	int is_udp;
