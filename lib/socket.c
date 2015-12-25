@@ -319,6 +319,18 @@ static int rpc_read_from_socket(struct rpc_context *rpc)
 }
 
 
+static void
+maybe_call_connect_cb(struct rpc_context *rpc, int status)
+{
+	rpc_cb tmp_cb = rpc->connect_cb;
+
+	if (rpc->connect_cb == NULL) {
+		return;
+	}
+
+	rpc->connect_cb = NULL;
+	tmp_cb(rpc, status, rpc->error_string, rpc->connect_data);
+}
 
 int rpc_service(struct rpc_context *rpc, int revents)
 {
@@ -343,16 +355,12 @@ int rpc_service(struct rpc_context *rpc, int revents)
 			rpc_set_error(rpc, "rpc_service: POLLERR, "
 						"Unknown socket error.");
 		}
-		if (rpc->connect_cb != NULL) {
-			rpc->connect_cb(rpc, RPC_STATUS_ERROR, rpc->error_string, rpc->connect_data);
-		}
+		maybe_call_connect_cb(rpc, RPC_STATUS_ERROR);
 		return -1;
 	}
 	if (revents & POLLHUP) {
 		rpc_set_error(rpc, "Socket failed with POLLHUP");
-		if (rpc->connect_cb != NULL) {
-			rpc->connect_cb(rpc, RPC_STATUS_ERROR, rpc->error_string, rpc->connect_data);
-		}
+		maybe_call_connect_cb(rpc, RPC_STATUS_ERROR);
 		return -1;
 	}
 
@@ -368,18 +376,13 @@ int rpc_service(struct rpc_context *rpc, int revents)
 			rpc_set_error(rpc, "rpc_service: socket error "
 				  	"%s(%d) while connecting.",
 					strerror(err), err);
-			if (rpc->connect_cb != NULL) {
-				rpc->connect_cb(rpc, RPC_STATUS_ERROR,
-					NULL, rpc->connect_data);
-			}
+			maybe_call_connect_cb(rpc, RPC_STATUS_ERROR);
 			return -1;
 		}
 
 		rpc->is_connected = 1;
 		RPC_LOG(rpc, 2, "connection established on fd %d", rpc->fd);
-		if (rpc->connect_cb != NULL) {
-			rpc->connect_cb(rpc, RPC_STATUS_SUCCESS, NULL, rpc->connect_data);
-		}
+		maybe_call_connect_cb(rpc, RPC_STATUS_SUCCESS);
 		return 0;
 	}
 
