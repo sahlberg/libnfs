@@ -335,33 +335,37 @@ maybe_call_connect_cb(struct rpc_context *rpc, int status)
 int rpc_service(struct rpc_context *rpc, int revents)
 {
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
-	if (revents & POLLERR) {
+	if (revents & (POLLERR|POLLHUP)) {
+		if (revents & POLLERR) {
 #ifdef WIN32
-		char err = 0;
+			char err = 0;
 #else
-		int err = 0;
+			int err = 0;
 #endif
-		socklen_t err_size = sizeof(err);
+			socklen_t err_size = sizeof(err);
 
-		if (getsockopt(rpc->fd, SOL_SOCKET, SO_ERROR,
+			if (getsockopt(rpc->fd, SOL_SOCKET, SO_ERROR,
 				(char *)&err, &err_size) != 0 || err != 0) {
-			if (err == 0) {
-				err = errno;
+				if (err == 0) {
+					err = errno;
+				}
+				rpc_set_error(rpc, "rpc_service: socket error "
+						    "%s(%d).",
+						    strerror(err), err);
+			} else {
+				rpc_set_error(rpc, "rpc_service: POLLERR, "
+						   "Unknown socket error.");
 			}
-			rpc_set_error(rpc, "rpc_service: socket error "
-					       "%s(%d).",
-					       strerror(err), err);
-		} else {
-			rpc_set_error(rpc, "rpc_service: POLLERR, "
-						"Unknown socket error.");
+		}
+		if (revents & POLLHUP) {
+			rpc_set_error(rpc, "Socket failed with POLLHUP");
+		}
+		if (rpc->auto_reconnect) {
+			return rpc_reconnect_requeue(rpc);
 		}
 		maybe_call_connect_cb(rpc, RPC_STATUS_ERROR);
 		return -1;
-	}
-	if (revents & POLLHUP) {
-		rpc_set_error(rpc, "Socket failed with POLLHUP");
-		maybe_call_connect_cb(rpc, RPC_STATUS_ERROR);
-		return -1;
+
 	}
 
 	if (rpc->is_connected == 0 && rpc->fd != -1 && revents&POLLOUT) {
