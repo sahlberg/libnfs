@@ -11,4 +11,8 @@ AM_CPPFLAGS = \
 	-I$(abs_top_srcdir)/win32 \
 	"-D_U_=__attribute__((unused))"
 
-AM_LDFLAGS = ../lib/.libs/libnfs.la $(LIBSOCKET)
+COMMON_LIBS = ../lib/libnfs.la $(LIBSOCKET)
+
+nfs_cat_LDADD = $(COMMON_LIBS)
+nfs_ls_LDADD = $(COMMON_LIBS)
+nfs_cp_LDADD = $(COMMON_LIBS)

@@ -10,4 +10,11 @@ AM_CPPFLAGS = \
 	-I$(abs_top_srcdir)/rquota \
 	"-D_U_=__attribute__((unused))"
 
-AM_LDFLAGS = ../lib/.libs/libnfs.la -lpopt
+COMMON_LIBS = ../lib/libnfs.la -lpopt
+nfsclient_async_LDADD = $(COMMON_LIBS)
+nfsclient_raw_LDADD = $(COMMON_LIBS)
+nfsclient_sync_LDADD = $(COMMON_LIBS)
+nfsclient_bcast_LDADD = $(COMMON_LIBS)
+nfsclient_listservers_LDADD = $(COMMON_LIBS)
+nfs_io_LDADD = $(COMMON_LIBS)
+portmap_client_LDADD = $(COMMON_LIBS)
