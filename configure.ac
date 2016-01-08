@@ -90,7 +90,7 @@ if test "$ac_cv_prog_gcc" = yes; then
 fi
 AC_SUBST(WARN_CFLAGS)
 
-
+LIBSOCKET=
 case $host in
   *solaris*)
     AC_CHECK_HEADERS([sys/filio.h])
@@ -98,9 +98,13 @@ case $host in
     AC_CHECK_LIB([socket], [main], , [AC_MSG_ERROR([Can not find required library])])
     AC_CHECK_LIB([nsl],    [main], , [AC_MSG_ERROR([Can not find required library])])
     ;;
+  *mingw32* | *cygwin* | *wince* | *mingwce*)
+    LIBSOCKET='-lws2_32'
+    ;;
   *)
     ;;
 esac
+AC_SUBST([LIBSOCKET])
 
 # check for poll.h
 dnl Check for poll.h

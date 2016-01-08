@@ -7,4 +7,4 @@ AM_CPPFLAGS = \
 	-I$(abs_top_srcdir)/win32 \
 	"-D_U_=__attribute__((unused))"
 
-AM_LDFLAGS = ../lib/.libs/libnfs.la
+AM_LDFLAGS = ../lib/.libs/libnfs.la $(LIBSOCKET)
