@@ -108,6 +108,9 @@ struct pollfd {
 int     win32_inet_pton(int af, const char * src, void * dst);
 int     win32_poll(struct pollfd *fds, unsigned int nfsd, int timeout);
 int     win32_gettimeofday(struct timeval *tv, struct timezone *tz);
+#ifdef __MINGW32__
+# define win32_gettimeofday mingw_gettimeofday
+#endif
 
 #define DllExport
 
