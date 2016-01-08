@@ -1,4 +1,8 @@
-bin_PROGRAMS = nfs-cat nfs-cp nfs-ls
+bin_PROGRAMS = nfs-cat nfs-ls
+
+if !HAVE_WIN32
+bin_PROGRAMS += nfs-cp
+endif
 
 AM_CPPFLAGS = \
 	-I$(abs_top_srcdir)/include \

@@ -91,6 +91,8 @@ fi
 AC_SUBST(WARN_CFLAGS)
 
 LIBSOCKET=
+SYS=
+
 case $host in
   *solaris*)
     AC_CHECK_HEADERS([sys/filio.h])
@@ -100,10 +102,12 @@ case $host in
     ;;
   *mingw32* | *cygwin* | *wince* | *mingwce*)
     LIBSOCKET='-lws2_32'
+    SYS=mingw32
     ;;
   *)
     ;;
 esac
+AM_CONDITIONAL(HAVE_WIN32,   test "${SYS}" = "mingw32")
 AC_SUBST([LIBSOCKET])
 
 # check for poll.h
