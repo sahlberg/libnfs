@@ -28,7 +28,7 @@ THE SOFTWARE.
 
 #include <winsock2.h>
 #include <ws2tcpip.h>
-#include <Ws2ipdef.h>
+#include <ws2ipdef.h>
 #include <basetsd.h>
 #include <io.h>
 #include <sys/stat.h>
