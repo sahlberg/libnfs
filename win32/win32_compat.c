@@ -23,7 +23,7 @@ THE SOFTWARE.
 
 #ifndef WIN32
 
-static int dummy ATTRIBUTE((unused));
+static int dummy _U_;
 
 #else
 #include "win32_compat.h"
