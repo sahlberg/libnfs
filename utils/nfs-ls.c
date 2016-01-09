@@ -36,7 +36,7 @@ WSADATA wsaData;
 #include <string.h>
 #include <sys/stat.h>
 #ifndef AROS
-#ifdef ANDROID
+#ifdef __ANDROID__
 #define statvfs statfs
 #include <sys/vfs.h>
 #else

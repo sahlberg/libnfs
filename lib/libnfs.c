@@ -33,7 +33,7 @@
 #include <utime.h>
 #endif
 
-#ifdef ANDROID
+#ifdef __ANDROID__
 #define statvfs statfs
 #endif
 
@@ -4220,7 +4220,7 @@ static void nfs_statvfs_1_cb(struct rpc_context *rpc, int status, void *command_
 	svfs.f_bavail  = res->FSSTAT3res_u.resok.abytes/NFS_BLKSIZE;
 	svfs.f_files   = res->FSSTAT3res_u.resok.tfiles;
 	svfs.f_ffree   = res->FSSTAT3res_u.resok.ffiles;
-#if !defined(ANDROID)
+#if !defined(__ANDROID__)
 	svfs.f_favail  = res->FSSTAT3res_u.resok.afiles;
 	svfs.f_fsid    = 0;
 	svfs.f_flag    = 0;
