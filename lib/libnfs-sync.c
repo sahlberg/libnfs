@@ -37,7 +37,7 @@
 #include <net/if.h>
 #endif
 
-#ifdef ANDROID
+#ifdef __ANDROID__
 #define statvfs statfs
 #endif
 

@@ -22,7 +22,7 @@
 #define _LIBNFS_H_
 
 #include <stdint.h>
-#if defined(ANDROID)
+#if defined(__ANDROID__)
 #include <sys/time.h>
 #endif
 #if defined(AROS)
