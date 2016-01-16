@@ -69,10 +69,12 @@ struct statvfs {
 	uint32_t	f_flag;
 	uint32_t	f_namemax;
 };
+#if !defined(__MINGW32__)
 struct utimbuf {
 	time_t actime;
 	time_t modtime;
 };
+#endif
 #define R_OK	4
 #define W_OK	2
 #define X_OK	1

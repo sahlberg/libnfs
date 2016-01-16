@@ -8,7 +8,8 @@ dist_nfsc_HEADERS = \
 	../nfs/libnfs-raw-nfs.h \
 	../nlm/libnfs-raw-nlm.h \
 	../nsm/libnfs-raw-nsm.h \
-	../rquota/libnfs-raw-rquota.h
+	../rquota/libnfs-raw-rquota.h \
+	../win32/win32_compat.h
 
 dist_noinst_HEADERS = \
         libnfs-private.h \

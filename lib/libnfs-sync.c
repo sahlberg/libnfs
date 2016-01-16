@@ -457,7 +457,11 @@ int nfs_close(struct nfs_context *nfs, struct nfsfh *nfsfh)
 /*
  * fstat()
  */
+#ifdef WIN32
+int nfs_fstat(struct nfs_context *nfs, struct nfsfh *nfsfh, struct __stat64 *st)
+#else
 int nfs_fstat(struct nfs_context *nfs, struct nfsfh *nfsfh, struct stat *st)
+#endif
 {
 	struct sync_cb_data cb_data;
 

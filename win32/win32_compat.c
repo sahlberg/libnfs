@@ -23,7 +23,7 @@ THE SOFTWARE.
 
 #ifndef WIN32
 
-static int dummy ATTRIBUTE((unused));
+static int dummy _U_;
 
 #else
 #include "win32_compat.h"
@@ -156,6 +156,7 @@ int win32_poll(struct pollfd *fds, unsigned int nfds, int timo)
   #define DELTA_EPOCH_IN_MICROSECS  11644473600000000ULL
 #endif
  
+#ifndef __MINGW32__
 struct timezone 
 {
   int  tz_minuteswest; /* minutes W of Greenwich */
@@ -197,4 +198,5 @@ int win32_gettimeofday(struct timeval *tv, struct timezone *tz)
   return 0;
 }
 
+#endif
 #endif
