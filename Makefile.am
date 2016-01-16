@@ -1,4 +1,4 @@
-SUBDIRS = doc mount nfs nlm nsm portmap rquota lib include utils . $(MAYBE_EXAMPLES)
+SUBDIRS = doc mount nfs nlm nsm portmap rquota lib include $(MAYBE_UTILS) . $(MAYBE_EXAMPLES)
 ACLOCAL_AMFLAGS = -I m4
 
 pkgconfigdir = $(libdir)/pkgconfig

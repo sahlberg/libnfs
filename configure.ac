@@ -24,6 +24,14 @@ fi
 # We always want 64 bit file offsets
 CFLAGS="${CFLAGS} -D_FILE_OFFSET_BITS=64"
 
+#option: utils
+AC_ARG_ENABLE([utils],
+              [AC_HELP_STRING([--enable-utils],
+                              [Build util programs])],
+	      [MAYBE_UTILS=""],
+	      [MAYBE_UTILS="utils"])
+AC_SUBST(MAYBE_UTILS)
+
 #option: examples
 AC_ARG_ENABLE([examples],
               [AC_HELP_STRING([--enable-examples],
