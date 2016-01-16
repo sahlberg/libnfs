@@ -10,7 +10,7 @@ examples/nfsclient-raw.c provides examples on how to use the raw API
 
 2, NFS ASYNC : A fully asynchronous library for high level vfs functions
 This API is described by the *_async() functions in include/libnfs.h.
-This API provides a fully async access to posix vfs like functions such as 
+This API provides a fully async access to posix vfs like functions such as
 stat(), read(), ...
 
 examples/nfsclient-async.c provides examples on how to use this API
@@ -18,7 +18,7 @@ examples/nfsclient-async.c provides examples on how to use this API
 
 3, NFS SYNC : A synchronous library for high level vfs functions
 This API is described by the *_sync() functions in include/libnfs.h.
-This API provides access to posix vfs like functions such as 
+This API provides access to posix vfs like functions such as
 stat(), read(), ...
 
 examples/nfsclient-sync.c provides examples on how to use this API
@@ -42,7 +42,7 @@ Arguments supported by libnfs are :
                      of readahead to <int>.
  auto-traverse-mounts=<0|1>
                    : Should libnfs try to traverse across nested mounts
-		     automatically or not. Default is 1 == enabled.
+                     automatically or not. Default is 1 == enabled.
 
 Auto_traverse_mounts
 ====================
@@ -63,7 +63,7 @@ make sure you cache files based on BOTH st.st_ino and st.st_dev.
 ROOT vs NON-ROOT
 ================
 When running as root, libnfs tries to allocate a system port for its connection
-to the NFS server. When running as non-root it will use a normal 
+to the NFS server. When running as non-root it will use a normal
 ephemeral port.
 Many NFS servers default to a mode where they do not allow non-system
 ports from connecting.
@@ -72,7 +72,7 @@ in order to allow libnfs clients to be able to connect.
 
 Some versions of Linux support special capabilities that can be assigned to
 programs to allow non-root users to bind to system ports.
-This is set up by running 
+This is set up by running
     sudo setcap 'cap_net_bind_service=+ep' /path/to/executable
 When libnfs is linked against an executable with this special capability
 assigned to it, libnfs may be able to use system ports even when executing
@@ -86,7 +86,7 @@ DOCUMENTATION
 =============
 libnfs sources ship with prebuilt manpage(s) in the doc directory.
 If you change the manpage sources you need to manually regenerate the new
-manpages by running 
+manpages by running
   cd doc
   make doc
 
