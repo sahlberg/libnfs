@@ -102,6 +102,7 @@ iOS:    - tested with iOS SDK 4.2 - running on iOS 4.3.x
 FreeBSD:- tested with 8.2
 Solaris
 Windows:- tested on Windows 7 64 and Windows XP 32 using Visual Studio 10 (see README.win32.txt for build instructions)
+        - tested on Windows 7 64 using MingW on Linux to cross-compile (Debian and Ubuntu tested)
 Android:
 AROS: - Build with 'make -f aros/Makefile.AROS'
 
