@@ -3670,13 +3670,9 @@ static int lookup_missing_attributes(struct nfs_context *nfs,
 				     struct nfsdir *nfsdir,
 				     struct nfs_cb_data *data)
 {
-	struct rdpe_cb_data *rdpe_cb_data;
+	struct rdpe_cb_data *rdpe_cb_data = NULL;
 	struct nfsdirent *nfsdirent;
 
-	rdpe_cb_data = malloc(sizeof(struct rdpe_cb_data));
-	rdpe_cb_data->getattrcount = 0;
-	rdpe_cb_data->status = RPC_STATUS_SUCCESS;
-	rdpe_cb_data->data = data;
 	for (nfsdirent = nfsdir->entries;
 	     nfsdirent;
 	     nfsdirent = nfsdirent->next) {
@@ -3691,6 +3687,12 @@ static int lookup_missing_attributes(struct nfs_context *nfs,
 			continue;
 		}
 
+		if (rdpe_cb_data == NULL) {
+			rdpe_cb_data = malloc(sizeof(struct rdpe_cb_data));
+			rdpe_cb_data->getattrcount = 0;
+			rdpe_cb_data->status = RPC_STATUS_SUCCESS;
+			rdpe_cb_data->data = data;
+		}
 		rdpe_lookup_cb_data = malloc(sizeof(struct rdpe_lookup_cb_data));
 		rdpe_lookup_cb_data->rdpe_cb_data = rdpe_cb_data;
 		rdpe_lookup_cb_data->nfsdirent = nfsdirent;
@@ -3712,7 +3714,10 @@ static int lookup_missing_attributes(struct nfs_context *nfs,
 		}
 		rdpe_cb_data->getattrcount++;
 	}
-	return rdpe_cb_data->getattrcount;
+	if (rdpe_cb_data != NULL) {
+		return rdpe_cb_data->getattrcount;
+	}
+	return 0;
 }
 
 static void nfs_opendir2_cb(struct rpc_context *rpc, int status, void *command_data, void *private_data)
