@@ -112,6 +112,17 @@ Utility programs for LibNFS
 %{_mandir}/man1/nfs-ls.1.gz
 
 %changelog
+* Sun Jan 31 2016 : Version 1.10.0
+ - Fix a leak where we leaked one rdpe_cb_data structure on each open_dir()
+ - Make building the utils optional
+ - Android: the correct define is __ANDROID__ not ANDROID
+ - Win32: Use _U_ instead of ATTRIBURE((unused))
+ - Win32: Fix nfs_stat declaration for Win32
+ - Various fixes for mingw builds
+ - Make rpc->connect_cb a one shot callback and improve documentation
+ - Remove the FUSE module. It now lives in its own repo
+ - Fix POLLERR/POLLHUP handling to properly handle session failures and to
+   try to auto-reconnect
 * Sun Aug 2 2015 : Version 1.9.8
  - Disable multithreading in fuse_nfs
  - Add -Wall and -Werror compiler flags (and fix issues found by it)
