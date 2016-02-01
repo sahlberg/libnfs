@@ -80,11 +80,7 @@ enum zdr_op {
 	ZDR_DECODE = 1
 };
 
-struct zdr_mem {
-       struct zdr_mem *next;
-       caddr_t buf;
-       uint32_t size;
-};
+struct zdr_mem;
 
 struct ZDR {
 	enum zdr_op x_op;

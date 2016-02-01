@@ -36,6 +36,7 @@
 #include <arpa/inet.h>
 #endif
 
+#include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
@@ -44,6 +45,12 @@
 #include "libnfs.h"
 #include "libnfs-raw.h"
 #include "libnfs-private.h"
+
+struct zdr_mem {
+       struct zdr_mem *next;
+       uint32_t size;
+       char buf[1];
+};
 
 struct opaque_auth _null_auth;
 
@@ -71,21 +78,23 @@ void libnfs_zdrmem_create(ZDR *zdrs, const caddr_t addr, uint32_t size, enum zdr
 static void *zdr_malloc(ZDR *zdrs, uint32_t size)
 {
 	struct zdr_mem *mem;
+	int mem_size;
 
-	mem = malloc(sizeof(struct zdr_mem));
+	mem_size = offsetof(struct zdr_mem, buf) + size;
+	mem = malloc(mem_size);
+
 	mem->next = zdrs->mem;
 	mem->size = size;
-	mem->buf  = malloc(mem->size);
+
 	zdrs->mem = mem;
 
-	return mem->buf;
+	return &mem->buf[0];
 }
 	
 void libnfs_zdr_destroy(ZDR *zdrs)
 {
 	while (zdrs->mem != NULL) {
 		struct zdr_mem *mem = zdrs->mem->next;
-		free(zdrs->mem->buf);
 		free(zdrs->mem);
 		zdrs->mem = mem;
 	}
