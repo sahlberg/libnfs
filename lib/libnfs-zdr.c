@@ -276,6 +276,20 @@ bool_t libnfs_zdr_string(ZDR *zdrs, char **strp, uint32_t maxsize)
 	case ZDR_ENCODE:
 		return libnfs_zdr_opaque(zdrs, *strp, size);
 	case ZDR_DECODE:
+		/* If the we string is null terminated we can just return it
+		 * in place.
+		 */
+		if (zdrs->size > zdrs->pos + size && zdrs->buf[zdrs->pos + size] == 0) {
+			if (*strp == NULL) {
+				*strp = &zdrs->buf[zdrs->pos];
+			}
+			(*strp)[size] = 0;
+			return libnfs_zdr_opaque(zdrs, *strp, size);
+		}
+
+		/* Crap. The string is not null terminated in the rx buffer.
+		 * we have to allocate a buffer so we can add the null byte.
+		 */
 		*strp = zdr_malloc(zdrs, size + 1);
 		if (*strp == NULL) {
 			return FALSE;
