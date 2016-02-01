@@ -94,11 +94,33 @@ struct rpc_context *rpc_init_context(void)
 	return rpc;
 }
 
+static round_to_power_of_two(uint32_t x) {
+	uint32_t power = 1;
+	while (power < x) {
+		power <<= 1;
+	}
+	return power;
+}
+
+void rpc_set_pagecache(struct rpc_context *rpc, uint32_t v)
+{
+	assert(rpc->magic == RPC_CONTEXT_MAGIC);
+	v = MAX(rpc->pagecache, round_to_power_of_two(v));
+	RPC_LOG(rpc, 2, "pagecache set to %d pages of size %d", v, NFS_BLKSIZE);
+	rpc->pagecache = v;
+}
+
 void rpc_set_readahead(struct rpc_context *rpc, uint32_t v)
 {
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
-
+	if (v) {
+		v = MAX(NFS_BLKSIZE, round_to_power_of_two(v));
+	}
+	RPC_LOG(rpc, 2, "readahead set to %d byte", v);
 	rpc->readahead = v;
+	if (v) {
+		rpc_set_pagecache(rpc, (v * 8) / NFS_BLKSIZE);
+	}
 }
 
 void rpc_set_debug(struct rpc_context *rpc, int level)

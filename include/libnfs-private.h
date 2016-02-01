@@ -32,6 +32,13 @@
 extern "C" {
 #endif
 
+#ifndef MIN
+#define MIN(a, b) (((a) < (b)) ? (a) : (b))
+#endif
+#ifndef MAX
+#define MAX(a, b) (((a) > (b)) ? (a) : (b))
+#endif
+
 #if !defined(HAVE_SOCKADDR_STORAGE) && !defined(WIN32)
 /*
  * RFC 2553: protocol-independent placeholder for socket addresses
@@ -119,6 +126,7 @@ struct rpc_context {
 	int uid;
 	int gid;
 	uint32_t readahead;
+	uint32_t pagecache;
 	int debug;
 };
 
@@ -186,6 +194,7 @@ void rpc_unset_autoreconnect(struct rpc_context *rpc);
 void rpc_set_tcp_syncnt(struct rpc_context *rpc, int v);
 void rpc_set_uid(struct rpc_context *rpc, int uid);
 void rpc_set_gid(struct rpc_context *rpc, int gid);
+void rpc_set_pagecache(struct rpc_context *rpc, uint32_t v);
 void rpc_set_readahead(struct rpc_context *rpc, uint32_t v);
 void rpc_set_debug(struct rpc_context *rpc, int level);
 
