@@ -176,10 +176,11 @@ bool_t libnfs_zdr_bytes(ZDR *zdrs, char **bufp, uint32_t *size, uint32_t maxsize
 		zdrs->pos = (zdrs->pos + 3) & ~3;
 		return TRUE;
 	case ZDR_DECODE:
-		if (*bufp == NULL) {
-			*bufp = zdr_malloc(zdrs, *size);
+		if (*bufp != NULL) {
+			memcpy(*bufp, &zdrs->buf[zdrs->pos], *size);
+		} else {
+			*bufp = &zdrs->buf[zdrs->pos];
 		}
-		memcpy(*bufp, &zdrs->buf[zdrs->pos], *size);
 		zdrs->pos += *size;
 		zdrs->pos = (zdrs->pos + 3) & ~3;
 		return TRUE;
