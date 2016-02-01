@@ -84,19 +84,28 @@ unsigned int rpc_hash_xid(uint32_t xid)
 	return (xid * 7919) % HASHES;
 }
 
+#define PAD_TO_8_BYTES(x) ((x + 0x07) & ~0x07)
+
 struct rpc_pdu *rpc_allocate_pdu(struct rpc_context *rpc, int program, int version, int procedure, rpc_cb cb, void *private_data, zdrproc_t zdr_decode_fn, int zdr_decode_bufsize)
 {
 	struct rpc_pdu *pdu;
 	struct rpc_msg msg;
+	int pdu_size;
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
-	pdu = malloc(sizeof(struct rpc_pdu));
+	/* Since we already know how much buffer we need for the decoding
+	 * we can just piggyback in the same alloc as for the pdu.
+	 */
+	pdu_size = PAD_TO_8_BYTES(sizeof(struct rpc_pdu));
+	pdu_size += PAD_TO_8_BYTES(zdr_decode_bufsize);
+
+	pdu = malloc(pdu_size);
 	if (pdu == NULL) {
 		rpc_set_error(rpc, "Out of memory: Failed to allocate pdu structure");
 		return NULL;
 	}
-	memset(pdu, 0, sizeof(struct rpc_pdu));
+	memset(pdu, 0, pdu_size);
 	pdu->xid                = rpc->xid++;
 	pdu->cb                 = cb;
 	pdu->private_data       = private_data;
@@ -140,7 +149,6 @@ void rpc_free_pdu(struct rpc_context *rpc, struct rpc_pdu *pdu)
 
 	if (pdu->zdr_decode_buf != NULL) {
 		zdr_free(pdu->zdr_decode_fn, pdu->zdr_decode_buf);
-		free(pdu->zdr_decode_buf);
 		pdu->zdr_decode_buf = NULL;
 	}
 
@@ -215,19 +223,7 @@ static int rpc_process_reply(struct rpc_context *rpc, struct rpc_pdu *pdu, ZDR *
 	memset(&msg, 0, sizeof(struct rpc_msg));
 	msg.body.rbody.reply.areply.verf = _null_auth;
 	if (pdu->zdr_decode_bufsize > 0) {
-		if (pdu->zdr_decode_buf != NULL) {
-			free(pdu->zdr_decode_buf);
-		}
-		pdu->zdr_decode_buf = malloc(pdu->zdr_decode_bufsize);
-		if (pdu->zdr_decode_buf == NULL) {
-			rpc_set_error(rpc, "Failed to allocate memory for "
-				      "zdr_encode_buf in rpc_process_reply");
-			pdu->cb(rpc, RPC_STATUS_ERROR, "Failed to allocate "
-				"buffer for decoding of ZDR reply",
-				pdu->private_data);
-			return 0;
-		}
-		memset(pdu->zdr_decode_buf, 0, pdu->zdr_decode_bufsize);
+		pdu->zdr_decode_buf = (char *)pdu + PAD_TO_8_BYTES(sizeof(struct rpc_pdu));
 	}
 	msg.body.rbody.reply.areply.reply_data.results.where = pdu->zdr_decode_buf;
 	msg.body.rbody.reply.areply.reply_data.results.proc  = pdu->zdr_decode_fn;
@@ -238,7 +234,6 @@ static int rpc_process_reply(struct rpc_context *rpc, struct rpc_pdu *pdu, ZDR *
 		pdu->cb(rpc, RPC_STATUS_ERROR, "Message rejected by server",
 			pdu->private_data);
 		if (pdu->zdr_decode_buf != NULL) {
-			free(pdu->zdr_decode_buf);
 			pdu->zdr_decode_buf = NULL;
 		}
 		return 0;
