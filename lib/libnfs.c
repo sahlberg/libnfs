@@ -181,6 +181,16 @@ static struct nfsdir *nfs_dircache_find(struct nfs_context *nfs, struct nfs_fh3 
 	return NULL;
 }
 
+static void nfs_dircache_drop(struct nfs_context *nfs, struct nfs_fh3 *fh)
+{
+	struct nfsdir *cached;
+
+	cached = nfs_dircache_find(nfs, fh);
+	if (cached) {
+		nfs_free_nfsdir(cached);
+	}
+}
+
 struct nfs_cb_data;
 typedef int (*continue_func)(struct nfs_context *nfs, fattr3 *attr,
 			     struct nfs_cb_data *data);
@@ -2842,6 +2852,7 @@ static void nfs_ftruncate_cb(struct rpc_context *rpc, int status, void *command_
 		return;
 	}
 
+	nfs_dircache_drop(nfs, &data->fh);
 	data->cb(0, nfs, NULL, data->private_data);
 	free_nfs_cb_data(data);
 }
@@ -2946,6 +2957,7 @@ static void nfs_mkdir_cb(struct rpc_context *rpc, int status, void *command_data
 		return;
 	}
 
+	nfs_dircache_drop(nfs, &data->fh);
 	data->cb(0, nfs, NULL, data->private_data);
 	free_nfs_cb_data(data);
 }
@@ -3037,6 +3049,7 @@ static void nfs_rmdir_cb(struct rpc_context *rpc, int status, void *command_data
 		return;
 	}
 
+	nfs_dircache_drop(nfs, &data->fh);
 	data->cb(0, nfs, NULL, data->private_data);
 	free_nfs_cb_data(data);
 }
@@ -3138,6 +3151,7 @@ static void nfs_create_trunc_cb(struct rpc_context *rpc, int status, void *comma
 		return;
 	}
 
+	nfs_dircache_drop(nfs, &data->fh);
 	data->cb(0, nfs, nfsfh, data->private_data);
 	free_nfs_cb_data(data);
 }
@@ -3225,6 +3239,7 @@ static void nfs_create_2_cb(struct rpc_context *rpc, int status, void *command_d
 		return;
 	}
 
+	nfs_dircache_drop(nfs, &data->fh);
 	data->cb(0, nfs, nfsfh, data->private_data);
 	free_nfs_cb_data(data);
 }
@@ -3378,6 +3393,7 @@ static void nfs_unlink_cb(struct rpc_context *rpc, int status, void *command_dat
 		return;
 	}
 
+	nfs_dircache_drop(nfs, &data->fh);
 	data->cb(0, nfs, NULL, data->private_data);
 	free_nfs_cb_data(data);
 }
@@ -3477,6 +3493,7 @@ static void nfs_mknod_cb(struct rpc_context *rpc, int status, void *command_data
 		return;
 	}
 
+	nfs_dircache_drop(nfs, &data->fh);
 	data->cb(0, nfs, NULL, data->private_data);
 	free_nfs_cb_data(data);
 }
@@ -4357,6 +4374,7 @@ static void nfs_chmod_cb(struct rpc_context *rpc, int status, void *command_data
 		return;
 	}
 
+	nfs_dircache_drop(nfs, &data->fh);
 	data->cb(0, nfs, NULL, data->private_data);
 	free_nfs_cb_data(data);
 }
@@ -4610,6 +4628,7 @@ static void nfs_utimes_cb(struct rpc_context *rpc, int status, void *command_dat
 		return;
 	}
 
+	nfs_dircache_drop(nfs, &data->fh);
 	data->cb(0, nfs, NULL, data->private_data);
 	free_nfs_cb_data(data);
 }
@@ -4928,6 +4947,7 @@ static void nfs_symlink_cb(struct rpc_context *rpc, int status, void *command_da
 		return;
 	}
 
+	nfs_dircache_drop(nfs, &data->fh);
 	data->cb(0, nfs, NULL, data->private_data);
 	free_nfs_cb_data(data);
 }
@@ -5064,6 +5084,7 @@ static void nfs_rename_cb(struct rpc_context *rpc, int status, void *command_dat
 		return;
 	}
 
+	nfs_dircache_drop(nfs, &data->fh);
 	data->cb(0, nfs, NULL, data->private_data);
 	free_nfs_cb_data(data);
 }
@@ -5234,6 +5255,7 @@ static void nfs_link_cb(struct rpc_context *rpc, int status, void *command_data,
 		return;
 	}
 
+	nfs_dircache_drop(nfs, &data->fh);
 	data->cb(0, nfs, NULL, data->private_data);
 	free_nfs_cb_data(data);
 }
