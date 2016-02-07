@@ -3990,15 +3990,16 @@ static void nfs_opendir_cb(struct rpc_context *rpc, int status, void *command_da
 	}
 }
 
-static int nfs_opendir_continue_internal(struct nfs_context *nfs, fattr3 *attr _U_, struct nfs_cb_data *data)
+static int nfs_opendir_continue_internal(struct nfs_context *nfs, fattr3 *attr, struct nfs_cb_data *data)
 {
 	READDIRPLUS3args args;
-	struct nfsdir *nfsdir = data->continue_data;;
+	struct nfsdir *nfsdir = data->continue_data;
 	struct nfsdir *cached;
 
 	cached = nfs_dircache_find(nfs, &data->fh);
 	if (cached) {
-		if (attr && attr->mtime.seconds == cached->attr.mtime.seconds) {
+		if (attr && attr->mtime.seconds == cached->attr.mtime.seconds
+		    && attr->mtime.nseconds == cached->attr.mtime.nseconds) {
 			cached->current = cached->entries;
 			data->cb(0, nfs, cached, data->private_data);
 			free_nfs_cb_data(data);
