@@ -131,6 +131,7 @@ struct nfs_context {
        uint64_t readmax;
        uint64_t writemax;
        char *cwd;
+       int dircache_enabled;
        struct nfsdir *dircache;
        uint16_t	mask;
 
@@ -275,6 +276,8 @@ static int nfs_set_context_args(struct nfs_context *nfs, const char *arg, const 
 		rpc_set_debug(nfs_get_rpc_context(nfs), atoi(val));
 	} else if (!strcmp(arg, "auto-traverse-mounts")) {
 		nfs->auto_traverse_mounts = atoi(val);
+	} else if (!strcmp(arg, "dircache")) {
+		nfs_set_dircache(nfs, atoi(val));
 	}
 	return 0;
 }
@@ -439,6 +442,7 @@ struct nfs_context *nfs_init_context(void)
 	nfs->cwd = strdup("/");
 	nfs->mask = 022;
 	nfs->auto_traverse_mounts = 1;
+	nfs->dircache_enabled = 1;
 	return nfs;
 }
 
@@ -4087,7 +4091,11 @@ struct nfsdirent *nfs_readdir(struct nfs_context *nfs _U_, struct nfsdir *nfsdir
  */
 void nfs_closedir(struct nfs_context *nfs, struct nfsdir *nfsdir)
 {
-	nfs_dircache_add(nfs, nfsdir);
+	if (nfs->dircache_enabled) {
+		nfs_dircache_add(nfs, nfsdir);
+	} else {
+		nfs_free_nfsdir(nfsdir);
+	}
 }
 
 
@@ -5384,6 +5392,10 @@ void nfs_set_readahead(struct nfs_context *nfs, uint32_t v) {
 
 void nfs_set_debug(struct nfs_context *nfs, int level) {
 	rpc_set_debug(nfs->rpc, level);
+}
+
+void nfs_set_dircache(struct nfs_context *nfs, int enabled) {
+	nfs->dircache_enabled = enabled;
 }
 
 void nfs_set_error(struct nfs_context *nfs, char *error_string, ...)

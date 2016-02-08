@@ -170,6 +170,10 @@ EXTERN void nfs_destroy_context(struct nfs_context *nfs);
  *                     default it 65534 on Windows and getgid() on unixen.
  * readahead=<int>   : Enable readahead for files and set the maximum amount
  *                     of readahead to <int>.
+ * auto-traverse-mounts=<0|1>
+ *                   : Should libnfs try to traverse across nested mounts
+ *                     automatically or not. Default is 1 == enabled.
+ * dircache=<0|1>    : Disable/enable directory caching. Enabled by default.
  */
 /*
  * Parse a complete NFS URL including, server, path and
@@ -217,6 +221,7 @@ EXTERN void nfs_set_uid(struct nfs_context *nfs, int uid);
 EXTERN void nfs_set_gid(struct nfs_context *nfs, int gid);
 EXTERN void nfs_set_readahead(struct nfs_context *nfs, uint32_t v);
 EXTERN void nfs_set_debug(struct nfs_context *nfs, int level);
+EXTERN void nfs_set_dircache(struct nfs_context *nfs, int enabled);
 
 /*
  * MOUNT THE EXPORT
