@@ -139,7 +139,7 @@ typedef void (*rpc_cb)(struct rpc_context *rpc, int status, void *data, void *pr
  * NFS CONTEXT.
  */
 /*
- * Create an NFS c, the context.
+ * Create an NFS context.
  * Function returns
  *  NULL : Failed to create a context.
  *  *nfs : A pointer to an nfs context.
@@ -161,15 +161,15 @@ EXTERN void nfs_destroy_context(struct nfs_context *nfs);
  * the nfs context to reflect settings controlled via url arguments.
  *
  * Current URL arguments are :
- * tcp-syncnt=<int>  : Number of SYNs to send during the seccion establish
- *                     before failing settin up the tcp connection to the
+ * tcp-syncnt=<int>  : Number of SYNs to send during the session establish
+ *                     before failing setting up the TCP connection to the
  *                     server.
  * uid=<int>         : UID value to use when talking to the server.
- *                     default it 65534 on Windows and getuid() on unixen.
+ *                     default is 65534 on Windows and getuid() on unixen.
  * gid=<int>         : GID value to use when talking to the server.
- *                     default it 65534 on Windows and getgid() on unixen.
+ *                     default is 65534 on Windows and getgid() on unixen.
  * readahead=<int>   : Enable readahead for files and set the maximum amount
- *                     of readahead to <int>.
+ *                     of readahead to <int> bytes.
  * auto-traverse-mounts=<0|1>
  *                   : Should libnfs try to traverse across nested mounts
  *                     automatically or not. Default is 1 == enabled.
@@ -213,7 +213,7 @@ EXTERN uint64_t nfs_get_readmax(struct nfs_context *nfs);
 EXTERN uint64_t nfs_get_writemax(struct nfs_context *nfs);
 
 /*
- *  MODIFY CONNECT PARAMTERS
+ *  MODIFY CONNECT PARAMETERS
  */
 
 EXTERN void nfs_set_tcp_syncnt(struct nfs_context *nfs, int v);
@@ -242,7 +242,7 @@ EXTERN int nfs_mount_async(struct nfs_context *nfs, const char *server, const ch
 /*
  * Sync nfs mount.
  * Function returns
- *      0 : The operation was successfull.
+ *      0 : The operation was successful.
  * -errno : The command failed.
  */
 EXTERN int nfs_mount(struct nfs_context *nfs, const char *server, const char *exportname);
@@ -271,7 +271,7 @@ EXTERN int nfs_stat_async(struct nfs_context *nfs, const char *path, nfs_cb cb, 
 /*
  * Sync stat(<filename>)
  * Function returns
- *      0 : The operation was successfull.
+ *      0 : The operation was successful.
  * -errno : The command failed.
  */
 /* This function is deprecated. Use nfs_stat64() instead */
@@ -326,7 +326,7 @@ EXTERN int nfs_stat64_async(struct nfs_context *nfs, const char *path, nfs_cb cb
 /*
  * Sync stat(<filename>)
  * Function returns
- *      0 : The operation was successfull.
+ *      0 : The operation was successful.
  * -errno : The command failed.
  */
 EXTERN int nfs_stat64(struct nfs_context *nfs, const char *path, struct nfs_stat_64 *st);
@@ -355,7 +355,7 @@ EXTERN int nfs_lstat64_async(struct nfs_context *nfs, const char *path, nfs_cb c
  * symbolic link itself.
  *
  * Function returns
- *      0 : The operation was successfull.
+ *      0 : The operation was successful.
  * -errno : The command failed.
  */
 EXTERN int nfs_lstat64(struct nfs_context *nfs, const char *path, struct nfs_stat_64 *st);
@@ -380,7 +380,7 @@ EXTERN int nfs_fstat_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_cb 
 /*
  * Sync fstat(nfsfh *)
  * Function returns
- *      0 : The operation was successfull.
+ *      0 : The operation was successful.
  * -errno : The command failed.
  */
 #ifdef WIN32
@@ -413,7 +413,7 @@ EXTERN int nfs_fstat64_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_c
 /*
  * Sync fstat(nfsfh *)
  * Function returns
- *      0 : The operation was successfull.
+ *      0 : The operation was successful.
  * -errno : The command failed.
  */
 EXTERN int nfs_fstat64(struct nfs_context *nfs, struct nfsfh *nfsfh, struct nfs_stat_64 *st);
@@ -434,7 +434,7 @@ EXTERN uint16_t nfs_umask(struct nfs_context *nfs, uint16_t mask);
  * Async open(<filename>)
  *
  * mode is a combination of the flags :
- * O_RDOLNY, O_WRONLY, O_RDWR , O_SYNC, O_APPEND, O_TRUNC
+ * O_RDONLY, O_WRONLY, O_RDWR , O_SYNC, O_APPEND, O_TRUNC
  *
  * Function returns
  *  0 : The operation was initiated. Once the operation finishes, the callback will be invoked.
@@ -459,7 +459,7 @@ EXTERN int nfs_open_async(struct nfs_context *nfs, const char *path, int flags, 
 /*
  * Sync open(<filename>)
  * Function returns
- *      0 : The operation was successfull. *nfsfh is filled in.
+ *      0 : The operation was successful. *nfsfh is filled in.
  * -errno : The command failed.
  */
 EXTERN int nfs_open(struct nfs_context *nfs, const char *path, int flags, struct nfsfh **nfsfh);
@@ -487,7 +487,7 @@ EXTERN int nfs_close_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_cb 
 /*
  * Sync close(nfsfh)
  * Function returns
- *      0 : The operation was successfull.
+ *      0 : The operation was successful.
  * -errno : The command failed.
  */
 EXTERN int nfs_close(struct nfs_context *nfs, struct nfsfh *nfsfh);
@@ -964,7 +964,7 @@ EXTERN int nfs_chdir_async(struct nfs_context *nfs, const char *path, nfs_cb cb,
 /*
  * Sync chdir(<path>)
  * Function returns
- *      0 : The operation was successfull.
+ *      0 : The operation was successful.
  * -errno : The command failed.
  */
 EXTERN int nfs_chdir(struct nfs_context *nfs, const char *path);
@@ -982,7 +982,7 @@ EXTERN int nfs_chdir(struct nfs_context *nfs, const char *path);
  * context is destroyed.
  *
  * Function returns
- *      0 : The operation was successfull and *cwd is filled in.
+ *      0 : The operation was successful and *cwd is filled in.
  * -errno : The command failed.
  */
 EXTERN void nfs_getcwd(struct nfs_context *nfs, const char **cwd);
@@ -1008,7 +1008,7 @@ EXTERN int nfs_statvfs_async(struct nfs_context *nfs, const char *path, nfs_cb c
 /*
  * Sync statvfs(<dirname>)
  * Function returns
- *      0 : The operation was successfull.
+ *      0 : The operation was successful.
  * -errno : The command failed.
  */
 EXTERN int nfs_statvfs(struct nfs_context *nfs, const char *path, struct statvfs *svfs);
@@ -1035,7 +1035,7 @@ EXTERN int nfs_readlink_async(struct nfs_context *nfs, const char *path, nfs_cb 
 /*
  * Sync readlink(<name>)
  * Function returns
- *      0 : The operation was successfull.
+ *      0 : The operation was successful.
  * -errno : The command failed.
  */
 EXTERN int nfs_readlink(struct nfs_context *nfs, const char *path, char *buf, int bufsize);
@@ -1061,7 +1061,7 @@ EXTERN int nfs_chmod_async(struct nfs_context *nfs, const char *path, int mode, 
 /*
  * Sync chmod(<name>)
  * Function returns
- *      0 : The operation was successfull.
+ *      0 : The operation was successful.
  * -errno : The command failed.
  */
 EXTERN int nfs_chmod(struct nfs_context *nfs, const char *path, int mode);
@@ -1089,7 +1089,7 @@ EXTERN int nfs_lchmod_async(struct nfs_context *nfs, const char *path, int mode,
  * symbolic link itself.
  *
  * Function returns
- *      0 : The operation was successfull.
+ *      0 : The operation was successful.
  * -errno : The command failed.
  */
 EXTERN int nfs_lchmod(struct nfs_context *nfs, const char *path, int mode);
@@ -1115,7 +1115,7 @@ EXTERN int nfs_fchmod_async(struct nfs_context *nfs, struct nfsfh *nfsfh, int mo
 /*
  * Sync fchmod(<handle>)
  * Function returns
- *      0 : The operation was successfull.
+ *      0 : The operation was successful.
  * -errno : The command failed.
  */
 EXTERN int nfs_fchmod(struct nfs_context *nfs, struct nfsfh *nfsfh, int mode);
@@ -1141,7 +1141,7 @@ EXTERN int nfs_chown_async(struct nfs_context *nfs, const char *path, int uid, i
 /*
  * Sync chown(<name>)
  * Function returns
- *      0 : The operation was successfull.
+ *      0 : The operation was successful.
  * -errno : The command failed.
  */
 EXTERN int nfs_chown(struct nfs_context *nfs, const char *path, int uid, int gid);
@@ -1169,7 +1169,7 @@ EXTERN int nfs_lchown_async(struct nfs_context *nfs, const char *path, int uid, 
  * symbolic link itself.
  *
  * Function returns
- *      0 : The operation was successfull.
+ *      0 : The operation was successful.
  * -errno : The command failed.
  */
 EXTERN int nfs_lchown(struct nfs_context *nfs, const char *path, int uid, int gid);
@@ -1195,7 +1195,7 @@ EXTERN int nfs_fchown_async(struct nfs_context *nfs, struct nfsfh *nfsfh, int ui
 /*
  * Sync fchown(<handle>)
  * Function returns
- *      0 : The operation was successfull.
+ *      0 : The operation was successful.
  * -errno : The command failed.
  */
 EXTERN int nfs_fchown(struct nfs_context *nfs, struct nfsfh *nfsfh, int uid, int gid);
@@ -1222,7 +1222,7 @@ EXTERN int nfs_utimes_async(struct nfs_context *nfs, const char *path, struct ti
 /*
  * Sync utimes(<path>)
  * Function returns
- *      0 : The operation was successfull.
+ *      0 : The operation was successful.
  * -errno : The command failed.
  */
 EXTERN int nfs_utimes(struct nfs_context *nfs, const char *path, struct timeval *times);
@@ -1250,7 +1250,7 @@ EXTERN int nfs_lutimes_async(struct nfs_context *nfs, const char *path, struct t
  * symbolic link itself.
  *
  * Function returns
- *      0 : The operation was successfull.
+ *      0 : The operation was successful.
  * -errno : The command failed.
  */
 EXTERN int nfs_lutimes(struct nfs_context *nfs, const char *path, struct timeval *times);
@@ -1276,7 +1276,7 @@ EXTERN int nfs_utime_async(struct nfs_context *nfs, const char *path, struct uti
 /*
  * Sync utime(<path>)
  * Function returns
- *      0 : The operation was successfull.
+ *      0 : The operation was successful.
  * -errno : The command failed.
  */
 EXTERN int nfs_utime(struct nfs_context *nfs, const char *path, struct utimbuf *times);
@@ -1303,7 +1303,7 @@ EXTERN int nfs_access_async(struct nfs_context *nfs, const char *path, int mode,
 /*
  * Sync access(<path>)
  * Function returns
- *      0 : The operation was successfull.
+ *      0 : The operation was successful.
  * -errno : The command failed.
  */
 EXTERN int nfs_access(struct nfs_context *nfs, const char *path, int mode);
@@ -1360,7 +1360,7 @@ EXTERN int nfs_symlink_async(struct nfs_context *nfs, const char *oldpath, const
 /*
  * Sync symlink(<path>)
  * Function returns
- *      0 : The operation was successfull.
+ *      0 : The operation was successful.
  * -errno : The command failed.
  */
 EXTERN int nfs_symlink(struct nfs_context *nfs, const char *oldpath, const char *newpath);
@@ -1385,7 +1385,7 @@ EXTERN int nfs_rename_async(struct nfs_context *nfs, const char *oldpath, const 
 /*
  * Sync rename(<oldpath>, <newpath>)
  * Function returns
- *      0 : The operation was successfull.
+ *      0 : The operation was successful.
  * -errno : The command failed.
  */
 EXTERN int nfs_rename(struct nfs_context *nfs, const char *oldpath, const char *newpath);
@@ -1411,7 +1411,7 @@ EXTERN int nfs_link_async(struct nfs_context *nfs, const char *oldpath, const ch
 /*
  * Sync link(<oldpath>, <newpath>)
  * Function returns
- *      0 : The operation was successfull.
+ *      0 : The operation was successful.
  * -errno : The command failed.
  */
 EXTERN int nfs_link(struct nfs_context *nfs, const char *oldpath, const char *newpath);
