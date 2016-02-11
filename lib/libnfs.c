@@ -5092,7 +5092,6 @@ static void nfs_rename_cb(struct rpc_context *rpc, int status, void *command_dat
 		return;
 	}
 
-	nfs_dircache_drop(nfs, &data->fh);
 	data->cb(0, nfs, NULL, data->private_data);
 	free_nfs_cb_data(data);
 }
@@ -5101,6 +5100,9 @@ static int nfs_rename_continue_2_internal(struct nfs_context *nfs, fattr3 *attr 
 {
 	struct nfs_rename_data *rename_data = data->continue_data;
 	RENAME3args args;
+
+	/* Drop the destination directory from the cache */
+	nfs_dircache_drop(nfs, &data->fh);
 
 	/* steal the filehandle */
 	rename_data->newdir = data->fh;
@@ -5130,6 +5132,9 @@ static int nfs_rename_continue_1_internal(struct nfs_context *nfs, fattr3 *attr 
 		free_nfs_cb_data(data);
 		return -1;
 	}
+
+	/* Drop the source directory from the cache */
+	nfs_dircache_drop(nfs, &data->fh);
 
 	/* steal the filehandle */
 	rename_data->olddir = data->fh;
