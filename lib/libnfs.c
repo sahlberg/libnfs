@@ -2539,6 +2539,7 @@ static int nfs_pwrite_async_internal(struct nfs_context *nfs, struct nfsfh *nfsf
 {
 	struct nfs_cb_data *data;
 
+	nfs_ra_invalidate(nfsfh);
 	data = malloc(sizeof(struct nfs_cb_data));
 	if (data == NULL) {
 		rpc_set_error(nfs->rpc, "out of memory: failed to allocate nfs_cb_data structure");
@@ -2651,11 +2652,11 @@ static void nfs_write_append_cb(struct rpc_context *rpc, int status, void *comma
 
 int nfs_write_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t count, char *buf, nfs_cb cb, void *private_data)
 {
-	nfs_ra_invalidate(nfsfh);
 	if (nfsfh->is_append) {
 		struct GETATTR3args args;
 		struct nfs_cb_data *data;
 
+		nfs_ra_invalidate(nfsfh);
 		data = malloc(sizeof(struct nfs_cb_data));
 		if (data == NULL) {
 			rpc_set_error(nfs->rpc, "out of memory: failed to allocate nfs_cb_data structure");
@@ -2866,6 +2867,7 @@ int nfs_ftruncate_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t l
 	struct nfs_cb_data *data;
 	SETATTR3args args;
 
+	nfs_ra_invalidate(nfsfh);
 	data = malloc(sizeof(struct nfs_cb_data));
 	if (data == NULL) {
 		rpc_set_error(nfs->rpc, "out of memory: failed to allocate nfs_cb_data structure");
