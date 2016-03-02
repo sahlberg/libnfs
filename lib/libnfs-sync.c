@@ -172,7 +172,7 @@ static void wait_for_nfs_reply_t(struct nfs_context *nfs, struct sync_cb_data *c
 		}
 		else if(retVal == 0)
 		{
-			nfs_set_error(nfs, "Timed out after [%ld] seconds",timeoutmiliseconds);
+			nfs_set_error(nfs, "Timed out after [%ld] miliseconds",timeoutmiliseconds);
 			cb_data->status = -EIO;
 			break;
 		}
