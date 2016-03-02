@@ -5543,3 +5543,19 @@ uint16_t nfs_umask(struct nfs_context *nfs, uint16_t mask) {
 	 nfs->mask = mask;
 	 return tmp;
 }
+
+/*
+* Sets timeout for nfs apis
+*/
+void nfs_set_timeout(struct nfs_context *nfs,int timeout)
+{
+	 rpc_set_timeout(nfs->rpc,timeout);
+}
+
+/*
+* Gets timeout for nfs apis
+*/
+int nfs_get_timeout(struct nfs_context *nfs)
+{
+	return rpc_get_timeout(nfs->rpc);
+}

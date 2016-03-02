@@ -33,6 +33,7 @@ nfs_get_fd
 nfs_get_readmax
 nfs_get_writemax
 nfs_getcwd
+nfs_get_timeout
 nfs_init_context
 nfs_link
 nfs_link_async
@@ -72,6 +73,7 @@ nfs_set_dircache
 nfs_set_gid
 nfs_set_readahead
 nfs_set_tcp_syncnt
+nfs_set_timeout
 nfs_set_uid
 nfs_stat
 nfs_stat_async
