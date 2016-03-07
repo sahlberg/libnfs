@@ -156,7 +156,7 @@ static void wait_for_nfs_reply(struct nfs_context *nfs, struct sync_cb_data *cb_
 	}
 }
 
-static void wait_for_nfs_reply_t(struct nfs_context *nfs, struct sync_cb_data *cb_data , int timeoutmiliseconds)
+static void wait_for_nfs_reply_t(struct nfs_context *nfs, struct sync_cb_data *cb_data , int timeoutmilliseconds)
 {
 	struct pollfd pfd;
 	int retVal = -1;
@@ -164,7 +164,7 @@ static void wait_for_nfs_reply_t(struct nfs_context *nfs, struct sync_cb_data *c
 
 		pfd.fd = nfs_get_fd(nfs);
 		pfd.events = nfs_which_events(nfs);
-		retVal = poll(&pfd, 1, timeoutmiliseconds);
+		retVal = poll(&pfd, 1, timeoutmilliseconds);
 		if (retVal < 0) {
 			nfs_set_error(nfs, "Poll failed");
 			cb_data->status = -EIO;
@@ -172,7 +172,7 @@ static void wait_for_nfs_reply_t(struct nfs_context *nfs, struct sync_cb_data *c
 		}
 		else if(retVal == 0)
 		{
-			nfs_set_error(nfs, "Timed out after [%ld] miliseconds",timeoutmiliseconds);
+			nfs_set_error(nfs, "Timed out after [%ld] seconds",timeoutmilliseconds);
 			cb_data->status = -EIO;
 			break;
 		}
@@ -206,7 +206,7 @@ static void mount_cb(int status, struct nfs_context *nfs, void *data, void *priv
 	}
 }
 
-int nfs_mount_t(struct nfs_context *nfs, const char *server, const char *export, long timeoutmiliseconds)
+int nfs_mount_t(struct nfs_context *nfs, const char *server, const char *export, int timeoutmilliseconds)
 {
 	struct sync_cb_data cb_data;
 	struct rpc_context *rpc = nfs_get_rpc_context(nfs);
@@ -220,7 +220,7 @@ int nfs_mount_t(struct nfs_context *nfs, const char *server, const char *export,
 		return -1;
 	}
 
-	wait_for_nfs_reply_t(nfs, &cb_data,timeoutmiliseconds);
+	wait_for_nfs_reply_t(nfs, &cb_data,timeoutmilliseconds);
 
 	/* Dont want any more callbacks even if the socket is closed */
 	rpc->connect_cb = NULL;
@@ -257,9 +257,9 @@ static void stat_cb(int status, struct nfs_context *nfs, void *data, void *priva
 }
 
 #ifdef WIN32
-int nfs_stat_t(struct nfs_context *nfs, const char *path, struct __stat64 *st, long timeoutmiliseconds)
+int nfs_stat_t(struct nfs_context *nfs, const char *path, struct __stat64 *st, long timeoutmilliseconds)
 #else
-int nfs_stat_t(struct nfs_context *nfs, const char *path, struct stat *st, long timeoutmiliseconds)
+int nfs_stat_t(struct nfs_context *nfs, const char *path, struct stat *st, long timeoutmilliseconds)
 #endif
 {
 	struct sync_cb_data cb_data;
@@ -272,7 +272,7 @@ int nfs_stat_t(struct nfs_context *nfs, const char *path, struct stat *st, long 
 		return -1;
 	}
 
-	wait_for_nfs_reply_t(nfs, &cb_data, timeoutmiliseconds);
+	wait_for_nfs_reply_t(nfs, &cb_data, timeoutmilliseconds);
 
 	return cb_data.status;
 }
@@ -303,7 +303,7 @@ static void stat64_cb(int status, struct nfs_context *nfs, void *data, void *pri
 	memcpy(cb_data->return_data, data, sizeof(struct nfs_stat_64));
 }
 
-int nfs_stat64_t(struct nfs_context *nfs, const char *path, struct nfs_stat_64 *st, int timeoutmiliseconds)
+int nfs_stat64_t(struct nfs_context *nfs, const char *path, struct nfs_stat_64 *st, int timeoutmilliseconds)
 {
 	struct sync_cb_data cb_data;
 
@@ -315,7 +315,7 @@ int nfs_stat64_t(struct nfs_context *nfs, const char *path, struct nfs_stat_64 *
 		return -1;
 	}
 
-	wait_for_nfs_reply_t(nfs, &cb_data, timeoutmiliseconds);
+	wait_for_nfs_reply_t(nfs, &cb_data, timeoutmilliseconds);
 
 	return cb_data.status;
 }
@@ -352,7 +352,7 @@ static void open_cb(int status, struct nfs_context *nfs, void *data, void *priva
 	*nfsfh = fh;
 }
 
-int nfs_open_t(struct nfs_context *nfs, const char *path, int flags, struct nfsfh **nfsfh, int timeoutmiliseconds)
+int nfs_open_t(struct nfs_context *nfs, const char *path, int flags, struct nfsfh **nfsfh, int timeoutmilliseconds)
 {
 	struct sync_cb_data cb_data;
 
@@ -364,7 +364,7 @@ int nfs_open_t(struct nfs_context *nfs, const char *path, int flags, struct nfsf
 		return -1;
 	}
 
-	wait_for_nfs_reply_t(nfs, &cb_data, timeoutmiliseconds);
+	wait_for_nfs_reply_t(nfs, &cb_data, timeoutmilliseconds);
 
 	return cb_data.status;
 }
@@ -392,7 +392,7 @@ static void chdir_cb(int status, struct nfs_context *nfs, void *data, void *priv
 	}
 }
 
-int nfs_chdir_t(struct nfs_context *nfs, const char *path, int timeoutmiliseconds)
+int nfs_chdir_t(struct nfs_context *nfs, const char *path, int timeoutmilliseconds)
 {
 	struct sync_cb_data cb_data;
 
@@ -404,7 +404,7 @@ int nfs_chdir_t(struct nfs_context *nfs, const char *path, int timeoutmilisecond
 		return -1;
 	}
 
-	wait_for_nfs_reply_t(nfs, &cb_data, timeoutmiliseconds);
+	wait_for_nfs_reply_t(nfs, &cb_data, timeoutmilliseconds);
 
 	return cb_data.status;
 }
@@ -434,7 +434,7 @@ static void pread_cb(int status, struct nfs_context *nfs, void *data, void *priv
 	memcpy(buffer, (char *)data, status);
 }
 
-int nfs_pread_t(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t offset, uint64_t count, char *buffer, int timeoutmiliseconds)
+int nfs_pread_t(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t offset, uint64_t count, char *buffer, int timeoutmilliseconds)
 {
 	struct sync_cb_data cb_data;
 
@@ -447,7 +447,7 @@ int nfs_pread_t(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t offset, u
 		return -1;
 	}
 
-	wait_for_nfs_reply_t(nfs, &cb_data,timeoutmiliseconds);
+	wait_for_nfs_reply_t(nfs, &cb_data,timeoutmilliseconds);
 
 	return cb_data.status;
 }
@@ -462,7 +462,7 @@ int nfs_pread(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t offset, uin
  * read()
  */
 
-int nfs_read_t(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t count, char *buffer, int timeoutmiliseconds)
+int nfs_read_t(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t count, char *buffer, int timeoutmilliseconds)
 {
 	struct sync_cb_data cb_data;
 
@@ -475,7 +475,7 @@ int nfs_read_t(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t count, cha
 		return -1;
 	}
 
-	wait_for_nfs_reply_t(nfs, &cb_data, timeoutmiliseconds);
+	wait_for_nfs_reply_t(nfs, &cb_data, timeoutmilliseconds);
 
 	return cb_data.status;
 }
@@ -501,7 +501,7 @@ static void close_cb(int status, struct nfs_context *nfs, void *data, void *priv
 	}
 }
 
-int nfs_close_t(struct nfs_context *nfs, struct nfsfh *nfsfh, int timeoutmiliseconds)
+int nfs_close_t(struct nfs_context *nfs, struct nfsfh *nfsfh, int timeoutmilliseconds)
 {
 	struct sync_cb_data cb_data;
 
@@ -512,7 +512,7 @@ int nfs_close_t(struct nfs_context *nfs, struct nfsfh *nfsfh, int timeoutmilisec
 		return -1;
 	}
 
-	wait_for_nfs_reply_t(nfs, &cb_data, timeoutmiliseconds);
+	wait_for_nfs_reply_t(nfs, &cb_data, timeoutmilliseconds);
 
 	return cb_data.status;
 }
@@ -528,9 +528,9 @@ int nfs_close(struct nfs_context *nfs, struct nfsfh *nfsfh)
  * fstat()
  */
 #ifdef WIN32
-int nfs_fstat_t(struct nfs_context *nfs, struct nfsfh *nfsfh, struct __stat64 *st, int timeoutmiliseconds)
+int nfs_fstat_t(struct nfs_context *nfs, struct nfsfh *nfsfh, struct __stat64 *st, int timeoutmilliseconds)
 #else
-int nfs_fstat_t(struct nfs_context *nfs, struct nfsfh *nfsfh, struct stat *st, int timeoutmiliseconds)
+int nfs_fstat_t(struct nfs_context *nfs, struct nfsfh *nfsfh, struct stat *st, int timeoutmilliseconds)
 #endif
 {
 	struct sync_cb_data cb_data;
@@ -543,7 +543,7 @@ int nfs_fstat_t(struct nfs_context *nfs, struct nfsfh *nfsfh, struct stat *st, i
 		return -1;
 	}
 
-	wait_for_nfs_reply_t(nfs, &cb_data, timeoutmiliseconds);
+	wait_for_nfs_reply_t(nfs, &cb_data, timeoutmilliseconds);
 
 	return cb_data.status;
 }
@@ -560,7 +560,7 @@ int nfs_fstat(struct nfs_context *nfs, struct nfsfh *nfsfh, struct stat *st)
 /*
  * fstat64()
  */
-int nfs_fstat64_t(struct nfs_context *nfs, struct nfsfh *nfsfh, struct nfs_stat_64 *st, int timeoutmiliseconds)
+int nfs_fstat64_t(struct nfs_context *nfs, struct nfsfh *nfsfh, struct nfs_stat_64 *st, int timeoutmilliseconds)
 {
 	struct sync_cb_data cb_data;
 
@@ -572,7 +572,7 @@ int nfs_fstat64_t(struct nfs_context *nfs, struct nfsfh *nfsfh, struct nfs_stat_
 		return -1;
 	}
 
-	wait_for_nfs_reply_t(nfs, &cb_data, timeoutmiliseconds);
+	wait_for_nfs_reply_t(nfs, &cb_data, timeoutmilliseconds);
 
 	return cb_data.status;
 }
@@ -595,7 +595,7 @@ static void pwrite_cb(int status, struct nfs_context *nfs, void *data, void *pri
 		nfs_set_error(nfs, "%s call failed with \"%s\"", cb_data->call, (char *)data);
 }
 
-int nfs_pwrite_t(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t offset, uint64_t count, char *buf, int timeoutmiliseconds)
+int nfs_pwrite_t(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t offset, uint64_t count, char *buf, int timeoutmilliseconds)
 {
 	struct sync_cb_data cb_data;
 
@@ -607,7 +607,7 @@ int nfs_pwrite_t(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t offset, 
 		return -1;
 	}
 
-	wait_for_nfs_reply_t(nfs, &cb_data, timeoutmiliseconds);
+	wait_for_nfs_reply_t(nfs, &cb_data, timeoutmilliseconds);
 
 	return cb_data.status;
 }
@@ -619,7 +619,7 @@ int nfs_pwrite(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t offset, ui
 /*
  * write()
  */
-int nfs_write_t(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t count, char *buf, int timeoutmiliseconds)
+int nfs_write_t(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t count, char *buf, int timeoutmilliseconds)
 {
 	struct sync_cb_data cb_data;
 
@@ -631,7 +631,7 @@ int nfs_write_t(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t count, ch
 		return -1;
 	}
 
-	wait_for_nfs_reply_t(nfs, &cb_data, timeoutmiliseconds);
+	wait_for_nfs_reply_t(nfs, &cb_data, timeoutmilliseconds);
 
 	return cb_data.status;
 }
@@ -656,7 +656,7 @@ static void fsync_cb(int status, struct nfs_context *nfs, void *data, void *priv
 	}
 }
 
-int nfs_fsync_t(struct nfs_context *nfs, struct nfsfh *nfsfh, int timeoutmiliseconds)
+int nfs_fsync_t(struct nfs_context *nfs, struct nfsfh *nfsfh, int timeoutmilliseconds)
 {
 	struct sync_cb_data cb_data;
 
@@ -667,7 +667,7 @@ int nfs_fsync_t(struct nfs_context *nfs, struct nfsfh *nfsfh, int timeoutmilisec
 		return -1;
 	}
 
-	wait_for_nfs_reply_t(nfs, &cb_data, timeoutmiliseconds);
+	wait_for_nfs_reply_t(nfs, &cb_data, timeoutmilliseconds);
 
 	return cb_data.status;
 }
@@ -693,7 +693,7 @@ static void ftruncate_cb(int status, struct nfs_context *nfs, void *data, void *
 	}
 }
 
-int nfs_ftruncate_t(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t length, int timeoutmiliseconds)
+int nfs_ftruncate_t(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t length, int timeoutmilliseconds)
 {
 	struct sync_cb_data cb_data;
 
@@ -704,7 +704,7 @@ int nfs_ftruncate_t(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t lengt
 		return -1;
 	}
 
-	wait_for_nfs_reply_t(nfs, &cb_data, timeoutmiliseconds);
+	wait_for_nfs_reply_t(nfs, &cb_data, timeoutmilliseconds);
 
 	return cb_data.status;
 }
@@ -731,7 +731,7 @@ static void truncate_cb(int status, struct nfs_context *nfs, void *data, void *p
 	}
 }
 
-int nfs_truncate_t(struct nfs_context *nfs, const char *path, uint64_t length, int timeoutmiliseconds)
+int nfs_truncate_t(struct nfs_context *nfs, const char *path, uint64_t length, int timeoutmilliseconds)
 {
 	struct sync_cb_data cb_data;
 
@@ -742,7 +742,7 @@ int nfs_truncate_t(struct nfs_context *nfs, const char *path, uint64_t length, i
 		return -1;
 	}
 
-	wait_for_nfs_reply_t(nfs, &cb_data, timeoutmiliseconds);
+	wait_for_nfs_reply_t(nfs, &cb_data, timeoutmilliseconds);
 
 	return cb_data.status;
 }
@@ -769,7 +769,7 @@ static void mkdir_cb(int status, struct nfs_context *nfs, void *data, void *priv
 	}
 }
 
-int nfs_mkdir_t(struct nfs_context *nfs, const char *path, int timeoutmiliseconds)
+int nfs_mkdir_t(struct nfs_context *nfs, const char *path, int timeoutmilliseconds)
 {
 	struct sync_cb_data cb_data;
 
@@ -780,7 +780,7 @@ int nfs_mkdir_t(struct nfs_context *nfs, const char *path, int timeoutmilisecond
 		return -1;
 	}
 
-	wait_for_nfs_reply_t(nfs, &cb_data, timeoutmiliseconds);
+	wait_for_nfs_reply_t(nfs, &cb_data, timeoutmilliseconds);
 
 	return cb_data.status;
 }
@@ -806,7 +806,7 @@ static void rmdir_cb(int status, struct nfs_context *nfs, void *data, void *priv
 	}
 }
 
-int nfs_rmdir_t(struct nfs_context *nfs, const char *path, int timeoutmiliseconds)
+int nfs_rmdir_t(struct nfs_context *nfs, const char *path, int timeoutmilliseconds)
 {
 	struct sync_cb_data cb_data;
 
@@ -817,7 +817,7 @@ int nfs_rmdir_t(struct nfs_context *nfs, const char *path, int timeoutmilisecond
 		return -1;
 	}
 
-	wait_for_nfs_reply_t(nfs, &cb_data, timeoutmiliseconds);
+	wait_for_nfs_reply_t(nfs, &cb_data, timeoutmilliseconds);
 
 	return cb_data.status;
 }
@@ -849,7 +849,12 @@ static void creat_cb(int status, struct nfs_context *nfs, void *data, void *priv
 	*nfsfh = fh;
 }
 
-int nfs_creat_t(struct nfs_context *nfs, const char *path, int flags, int mode, struct nfsfh **nfsfh, int timeoutmiliseconds)
+int nfs_creat_t(struct nfs_context *nfs, const char *path, int mode, struct nfsfh **nfsfh, int timeoutmilliseconds)
+{
+   return nfs_create_t(nfs, path, 0, mode, nfsfh,timeoutmilliseconds);
+}
+
+int nfs_create_t(struct nfs_context *nfs, const char *path, int flags, int mode, struct nfsfh **nfsfh, int timeoutmilliseconds)
 {
 	struct sync_cb_data cb_data;
 
@@ -861,17 +866,23 @@ int nfs_creat_t(struct nfs_context *nfs, const char *path, int flags, int mode, 
 		return -1;
 	}
 
-	wait_for_nfs_reply_t(nfs, &cb_data, timeoutmiliseconds);
+	wait_for_nfs_reply_t(nfs, &cb_data, timeoutmilliseconds);
 
 	return cb_data.status;
 }
-
  
 
 int nfs_creat(struct nfs_context *nfs, const char *path, int mode, struct nfsfh **nfsfh)
 {
-	return nfs_creat_t(nfs, path, 0, mode, nfsfh, -1);
+	return nfs_creat_t(nfs, path, mode, nfsfh, -1);
 }
+
+
+int nfs_create(struct nfs_context *nfs, const char *path, int flags, int mode, struct nfsfh **nfsfh)
+{
+	return nfs_create_t(nfs, path, flags, mode, nfsfh, -1);
+}
+
 
 /*
  * mknod()
@@ -889,7 +900,7 @@ static void mknod_cb(int status, struct nfs_context *nfs, void *data, void *priv
 	}
 }
 
-int nfs_mknod_t(struct nfs_context *nfs, const char *path, int mode, int dev, int timeoutmiliseconds)
+int nfs_mknod_t(struct nfs_context *nfs, const char *path, int mode, int dev, int timeoutmilliseconds)
 {
 	struct sync_cb_data cb_data;
 
@@ -900,7 +911,7 @@ int nfs_mknod_t(struct nfs_context *nfs, const char *path, int mode, int dev, in
 		return -1;
 	}
 
-	wait_for_nfs_reply_t(nfs, &cb_data, timeoutmiliseconds);
+	wait_for_nfs_reply_t(nfs, &cb_data, timeoutmilliseconds);
 
 	return cb_data.status;
 }
@@ -926,7 +937,7 @@ static void unlink_cb(int status, struct nfs_context *nfs, void *data, void *pri
 	}
 }
 
-int nfs_unlink_t(struct nfs_context *nfs, const char *path, int timeoutmiliseconds)
+int nfs_unlink_t(struct nfs_context *nfs, const char *path, int timeoutmilliseconds)
 {
 	struct sync_cb_data cb_data;
 
@@ -937,7 +948,7 @@ int nfs_unlink_t(struct nfs_context *nfs, const char *path, int timeoutmilisecon
 		return -1;
 	}
 
-	wait_for_nfs_reply_t(nfs, &cb_data, timeoutmiliseconds);
+	wait_for_nfs_reply_t(nfs, &cb_data, timeoutmilliseconds);
 
 	return cb_data.status;
 }
@@ -968,7 +979,7 @@ static void opendir_cb(int status, struct nfs_context *nfs, void *data, void *pr
 	*nfsdir = dir;
 }
 
-int nfs_opendir_t(struct nfs_context *nfs, const char *path, struct nfsdir **nfsdir, int timeoutmiliseconds)
+int nfs_opendir_t(struct nfs_context *nfs, const char *path, struct nfsdir **nfsdir, int timeoutmilliseconds)
 {
 	struct sync_cb_data cb_data;
 
@@ -980,7 +991,7 @@ int nfs_opendir_t(struct nfs_context *nfs, const char *path, struct nfsdir **nfs
 		return -1;
 	}
 
-	wait_for_nfs_reply_t(nfs, &cb_data, timeoutmiliseconds);
+	wait_for_nfs_reply_t(nfs, &cb_data, timeoutmilliseconds);
 
 	return cb_data.status;
 }
@@ -1008,7 +1019,7 @@ static void lseek_cb(int status, struct nfs_context *nfs, void *data, void *priv
 	}
 }
 
-int nfs_lseek_t(struct nfs_context *nfs, struct nfsfh *nfsfh, int64_t offset, int whence, uint64_t *current_offset, int timeoutmiliseconds)
+int nfs_lseek_t(struct nfs_context *nfs, struct nfsfh *nfsfh, int64_t offset, int whence, uint64_t *current_offset, int timeoutmilliseconds)
 {
 	struct sync_cb_data cb_data;
 
@@ -1020,7 +1031,7 @@ int nfs_lseek_t(struct nfs_context *nfs, struct nfsfh *nfsfh, int64_t offset, in
 		return -1;
 	}
 
-	wait_for_nfs_reply_t(nfs, &cb_data, timeoutmiliseconds);
+	wait_for_nfs_reply_t(nfs, &cb_data, timeoutmilliseconds);
 
 	return cb_data.status;
 }
@@ -1048,7 +1059,7 @@ static void statvfs_cb(int status, struct nfs_context *nfs, void *data, void *pr
 	memcpy(cb_data->return_data, data, sizeof(struct statvfs));
 }
 
-int nfs_statvfs_t(struct nfs_context *nfs, const char *path, struct statvfs *svfs, int timeoutmiliseconds)
+int nfs_statvfs_t(struct nfs_context *nfs, const char *path, struct statvfs *svfs, int timeoutmilliseconds)
 {
 	struct sync_cb_data cb_data;
 
@@ -1060,7 +1071,7 @@ int nfs_statvfs_t(struct nfs_context *nfs, const char *path, struct statvfs *svf
 		return -1;
 	}
 
-	wait_for_nfs_reply_t(nfs, &cb_data, timeoutmiliseconds);
+	wait_for_nfs_reply_t(nfs, &cb_data, timeoutmilliseconds);
 
 	return cb_data.status;
 }
@@ -1097,7 +1108,7 @@ static void readlink_cb(int status, struct nfs_context *nfs, void *data, void *p
 	memcpy(cb_data->return_data, data, strlen(data)+1);
 }
 
-int nfs_readlink_t(struct nfs_context *nfs, const char *path, char *buf, int bufsize, int timeoutmiliseconds)
+int nfs_readlink_t(struct nfs_context *nfs, const char *path, char *buf, int bufsize, int timeoutmilliseconds)
 {
 	struct sync_cb_data cb_data;
 
@@ -1110,7 +1121,7 @@ int nfs_readlink_t(struct nfs_context *nfs, const char *path, char *buf, int buf
 		return -1;
 	}
 
-	wait_for_nfs_reply_t(nfs, &cb_data, timeoutmiliseconds);
+	wait_for_nfs_reply_t(nfs, &cb_data, timeoutmilliseconds);
 
 	return cb_data.status;
 }
@@ -1136,7 +1147,7 @@ static void chmod_cb(int status, struct nfs_context *nfs, void *data, void *priv
 	}
 }
 
-int nfs_chmod_t(struct nfs_context *nfs, const char *path, int mode, int timeoutmiliseconds)
+int nfs_chmod_t(struct nfs_context *nfs, const char *path, int mode, int timeoutmilliseconds)
 {
 	struct sync_cb_data cb_data;
 
@@ -1147,7 +1158,7 @@ int nfs_chmod_t(struct nfs_context *nfs, const char *path, int mode, int timeout
 		return -1;
 	}
 
-	wait_for_nfs_reply_t(nfs, &cb_data, timeoutmiliseconds);
+	wait_for_nfs_reply_t(nfs, &cb_data, timeoutmilliseconds);
 
 	return cb_data.status;
 }
@@ -1157,7 +1168,7 @@ int nfs_chmod(struct nfs_context *nfs, const char *path, int mode )
 	return nfs_chmod_t( nfs, path, mode, -1);
 }
 
-int nfs_lchmod_t(struct nfs_context *nfs, const char *path, int mode, int timeoutmiliseconds)
+int nfs_lchmod_t(struct nfs_context *nfs, const char *path, int mode, int timeoutmilliseconds)
 {
 	struct sync_cb_data cb_data;
 
@@ -1168,7 +1179,7 @@ int nfs_lchmod_t(struct nfs_context *nfs, const char *path, int mode, int timeou
 		return -1;
 	}
 
-	wait_for_nfs_reply_t(nfs, &cb_data, timeoutmiliseconds);
+	wait_for_nfs_reply_t(nfs, &cb_data, timeoutmilliseconds);
 
 	return cb_data.status;
 }
@@ -1195,7 +1206,7 @@ static void fchmod_cb(int status, struct nfs_context *nfs, void *data, void *pri
 	}
 }
 
-int nfs_fchmod_t(struct nfs_context *nfs, struct nfsfh *nfsfh, int mode, int timeoutmiliseconds)
+int nfs_fchmod_t(struct nfs_context *nfs, struct nfsfh *nfsfh, int mode, int timeoutmilliseconds)
 {
 	struct sync_cb_data cb_data;
 
@@ -1206,7 +1217,7 @@ int nfs_fchmod_t(struct nfs_context *nfs, struct nfsfh *nfsfh, int mode, int tim
 		return -1;
 	}
 
-	wait_for_nfs_reply_t(nfs, &cb_data, timeoutmiliseconds);
+	wait_for_nfs_reply_t(nfs, &cb_data, timeoutmilliseconds);
 
 	return cb_data.status;
 }
@@ -1233,7 +1244,7 @@ static void chown_cb(int status, struct nfs_context *nfs, void *data, void *priv
 	}
 }
 
-int nfs_chown_t(struct nfs_context *nfs, const char *path, int uid, int gid, int timeoutmiliseconds)
+int nfs_chown_t(struct nfs_context *nfs, const char *path, int uid, int gid, int timeoutmilliseconds)
 {
 	struct sync_cb_data cb_data;
 
@@ -1244,7 +1255,7 @@ int nfs_chown_t(struct nfs_context *nfs, const char *path, int uid, int gid, int
 		return -1;
 	}
 
-	wait_for_nfs_reply_t(nfs, &cb_data, timeoutmiliseconds);
+	wait_for_nfs_reply_t(nfs, &cb_data, timeoutmilliseconds);
 
 	return cb_data.status;
 }
@@ -1257,7 +1268,7 @@ int nfs_chown(struct nfs_context *nfs, const char *path, int uid, int gid )
 /*
  * lchown()
  */
-int nfs_lchown_t(struct nfs_context *nfs, const char *path, int uid, int gid, int timeoutmiliseconds)
+int nfs_lchown_t(struct nfs_context *nfs, const char *path, int uid, int gid, int timeoutmilliseconds)
 {
 	struct sync_cb_data cb_data;
 
@@ -1268,7 +1279,7 @@ int nfs_lchown_t(struct nfs_context *nfs, const char *path, int uid, int gid, in
 		return -1;
 	}
 
-	wait_for_nfs_reply_t(nfs, &cb_data, timeoutmiliseconds);
+	wait_for_nfs_reply_t(nfs, &cb_data, timeoutmilliseconds);
 
 	return cb_data.status;
 }
@@ -1295,7 +1306,7 @@ static void fchown_cb(int status, struct nfs_context *nfs, void *data, void *pri
 	}
 }
 
-int nfs_fchown_t(struct nfs_context *nfs, struct nfsfh *nfsfh, int uid, int gid, int timeoutmiliseconds)
+int nfs_fchown_t(struct nfs_context *nfs, struct nfsfh *nfsfh, int uid, int gid, int timeoutmilliseconds)
 {
 	struct sync_cb_data cb_data;
 
@@ -1306,7 +1317,7 @@ int nfs_fchown_t(struct nfs_context *nfs, struct nfsfh *nfsfh, int uid, int gid,
 		return -1;
 	}
 
-	wait_for_nfs_reply_t(nfs, &cb_data, timeoutmiliseconds);
+	wait_for_nfs_reply_t(nfs, &cb_data, timeoutmilliseconds);
 
 	return cb_data.status;
 }
@@ -1332,7 +1343,7 @@ static void utimes_cb(int status, struct nfs_context *nfs, void *data, void *pri
 	}
 }
 
-int nfs_utimes_t(struct nfs_context *nfs, const char *path, struct timeval *times, int timeoutmiliseconds)
+int nfs_utimes_t(struct nfs_context *nfs, const char *path, struct timeval *times, int timeoutmilliseconds)
 {
 	struct sync_cb_data cb_data;
 
@@ -1343,7 +1354,7 @@ int nfs_utimes_t(struct nfs_context *nfs, const char *path, struct timeval *time
 		return -1;
 	}
 
-	wait_for_nfs_reply_t(nfs, &cb_data, timeoutmiliseconds);
+	wait_for_nfs_reply_t(nfs, &cb_data, timeoutmilliseconds);
 
 	return cb_data.status;
 }
@@ -1353,7 +1364,7 @@ int nfs_utimes(struct nfs_context *nfs, const char *path, struct timeval *times)
 	return nfs_utimes_t( nfs, path, times, -1);
 }
 
-int nfs_lutimes_t(struct nfs_context *nfs, const char *path, struct timeval *times, int timeoutmiliseconds)
+int nfs_lutimes_t(struct nfs_context *nfs, const char *path, struct timeval *times, int timeoutmilliseconds)
 {
 	struct sync_cb_data cb_data;
 
@@ -1364,7 +1375,7 @@ int nfs_lutimes_t(struct nfs_context *nfs, const char *path, struct timeval *tim
 		return -1;
 	}
 
-	wait_for_nfs_reply_t(nfs, &cb_data, timeoutmiliseconds);
+	wait_for_nfs_reply_t(nfs, &cb_data, timeoutmilliseconds);
 
 	return cb_data.status;
 }
@@ -1390,7 +1401,7 @@ static void utime_cb(int status, struct nfs_context *nfs, void *data, void *priv
 	}
 }
 
-int nfs_utime_t(struct nfs_context *nfs, const char *path, struct utimbuf *times, int timeoutmiliseconds)
+int nfs_utime_t(struct nfs_context *nfs, const char *path, struct utimbuf *times, int timeoutmilliseconds)
 {
 	struct sync_cb_data cb_data;
 
@@ -1401,7 +1412,7 @@ int nfs_utime_t(struct nfs_context *nfs, const char *path, struct utimbuf *times
 		return -1;
 	}
 
-	wait_for_nfs_reply_t(nfs, &cb_data, timeoutmiliseconds);
+	wait_for_nfs_reply_t(nfs, &cb_data, timeoutmilliseconds);
 
 	return cb_data.status;
 }
@@ -1429,7 +1440,7 @@ static void access_cb(int status, struct nfs_context *nfs, void *data, void *pri
 	}
 }
 
-int nfs_access_t(struct nfs_context *nfs, const char *path, int mode,int timeoutmiliseconds)
+int nfs_access_t(struct nfs_context *nfs, const char *path, int mode,int timeoutmilliseconds)
 {
 	struct sync_cb_data cb_data;
 
@@ -1440,7 +1451,7 @@ int nfs_access_t(struct nfs_context *nfs, const char *path, int mode,int timeout
 		return -1;
 	}
 
-	wait_for_nfs_reply_t(nfs, &cb_data, timeoutmiliseconds);
+	wait_for_nfs_reply_t(nfs, &cb_data, timeoutmilliseconds);
 
 	return cb_data.status;
 }
@@ -1453,7 +1464,7 @@ int nfs_access(struct nfs_context *nfs, const char *path, int mode )
 /*
  * access2()
  */
-static void access2_cb_t(int status, struct nfs_context *nfs, void *data, void *private_data,int timeoutmiliseconds)
+static void access2_cb_t(int status, struct nfs_context *nfs, void *data, void *private_data,int timeoutmilliseconds)
 {
 	struct sync_cb_data *cb_data = private_data;
 
@@ -1470,7 +1481,7 @@ static void access2_cb(int status, struct nfs_context *nfs, void *data, void *pr
 {
 	 access2_cb_t( status, nfs, data, private_data, -1);
 }
-int nfs_access2_t(struct nfs_context *nfs, const char *path,int timeoutmiliseconds)
+int nfs_access2_t(struct nfs_context *nfs, const char *path,int timeoutmilliseconds)
 {
 	struct sync_cb_data cb_data;
 
@@ -1481,7 +1492,7 @@ int nfs_access2_t(struct nfs_context *nfs, const char *path,int timeoutmilisecon
 		return -1;
 	}
 
-	wait_for_nfs_reply_t(nfs, &cb_data, timeoutmiliseconds);
+	wait_for_nfs_reply_t(nfs, &cb_data, timeoutmilliseconds);
 
 	return cb_data.status;
 }
@@ -1506,7 +1517,7 @@ static void symlink_cb(int status, struct nfs_context *nfs, void *data, void *pr
 	}
 }
 
-int nfs_symlink_t(struct nfs_context *nfs, const char *oldpath, const char *newpath,int timeoutmiliseconds)
+int nfs_symlink_t(struct nfs_context *nfs, const char *oldpath, const char *newpath,int timeoutmilliseconds)
 {
 	struct sync_cb_data cb_data;
 
@@ -1517,7 +1528,7 @@ int nfs_symlink_t(struct nfs_context *nfs, const char *oldpath, const char *newp
 		return -1;
 	}
 
-	wait_for_nfs_reply_t(nfs, &cb_data, timeoutmiliseconds);
+	wait_for_nfs_reply_t(nfs, &cb_data, timeoutmilliseconds);
 
 	return cb_data.status;
 }
@@ -1543,7 +1554,7 @@ static void rename_cb(int status, struct nfs_context *nfs, void *data, void *pri
 	}
 }
 
-int nfs_rename_t(struct nfs_context *nfs, const char *oldpath, const char *newpath,int timeoutmiliseconds)
+int nfs_rename_t(struct nfs_context *nfs, const char *oldpath, const char *newpath,int timeoutmilliseconds)
 {
 	struct sync_cb_data cb_data;
 
@@ -1554,7 +1565,7 @@ int nfs_rename_t(struct nfs_context *nfs, const char *oldpath, const char *newpa
 		return -1;
 	}
 
-	wait_for_nfs_reply_t(nfs, &cb_data, timeoutmiliseconds);
+	wait_for_nfs_reply_t(nfs, &cb_data, timeoutmilliseconds);
 
 	return cb_data.status;
 }
@@ -1580,7 +1591,7 @@ static void link_cb(int status, struct nfs_context *nfs, void *data, void *priva
 	}
 }
 
-int nfs_link_t(struct nfs_context *nfs, const char *oldpath, const char *newpath, int timeoutmiliseconds)
+int nfs_link_t(struct nfs_context *nfs, const char *oldpath, const char *newpath, int timeoutmilliseconds)
 {
 	struct sync_cb_data cb_data;
 
@@ -1591,7 +1602,7 @@ int nfs_link_t(struct nfs_context *nfs, const char *oldpath, const char *newpath
 		return -1;
 	}
 
-	wait_for_nfs_reply_t(nfs, &cb_data, timeoutmiliseconds);
+	wait_for_nfs_reply_t(nfs, &cb_data, timeoutmilliseconds);
 
 	return cb_data.status;
 }
