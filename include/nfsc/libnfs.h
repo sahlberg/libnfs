@@ -224,6 +224,12 @@ EXTERN void nfs_set_debug(struct nfs_context *nfs, int level);
 EXTERN void nfs_set_dircache(struct nfs_context *nfs, int enabled);
 
 /*
+* sets time out in milliseconds , negative value means infinite timeout.
+*/
+EXTERN void nfs_set_timeout(struct nfs_context *nfs, int timeout);
+EXTERN int  nfs_get_timeout(struct nfs_context *nfs);
+
+/*
  * MOUNT THE EXPORT
  */
 /*
@@ -246,7 +252,9 @@ EXTERN int nfs_mount_async(struct nfs_context *nfs, const char *server, const ch
  * -errno : The command failed.
  */
 EXTERN int nfs_mount(struct nfs_context *nfs, const char *server, const char *exportname);
-EXTERN int nfs_mount_t(struct nfs_context *nfs, const char *server, const char *exportname, int timeoutmilliseconds);
+
+
+
 
 /*
  * STAT()
@@ -278,11 +286,7 @@ EXTERN int nfs_stat(struct nfs_context *nfs, const char *path, struct __stat64 *
 #else
 EXTERN int nfs_stat(struct nfs_context *nfs, const char *path, struct stat *st);
 #endif
-#ifdef WIN32
-EXTERN int nfs_stat_t(struct nfs_context *nfs, const char *path, struct __stat64 *st, int timeoutmilliseconds); 
-#else
-EXTERN int nfs_stat_t(struct nfs_context *nfs, const char *path, struct stat *st, int timeoutmilliseconds); 
-#endif
+
 
 /* nfs_stat64
  * 64 bit version if stat. All fields are always 64bit.
@@ -332,7 +336,6 @@ EXTERN int nfs_stat64_async(struct nfs_context *nfs, const char *path, nfs_cb cb
  * -errno : The command failed.
  */
 EXTERN int nfs_stat64(struct nfs_context *nfs, const char *path, struct nfs_stat_64 *st);
-EXTERN int nfs_stat64_t(struct nfs_context *nfs, const char *path, struct nfs_stat_64 *st, int timeoutmilliseconds); 
 
 /*
  * Async stat(<filename>)
@@ -362,7 +365,6 @@ EXTERN int nfs_lstat64_async(struct nfs_context *nfs, const char *path, nfs_cb c
  * -errno : The command failed.
  */
 EXTERN int nfs_lstat64(struct nfs_context *nfs, const char *path, struct nfs_stat_64 *st);
-EXTERN int nfs_lstat64_t(struct nfs_context *nfs, const char *path, struct nfs_stat_64 *st, int timeoutmilliseconds); 
 
 /*
  * FSTAT()
@@ -467,7 +469,7 @@ EXTERN int nfs_open_async(struct nfs_context *nfs, const char *path, int flags, 
  * -errno : The command failed.
  */
 EXTERN int nfs_open(struct nfs_context *nfs, const char *path, int flags, struct nfsfh **nfsfh);
-EXTERN int nfs_open_t(struct nfs_context *nfs, const char *path, int flags, struct nfsfh **nfsfh, int timeoutmilliseconds); 
+
 
 
 
@@ -495,7 +497,7 @@ EXTERN int nfs_close_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_cb 
  * -errno : The command failed.
  */
 EXTERN int nfs_close(struct nfs_context *nfs, struct nfsfh *nfsfh);
-EXTERN int nfs_close_t(struct nfs_context *nfs, struct nfsfh *nfsfh, int timeoutmilliseconds); 
+
 
 /*
  * PREAD()
@@ -522,7 +524,6 @@ EXTERN int nfs_pread_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_
  * -errno : An error occured.
  */
 EXTERN int nfs_pread(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t offset, uint64_t count, char *buf);
-EXTERN int nfs_pread_t(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t offset, uint64_t count, char *buf, int timeoutmilliseconds); 
 
 
 
@@ -551,7 +552,6 @@ EXTERN int nfs_read_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t
  * -errno : An error occured.
  */
 EXTERN int nfs_read(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t count, char *buf);
-EXTERN int nfs_read_t(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t count, char *buf, int timeoutmilliseconds); 
 
 
 
@@ -580,7 +580,6 @@ EXTERN int nfs_pwrite_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64
  * -errno : An error occured.
  */
 EXTERN int nfs_pwrite(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t offset, uint64_t count, char *buf);
-EXTERN int nfs_pwrite_t(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t offset, uint64_t count, char *buf, int timeoutmilliseconds); 
 
 
 /*
@@ -607,7 +606,7 @@ EXTERN int nfs_write_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_
  * -errno : An error occured.
  */
 EXTERN int nfs_write(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t count, char *buf);
-EXTERN int nfs_write_t(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t count, char *buf, int timeoutmilliseconds); 
+
 
 /*
  * LSEEK()
@@ -633,7 +632,6 @@ EXTERN int nfs_lseek_async(struct nfs_context *nfs, struct nfsfh *nfsfh, int64_t
  * -errno : An error occured.
  */
 EXTERN int nfs_lseek(struct nfs_context *nfs, struct nfsfh *nfsfh, int64_t offset, int whence, uint64_t *current_offset);
-EXTERN int nfs_lseek_t(struct nfs_context *nfs, struct nfsfh *nfsfh, int64_t offset, int whence, uint64_t *current_offset, int timeoutmilliseconds); 
 
 
 /*
@@ -659,7 +657,6 @@ EXTERN int nfs_fsync_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_cb 
  * -errno : An error occured.
  */
 EXTERN int nfs_fsync(struct nfs_context *nfs, struct nfsfh *nfsfh);
-EXTERN int nfs_fsync_t(struct nfs_context *nfs, struct nfsfh *nfsfh, int timeoutmilliseconds);
 
 
 
@@ -686,7 +683,7 @@ EXTERN int nfs_truncate_async(struct nfs_context *nfs, const char *path, uint64_
  * -errno : An error occured.
  */
 EXTERN int nfs_truncate(struct nfs_context *nfs, const char *path, uint64_t length);
-EXTERN int nfs_truncate_t(struct nfs_context *nfs, const char *path, uint64_t length, int timeoutmilliseconds);
+
 
 
 /*
@@ -712,7 +709,6 @@ EXTERN int nfs_ftruncate_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uin
  * -errno : An error occured.
  */
 EXTERN int nfs_ftruncate(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t length);
-EXTERN int nfs_ftruncate_t(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t length, int timeoutmilliseconds);
 
 
 
@@ -742,7 +738,7 @@ EXTERN int nfs_mkdir_async(struct nfs_context *nfs, const char *path, nfs_cb cb,
  * -errno : An error occured.
  */
 EXTERN int nfs_mkdir(struct nfs_context *nfs, const char *path);
-EXTERN int nfs_mkdir_t(struct nfs_context *nfs, const char *path, int timeoutmilliseconds);
+
 
 
 /*
@@ -768,7 +764,7 @@ EXTERN int nfs_rmdir_async(struct nfs_context *nfs, const char *path, nfs_cb cb,
  * -errno : An error occured.
  */
 EXTERN int nfs_rmdir(struct nfs_context *nfs, const char *path);
-EXTERN int nfs_rmdir_t(struct nfs_context *nfs, const char *path, int timeoutmilliseconds);
+
 
 
 
@@ -796,7 +792,7 @@ EXTERN int nfs_creat_async(struct nfs_context *nfs, const char *path, int mode, 
  * -errno : An error occured.
  */
 EXTERN int nfs_creat(struct nfs_context *nfs, const char *path, int mode, struct nfsfh **nfsfh);
-EXTERN int nfs_creat_t(struct nfs_context *nfs, const char *path, int mode, struct nfsfh **nfsfh, int timeoutmilliseconds);
+
 /*
  * Async create()
  *
@@ -824,7 +820,6 @@ EXTERN int nfs_create_async(struct nfs_context *nfs, const char *path, int flags
  * -errno : An error occured.
  */
 EXTERN int nfs_create(struct nfs_context *nfs, const char *path, int flags, int mode, struct nfsfh **nfsfh);
-EXTERN int nfs_create(struct nfs_context *nfs, const char *path, int flags, int mode, struct nfsfh **nfsfh, int timeoutmilliseconds);
 
 
 /*
@@ -850,7 +845,7 @@ EXTERN int nfs_mknod_async(struct nfs_context *nfs, const char *path, int mode, 
  * -errno : An error occured.
  */
 EXTERN int nfs_mknod(struct nfs_context *nfs, const char *path, int mode, int dev);
-EXTERN int nfs_mknod_t(struct nfs_context *nfs, const char *path, int mode, int dev, int timeoutmilliseconds);
+
 
 
 /*
@@ -877,7 +872,6 @@ EXTERN int nfs_unlink_async(struct nfs_context *nfs, const char *path, nfs_cb cb
  * -errno : An error occured.
  */
 EXTERN int nfs_unlink(struct nfs_context *nfs, const char *path);
-EXTERN int nfs_unlink_t(struct nfs_context *nfs, const char *path, int timeoutmilliseconds);
 
 
 
@@ -909,7 +903,7 @@ EXTERN int nfs_opendir_async(struct nfs_context *nfs, const char *path, nfs_cb c
  * -errno : An error occured.
  */
 EXTERN int nfs_opendir(struct nfs_context *nfs, const char *path, struct nfsdir **nfsdir);
-EXTERN int nfs_opendir_t(struct nfs_context *nfs, const char *path, struct nfsdir **nfsdir, int timeoutmilliseconds);
+
 
 
 /*
@@ -980,7 +974,7 @@ EXTERN int nfs_chdir_async(struct nfs_context *nfs, const char *path, nfs_cb cb,
  * -errno : The command failed.
  */
 EXTERN int nfs_chdir(struct nfs_context *nfs, const char *path);
-EXTERN int nfs_chdir_t(struct nfs_context *nfs, const char *path, int timeoutmilliseconds);
+
 /*
  * GETCWD()
  */
@@ -1024,7 +1018,7 @@ EXTERN int nfs_statvfs_async(struct nfs_context *nfs, const char *path, nfs_cb c
  * -errno : The command failed.
  */
 EXTERN int nfs_statvfs(struct nfs_context *nfs, const char *path, struct statvfs *svfs);
-EXTERN int nfs_statvfs_t(struct nfs_context *nfs, const char *path, struct statvfs *svfs, int timeoutmilliseconds);
+
 
 /*
  * READLINK()
@@ -1051,7 +1045,7 @@ EXTERN int nfs_readlink_async(struct nfs_context *nfs, const char *path, nfs_cb 
  * -errno : The command failed.
  */
 EXTERN int nfs_readlink(struct nfs_context *nfs, const char *path, char *buf, int bufsize);
-EXTERN int nfs_readlink_t(struct nfs_context *nfs, const char *path, char *buf, int bufsize, int timeoutmilliseconds);
+
 
 
 /*
@@ -1077,7 +1071,6 @@ EXTERN int nfs_chmod_async(struct nfs_context *nfs, const char *path, int mode, 
  * -errno : The command failed.
  */
 EXTERN int nfs_chmod(struct nfs_context *nfs, const char *path, int mode);
-EXTERN int nfs_chmod_t(struct nfs_context *nfs, const char *path, int mode, int timeoutmilliseconds);
 /*
  * Async chmod(<name>)
  *
@@ -1106,7 +1099,7 @@ EXTERN int nfs_lchmod_async(struct nfs_context *nfs, const char *path, int mode,
  * -errno : The command failed.
  */
 EXTERN int nfs_lchmod(struct nfs_context *nfs, const char *path, int mode);
-EXTERN int nfs_lchmod_t(struct nfs_context *nfs, const char *path, int mode, int timeoutmilliseconds);
+
 
 
 /*
@@ -1131,8 +1124,8 @@ EXTERN int nfs_fchmod_async(struct nfs_context *nfs, struct nfsfh *nfsfh, int mo
  *      0 : The operation was successful.
  * -errno : The command failed.
  */
-EXTERN int nfs_fchmod(struct nfs_context *nfs, struct nfsfh *nfsfh, int mode );
-EXTERN int nfs_fchmod_t(struct nfs_context *nfs, struct nfsfh *nfsfh, int mode, int timeoutmilliseconds);
+EXTERN int nfs_fchmod(struct nfs_context *nfs, struct nfsfh *nfsfh, int mode);
+
 
 
 /*
@@ -1157,8 +1150,7 @@ EXTERN int nfs_chown_async(struct nfs_context *nfs, const char *path, int uid, i
  *      0 : The operation was successful.
  * -errno : The command failed.
  */
-EXTERN int nfs_chown(struct nfs_context *nfs, const char *path, int uid, int gid );
-EXTERN int nfs_chown_t(struct nfs_context *nfs, const char *path, int uid, int gid, int timeoutmilliseconds);
+EXTERN int nfs_chown(struct nfs_context *nfs, const char *path, int uid, int gid);
 /*
  * Async chown(<name>)
  *
@@ -1186,8 +1178,8 @@ EXTERN int nfs_lchown_async(struct nfs_context *nfs, const char *path, int uid, 
  *      0 : The operation was successful.
  * -errno : The command failed.
  */
-EXTERN int nfs_lchown(struct nfs_context *nfs, const char *path, int uid, int gid );
-EXTERN int nfs_lchown_t(struct nfs_context *nfs, const char *path, int uid, int gid, int timeoutmilliseconds);
+EXTERN int nfs_lchown(struct nfs_context *nfs, const char *path, int uid, int gid);
+
 
 
 /*
@@ -1212,8 +1204,8 @@ EXTERN int nfs_fchown_async(struct nfs_context *nfs, struct nfsfh *nfsfh, int ui
  *      0 : The operation was successful.
  * -errno : The command failed.
  */
-EXTERN int nfs_fchown(struct nfs_context *nfs, struct nfsfh *nfsfh, int uid, int gid );
-EXTERN int nfs_fchown_t(struct nfs_context *nfs, struct nfsfh *nfsfh, int uid, int gid, int timeoutmilliseconds);
+EXTERN int nfs_fchown(struct nfs_context *nfs, struct nfsfh *nfsfh, int uid, int gid);
+
 
 
 
@@ -1240,7 +1232,6 @@ EXTERN int nfs_utimes_async(struct nfs_context *nfs, const char *path, struct ti
  * -errno : The command failed.
  */
 EXTERN int nfs_utimes(struct nfs_context *nfs, const char *path, struct timeval *times);
-EXTERN int nfs_utimes_t(struct nfs_context *nfs, const char *path, struct timeval *times, int timeoutmilliseconds);
 /*
  * Async utimes(<path>)
  *
@@ -1269,7 +1260,7 @@ EXTERN int nfs_lutimes_async(struct nfs_context *nfs, const char *path, struct t
  * -errno : The command failed.
  */
 EXTERN int nfs_lutimes(struct nfs_context *nfs, const char *path, struct timeval *times);
-EXTERN int nfs_lutimes_t(struct nfs_context *nfs, const char *path, struct timeval *times, int timeoutmilliseconds);
+
 
 /*
  * UTIME()
@@ -1295,7 +1286,7 @@ EXTERN int nfs_utime_async(struct nfs_context *nfs, const char *path, struct uti
  * -errno : The command failed.
  */
 EXTERN int nfs_utime(struct nfs_context *nfs, const char *path, struct utimbuf *times);
-EXTERN int nfs_utime_t(struct nfs_context *nfs, const char *path, struct utimbuf *times, int timeoutmilliseconds);
+
 
 
 
@@ -1321,8 +1312,8 @@ EXTERN int nfs_access_async(struct nfs_context *nfs, const char *path, int mode,
  *      0 : The operation was successful.
  * -errno : The command failed.
  */
-EXTERN int nfs_access(struct nfs_context *nfs, const char *path, int mode );
-EXTERN int nfs_access_t(struct nfs_context *nfs, const char *path, int mode, int timeoutmilliseconds);
+EXTERN int nfs_access(struct nfs_context *nfs, const char *path, int mode);
+
 
 
 
@@ -1352,7 +1343,6 @@ EXTERN int nfs_access2_async(struct nfs_context *nfs, const char *path, nfs_cb c
  * -errno : The command failed.
  */
 EXTERN int nfs_access2(struct nfs_context *nfs, const char *path);
-EXTERN int nfs_access2_t(struct nfs_context *nfs, const char *path, int timeoutmilliseconds);
 
 
 
@@ -1380,7 +1370,7 @@ EXTERN int nfs_symlink_async(struct nfs_context *nfs, const char *oldpath, const
  * -errno : The command failed.
  */
 EXTERN int nfs_symlink(struct nfs_context *nfs, const char *oldpath, const char *newpath);
-EXTERN int nfs_symlink_t(struct nfs_context *nfs, const char *oldpath, const char *newpath, int timeoutmilliseconds);
+
 
 /*
  * RENAME()
@@ -1405,7 +1395,7 @@ EXTERN int nfs_rename_async(struct nfs_context *nfs, const char *oldpath, const 
  * -errno : The command failed.
  */
 EXTERN int nfs_rename(struct nfs_context *nfs, const char *oldpath, const char *newpath);
-EXTERN int nfs_rename_t(struct nfs_context *nfs, const char *oldpath, const char *newpath, int timeoutmilliseconds);
+
 
 
 /*
@@ -1431,7 +1421,6 @@ EXTERN int nfs_link_async(struct nfs_context *nfs, const char *oldpath, const ch
  * -errno : The command failed.
  */
 EXTERN int nfs_link(struct nfs_context *nfs, const char *oldpath, const char *newpath);
-EXTERN int nfs_link_t(struct nfs_context *nfs, const char *oldpath, const char *newpath, int timeoutmilliseconds);
 
 
 /*
