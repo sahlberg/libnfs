@@ -91,6 +91,9 @@ struct rpc_context *rpc_init_context(void)
 	for (i = 0; i < HASHES; i++)
 		rpc_reset_queue(&rpc->waitpdu[i]);
 
+	/* Default time out , infinite , same as old behaviour*/
+	rpc->timeout = -1;
+
 	return rpc;
 }
 
@@ -296,4 +299,16 @@ void rpc_destroy_context(struct rpc_context *rpc)
 	free(rpc);
 }
 
+void rpc_set_timeout(struct rpc_context *rpc, int timeout)
+{
+	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
+	rpc->timeout = timeout;
+}
+
+int rpc_get_timeout(struct rpc_context *rpc)
+{
+	assert(rpc->magic == RPC_CONTEXT_MAGIC);
+
+	return rpc->timeout;
+}

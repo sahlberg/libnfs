@@ -224,6 +224,12 @@ EXTERN void nfs_set_debug(struct nfs_context *nfs, int level);
 EXTERN void nfs_set_dircache(struct nfs_context *nfs, int enabled);
 
 /*
+* sets time out in milliseconds , negative value means infinite timeout.
+*/
+EXTERN void nfs_set_timeout(struct nfs_context *nfs, int timeout);
+EXTERN int  nfs_get_timeout(struct nfs_context *nfs);
+
+/*
  * MOUNT THE EXPORT
  */
 /*

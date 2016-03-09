@@ -110,23 +110,36 @@ struct sync_cb_data {
 static void wait_for_reply(struct rpc_context *rpc, struct sync_cb_data *cb_data)
 {
 	struct pollfd pfd;
-
+	int retval = -1;
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
 	while (!cb_data->is_finished) {
 
 		pfd.fd = rpc_get_fd(rpc);
 		pfd.events = rpc_which_events(rpc);
-		if (poll(&pfd, 1, -1) < 0) {
+
+		retval =  poll(&pfd, 1, rpc_get_timeout(rpc));
+		if (retval < 0) 
+		{
 			rpc_set_error(rpc, "Poll failed");
 			cb_data->status = -EIO;
 			break;
 		}
+		else if(retval == 0)
+		{
+			rpc_set_error(rpc, "Timed out after [%d] milliseconds",rpc_get_timeout(rpc));
+			cb_data->status = -EIO;
+			break;
+		}
+
 		if (rpc_service(rpc, pfd.revents) < 0) {
 			rpc_set_error(rpc, "rpc_service failed");
 			cb_data->status = -EIO;
 			break;
 		}
+
+
+
 		if (rpc_get_fd(rpc) == -1) {
 			rpc_set_error(rpc, "Socket closed\n");
 			break;
@@ -137,16 +150,26 @@ static void wait_for_reply(struct rpc_context *rpc, struct sync_cb_data *cb_data
 static void wait_for_nfs_reply(struct nfs_context *nfs, struct sync_cb_data *cb_data)
 {
 	struct pollfd pfd;
+	int retVal = -1;
 
 	while (!cb_data->is_finished) {
 
 		pfd.fd = nfs_get_fd(nfs);
 		pfd.events = nfs_which_events(nfs);
-		if (poll(&pfd, 1, -1) < 0) {
+
+		retVal =  poll(&pfd, 1, nfs_get_timeout(nfs));
+		if (retVal < 0) {
 			nfs_set_error(nfs, "Poll failed");
 			cb_data->status = -EIO;
 			break;
 		}
+		else if(retVal == 0)
+		{
+			nfs_set_error(nfs, "Timed out after [%d] milliseconds",nfs_get_timeout(nfs));
+			cb_data->status = -EIO;
+			break;
+		}
+
 		if (nfs_service(nfs, pfd.revents) < 0) {
 			nfs_set_error(nfs, "nfs_service failed");
 			cb_data->status = -EIO;
@@ -154,9 +177,6 @@ static void wait_for_nfs_reply(struct nfs_context *nfs, struct sync_cb_data *cb_
 		}
 	}
 }
-
-
-
 
 
 

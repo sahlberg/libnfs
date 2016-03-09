@@ -92,6 +92,8 @@ nfs_utimes_async
 nfs_which_events
 nfs_write
 nfs_write_async
+nfs_set_timeout
+nfs_get_timeout
 win32_poll
 rpc_connect_async
 rpc_destroy_context
@@ -213,3 +215,4 @@ rpc_rquota1_getactivequota_async
 rpc_service
 rpc_set_fd
 rpc_which_events
+

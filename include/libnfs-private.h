@@ -120,6 +120,7 @@ struct rpc_context {
 	int gid;
 	uint32_t readahead;
 	int debug;
+	int timeout;
 };
 
 struct rpc_pdu {
@@ -188,7 +189,8 @@ void rpc_set_uid(struct rpc_context *rpc, int uid);
 void rpc_set_gid(struct rpc_context *rpc, int gid);
 void rpc_set_readahead(struct rpc_context *rpc, uint32_t v);
 void rpc_set_debug(struct rpc_context *rpc, int level);
-
+void rpc_set_timeout(struct rpc_context *rpc, int timeout);
+int rpc_get_timeout(struct rpc_context *rpc);
 int rpc_add_fragment(struct rpc_context *rpc, char *data, uint64_t size);
 void rpc_free_all_fragments(struct rpc_context *rpc);
 
