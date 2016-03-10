@@ -37,16 +37,16 @@
 #include <net/if.h>
 #endif
 
-#ifdef __ANDROID__
-#define statvfs statfs
-#endif
-
 #ifdef HAVE_SYS_VFS_H
 #include <sys/vfs.h>
 #endif
 
 #ifdef HAVE_SYS_STATVFS_H
 #include <sys/statvfs.h>
+#endif
+
+#if defined(__ANDROID__) && !defined(HAVE_SYS_STATVFS_H)
+#define statvfs statfs
 #endif
 
 #ifdef HAVE_SYS_IOCTL_H
