@@ -282,6 +282,10 @@ bool_t libnfs_zdr_string(ZDR *zdrs, char **strp, uint32_t maxsize)
 		if (zdrs->size > zdrs->pos + size && zdrs->buf[zdrs->pos + size] == 0) {
 			if (*strp == NULL) {
 				*strp = &zdrs->buf[zdrs->pos];
+                                (*strp)[size] = 0;
+                                zdrs->pos += size;
+                                zdrs->pos = (zdrs->pos + 3) & ~3;
+                                return TRUE;
 			}
 			(*strp)[size] = 0;
 			return libnfs_zdr_opaque(zdrs, *strp, size);
