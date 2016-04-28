@@ -23,6 +23,8 @@
 
 #ifdef WIN32
 #include "win32_compat.h"
+#pragma comment(lib, "ws2_32.lib")
+WSADATA wsaData;
 #endif
 
 #include <stdio.h>
@@ -33,6 +35,13 @@ int main(int argc _U_, char *argv[] _U_)
 {
 	struct nfs_server_list *srvrs;
 	struct nfs_server_list *srv;
+
+#ifdef WIN32
+	if (WSAStartup(MAKEWORD(2,2), &wsaData) != 0) {
+		printf("Failed to start Winsock2\n");
+		exit(10);
+	}
+#endif
 
 #ifdef AROS
 	aros_init_socket();

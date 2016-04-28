@@ -23,6 +23,8 @@
 
 #ifdef WIN32
 #include "win32_compat.h"
+#pragma comment(lib, "ws2_32.lib")
+WSADATA wsaData;
 #else
 #include <sys/stat.h>
 #endif
@@ -236,6 +238,13 @@ int main(int argc _U_, char *argv[] _U_)
 	int ret;
 	struct client client;
 	struct pollfd pfds[2]; /* nfs:0  mount:1 */
+
+#ifdef WIN32
+	if (WSAStartup(MAKEWORD(2,2), &wsaData) != 0) {
+		printf("Failed to start Winsock2\n");
+		exit(10);
+	}
+#endif
 
 	client.server = SERVER;
 	client.export = EXPORT;

@@ -23,6 +23,8 @@
 
 #ifdef WIN32
 #include "win32_compat.h"
+#pragma comment(lib, "ws2_32.lib")
+WSADATA wsaData;
 #endif
 
 #ifdef HAVE_POLL_H
@@ -139,6 +141,13 @@ int main(int argc _U_, char *argv[] _U_)
 	struct nfs_server_list *srvr;
 	char *ptr;
 	
+#ifdef WIN32
+	if (WSAStartup(MAKEWORD(2,2), &wsaData) != 0) {
+		printf("Failed to start Winsock2\n");
+		exit(10);
+	}
+#endif
+
 	rpc = rpc_init_udp_context();
 	if (rpc == NULL) {
 		printf("failed to init context\n");
