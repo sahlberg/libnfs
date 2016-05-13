@@ -53,6 +53,7 @@ nfs_parse_url_full
 nfs_parse_url_dir
 nfs_parse_url_incomplete
 nfs_destroy_url
+nfs_pagecache_invalidate
 nfs_pread
 nfs_pread_async
 nfs_pwrite
@@ -71,6 +72,8 @@ nfs_set_auth
 nfs_set_debug
 nfs_set_dircache
 nfs_set_gid
+nfs_set_pagecache
+nfs_set_pagecache_ttl
 nfs_set_readahead
 nfs_set_tcp_syncnt
 nfs_set_timeout
