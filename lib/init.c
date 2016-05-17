@@ -80,6 +80,7 @@ struct rpc_context *rpc_init_context(void)
 	salt += 0x01000000;
 	rpc->fd = -1;
 	rpc->tcp_syncnt = RPC_PARAM_UNDEFINED;
+	rpc->pagecache_ttl = NFS_PAGECACHE_DEFAULT_TTL;
 #if defined(WIN32) || defined(ANDROID)
 	rpc->uid = 65534;
 	rpc->gid = 65534;
@@ -97,11 +98,44 @@ struct rpc_context *rpc_init_context(void)
 	return rpc;
 }
 
+uint32_t static round_to_power_of_two(uint32_t x) {
+	uint32_t power = 1;
+	while (power < x) {
+		power <<= 1;
+	}
+	return power;
+}
+
+void rpc_set_pagecache(struct rpc_context *rpc, uint32_t v)
+{
+	assert(rpc->magic == RPC_CONTEXT_MAGIC);
+	v = MAX(rpc->pagecache, round_to_power_of_two(v));
+	RPC_LOG(rpc, 2, "pagecache set to %d pages of size %d", v, NFS_BLKSIZE);
+	rpc->pagecache = v;
+}
+
+void rpc_set_pagecache_ttl(struct rpc_context *rpc, uint32_t v) {
+	if (v) {
+		RPC_LOG(rpc, 2, "set pagecache ttl to %d seconds\n", v);
+	} else {
+		RPC_LOG(rpc, 2, "set pagecache ttl to infinite");
+	}
+	rpc->pagecache_ttl = v;
+}
+
 void rpc_set_readahead(struct rpc_context *rpc, uint32_t v)
 {
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
-
+	if (v) {
+		v = MAX(NFS_BLKSIZE, round_to_power_of_two(v));
+	}
+	RPC_LOG(rpc, 2, "readahead set to %d byte", v);
 	rpc->readahead = v;
+	if (v) {
+		/* current pagecache implementation needs a pagecache bigger
+		 * than the readahead size to avoid collisions */
+		rpc_set_pagecache(rpc, (2 * v) / NFS_BLKSIZE);
+	}
 }
 
 void rpc_set_debug(struct rpc_context *rpc, int level)

@@ -27,6 +27,9 @@
 
 #ifdef WIN32
 #include "win32_compat.h"
+#define PRIu64 "llu"
+#else
+#include <inttypes.h>
 #endif
 
 #ifdef HAVE_UTIME_H
@@ -100,12 +103,19 @@ struct nfsdir {
 
 struct nfs_readahead {
        uint64_t fh_offset;
-       uint64_t last_offset;
-       uint64_t buf_offset;
-       uint64_t buf_count;
-       time_t buf_ts;
-       char *buf;
        uint32_t cur_ra;
+};
+
+struct nfs_pagecache_entry {
+       char buf[NFS_BLKSIZE];
+       uint64_t offset;
+       time_t ts;
+};
+
+struct nfs_pagecache {
+       struct nfs_pagecache_entry *entries;
+       uint32_t num_entries;
+       uint32_t ttl;
 };
 
 struct nfsfh {
@@ -114,6 +124,7 @@ struct nfsfh {
        int is_append;
        uint64_t offset;
        struct nfs_readahead ra;
+       struct nfs_pagecache pagecache;
 };
 
 struct nested_mounts {
@@ -192,6 +203,50 @@ static void nfs_dircache_drop(struct nfs_context *nfs, struct nfs_fh3 *fh)
 	}
 }
 
+static uint32_t nfs_pagecache_hash(struct nfs_pagecache *pagecache, uint64_t offset) {
+	return (2654435761 * (1 + ((uint32_t)(offset) / NFS_BLKSIZE))) & (pagecache->num_entries - 1);
+}
+
+void nfs_pagecache_invalidate(struct nfs_context *nfs, struct nfsfh *nfsfh) {
+	if (nfsfh->pagecache.entries) {
+		RPC_LOG(nfs->rpc, 2, "invalidating pagecache");
+		memset(nfsfh->pagecache.entries, 0x00, sizeof(struct nfs_pagecache_entry) * nfsfh->pagecache.num_entries);
+	}
+}
+
+void nfs_pagecache_put(struct nfs_pagecache *pagecache, uint64_t offset, char *buf, int len) {
+	time_t ts = time(NULL);
+	if (!pagecache->num_entries) return;
+	while (len > 0) {
+		uint64_t page_offset = offset & ~(NFS_BLKSIZE - 1);
+		uint32_t entry = nfs_pagecache_hash(pagecache, page_offset);
+		struct nfs_pagecache_entry *e = &pagecache->entries[entry];
+		uint64_t n = MIN(NFS_BLKSIZE - offset % NFS_BLKSIZE, len);
+		/* we can only write to the cache if we add a full page or
+		 * partially update a page that is still valid */
+		if (n == NFS_BLKSIZE ||
+		    (e->ts && e->offset == page_offset &&
+		     (!pagecache->ttl || ts - e->ts <= pagecache->ttl))) {
+			e->ts = ts;
+			e->offset = page_offset;
+			memcpy(e->buf + offset % NFS_BLKSIZE, buf, n);
+		}
+		buf += n;
+		offset += n;
+		len -= n;
+	}
+}
+
+char *nfs_pagecache_get(struct nfs_pagecache *pagecache, uint64_t offset) {
+	assert(!(offset % NFS_BLKSIZE));
+	uint32_t entry = nfs_pagecache_hash(pagecache, offset);
+	struct nfs_pagecache_entry *e = &pagecache->entries[entry];
+	if (offset != e->offset) return NULL;
+	if (!e->ts) return NULL;
+	if (pagecache->ttl && time(NULL) - e->ts > pagecache->ttl) return NULL;
+	return e->buf;
+}
+
 struct nfs_cb_data;
 typedef int (*continue_func)(struct nfs_context *nfs, fattr3 *attr,
 			     struct nfs_cb_data *data);
@@ -220,13 +275,13 @@ struct nfs_cb_data {
        uint64_t offset, count, max_offset, org_offset, org_count;
        char *buffer;
        char *usrbuf;
+       int update_pos;
 };
 
 struct nfs_mcb_data {
        struct nfs_cb_data *data;
        uint64_t offset;
        uint64_t count;
-       int update_pos;
 };
 
 static int nfs_lookup_path_async_internal(struct nfs_context *nfs, fattr3 *attr, struct nfs_cb_data *data, struct nfs_fh3 *fh);
@@ -272,6 +327,8 @@ static int nfs_set_context_args(struct nfs_context *nfs, const char *arg, const 
 		rpc_set_gid(nfs_get_rpc_context(nfs), atoi(val));
 	} else if (!strcmp(arg, "readahead")) {
 		rpc_set_readahead(nfs_get_rpc_context(nfs), atoi(val));
+	} else if (!strcmp(arg, "pagecache")) {
+		rpc_set_pagecache(nfs_get_rpc_context(nfs), atoi(val));
 	} else if (!strcmp(arg, "debug")) {
 		rpc_set_debug(nfs_get_rpc_context(nfs), atoi(val));
 	} else if (!strcmp(arg, "auto-traverse-mounts")) {
@@ -752,7 +809,7 @@ static void free_nfsfh(struct nfsfh *nfsfh)
 		free(nfsfh->fh.data.data_val);
 		nfsfh->fh.data.data_val = NULL;
 	}
-	free(nfsfh->ra.buf);
+	free(nfsfh->pagecache.entries);
 	free(nfsfh);
 }
 
@@ -887,7 +944,7 @@ static void nfs_mount_10_cb(struct rpc_context *rpc, int status, void *command_d
 	nfs->writemax = res->FSINFO3res_u.resok.wtmax;
 
 	if (nfs->readmax > NFS_MAX_XFER_SIZE) {
-		rpc_set_error(rpc, "server max rsize of %lu is greater than libnfs supported %d bytes",
+		rpc_set_error(rpc, "server max rsize of %" PRIu64 " is greater than libnfs supported %d bytes",
 		              nfs->readmax, NFS_MAX_XFER_SIZE);
 		data->cb(-EINVAL, nfs, command_data, data->private_data);
 		free_nfs_cb_data(data);
@@ -895,7 +952,7 @@ static void nfs_mount_10_cb(struct rpc_context *rpc, int status, void *command_d
 	}
 
 	if (nfs->writemax > NFS_MAX_XFER_SIZE) {
-		rpc_set_error(rpc, "server max wsize of %lu is greater than libnfs supported %d bytes",
+		rpc_set_error(rpc, "server max wsize of %" PRIu64 " is greater than libnfs supported %d bytes",
 		              nfs->writemax, NFS_MAX_XFER_SIZE);
 		data->cb(-EINVAL, nfs, command_data, data->private_data);
 		free_nfs_cb_data(data);
@@ -2065,6 +2122,15 @@ static void nfs_open_cb(struct rpc_context *rpc, int status, void *command_data,
 	nfsfh->fh = data->fh;
 	data->fh.data.data_val = NULL;
 
+	/* init page cache */
+	if (rpc->pagecache) {
+		nfsfh->pagecache.num_entries = rpc->pagecache;
+		nfsfh->pagecache.ttl = rpc->pagecache_ttl;
+		nfsfh->pagecache.entries = malloc(sizeof(struct nfs_pagecache_entry) * nfsfh->pagecache.num_entries);
+		nfs_pagecache_invalidate(nfs, nfsfh);
+		RPC_LOG(nfs->rpc, 2, "init pagecache entries %d pagesize %d\n", nfsfh->pagecache.num_entries, NFS_BLKSIZE);
+	}
+
 	data->cb(0, nfs, nfsfh, data->private_data);
 	free_nfs_cb_data(data);
 }
@@ -2178,25 +2244,10 @@ static void nfs_pread_mcb(struct rpc_context *rpc, int status, void *command_dat
 		} else {
 			uint64_t count = res->READ3res_u.resok.count;
 
-			if (mdata->update_pos)
-				data->nfsfh->offset += count;
-
-			/* if we have more than one call or we have received a short read we need a reassembly buffer */
-			if (data->num_calls || (count < mdata->count && !res->READ3res_u.resok.eof)) {
-				if (data->buffer == NULL) {
-					data->buffer = 	malloc(data->count);
-					if (data->buffer == NULL) {
-						rpc_set_error(nfs->rpc, "Out-Of-Memory: Failed to allocate reassembly buffer for %d bytes", (int)data->count);
-						data->oom = 1;
-					}
-				}
-			}
 			if (count > 0) {
 				if (count <= mdata->count) {
-					/* copy data into reassembly buffer if we have one */
-					if (data->buffer != NULL) {
-						memcpy(&data->buffer[mdata->offset - data->offset], res->READ3res_u.resok.data.data_val, count);
-					}
+					/* copy data into reassembly buffer */
+					memcpy(&data->buffer[mdata->offset - data->offset], res->READ3res_u.resok.data.data_val, count);
 					if (data->max_offset < mdata->offset + count) {
 						data->max_offset = mdata->offset + count;
 					}
@@ -2250,39 +2301,22 @@ static void nfs_pread_mcb(struct rpc_context *rpc, int status, void *command_dat
 		return;
 	}
 
-	if (data->buffer) {
-		if (data->max_offset > data->org_offset + data->org_count) {
-			data->max_offset = data->org_offset + data->org_count;
-		}
-		cb_err = data->max_offset - data->org_offset;
-		cb_data = data->buffer + (data->org_offset - data->offset);
-	} else {
-		res = command_data;
-		cb_err = res->READ3res_u.resok.count;
-		cb_data = res->READ3res_u.resok.data.data_val;
-	}
-
 	data->nfsfh->ra.fh_offset = data->max_offset;
-	if (data->nfsfh->ra.cur_ra) {
-		free(data->nfsfh->ra.buf);
-		data->nfsfh->ra.buf = data->buffer;
-		data->nfsfh->ra.buf_offset = data->offset;
-		data->nfsfh->ra.buf_count = data->count;
-		data->nfsfh->ra.buf_ts = time(NULL);
-		data->buffer = NULL;
+
+	nfs_pagecache_put(&data->nfsfh->pagecache, data->offset, data->buffer, data->max_offset - data->offset);
+
+	if (data->max_offset > data->org_offset + data->org_count) {
+		data->max_offset = data->org_offset + data->org_count;
+	}
+	if (data->update_pos) {
+		data->nfsfh->offset = data->max_offset;
 	}
 
+	cb_err = data->max_offset - data->org_offset;
+	cb_data = data->buffer + (data->org_offset - data->offset);
 	data->cb(cb_err, nfs, cb_data, data->private_data);
 	free_nfs_cb_data(data);
-}
-
-static void nfs_ra_invalidate(struct nfsfh *nfsfh) {
-	free(nfsfh->ra.buf);
-	nfsfh->ra.buf = NULL;
-	nfsfh->ra.buf_offset = 0;
-	nfsfh->ra.buf_count = 0;
-	nfsfh->ra.buf_ts = time(NULL);
-	nfsfh->ra.cur_ra = NFS_BLKSIZE;
+	return;
 }
 
 static int nfs_pread_async_internal(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t offset, uint64_t count, nfs_cb cb, void *private_data, int update_pos)
@@ -2301,72 +2335,65 @@ static int nfs_pread_async_internal(struct nfs_context *nfs, struct nfsfh *nfsfh
 	data->nfsfh        = nfsfh;
 	data->org_offset   = offset;
 	data->org_count    = count;
+	data->update_pos   = update_pos;
 
 	assert(data->num_calls == 0);
 
-	if (nfs->rpc->readahead && time(NULL) - nfsfh->ra.buf_ts > NFS_RA_TIMEOUT) {
-		/* readahead cache timeout */
-		nfs_ra_invalidate(nfsfh);
+	if (nfsfh->pagecache.num_entries) {
+		/* align start offset to blocksize */
+		count += offset & (NFS_BLKSIZE - 1);
+		offset &= ~(NFS_BLKSIZE - 1);
+
+		/* align end offset to blocksize */
+		count += NFS_BLKSIZE - 1 ;
+		count &= ~(NFS_BLKSIZE - 1);
+	}
+
+	data->offset = offset;
+	data->count = count;
+
+	nfsfh->ra.cur_ra = MAX(NFS_BLKSIZE, nfsfh->ra.cur_ra);
+	data->buffer = malloc(count + nfs->rpc->readahead);
+	if (data->buffer == NULL) {
+		free_nfs_cb_data(data);
+		return -ENOMEM;
+	}
+
+	if (nfsfh->pagecache.num_entries) {
+		while (count > 0) {
+			char *cdata = nfs_pagecache_get(&nfsfh->pagecache, offset);
+			if (!cdata) {
+				break;
+			}
+			memcpy(data->buffer + offset - data->offset, cdata, NFS_BLKSIZE);
+			offset += NFS_BLKSIZE;
+			count -= NFS_BLKSIZE;
+		}
+		if (!count) {
+			data->nfsfh->ra.fh_offset = data->offset + data->count;
+			if (update_pos) {
+				data->nfsfh->offset = data->org_offset + data->org_count;
+			}
+			data->cb(data->org_count, nfs, data->buffer + (data->org_offset - data->offset), data->private_data);
+			free_nfs_cb_data(data);
+			return 0;
+		}
 	}
 
 	if (nfs->rpc->readahead) {
-		if (offset >= nfsfh->ra.last_offset &&
+		if (offset >= nfsfh->ra.fh_offset &&
 			offset - NFS_BLKSIZE <= nfsfh->ra.fh_offset + nfsfh->ra.cur_ra) {
 			if (nfs->rpc->readahead > nfsfh->ra.cur_ra) {
 				nfsfh->ra.cur_ra <<= 1;
 			}
 		} else {
-			nfsfh->ra.cur_ra = NFS_BLKSIZE;
+			nfsfh->ra.cur_ra = 0;
 		}
-
-		nfsfh->ra.last_offset = offset;
-
-		if (nfsfh->ra.buf_offset <= offset &&
-			nfsfh->ra.buf_offset + nfsfh->ra.buf_count >= offset + count) {
-			/* serve request completely from cache */
-			data->buffer = malloc(count);
-			if (data->buffer == NULL) {
-				free_nfs_cb_data(data);
-				return -ENOMEM;
-			}
-			memcpy(data->buffer, nfsfh->ra.buf + (offset - nfsfh->ra.buf_offset), count);
-			data->cb(count, nfs, data->buffer, data->private_data);
-			nfsfh->ra.fh_offset = offset + count;
-			free_nfs_cb_data(data);
-			return 0;
-		}
-
-		/* align start offset to blocksize */
-		count += offset & (NFS_BLKSIZE - 1);
-		offset &= ~(NFS_BLKSIZE - 1);
-
-		/* align end offset to blocksize and add readahead */
-		count += nfsfh->ra.cur_ra - 1;
-		count &= ~(NFS_BLKSIZE - 1);
-
-		data->buffer = malloc(count);
-		if (data->buffer == NULL) {
-			free_nfs_cb_data(data);
-			return -ENOMEM;
-		}
-		data->offset = offset;
-		data->count = count;
-
-		if (nfsfh->ra.buf_count && nfsfh->ra.buf_offset <= offset &&
-			nfsfh->ra.buf_offset + nfsfh->ra.buf_count >= offset) {
-			/* serve request partially from cache */
-			size_t overlap = (nfsfh->ra.buf_offset + nfsfh->ra.buf_count) - offset;
-			if (overlap > count) count = overlap;
-			memcpy(data->buffer, nfsfh->ra.buf + (offset - nfsfh->ra.buf_offset), overlap);
-			offset += overlap;
-			count -= overlap;
-		}
-	} else {
-		data->offset = offset;
-		data->count = count;
+		count += nfsfh->ra.cur_ra;
+		data->count += nfsfh->ra.cur_ra;
 	}
 
-	data->max_offset = offset;
+	data->max_offset = data->offset;
 
 	/* chop requests into chunks of at most READMAX bytes if necessary.
 	 * we send all reads in parallel so that performance is still good.
@@ -2394,7 +2421,6 @@ static int nfs_pread_async_internal(struct nfs_context *nfs, struct nfsfh *nfsfh
 		mdata->data   = data;
 		mdata->offset = offset;
 		mdata->count  = readcount;
-		mdata->update_pos = update_pos;
 
 		nfs_fill_READ3args(&args, nfsfh, offset, readcount);
 
@@ -2475,9 +2501,6 @@ static void nfs_pwrite_mcb(struct rpc_context *rpc, int status, void *command_da
 		} else  {
 			uint64_t count = res->WRITE3res_u.resok.count;
 
-			if (mdata->update_pos)
-				data->nfsfh->offset += count;
-
 			if (count < mdata->count) {
 				if (count == 0) {
 					rpc_set_error(nfs->rpc, "NFS: Write failed. No bytes written!");
@@ -2529,6 +2552,12 @@ static void nfs_pwrite_mcb(struct rpc_context *rpc, int status, void *command_da
 		return;
 	}
 
+
+	if (data->update_pos) {
+		data->nfsfh->offset = data->max_offset;
+	}
+
+	nfs_pagecache_put(&data->nfsfh->pagecache, data->offset, data->usrbuf, data->count);
 	data->cb(data->max_offset - data->offset, nfs, NULL, data->private_data);
 
 	free_nfs_cb_data(data);
@@ -2539,7 +2568,6 @@ static int nfs_pwrite_async_internal(struct nfs_context *nfs, struct nfsfh *nfsf
 {
 	struct nfs_cb_data *data;
 
-	nfs_ra_invalidate(nfsfh);
 	data = malloc(sizeof(struct nfs_cb_data));
 	if (data == NULL) {
 		rpc_set_error(nfs->rpc, "out of memory: failed to allocate nfs_cb_data structure");
@@ -2551,6 +2579,7 @@ static int nfs_pwrite_async_internal(struct nfs_context *nfs, struct nfsfh *nfsf
 	data->private_data = private_data;
 	data->nfsfh        = nfsfh;
 	data->usrbuf       = buf;
+	data->update_pos   = update_pos;
 
 	/* hello, clang-analyzer */
 	assert(data->num_calls == 0);
@@ -2560,6 +2589,7 @@ static int nfs_pwrite_async_internal(struct nfs_context *nfs, struct nfsfh *nfsf
 	 */
 	data->max_offset = offset;
 	data->offset = offset;
+	data->count = count;
 
 	do {
 		uint64_t writecount = count;
@@ -2584,7 +2614,6 @@ static int nfs_pwrite_async_internal(struct nfs_context *nfs, struct nfsfh *nfsf
 		mdata->data   = data;
 		mdata->offset = offset;
 		mdata->count  = writecount;
-		mdata->update_pos = update_pos;
 
 		nfs_fill_WRITE3args(&args, nfsfh, offset, writecount, &buf[offset - data->offset]);
 
@@ -2656,7 +2685,6 @@ int nfs_write_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t count
 		struct GETATTR3args args;
 		struct nfs_cb_data *data;
 
-		nfs_ra_invalidate(nfsfh);
 		data = malloc(sizeof(struct nfs_cb_data));
 		if (data == NULL) {
 			rpc_set_error(nfs->rpc, "out of memory: failed to allocate nfs_cb_data structure");
@@ -2867,7 +2895,7 @@ int nfs_ftruncate_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t l
 	struct nfs_cb_data *data;
 	SETATTR3args args;
 
-	nfs_ra_invalidate(nfsfh);
+	nfs_pagecache_invalidate(nfs, nfsfh);
 	data = malloc(sizeof(struct nfs_cb_data));
 	if (data == NULL) {
 		rpc_set_error(nfs->rpc, "out of memory: failed to allocate nfs_cb_data structure");
@@ -5391,6 +5419,14 @@ void nfs_set_uid(struct nfs_context *nfs, int uid) {
 
 void nfs_set_gid(struct nfs_context *nfs, int gid) {
 	rpc_set_gid(nfs->rpc, gid);
+}
+
+void nfs_set_pagecache(struct nfs_context *nfs, uint32_t v) {
+	rpc_set_pagecache(nfs->rpc, v);
+}
+
+void nfs_set_pagecache_ttl(struct nfs_context *nfs, uint32_t v) {
+	rpc_set_pagecache_ttl(nfs->rpc, v);
 }
 
 void nfs_set_readahead(struct nfs_context *nfs, uint32_t v) {
