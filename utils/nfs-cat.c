@@ -105,8 +105,6 @@ open_file(const char *url, int flags)
 		return NULL;
 	}
 
-	rpc_set_tcp_syncnt(nfs_get_rpc_context(file_context->nfs), 2);
-
 	file_context->url = nfs_parse_url_full(file_context->nfs, url);
 	if (file_context->url == NULL) {
 		fprintf(stderr, "%s\n", nfs_get_error(file_context->nfs));
