@@ -207,9 +207,8 @@ static int rpc_write_to_socket(struct rpc_context *rpc)
 #define MAX_UDP_SIZE 65536
 static int rpc_read_from_socket(struct rpc_context *rpc)
 {
-	int size;
-	int pdu_size;
-	int32_t count;
+	uint32_t pdu_size;
+	ssize_t count;
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
@@ -240,35 +239,9 @@ static int rpc_read_from_socket(struct rpc_context *rpc)
 		return 0;
 	}
 
-	/* read record marker, 4 bytes at the beginning of every pdu */
-	if (rpc->inbuf == NULL) {
-		rpc->insize = 4;
-		rpc->inbuf = malloc(rpc->insize);
-		if (rpc->inbuf == NULL) {
-			rpc_set_error(rpc, "Failed to allocate buffer for record marker, errno:%d. Closing socket.", errno);
-			return -1;
-		}
-	}
-
-	if (rpc->inpos < 4) {
-		size = 4 - rpc->inpos;
-
-		count = recv(rpc->fd, rpc->inbuf + rpc->inpos, size, MSG_DONTWAIT);
-		if (count == -1) {
-			if (errno == EINTR || errno == EAGAIN) {
-				return 0;
-			}
-			rpc_set_error(rpc, "Read from socket failed, errno:%d. Closing socket.", errno);
-			return -1;
-		}
-		rpc->inpos += count;
-
-		if (rpc->inpos < 4) {
-			return 0;
-		}
-	}
-
-	pdu_size = rpc_get_pdu_size(rpc->inbuf);
+again:
+	/* read record marker, 4 bytes at the beginning of every pdu first */
+	pdu_size = rpc->inpos < 4 ? 4 : rpc_get_pdu_size(rpc->inbuf);
 
 	if (pdu_size > NFS_MAX_XFER_SIZE + 4096) {
 		rpc_set_error(rpc, "Incoming PDU exceeds limit of %d bytes.", NFS_MAX_XFER_SIZE + 4096);
@@ -284,22 +257,24 @@ static int rpc_read_from_socket(struct rpc_context *rpc)
 		rpc->insize = pdu_size;
 	}
 
-	size = rpc->insize - rpc->inpos;
-	count = recv(rpc->fd, rpc->inbuf + rpc->inpos, size, MSG_DONTWAIT);
-	if (count == -1) {
+	count = recv(rpc->fd, rpc->inbuf + rpc->inpos, rpc->insize - rpc->inpos, MSG_DONTWAIT);
+	if (count < 0) {
 		if (errno == EINTR || errno == EAGAIN) {
 			return 0;
 		}
 		rpc_set_error(rpc, "Read from socket failed, errno:%d. Closing socket.", errno);
 		return -1;
 	}
-
 	if (count == 0) {
 		/* remote side has closed the socket. Reconnect. */
 		return -1;
 	}
-
 	rpc->inpos += count;
+
+	if (rpc->inpos == 4) {
+		/* we have just read the header there is likely more data available */
+		goto again;
+	}
 
 	if (rpc->inpos == rpc->insize) {
 		char *buf = rpc->inbuf;

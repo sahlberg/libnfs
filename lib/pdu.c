@@ -205,7 +205,7 @@ int rpc_queue_pdu(struct rpc_context *rpc, struct rpc_pdu *pdu)
 	return 0;
 }
 
-int rpc_get_pdu_size(char *buf)
+uint32_t rpc_get_pdu_size(char *buf)
 {
 	uint32_t size;
 
