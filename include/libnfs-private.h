@@ -158,7 +158,7 @@ unsigned int rpc_hash_xid(uint32_t xid);
 struct rpc_pdu *rpc_allocate_pdu(struct rpc_context *rpc, int program, int version, int procedure, rpc_cb cb, void *private_data, zdrproc_t zdr_decode_fn, int zdr_bufsize);
 void rpc_free_pdu(struct rpc_context *rpc, struct rpc_pdu *pdu);
 int rpc_queue_pdu(struct rpc_context *rpc, struct rpc_pdu *pdu);
-int rpc_get_pdu_size(char *buf);
+uint32_t rpc_get_pdu_size(char *buf);
 int rpc_process_pdu(struct rpc_context *rpc, char *buf, int size);
 void rpc_error_all_pdus(struct rpc_context *rpc, const char *error);
 

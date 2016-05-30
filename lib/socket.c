@@ -207,7 +207,7 @@ static int rpc_write_to_socket(struct rpc_context *rpc)
 #define MAX_UDP_SIZE 65536
 static int rpc_read_from_socket(struct rpc_context *rpc)
 {
-	int pdu_size;
+	uint32_t pdu_size;
 	ssize_t count;
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
