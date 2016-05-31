@@ -215,7 +215,7 @@ void nfs_pagecache_invalidate(struct nfs_context *nfs, struct nfsfh *nfsfh) {
 }
 
 void nfs_pagecache_put(struct nfs_pagecache *pagecache, uint64_t offset, char *buf, int len) {
-	time_t ts = time(NULL);
+	time_t ts = pagecache->ttl ? time(NULL) : 1;
 	if (!pagecache->num_entries) return;
 	while (len > 0) {
 		uint64_t page_offset = offset & ~(NFS_BLKSIZE - 1);
