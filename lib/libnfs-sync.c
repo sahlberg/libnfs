@@ -1707,39 +1707,39 @@ static int send_nfsd_probes(struct rpc_context *rpc, struct ifconf *ifc, struct 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
 	for (ptr =(char *)(ifc->ifc_buf); ptr < (char *)(ifc->ifc_buf) + ifc->ifc_len; ) {
-		struct ifreq *ifr;
+		struct ifreq ifr;
 		char bcdd[16];
 
-		ifr = (struct ifreq *)ptr;
+		memcpy(&ifr, ptr, sizeof(struct ifreq));
 #ifdef HAVE_SOCKADDR_LEN
-		if (ifr->ifr_addr.sa_len > sizeof(struct sockaddr)) {
-			ptr += sizeof(ifr->ifr_name) + ifr->ifr_addr.sa_len;
+		if (ifr.ifr_addr.sa_len > sizeof(struct sockaddr)) {
+			ptr += sizeof(ifr.ifr_name) + ifr.ifr_addr.sa_len;
 		} else {
-			ptr += sizeof(ifr->ifr_name) + sizeof(struct sockaddr);
+			ptr += sizeof(ifr.ifr_name) + sizeof(struct sockaddr);
 		}
 #else
 		ptr += sizeof(struct ifreq);
 #endif
 
-		if (ifr->ifr_addr.sa_family != AF_INET) {
+		if (ifr.ifr_addr.sa_family != AF_INET) {
 			continue;
 		}
-		if (ioctl(rpc_get_fd(rpc), SIOCGIFFLAGS, ifr) < 0) {
+		if (ioctl(rpc_get_fd(rpc), SIOCGIFFLAGS, &ifr) < 0) {
 			return -1;
 		}
-		if (!(ifr->ifr_flags & IFF_UP)) {
+		if (!(ifr.ifr_flags & IFF_UP)) {
 			continue;
 		}
-		if (ifr->ifr_flags & IFF_LOOPBACK) {
+		if (ifr.ifr_flags & IFF_LOOPBACK) {
 			continue;
 		}
-		if (!(ifr->ifr_flags & IFF_BROADCAST)) {
+		if (!(ifr.ifr_flags & IFF_BROADCAST)) {
 			continue;
 		}
-		if (ioctl(rpc_get_fd(rpc), SIOCGIFBRDADDR, ifr) < 0) {
+		if (ioctl(rpc_get_fd(rpc), SIOCGIFBRDADDR, &ifr) < 0) {
 			continue;
 		}
-		if (getnameinfo(&ifr->ifr_broadaddr, sizeof(struct sockaddr_in), &bcdd[0], sizeof(bcdd), NULL, 0, NI_NUMERICHOST) < 0) {
+		if (getnameinfo(&ifr.ifr_broadaddr, sizeof(struct sockaddr_in), &bcdd[0], sizeof(bcdd), NULL, 0, NI_NUMERICHOST) < 0) {
 			continue;
 		}
 		if (rpc_set_udp_destination(rpc, bcdd, 111, 1) < 0) {
