@@ -126,15 +126,17 @@ void rpc_set_pagecache_ttl(struct rpc_context *rpc, uint32_t v) {
 void rpc_set_readahead(struct rpc_context *rpc, uint32_t v)
 {
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
+	uint32_t min_pagecache;
 	if (v) {
 		v = MAX(NFS_BLKSIZE, round_to_power_of_two(v));
 	}
 	RPC_LOG(rpc, 2, "readahead set to %d byte", v);
 	rpc->readahead = v;
-	if (v) {
+	min_pagecache = (2 * v) / NFS_BLKSIZE;
+	if (rpc->pagecache < min_pagecache) {
 		/* current pagecache implementation needs a pagecache bigger
 		 * than the readahead size to avoid collisions */
-		rpc_set_pagecache(rpc, (2 * v) / NFS_BLKSIZE);
+		rpc_set_pagecache(rpc, min_pagecache);
 	}
 }
 
