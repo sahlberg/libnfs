@@ -212,7 +212,7 @@ uint32_t rpc_get_pdu_size(char *buf)
 {
 	uint32_t size;
 
-	size = ntohl(*(uint32_t *)buf);
+	size = ntohl(*(uint32_t *)(void *)buf);
 
 	return (size & 0x7fffffff) + 4;
 }

@@ -651,7 +651,7 @@ static void rpc_connect_program_3_cb(struct rpc_context *rpc, int status, void *
 
 	switch (rpc->s.ss_family) {
 	case AF_INET:
-		rpc_port = *(uint32_t *)command_data;
+		rpc_port = *(uint32_t *)(void *)command_data;
 		break;
 	case AF_INET6:
 		/* ouch. portmapper and ipv6 are not great */
