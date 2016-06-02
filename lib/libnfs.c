@@ -204,7 +204,7 @@ static void nfs_dircache_drop(struct nfs_context *nfs, struct nfs_fh3 *fh)
 }
 
 static uint32_t nfs_pagecache_hash(struct nfs_pagecache *pagecache, uint64_t offset) {
-	return (2654435761 * (1 + ((uint32_t)(offset) / NFS_BLKSIZE))) & (pagecache->num_entries - 1);
+	return (2654435761UL * (1 + ((uint32_t)(offset) / NFS_BLKSIZE))) & (pagecache->num_entries - 1);
 }
 
 void nfs_pagecache_invalidate(struct nfs_context *nfs, struct nfsfh *nfsfh) {
