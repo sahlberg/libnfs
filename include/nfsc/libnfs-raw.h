@@ -31,7 +31,7 @@ extern "C" {
 
 struct rpc_data {
        int size;
-       unsigned char *data;
+       char *data;
 };
 
 struct rpc_context;

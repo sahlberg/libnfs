@@ -552,7 +552,7 @@ int rpc_connect_async(struct rpc_context *rpc, const char *server, int port, rpc
 	case AF_INET:
 		((struct sockaddr_in *)&rpc->s)->sin_family = ai->ai_family;
 		((struct sockaddr_in *)&rpc->s)->sin_port   = htons(port);
-		((struct sockaddr_in *)&rpc->s)->sin_addr   = ((struct sockaddr_in *)(ai->ai_addr))->sin_addr;
+		((struct sockaddr_in *)&rpc->s)->sin_addr   = ((struct sockaddr_in *)(void *)(ai->ai_addr))->sin_addr;
 #ifdef HAVE_SOCKADDR_LEN
 		((struct sockaddr_in *)&rpc->s)->sin_len = sizeof(struct sockaddr_in);
 #endif
@@ -560,7 +560,7 @@ int rpc_connect_async(struct rpc_context *rpc, const char *server, int port, rpc
 	case AF_INET6:
 		((struct sockaddr_in6 *)&rpc->s)->sin6_family = ai->ai_family;
 		((struct sockaddr_in6 *)&rpc->s)->sin6_port   = htons(port);
-		((struct sockaddr_in6 *)&rpc->s)->sin6_addr   = ((struct sockaddr_in6 *)(ai->ai_addr))->sin6_addr;
+		((struct sockaddr_in6 *)&rpc->s)->sin6_addr   = ((struct sockaddr_in6 *)(void *)(ai->ai_addr))->sin6_addr;
 #ifdef HAVE_SOCKADDR_LEN
 		((struct sockaddr_in6 *)&rpc->s)->sin6_len = sizeof(struct sockaddr_in6);
 #endif

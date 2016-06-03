@@ -108,15 +108,13 @@ bool_t libnfs_zdr_u_int(ZDR *zdrs, uint32_t *u)
 
 	switch (zdrs->x_op) {
 	case ZDR_ENCODE:
-		*(uint32_t *)&zdrs->buf[zdrs->pos] = htonl(*u);
+		*(uint32_t *)(void *)&zdrs->buf[zdrs->pos] = htonl(*u);
 		zdrs->pos += 4;
 		return TRUE;
-		break;
 	case ZDR_DECODE:
-		*u = ntohl(*(uint32_t *)&zdrs->buf[zdrs->pos]);
+		*u = ntohl(*(uint32_t *)(void *)&zdrs->buf[zdrs->pos]);
 		zdrs->pos += 4;
 		return TRUE;
-		break;
 	}
 
 	return FALSE;
@@ -135,20 +133,18 @@ bool_t libnfs_zdr_uint64_t(ZDR *zdrs, uint64_t *u)
 
 	switch (zdrs->x_op) {
 	case ZDR_ENCODE:
-		*(uint32_t *)&zdrs->buf[zdrs->pos] = htonl((*u >> 32));
+		*(uint32_t *)(void *)&zdrs->buf[zdrs->pos] = htonl((*u >> 32));
 		zdrs->pos += 4;
-		*(uint32_t *)&zdrs->buf[zdrs->pos] = htonl((*u & 0xffffffff));
+		*(uint32_t *)(void *)&zdrs->buf[zdrs->pos] = htonl((*u & 0xffffffff));
 		zdrs->pos += 4;
 		return TRUE;
-		break;
 	case ZDR_DECODE:
-		*u = ntohl(*(uint32_t *)&zdrs->buf[zdrs->pos]);
+		*u = ntohl(*(uint32_t *)(void *)&zdrs->buf[zdrs->pos]);
 		zdrs->pos += 4;
 		*u <<= 32;
-		*u |= (uint32_t)ntohl(*(uint32_t *)&zdrs->buf[zdrs->pos]);
+		*u |= (uint32_t)ntohl(*(uint32_t *)(void *)&zdrs->buf[zdrs->pos]);
 		zdrs->pos += 4;
 		return TRUE;
-		break;
 	}
 
 	return FALSE;
@@ -559,13 +555,13 @@ struct AUTH *libnfs_authunix_create(const char *host, uint32_t uid, uint32_t gid
 	auth->ah_cred.oa_base = malloc(size);
 
 	memset(auth->ah_cred.oa_base, 0x00, size);
-	buf = (uint32_t *)auth->ah_cred.oa_base;
+	buf = (uint32_t *)(void *)auth->ah_cred.oa_base;
 	idx = 0;
 	buf[idx++] = htonl(time(NULL));
 	buf[idx++] = htonl(strlen(host));
 	memcpy(&buf[2], host, strlen(host));
 
-	idx += (strlen(host) + 3) >> 2;	
+	idx += (strlen(host) + 3) >> 2;
 	buf[idx++] = htonl(uid);
 	buf[idx++] = htonl(gid);
 	buf[idx++] = htonl(len);

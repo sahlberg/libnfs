@@ -86,7 +86,7 @@ unsigned int rpc_hash_xid(uint32_t xid)
 
 #define PAD_TO_8_BYTES(x) ((x + 0x07) & ~0x07)
 
-struct rpc_pdu *rpc_allocate_pdu(struct rpc_context *rpc, int program, int version, int procedure, rpc_cb cb, void *private_data, zdrproc_t zdr_decode_fn, int zdr_decode_bufsize)
+struct rpc_pdu *rpc_allocate_pdu2(struct rpc_context *rpc, int program, int version, int procedure, rpc_cb cb, void *private_data, zdrproc_t zdr_decode_fn, int zdr_decode_bufsize, size_t alloc_hint)
 {
 	struct rpc_pdu *pdu;
 	struct rpc_msg msg;
@@ -112,7 +112,13 @@ struct rpc_pdu *rpc_allocate_pdu(struct rpc_context *rpc, int program, int versi
 	pdu->zdr_decode_fn      = zdr_decode_fn;
 	pdu->zdr_decode_bufsize = zdr_decode_bufsize;
 
-	zdrmem_create(&pdu->zdr, rpc->encodebuf, rpc->encodebuflen, ZDR_ENCODE);
+	pdu->outdata.data = malloc(ZDR_ENCODEBUF_MINSIZE + alloc_hint);
+	if (pdu->outdata.data == NULL) {
+		rpc_set_error(rpc, "Out of memory: Failed to allocate encode buffer");
+		return NULL;
+	}
+
+	zdrmem_create(&pdu->zdr, pdu->outdata.data, ZDR_ENCODEBUF_MINSIZE + alloc_hint, ZDR_ENCODE);
 	if (rpc->is_udp == 0) {
 		zdr_setpos(&pdu->zdr, 4); /* skip past the record marker */
 	}
@@ -136,6 +142,11 @@ struct rpc_pdu *rpc_allocate_pdu(struct rpc_context *rpc, int program, int versi
 	}
 
 	return pdu;
+}
+
+struct rpc_pdu *rpc_allocate_pdu(struct rpc_context *rpc, int program, int version, int procedure, rpc_cb cb, void *private_data, zdrproc_t zdr_decode_fn, int zdr_decode_bufsize)
+{
+	return rpc_allocate_pdu2(rpc, program, version, procedure, cb, private_data, zdr_decode_fn, zdr_decode_bufsize, 0);
 }
 
 void rpc_free_pdu(struct rpc_context *rpc, struct rpc_pdu *pdu)
@@ -175,7 +186,7 @@ int rpc_queue_pdu(struct rpc_context *rpc, struct rpc_pdu *pdu)
 		unsigned int hash;
 
 // XXX add a rpc->udp_dest_sock_size  and get rid of sys/socket.h and netinet/in.h
-		if (sendto(rpc->fd, rpc->encodebuf, size, MSG_DONTWAIT, rpc->udp_dest, sizeof(struct sockaddr_in)) < 0) {
+		if (sendto(rpc->fd, pdu->zdr.buf, size, MSG_DONTWAIT, rpc->udp_dest, sizeof(struct sockaddr_in)) < 0) {
 			rpc_set_error(rpc, "Sendto failed with errno %s", strerror(errno));
 			rpc_free_pdu(rpc, pdu);
 			return -1;
@@ -192,14 +203,6 @@ int rpc_queue_pdu(struct rpc_context *rpc, struct rpc_pdu *pdu)
 	zdr_int(&pdu->zdr, &recordmarker);
 
 	pdu->outdata.size = size;
-	pdu->outdata.data = malloc(pdu->outdata.size);
-	if (pdu->outdata.data == NULL) {
-		rpc_set_error(rpc, "Out of memory. Failed to allocate buffer for pdu\n");
-		rpc_free_pdu(rpc, pdu);
-		return -1;
-	}
-
-	memcpy(pdu->outdata.data, rpc->encodebuf, pdu->outdata.size);
 	rpc_enqueue(&rpc->outqueue, pdu);
 
 	return 0;
@@ -209,7 +212,7 @@ uint32_t rpc_get_pdu_size(char *buf)
 {
 	uint32_t size;
 
-	size = ntohl(*(uint32_t *)buf);
+	size = ntohl(*(uint32_t *)(void *)buf);
 
 	return (size & 0x7fffffff) + 4;
 }

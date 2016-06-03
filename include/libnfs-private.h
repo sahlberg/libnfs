@@ -82,6 +82,8 @@ struct rpc_queue {
 #define HASHES 1024
 #define NFS_RA_TIMEOUT 5
 #define NFS_MAX_XFER_SIZE (1024 * 1024)
+#define ZDR_ENCODE_OVERHEAD 1024
+#define ZDR_ENCODEBUF_MINSIZE 4096
 
 struct rpc_context {
 	uint32_t magic;
@@ -96,10 +98,6 @@ struct rpc_context {
 
 	struct AUTH *auth;
 	uint32_t xid;
-
-	/* buffer used for encoding RPC PDU */
-	char *encodebuf;
-	int encodebuflen;
 
 	struct rpc_queue outqueue;
 	struct sockaddr_storage udp_src;
@@ -156,6 +154,7 @@ void rpc_return_to_queue(struct rpc_queue *q, struct rpc_pdu *pdu);
 unsigned int rpc_hash_xid(uint32_t xid);
 
 struct rpc_pdu *rpc_allocate_pdu(struct rpc_context *rpc, int program, int version, int procedure, rpc_cb cb, void *private_data, zdrproc_t zdr_decode_fn, int zdr_bufsize);
+struct rpc_pdu *rpc_allocate_pdu2(struct rpc_context *rpc, int program, int version, int procedure, rpc_cb cb, void *private_data, zdrproc_t zdr_decode_fn, int zdr_bufsize, size_t alloc_hint);
 void rpc_free_pdu(struct rpc_context *rpc, struct rpc_pdu *pdu);
 int rpc_queue_pdu(struct rpc_context *rpc, struct rpc_pdu *pdu);
 uint32_t rpc_get_pdu_size(char *buf);

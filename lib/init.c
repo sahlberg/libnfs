@@ -62,17 +62,8 @@ struct rpc_context *rpc_init_context(void)
 
 	rpc->magic = RPC_CONTEXT_MAGIC;
 
-	/* Allow NFS_MAX_XFER_SIZE of data (for writes) and some */
-	rpc->encodebuflen = NFS_MAX_XFER_SIZE + 4096;
-	rpc->encodebuf = malloc(rpc->encodebuflen);
-	if (rpc->encodebuf == NULL) {
-		free(rpc);
-		return NULL;
-	}
-
  	rpc->auth = authunix_create_default();
 	if (rpc->auth == NULL) {
-		free(rpc->encodebuf);
 		free(rpc);
 		return NULL;
 	}
@@ -126,15 +117,17 @@ void rpc_set_pagecache_ttl(struct rpc_context *rpc, uint32_t v) {
 void rpc_set_readahead(struct rpc_context *rpc, uint32_t v)
 {
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
+	uint32_t min_pagecache;
 	if (v) {
 		v = MAX(NFS_BLKSIZE, round_to_power_of_two(v));
 	}
 	RPC_LOG(rpc, 2, "readahead set to %d byte", v);
 	rpc->readahead = v;
-	if (v) {
+	min_pagecache = (2 * v) / NFS_BLKSIZE;
+	if (rpc->pagecache < min_pagecache) {
 		/* current pagecache implementation needs a pagecache bigger
 		 * than the readahead size to avoid collisions */
-		rpc_set_pagecache(rpc, (2 * v) / NFS_BLKSIZE);
+		rpc_set_pagecache(rpc, min_pagecache);
 	}
 }
 
@@ -312,11 +305,6 @@ void rpc_destroy_context(struct rpc_context *rpc)
 
 	if (rpc->fd != -1) {
  		close(rpc->fd);
-	}
-
-	if (rpc->encodebuf != NULL) {
-		free(rpc->encodebuf);
-		rpc->encodebuf = NULL;
 	}
 
 	if (rpc->error_string != NULL) {

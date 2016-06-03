@@ -204,7 +204,7 @@ static void nfs_dircache_drop(struct nfs_context *nfs, struct nfs_fh3 *fh)
 }
 
 static uint32_t nfs_pagecache_hash(struct nfs_pagecache *pagecache, uint64_t offset) {
-	return (2654435761 * (1 + ((uint32_t)(offset) / NFS_BLKSIZE))) & (pagecache->num_entries - 1);
+	return (2654435761UL * (1 + ((uint32_t)(offset) / NFS_BLKSIZE))) & (pagecache->num_entries - 1);
 }
 
 void nfs_pagecache_invalidate(struct nfs_context *nfs, struct nfsfh *nfsfh) {
@@ -215,7 +215,7 @@ void nfs_pagecache_invalidate(struct nfs_context *nfs, struct nfsfh *nfsfh) {
 }
 
 void nfs_pagecache_put(struct nfs_pagecache *pagecache, uint64_t offset, char *buf, int len) {
-	time_t ts = time(NULL);
+	time_t ts = pagecache->ttl ? time(NULL) : 1;
 	if (!pagecache->num_entries) return;
 	while (len > 0) {
 		uint64_t page_offset = offset & ~(NFS_BLKSIZE - 1);
@@ -274,6 +274,7 @@ struct nfs_cb_data {
        int num_calls;
        uint64_t offset, count, max_offset, org_offset, org_count;
        char *buffer;
+       int not_my_buffer;
        char *usrbuf;
        int update_pos;
 };
@@ -650,7 +651,7 @@ static void rpc_connect_program_3_cb(struct rpc_context *rpc, int status, void *
 
 	switch (rpc->s.ss_family) {
 	case AF_INET:
-		rpc_port = *(uint32_t *)command_data;
+		rpc_port = *(uint32_t *)(void *)command_data;
 		break;
 	case AF_INET6:
 		/* ouch. portmapper and ipv6 are not great */
@@ -798,7 +799,9 @@ static void free_nfs_cb_data(struct nfs_cb_data *data)
 
 	free(data->saved_path);
 	free(data->fh.data.data_val);
-	free(data->buffer);
+	if (!data->not_my_buffer) {
+		free(data->buffer);
+	}
 
 	free(data);
 }
@@ -2243,17 +2246,28 @@ static void nfs_pread_mcb(struct rpc_context *rpc, int status, void *command_dat
 			data->error = 1;
 		} else {
 			uint64_t count = res->READ3res_u.resok.count;
-
+			if (count < data->count && data->buffer == NULL) {
+				/* we need a reassembly buffer after all */
+				data->buffer = malloc(mdata->count);
+				if (data->buffer == NULL) {
+					data->oom = 1;
+					goto out;
+				}
+			}
 			if (count > 0) {
-				if (count <= mdata->count) {
+				if (count == data->count && data->buffer == NULL) {
+					data->buffer = res->READ3res_u.resok.data.data_val;
+					data->not_my_buffer = 1;
+				} else if (count <= mdata->count) {
 					/* copy data into reassembly buffer */
 					memcpy(&data->buffer[mdata->offset - data->offset], res->READ3res_u.resok.data.data_val, count);
-					if (data->max_offset < mdata->offset + count) {
-						data->max_offset = mdata->offset + count;
-					}
 				} else {
 					rpc_set_error(nfs->rpc, "NFS: Read overflow. Server has sent more data than requested!");
 					data->error = 1;
+					goto out;
+				}
+				if (data->max_offset < mdata->offset + count) {
+					data->max_offset = mdata->offset + count;
 				}
 			}
 			/* check if we have received a short read */
@@ -2279,6 +2293,7 @@ static void nfs_pread_mcb(struct rpc_context *rpc, int status, void *command_dat
 		}
 	}
 
+out:
 	free(mdata);
 
 	if (data->num_calls > 0) {
@@ -2352,18 +2367,19 @@ static int nfs_pread_async_internal(struct nfs_context *nfs, struct nfsfh *nfsfh
 	data->offset = offset;
 	data->count = count;
 
-	nfsfh->ra.cur_ra = MAX(NFS_BLKSIZE, nfsfh->ra.cur_ra);
-	data->buffer = malloc(count + nfs->rpc->readahead);
-	if (data->buffer == NULL) {
-		free_nfs_cb_data(data);
-		return -ENOMEM;
-	}
-
 	if (nfsfh->pagecache.num_entries) {
 		while (count > 0) {
 			char *cdata = nfs_pagecache_get(&nfsfh->pagecache, offset);
 			if (!cdata) {
 				break;
+			}
+			/* we copy data from the pagecache so we need a reassembly buffer */
+			if (data->buffer == NULL) {
+				data->buffer = malloc(data->count);
+				if (data->buffer == NULL) {
+					free_nfs_cb_data(data);
+					return -ENOMEM;
+				}
 			}
 			memcpy(data->buffer + offset - data->offset, cdata, NFS_BLKSIZE);
 			offset += NFS_BLKSIZE;
@@ -2381,6 +2397,7 @@ static int nfs_pread_async_internal(struct nfs_context *nfs, struct nfsfh *nfsfh
 	}
 
 	if (nfs->rpc->readahead) {
+		nfsfh->ra.cur_ra = MAX(NFS_BLKSIZE, nfsfh->ra.cur_ra);
 		if (offset >= nfsfh->ra.fh_offset &&
 			offset - NFS_BLKSIZE <= nfsfh->ra.fh_offset + nfsfh->ra.cur_ra) {
 			if (nfs->rpc->readahead > nfsfh->ra.cur_ra) {
@@ -2391,6 +2408,17 @@ static int nfs_pread_async_internal(struct nfs_context *nfs, struct nfsfh *nfsfh
 		}
 		count += nfsfh->ra.cur_ra;
 		data->count += nfsfh->ra.cur_ra;
+	}
+
+	if ((data->count > nfs_get_readmax(nfs) || data->count > data->org_count) &&
+	    (data->buffer == NULL || nfsfh->ra.cur_ra > 0)) {
+		/* we do readahead, a big read or aligned out the request so we
+		 * need a (bigger) reassembly buffer */
+		data->buffer = realloc(data->buffer, data->count + nfsfh->ra.cur_ra);
+		if (data->buffer == NULL) {
+			free_nfs_cb_data(data);
+			return -ENOMEM;
+		}
 	}
 
 	data->max_offset = data->offset;
