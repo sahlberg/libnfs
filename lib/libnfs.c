@@ -4144,6 +4144,12 @@ struct nfsdirent *nfs_readdir(struct nfs_context *nfs _U_, struct nfsdir *nfsdir
 }
 
 
+void nfs_rewinddir(struct nfs_context *nfs _U_, struct nfsdir *nfsdir)
+{
+	nfsdir->current = nfsdir->entries;
+}
+
+
 /*
  * closedir()
  */
