@@ -2957,6 +2957,7 @@ static int nfs_truncate_continue_internal(struct nfs_context *nfs, fattr3 *attr 
 	uint64_t offset = data->continue_int;
 	struct nfsfh nfsfh;
 
+        memset(&nfsfh, 0, sizeof(struct nfsfh));
 	nfsfh.fh = data->fh;
 
 	if (nfs_ftruncate_async(nfs, &nfsfh, offset, data->cb, data->private_data) != 0) {

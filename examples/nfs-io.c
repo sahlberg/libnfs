@@ -57,7 +57,7 @@ WSADATA wsaData;
 
 void print_usage(void)
 {
-	fprintf(stderr, "Usage: nfs-io [-?|--help|--usage] [stat|creat|unlink|mkdir|rmdir] <url>\n");
+	fprintf(stderr, "Usage: nfs-io [-?|--help|--usage] [stat|creat|trunc|unlink|mkdir|rmdir] <url>\n");
 }
 
 int main(int argc, char *argv[])
@@ -108,6 +108,8 @@ int main(int argc, char *argv[])
 		ret = nfs_mkdir(nfs, url->file);
 	} else if (!strncmp(argv[1], "rmdir", 5)) {
 		ret = nfs_rmdir(nfs, url->file);
+	} else if (!strncmp(argv[1], "trunc", 5)) {
+		ret = nfs_truncate(nfs, url->file, 0);
 	} else if (!strncmp(argv[1], "stat", 4)) {
 		struct nfs_stat_64 st;
 		ret = nfs_stat64(nfs, url->file, &st);
