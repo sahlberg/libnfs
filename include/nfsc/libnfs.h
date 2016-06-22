@@ -949,6 +949,14 @@ struct nfsdirent  {
 EXTERN struct nfsdirent *nfs_readdir(struct nfs_context *nfs, struct nfsdir *nfsdir);
 
 
+/*
+ * REWINDDIR()
+ */
+/*
+ * nfs_rewinddir() cancel all previous nfs_readdir() side effects
+ */
+EXTERN void nfs_rewinddir(struct nfs_context *nfs, struct nfsdir *nfsdir);
+
 
 /*
  * CLOSEDIR()
