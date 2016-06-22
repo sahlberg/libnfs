@@ -953,7 +953,8 @@ EXTERN struct nfsdirent *nfs_readdir(struct nfs_context *nfs, struct nfsdir *nfs
  * REWINDDIR()
  */
 /*
- * nfs_rewinddir() cancel all previous nfs_readdir() side effects
+ * nfs_rewinddir() cancel all previous nfs_readdir() side effects.
+ * This function will never block so there is no need for an async version.
  */
 EXTERN void nfs_rewinddir(struct nfs_context *nfs, struct nfsdir *nfsdir);
 
