@@ -583,6 +583,10 @@ int rpc_disconnect(struct rpc_context *rpc, const char *error)
 {
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
+	/* Do not re-disconnect if we are already disconnected */
+	if (!rpc->is_connected) {
+		return 0;
+	}
 	rpc_unset_autoreconnect(rpc);
 
 	if (rpc->fd != -1) {
