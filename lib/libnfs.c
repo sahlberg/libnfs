@@ -991,7 +991,9 @@ static void nfs_mount_9_cb(struct rpc_context *rpc, int status, void *command_da
 		return;
 	}
 
-	/* NFS TCP connections we want to autoreconnect after sessions are torn down (due to inactivity or error) */
+	/* NFS TCP connections should be autoreconnected after sessions have
+         * been torn down (due to inactivity or error)
+         */
 	rpc_set_autoreconnect(rpc);
 
 	args.fsroot = nfs->rootfh;
@@ -1090,8 +1092,8 @@ static void nfs_mount_7_cb(struct rpc_context *rpc, int status, void *command_da
 		return;
 	}
 
-	/* iterate over all exporst and check if we any exports nested
-	 * below out mount.
+	/* Iterate over all exports and check if there are any mounts nested
+	 * below the current mount.
 	 */
 	len = strlen(nfs->export);
 	if (!len) {
