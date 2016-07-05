@@ -950,6 +950,27 @@ EXTERN struct nfsdirent *nfs_readdir(struct nfs_context *nfs, struct nfsdir *nfs
 
 
 /*
+ * SEEKDIR()
+ */
+/*
+ * This function will never block so there is no need for an async version.
+ */
+EXTERN void nfs_seekdir(struct nfs_context *nfs, struct nfsdir *nfsdir,
+                        long loc);
+
+/*
+ * TELLDIR()
+ */
+/*
+ * On success, nfs_telldir() will return a location as a value >= 0.
+ * On failure, nfs_telldir() will return -1.
+ *
+ * This function will never block so there is no need for an async version.
+ */
+EXTERN long nfs_telldir(struct nfs_context *nfs, struct nfsdir *nfsdir);
+
+
+/*
  * REWINDDIR()
  */
 /*

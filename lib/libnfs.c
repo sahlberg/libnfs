@@ -4136,6 +4136,9 @@ int nfs_opendir_async(struct nfs_context *nfs, const char *path, nfs_cb cb, void
 }
 
 
+/*
+ * nfs_readdir()
+ */
 struct nfsdirent *nfs_readdir(struct nfs_context *nfs _U_, struct nfsdir *nfsdir)
 {
 	struct nfsdirent *nfsdirent = nfsdir->current;
@@ -4147,6 +4150,39 @@ struct nfsdirent *nfs_readdir(struct nfs_context *nfs _U_, struct nfsdir *nfsdir
 }
 
 
+/*
+ * nfs_telldir()
+ */
+long nfs_telldir(struct nfs_context *nfs _U_, struct nfsdir *nfsdir)
+{
+        long i;
+        struct nfsdirent *tmp;
+
+        for (i = 0, tmp = nfsdir->entries; tmp; i++, tmp = tmp->next) {
+                if (tmp == nfsdir->current) {
+                        return i;
+                }
+        }
+        return -1;
+}
+
+
+/*
+ * nfs_seekdir()
+ */
+void nfs_seekdir(struct nfs_context *nfs _U_, struct nfsdir *nfsdir, long loc)
+{
+        if (loc < 0) {
+                return;
+        }
+        for (nfsdir->current = nfsdir->entries; nfsdir && loc--; nfsdir = nfsdir->next) {
+        }
+}
+
+
+/*
+ * nfs_rewinddir()
+ */
 void nfs_rewinddir(struct nfs_context *nfs _U_, struct nfsdir *nfsdir)
 {
 	nfsdir->current = nfsdir->entries;
