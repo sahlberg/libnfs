@@ -318,6 +318,11 @@ char *nfs_get_error(struct nfs_context *nfs)
 	return rpc_get_error(nfs->rpc);
 };
 
+void nfs_set_interface(struct nfs_context *nfs, const char *ifname)
+{
+	rpc_set_interface(nfs_get_rpc_context(nfs), ifname);
+}
+
 static int nfs_set_context_args(struct nfs_context *nfs, const char *arg, const char *val)
 {
 	if (!strcmp(arg, "tcp-syncnt")) {
@@ -336,6 +341,8 @@ static int nfs_set_context_args(struct nfs_context *nfs, const char *arg, const 
 		nfs->auto_traverse_mounts = atoi(val);
 	} else if (!strcmp(arg, "dircache")) {
 		nfs_set_dircache(nfs, atoi(val));
+	} else if (!strcmp(arg, "if")) {
+		nfs_set_interface(nfs, val);
 	}
 	return 0;
 }
