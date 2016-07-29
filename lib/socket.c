@@ -108,6 +108,18 @@ static void set_nolinger(int fd)
 	setsockopt(fd, SOL_SOCKET, SO_LINGER, &lng, sizeof(lng));
 }
 
+static int set_bind_device(int fd, char *ifname)
+{
+	int rc = 0;
+
+	if (*ifname) {
+		rc = setsockopt(fd, SOL_SOCKET, SO_BINDTODEVICE, ifname, strlen(ifname));
+	}
+
+	return rc;
+}
+
+
 #ifdef HAVE_NETINET_TCP_H
 static int set_tcp_sockopt(int sockfd, int optname, int value)
 {
@@ -415,6 +427,11 @@ static int rpc_connect_sockaddr_async(struct rpc_context *rpc, struct sockaddr_s
 	case AF_INET:
 		socksize = sizeof(struct sockaddr_in);
 		rpc->fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+		if (set_bind_device(rpc->fd, rpc->ifname) != 0) {
+			rpc_set_error (rpc, "Failed to bind to interface");
+			return -1;
+		}
+
 #ifdef HAVE_NETINET_TCP_H
 		if (rpc->tcp_syncnt != RPC_PARAM_UNDEFINED) {
 			set_tcp_sockopt(rpc->fd, TCP_SYNCNT, rpc->tcp_syncnt);
@@ -424,6 +441,11 @@ static int rpc_connect_sockaddr_async(struct rpc_context *rpc, struct sockaddr_s
 	case AF_INET6:
 		socksize = sizeof(struct sockaddr_in6);
 		rpc->fd = socket(AF_INET6, SOCK_STREAM, IPPROTO_TCP);
+		if (set_bind_device(rpc->fd, rpc->ifname) != 0) {
+			rpc_set_error (rpc, "Failed to bind to interface");
+			return -1;
+		}
+
 #ifdef HAVE_NETINET_TCP_H
 		if (rpc->tcp_syncnt != RPC_PARAM_UNDEFINED) {
 			set_tcp_sockopt(rpc->fd, TCP_SYNCNT, rpc->tcp_syncnt);

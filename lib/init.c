@@ -131,6 +131,25 @@ void rpc_set_readahead(struct rpc_context *rpc, uint32_t v)
 	}
 }
 
+void rpc_set_interface(struct rpc_context *rpc, const char *ifname)
+{
+	/*
+	 * This only copies the interface information into the RPC
+	 * structure.  It doesn't stop whatever interface is being used. The
+	 * connection needs to be restarted for that happen. In other words,
+	 * set this before you connect.
+	 */
+	assert(rpc->magic == RPC_CONTEXT_MAGIC);
+
+	if (ifname) {
+		/*
+		 * Allow at one-less character just-in-case IFNAMSIZ for
+		 * the defined platform does not include the NUL-terminator.
+		 */
+		strncpy(rpc->ifname, ifname, sizeof(rpc->ifname) - 1);
+	}
+}
+
 void rpc_set_debug(struct rpc_context *rpc, int level)
 {
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);

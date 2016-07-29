@@ -22,6 +22,10 @@
 #include "config.h"  /* HAVE_SOCKADDR_STORAGE ? */
 #endif
 
+#ifdef HAVE_NET_IF_H
+#include <net/if.h>
+#endif
+
 #ifndef WIN32
 #include <sys/socket.h>  /* struct sockaddr_storage */
 #endif
@@ -128,6 +132,7 @@ struct rpc_context {
 	uint32_t pagecache_ttl;
 	int debug;
 	int timeout;
+	char ifname[IFNAMSIZ];
 };
 
 struct rpc_pdu {
@@ -191,6 +196,8 @@ struct sockaddr *rpc_get_recv_sockaddr(struct rpc_context *rpc);
 
 void rpc_set_autoreconnect(struct rpc_context *rpc);
 void rpc_unset_autoreconnect(struct rpc_context *rpc);
+
+void rpc_set_interface(struct rpc_context *rpc, const char *ifname);
 
 void rpc_set_tcp_syncnt(struct rpc_context *rpc, int v);
 void rpc_set_uid(struct rpc_context *rpc, int uid);
