@@ -44,6 +44,7 @@ Arguments supported by libnfs are :
                    : Should libnfs try to traverse across nested mounts
                      automatically or not. Default is 1 == enabled.
  dircache=<0|1>    : Disable/enable directory caching. Enabled by default.
+ if=<interface>    : Interface name (e.g., eth1) to bind; requires `root`
 
 Auto_traverse_mounts
 ====================

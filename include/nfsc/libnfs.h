@@ -120,6 +120,12 @@ struct AUTH;
 EXTERN void nfs_set_auth(struct nfs_context *nfs, struct AUTH *auth);
 
 /*
+ * Used if you need to bind to a specific interface.
+ * Only available on platforms that support SO_BINDTODEVICE.
+ */
+EXTERN void nfs_set_interface(struct nfs_context *nfs, const char *ifname);
+
+/*
  * When an operation failed, this function can extract a detailed error string.
  */
 EXTERN char *nfs_get_error(struct nfs_context *nfs);

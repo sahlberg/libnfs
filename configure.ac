@@ -78,6 +78,30 @@ fi
 
 AC_SUBST(MAYBE_EXAMPLES)
 
+AC_MSG_CHECKING(whether SO_BINDTODEVICE is available)
+AC_TRY_RUN([
+/*
+ * Just see if we can compile with SO_BINDTODEVICE
+ */
+#include <net/if.h>
+
+int main(int argc, const char *argv[])
+{
+        int i = SO_BINDTODEVICE;
+	return 0;
+}
+], ac_cv_have_so_bindtodevice=yes, ac_cv_have_so_bindtodevice=no,
+   [echo $ac_n "compile with SO_BINDTODEVICE. Assuming OK... $ac_c"
+    ac_cv_have_so_bindtodevice=yes])
+if test "$ac_cv_have_so_bindtodevice" = yes ; then
+  AC_MSG_RESULT(yes)
+  AC_DEFINE(HAVE_SO_BINDTODEVICE, 1, [Whether our sockets support SO_BINDTODEVICE])
+else
+  AC_MSG_RESULT(no)
+  AC_MSG_NOTICE(SO_BINDTODEVICE support for if= support is missing.)
+  AC_MSG_NOTICE(Compiling without if= support.)
+fi
+
 AC_ARG_ENABLE([werror], [AS_HELP_STRING([--disable-werror],
               [Disables building with -Werror by default])])
 
