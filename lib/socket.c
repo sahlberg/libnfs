@@ -105,7 +105,7 @@ static void set_nolinger(int fd)
 	struct linger lng;
 	lng.l_onoff = 1;
 	lng.l_linger = 0;
-	setsockopt(fd, SOL_SOCKET, SO_LINGER, &lng, sizeof(lng));
+	setsockopt(fd, SOL_SOCKET, SO_LINGER, (char *)&lng, sizeof(lng));
 }
 
 static int set_bind_device(int fd, char *ifname)
@@ -193,7 +193,7 @@ static int rpc_write_to_socket(struct rpc_context *rpc)
 
 		total = pdu->outdata.size;
 
-		count = send(rpc->fd, pdu->outdata.data + pdu->written, total - pdu->written, 0);
+		count = send(rpc->fd, pdu->outdata.data + pdu->written, (int)(total - pdu->written), 0);
 		if (count == -1) {
 			if (errno == EAGAIN || errno == EWOULDBLOCK) {
 				return 0;

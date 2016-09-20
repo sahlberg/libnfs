@@ -346,8 +346,8 @@ int rpc_nfs_write_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh, 
 	memset(&args, 0, sizeof(WRITE3args));
 	args.file.data.data_len = fh->data.data_len;
 	args.file.data.data_val = fh->data.data_val;
-	args.offset = (count3)offset;
-	args.count  = count;
+	args.offset = offset;
+	args.count  = (count3)count;
 	args.stable = stable_how;
 	args.data.data_len = (count3)count;
 	args.data.data_val = buf;
