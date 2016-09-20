@@ -30,6 +30,10 @@
 #include <sys/socket.h>  /* struct sockaddr_storage */
 #endif
 
+#if defined(WIN32) && !defined(IFNAMSIZ)
+#define IFNAMSIZ 255
+#endif
+
 #include "libnfs-zdr.h"
 
 #ifdef __cplusplus
