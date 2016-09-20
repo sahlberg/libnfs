@@ -104,7 +104,7 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;_WIN32_WINNT=0x0501;_U_=;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>..\..\..\oncrpc-win32\win32\include;..\..\include;..\..\.;..\..\win32;..\..\mount;..\..\nfs</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\..\oncrpc-win32\win32\include;..\..\include;..\..\.;..\..\win32;..\..\mount;..\..\nfs;..\..\portmap</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -144,7 +144,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;_WIN32_WINNT=0x0501;_U_=;ONCRPC_STATIC;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>..\..\..\oncrpc-win32\win32\include;..\..\include;..\..\.;..\..\win32;..\..\mount;..\..\nfs</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\..\oncrpc-win32\win32\include;..\..\include;..\..\.;..\..\win32;..\..\mount;..\..\nfs;..\..\portmap</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
