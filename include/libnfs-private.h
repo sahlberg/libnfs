@@ -73,7 +73,7 @@ struct sockaddr_storage {
 
 struct rpc_fragment {
 	struct rpc_fragment *next;
-	uint64_t size;
+	size_t size;
 	char *data;
 };
 
