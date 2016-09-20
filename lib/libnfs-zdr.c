@@ -36,11 +36,14 @@
 #include <arpa/inet.h>
 #endif
 
+#ifdef HAVE_UNISTD_H
+#include <unistd.h>
+#endif
+
 #include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
-#include <unistd.h>
 #include "libnfs-zdr.h"
 #include "libnfs.h"
 #include "libnfs-raw.h"
