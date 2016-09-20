@@ -221,7 +221,7 @@ void nfs_pagecache_put(struct nfs_pagecache *pagecache, uint64_t offset, char *b
 		uint64_t page_offset = offset & ~(NFS_BLKSIZE - 1);
 		uint32_t entry = nfs_pagecache_hash(pagecache, page_offset);
 		struct nfs_pagecache_entry *e = &pagecache->entries[entry];
-		uint64_t n = MIN(NFS_BLKSIZE - offset % NFS_BLKSIZE, len);
+		size_t n = MIN(NFS_BLKSIZE - offset % NFS_BLKSIZE, len);
 		/* we can only write to the cache if we add a full page or
 		 * partially update a page that is still valid */
 		if (n == NFS_BLKSIZE ||
@@ -2265,7 +2265,7 @@ static void nfs_pread_mcb(struct rpc_context *rpc, int status, void *command_dat
 			rpc_set_error(nfs->rpc, "NFS: Read failed with %s(%d)", nfsstat3_to_str(res->status), nfsstat3_to_errno(res->status));
 			data->error = 1;
 		} else {
-			uint64_t count = res->READ3res_u.resok.count;
+			size_t count = res->READ3res_u.resok.count;
 			if (count < data->count && data->buffer == NULL) {
 				/* we need a reassembly buffer after all */
 				data->buffer = malloc(mdata->count);
