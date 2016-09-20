@@ -116,8 +116,9 @@ void rpc_set_pagecache_ttl(struct rpc_context *rpc, uint32_t v) {
 
 void rpc_set_readahead(struct rpc_context *rpc, uint32_t v)
 {
-	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 	uint32_t min_pagecache;
+
+	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 	if (v) {
 		v = MAX(NFS_BLKSIZE, round_to_power_of_two(v));
 	}

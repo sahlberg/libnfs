@@ -238,11 +238,18 @@ void nfs_pagecache_put(struct nfs_pagecache *pagecache, uint64_t offset, char *b
 }
 
 char *nfs_pagecache_get(struct nfs_pagecache *pagecache, uint64_t offset) {
-	assert(!(offset % NFS_BLKSIZE));
-	uint32_t entry = nfs_pagecache_hash(pagecache, offset);
-	struct nfs_pagecache_entry *e = &pagecache->entries[entry];
-	if (offset != e->offset) return NULL;
-	if (!e->ts) return NULL;
+	uint32_t entry;
+	struct nfs_pagecache_entry *e;
+
+	entry = nfs_pagecache_hash(pagecache, offset);
+	e = &pagecache->entries[entry];
+
+	if (offset != e->offset) {
+		return NULL;
+	}
+	if (!e->ts) {
+		return NULL;
+	}
 	if (pagecache->ttl && time(NULL) - e->ts > pagecache->ttl) return NULL;
 	return e->buf;
 }
