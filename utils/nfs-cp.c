@@ -96,14 +96,16 @@ fstat_file(struct file_context *fc, struct stat *st)
 		res = nfs_fstat64(fc->nfs, fc->nfsfh, &nfs_st);
 		st->st_dev          = (dev_t)nfs_st.nfs_dev;
 		st->st_ino          = (ino_t)nfs_st.nfs_ino;
+#ifndef WIN32
 		st->st_mode         = (mode_t)nfs_st.nfs_mode;
 		st->st_nlink        = (nlink_t)nfs_st.nfs_nlink;
+		st->st_blksize      = nfs_st.nfs_blksize;
+		st->st_blocks       = nfs_st.nfs_blocks;
+#endif
 		st->st_uid          = (uid_t)nfs_st.nfs_uid;
 		st->st_gid          = (gid_t)nfs_st.nfs_gid;
 		st->st_rdev         = (dev_t)nfs_st.nfs_rdev;
 		st->st_size         = (off_t)nfs_st.nfs_size;
-		st->st_blksize      = nfs_st.nfs_blksize;
-		st->st_blocks       = nfs_st.nfs_blocks;
 		st->st_atime        = nfs_st.nfs_atime;
 		st->st_mtime        = nfs_st.nfs_mtime;
 		st->st_ctime        = nfs_st.nfs_ctime;
