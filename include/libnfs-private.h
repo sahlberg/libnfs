@@ -73,7 +73,7 @@ struct sockaddr_storage {
 
 struct rpc_fragment {
 	struct rpc_fragment *next;
-	size_t size;
+	uint32_t size;
 	char *data;
 };
 
@@ -212,7 +212,7 @@ void rpc_set_readahead(struct rpc_context *rpc, uint32_t v);
 void rpc_set_debug(struct rpc_context *rpc, int level);
 void rpc_set_timeout(struct rpc_context *rpc, int timeout);
 int rpc_get_timeout(struct rpc_context *rpc);
-int rpc_add_fragment(struct rpc_context *rpc, char *data, uint64_t size);
+int rpc_add_fragment(struct rpc_context *rpc, char *data, uint32_t size);
 void rpc_free_all_fragments(struct rpc_context *rpc);
 
 const struct nfs_fh3 *nfs_get_rootfh(struct nfs_context *nfs);

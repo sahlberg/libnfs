@@ -214,7 +214,7 @@ void nfs_pagecache_invalidate(struct nfs_context *nfs, struct nfsfh *nfsfh) {
 	}
 }
 
-void nfs_pagecache_put(struct nfs_pagecache *pagecache, uint64_t offset, char *buf, int len) {
+static void nfs_pagecache_put(struct nfs_pagecache *pagecache, uint64_t offset, char *buf, size_t len) {
 	time_t ts = pagecache->ttl ? time(NULL) : 1;
 	if (!pagecache->num_entries) return;
 	while (len > 0) {
@@ -280,7 +280,8 @@ struct nfs_cb_data {
        int cancel;
        int oom;
        int num_calls;
-       uint64_t offset, count, max_offset, org_offset, org_count;
+       size_t count, org_count;
+       uint64_t offset, max_offset, org_offset;
        char *buffer;
        int not_my_buffer;
        char *usrbuf;
@@ -290,7 +291,7 @@ struct nfs_cb_data {
 struct nfs_mcb_data {
        struct nfs_cb_data *data;
        uint64_t offset;
-       uint64_t count;
+       size_t count;
 };
 
 static int nfs_lookup_path_async_internal(struct nfs_context *nfs, fattr3 *attr, struct nfs_cb_data *data, struct nfs_fh3 *fh);
@@ -2339,7 +2340,7 @@ out:
 
 	data->nfsfh->ra.fh_offset = data->max_offset;
 
-	nfs_pagecache_put(&data->nfsfh->pagecache, data->offset, data->buffer, data->max_offset - data->offset);
+	nfs_pagecache_put(&data->nfsfh->pagecache, data->offset, data->buffer, (size_t)(data->max_offset - data->offset));
 
 	if (data->max_offset > data->org_offset + data->org_count) {
 		data->max_offset = data->org_offset + data->org_count;
@@ -2348,14 +2349,14 @@ out:
 		data->nfsfh->offset = data->max_offset;
 	}
 
-	cb_err = data->max_offset - data->org_offset;
+	cb_err = (int)(data->max_offset - data->org_offset);
 	cb_data = data->buffer + (data->org_offset - data->offset);
 	data->cb(cb_err, nfs, cb_data, data->private_data);
 	free_nfs_cb_data(data);
 	return;
 }
 
-static int nfs_pread_async_internal(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t offset, uint64_t count, nfs_cb cb, void *private_data, int update_pos)
+static int nfs_pread_async_internal(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t offset, size_t count, nfs_cb cb, void *private_data, int update_pos)
 {
 	struct nfs_cb_data *data;
 
@@ -2370,7 +2371,7 @@ static int nfs_pread_async_internal(struct nfs_context *nfs, struct nfsfh *nfsfh
 	data->private_data = private_data;
 	data->nfsfh        = nfsfh;
 	data->org_offset   = offset;
-	data->org_count    = count;
+	data->org_count    = (count3)count;
 	data->update_pos   = update_pos;
 
 	assert(data->num_calls == 0);
@@ -2386,7 +2387,7 @@ static int nfs_pread_async_internal(struct nfs_context *nfs, struct nfsfh *nfsfh
 	}
 
 	data->offset = offset;
-	data->count = count;
+	data->count = (count3)count;
 
 	if (nfsfh->pagecache.num_entries) {
 		while (count > 0) {
@@ -2448,12 +2449,12 @@ static int nfs_pread_async_internal(struct nfs_context *nfs, struct nfsfh *nfsfh
 	 * we send all reads in parallel so that performance is still good.
 	 */
 	do {
-		uint64_t readcount = count;
+		size_t readcount = count;
 		struct nfs_mcb_data *mdata;
 		READ3args args;
 
 		if (readcount > nfs_get_readmax(nfs)) {
-			readcount = nfs_get_readmax(nfs);
+		  readcount = (size_t)nfs_get_readmax(nfs);
 		}
 
 		mdata = malloc(sizeof(struct nfs_mcb_data));
@@ -2494,7 +2495,7 @@ static int nfs_pread_async_internal(struct nfs_context *nfs, struct nfsfh *nfsfh
 
 int nfs_pread_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t offset, uint64_t count, nfs_cb cb, void *private_data)
 {
-	return nfs_pread_async_internal(nfs, nfsfh, offset, count, cb, private_data, 0);
+  return nfs_pread_async_internal(nfs, nfsfh, offset, (size_t)count, cb, private_data, 0);
 }
 
 /*
@@ -2502,7 +2503,7 @@ int nfs_pread_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t offse
  */
 int nfs_read_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t count, nfs_cb cb, void *private_data)
 {
-	return nfs_pread_async_internal(nfs, nfsfh, nfsfh->offset, count, cb, private_data, 1);
+  return nfs_pread_async_internal(nfs, nfsfh, nfsfh->offset, (size_t)count, cb, private_data, 1);
 }
 
 
@@ -2516,9 +2517,9 @@ static void nfs_fill_WRITE3args (WRITE3args *args, struct nfsfh *fh, uint64_t of
 	memset(args, 0, sizeof(WRITE3args));
 	args->file = fh->fh;
 	args->offset = offset;
-	args->count  = count;
+	args->count  = (count3)count;
 	args->stable = fh->is_sync ? FILE_SYNC : UNSTABLE;
-	args->data.data_len = count;
+	args->data.data_len = (count3)count;
 	args->data.data_val = buf;
 }
 
@@ -2548,7 +2549,7 @@ static void nfs_pwrite_mcb(struct rpc_context *rpc, int status, void *command_da
 			rpc_set_error(nfs->rpc, "NFS: Write failed with %s(%d)", nfsstat3_to_str(res->status), nfsstat3_to_errno(res->status));
 			data->error = 1;
 		} else  {
-			uint64_t count = res->WRITE3res_u.resok.count;
+			size_t count = res->WRITE3res_u.resok.count;
 
 			if (count < mdata->count) {
 				if (count == 0) {
@@ -2607,13 +2608,13 @@ static void nfs_pwrite_mcb(struct rpc_context *rpc, int status, void *command_da
 	}
 
 	nfs_pagecache_put(&data->nfsfh->pagecache, data->offset, data->usrbuf, data->count);
-	data->cb(data->max_offset - data->offset, nfs, NULL, data->private_data);
+	data->cb((int)(data->max_offset - data->offset), nfs, NULL, data->private_data);
 
 	free_nfs_cb_data(data);
 }
 
 
-static int nfs_pwrite_async_internal(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t offset, uint64_t count, char *buf, nfs_cb cb, void *private_data, int update_pos)
+static int nfs_pwrite_async_internal(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t offset, size_t count, char *buf, nfs_cb cb, void *private_data, int update_pos)
 {
 	struct nfs_cb_data *data;
 
@@ -2641,12 +2642,12 @@ static int nfs_pwrite_async_internal(struct nfs_context *nfs, struct nfsfh *nfsf
 	data->count = count;
 
 	do {
-		uint64_t writecount = count;
+		size_t writecount = count;
 		struct nfs_mcb_data *mdata;
 		WRITE3args args;
 
 		if (writecount > nfs_get_writemax(nfs)) {
-			writecount = nfs_get_writemax(nfs);
+		  writecount = (size_t)nfs_get_writemax(nfs);
 		}
 
 		mdata = malloc(sizeof(struct nfs_mcb_data));
@@ -2687,7 +2688,7 @@ static int nfs_pwrite_async_internal(struct nfs_context *nfs, struct nfsfh *nfsf
 
 int nfs_pwrite_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t offset, uint64_t count, char *buf, nfs_cb cb, void *private_data)
 {
-	return nfs_pwrite_async_internal(nfs, nfsfh, offset, count, buf, cb, private_data, 0);
+	return nfs_pwrite_async_internal(nfs, nfsfh, offset, (size_t)count, buf, cb, private_data, 0);
 }
 
 /*
@@ -2745,7 +2746,7 @@ int nfs_write_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t count
 		data->private_data  = private_data;
 		data->nfsfh         = nfsfh;
 		data->usrbuf	    = buf;
-		data->count         = count;
+		data->count         = (size_t)count;
 
 		memset(&args, 0, sizeof(GETATTR3args));
 		args.object = nfsfh->fh;
@@ -2757,7 +2758,7 @@ int nfs_write_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t count
 		}
 		return 0;
 	}
-	return nfs_pwrite_async_internal(nfs, nfsfh, nfsfh->offset, count, buf, cb, private_data, 1);
+	return nfs_pwrite_async_internal(nfs, nfsfh, nfsfh->offset, (size_t)count, buf, cb, private_data, 1);
 }
 
 
@@ -4371,10 +4372,10 @@ static void nfs_statvfs_1_cb(struct rpc_context *rpc, int status, void *command_
 	svfs.f_blocks  = res->FSSTAT3res_u.resok.tbytes/NFS_BLKSIZE;
 	svfs.f_bfree   = res->FSSTAT3res_u.resok.fbytes/NFS_BLKSIZE;
 	svfs.f_bavail  = res->FSSTAT3res_u.resok.abytes/NFS_BLKSIZE;
-	svfs.f_files   = res->FSSTAT3res_u.resok.tfiles;
-	svfs.f_ffree   = res->FSSTAT3res_u.resok.ffiles;
+	svfs.f_files   = (uint32_t)res->FSSTAT3res_u.resok.tfiles;
+	svfs.f_ffree   = (uint32_t)res->FSSTAT3res_u.resok.ffiles;
 #if !defined(__ANDROID__)
-	svfs.f_favail  = res->FSSTAT3res_u.resok.afiles;
+	svfs.f_favail  = (uint32_t)res->FSSTAT3res_u.resok.afiles;
 	svfs.f_fsid    = 0;
 	svfs.f_flag    = 0;
 	svfs.f_namemax = 256;
@@ -4516,7 +4517,7 @@ static int nfs_chmod_continue_internal(struct nfs_context *nfs, fattr3 *attr _U_
 	memset(&args, 0, sizeof(SETATTR3args));
 	args.object = data->fh;
 	args.new_attributes.mode.set_it = 1;
-	args.new_attributes.mode.set_mode3_u.mode = data->continue_int;
+	args.new_attributes.mode.set_mode3_u.mode = (mode3)data->continue_int;
 
 	if (rpc_nfs3_setattr_async(nfs->rpc, nfs_chmod_cb, &args, data) != 0) {
 		rpc_set_error(nfs->rpc, "RPC error: Failed to send SETATTR call for %s", data->path);

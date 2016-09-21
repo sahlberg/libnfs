@@ -105,6 +105,7 @@ struct pollfd {
 /* Wrapper macros to call misc. functions win32 is missing */
 #define poll(x, y, z)        win32_poll(x, y, z)
 #define inet_pton(x,y,z)     win32_inet_pton(x,y,z)
+int     getpid(void);
 int     win32_inet_pton(int af, const char * src, void * dst);
 int     win32_poll(struct pollfd *fds, unsigned int nfsd, int timeout);
 int     win32_gettimeofday(struct timeval *tv, struct timezone *tz);

@@ -164,7 +164,7 @@ bool_t libnfs_zdr_bytes(ZDR *zdrs, char **bufp, uint32_t *size, uint32_t maxsize
 		return FALSE;
 	}
 
-	if (zdrs->pos + *size > zdrs->size) {
+	if (zdrs->pos + (int)*size > zdrs->size) {
 		return FALSE;
 	}
 
@@ -267,7 +267,7 @@ bool_t libnfs_zdr_string(ZDR *zdrs, char **strp, uint32_t maxsize)
 		return FALSE;
 	}
 
-	if (zdrs->pos + size > zdrs->size) {
+	if (zdrs->pos + (int)size > zdrs->size) {
 		return FALSE;
 	}
 
@@ -278,7 +278,7 @@ bool_t libnfs_zdr_string(ZDR *zdrs, char **strp, uint32_t maxsize)
 		/* If the we string is null terminated we can just return it
 		 * in place.
 		 */
-		if (zdrs->size > zdrs->pos + size && zdrs->buf[zdrs->pos + size] == 0) {
+	  if (zdrs->size > zdrs->pos + (int)size && zdrs->buf[zdrs->pos + size] == 0) {
 			if (*strp == NULL) {
 				*strp = &zdrs->buf[zdrs->pos];
                                 (*strp)[size] = 0;
@@ -312,7 +312,7 @@ bool_t libnfs_zdr_array(ZDR *zdrs, char **arrp, uint32_t *size, uint32_t maxsize
 		return FALSE;
 	}
 
-	if (zdrs->pos + *size * elsize > zdrs->size) {
+	if (zdrs->pos + (int)(*size * elsize) > zdrs->size) {
 		return FALSE;
 	}
 
@@ -324,7 +324,7 @@ bool_t libnfs_zdr_array(ZDR *zdrs, char **arrp, uint32_t *size, uint32_t maxsize
 		memset(*arrp, 0, *size * elsize);
 	}
 
-	for (i = 0; i < *size; i++) {
+	for (i = 0; i < (int)*size; i++) {
 		if (!proc(zdrs, *arrp + i * elsize)) {
 			return FALSE;
 		}
@@ -423,7 +423,7 @@ static bool_t libnfs_accepted_reply(ZDR *zdrs, struct accepted_reply *ar)
 
 static bool_t libnfs_rejected_reply(ZDR *zdrs, struct rejected_reply *rr)
 {
-	if (!libnfs_zdr_u_int(zdrs, &rr->stat)) {
+	if (!libnfs_zdr_u_int(zdrs, (uint32_t *)&rr->stat)) {
 		return FALSE;
 	}
 
@@ -437,7 +437,7 @@ static bool_t libnfs_rejected_reply(ZDR *zdrs, struct rejected_reply *rr)
 		}
 		return TRUE;
 	case AUTH_ERROR:
-		if (!libnfs_zdr_u_int(zdrs, &rr->reject_data.stat)) {
+	  if (!libnfs_zdr_u_int(zdrs, (uint32_t *)&rr->reject_data.stat)) {
 			return FALSE;
 		}
 		return TRUE;

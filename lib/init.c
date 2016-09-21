@@ -274,7 +274,7 @@ void rpc_free_all_fragments(struct rpc_context *rpc)
 	}
 }
 
-int rpc_add_fragment(struct rpc_context *rpc, char *data, uint64_t size)
+int rpc_add_fragment(struct rpc_context *rpc, char *data, uint32_t size)
 {
 	struct rpc_fragment *fragment;
 
