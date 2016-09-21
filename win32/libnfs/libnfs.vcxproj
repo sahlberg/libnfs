@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|Win32">
@@ -124,21 +124,8 @@
       <IgnoreSpecificDefaultLibraries>MSVCRT</IgnoreSpecificDefaultLibraries>
     </Link>
     <PreBuildEvent>
-      <Command>copy $(ProjectDir)..\..\nfs\nfs.x $(ProjectDir)..\..\nfs\libnfs-raw-nfs.x
-rpcgen.exe -h $(ProjectDir)..\..\nfs\libnfs-raw-nfs.x &gt;  $(ProjectDir)..\..\nfs\libnfs-raw-nfs.h
-rpcgen.exe -c $(ProjectDir)..\..\nfs\libnfs-raw-nfs.x &gt;  $(ProjectDir)..\..\nfs\libnfs-raw-nfs.c
-
-copy $(ProjectDir)..\..\rquota\rquota.x $(ProjectDir)..\..\rquota\libnfs-raw-rquota.x
-rpcgen.exe -h $(ProjectDir)..\..\rquota\libnfs-raw-rquota.x &gt;  $(ProjectDir)..\..\rquota\libnfs-raw-rquota.h
-rpcgen.exe -c $(ProjectDir)..\..\rquota\libnfs-raw-rquota.x &gt;  $(ProjectDir)..\..\rquota\libnfs-raw-rquota.c
-
-copy $(ProjectDir)..\..\portmap\portmap.x $(ProjectDir)..\..\portmap\libnfs-raw-portmap.x
-rpcgen.exe -h $(ProjectDir)..\..\portmap\libnfs-raw-portmap.x &gt;  $(ProjectDir)..\..\portmap\libnfs-raw-portmap.h
-rpcgen.exe -c $(ProjectDir)..\..\portmap\libnfs-raw-portmap.x &gt;  $(ProjectDir)..\..\portmap\libnfs-raw-portmap.c
-
-copy $(ProjectDir)..\..\mount\mount.x $(ProjectDir)..\..\mount\libnfs-raw-mount.x
-rpcgen.exe -h $(ProjectDir)..\..\mount\libnfs-raw-mount.x &gt;  $(ProjectDir)..\..\mount\libnfs-
-rpcgen.exe -c $(ProjectDir)..\..\mount\libnfs-raw-mount.x &gt;  $(ProjectDir)..\..\mount\libnfs-raw-mount.c</Command>
+      <Command>
+      </Command>
     </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -189,21 +176,8 @@ rpcgen.exe -c $(ProjectDir)..\..\mount\libnfs-raw-mount.x &gt;  $(ProjectDir)..\
       <ModuleDefinitionFile>..\..\lib\libnfs-win32.def</ModuleDefinitionFile>
     </Link>
     <PreBuildEvent>
-      <Command>copy $(ProjectDir)..\..\nfs\nfs.x $(ProjectDir)..\..\nfs\libnfs-raw-nfs.x
-rpcgen.exe -h $(ProjectDir)..\..\nfs\libnfs-raw-nfs.x &gt;  $(ProjectDir)..\..\nfs\libnfs-raw-nfs.h
-rpcgen.exe -c $(ProjectDir)..\..\nfs\libnfs-raw-nfs.x &gt;  $(ProjectDir)..\..\nfs\libnfs-raw-nfs.c
-
-copy $(ProjectDir)..\..\rquota\rquota.x $(ProjectDir)..\..\rquota\libnfs-raw-rquota.x
-rpcgen.exe -h $(ProjectDir)..\..\rquota\libnfs-raw-rquota.x &gt;  $(ProjectDir)..\..\rquota\libnfs-raw-rquota.h
-rpcgen.exe -c $(ProjectDir)..\..\rquota\libnfs-raw-rquota.x &gt;  $(ProjectDir)..\..\rquota\libnfs-raw-rquota.c
-
-copy $(ProjectDir)..\..\portmap\portmap.x $(ProjectDir)..\..\portmap\libnfs-raw-portmap.x
-rpcgen.exe -h $(ProjectDir)..\..\portmap\libnfs-raw-portmap.x &gt;  $(ProjectDir)..\..\portmap\libnfs-raw-portmap.h
-rpcgen.exe -c $(ProjectDir)..\..\portmap\libnfs-raw-portmap.x &gt;  $(ProjectDir)..\..\portmap\libnfs-raw-portmap.c
-
-copy $(ProjectDir)..\..\mount\mount.x $(ProjectDir)..\..\mount\libnfs-raw-mount.x
-rpcgen.exe -h $(ProjectDir)..\..\mount\libnfs-raw-mount.x &gt;  $(ProjectDir)..\..\mount\libnfs-raw-mount.h
-rpcgen.exe -c $(ProjectDir)..\..\mount\libnfs-raw-mount.x &gt;  $(ProjectDir)..\..\mount\libnfs-raw-mount.c</Command>
+      <Command>
+      </Command>
     </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
