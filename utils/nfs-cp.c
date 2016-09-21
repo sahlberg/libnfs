@@ -214,7 +214,6 @@ static char buf[BUFSIZE];
 
 int main(int argc, char *argv[])
 {
-	int ret;
 	struct stat st;
 	struct file_context *src;
 	struct file_context *dst;
