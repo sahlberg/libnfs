@@ -1724,7 +1724,7 @@ static int nfs_lookuppath_async(struct nfs_context *nfs, const char *path, int n
 		 * TODO: If we make sure the list is sorted we can skip this
 		 * check and end the loop on first match.
 		 */
-		int max_match_len = 0;
+		size_t max_match_len = 0;
 
 		/* Do we need to switch to a different nested export ? */
 		for (mnt = nfs->nested_mounts; mnt; mnt = mnt->next) {
@@ -1809,8 +1809,8 @@ static void nfs_stat_1_cb(struct rpc_context *rpc, int status, void *command_dat
 		return;
 	}
 
-	st.st_dev     = res->GETATTR3res_u.resok.obj_attributes.fsid;
-        st.st_ino     = res->GETATTR3res_u.resok.obj_attributes.fileid;
+	st.st_dev     = (dev_t)res->GETATTR3res_u.resok.obj_attributes.fsid;
+        st.st_ino     = (ino_t)res->GETATTR3res_u.resok.obj_attributes.fileid;
         st.st_mode    = res->GETATTR3res_u.resok.obj_attributes.mode;
 	switch (res->GETATTR3res_u.resok.obj_attributes.type) {
 	case NF3REG:
@@ -2235,7 +2235,7 @@ static void nfs_fill_READ3args(READ3args *args, struct nfsfh *fh, uint64_t offse
 	memset(args, 0, sizeof(READ3args));
 	args->file = fh->fh;
 	args->offset = offset;
-	args->count = count;
+	args->count = (count3)count;
 }
 
 static void nfs_pread_mcb(struct rpc_context *rpc, int status, void *command_data, void *private_data)
