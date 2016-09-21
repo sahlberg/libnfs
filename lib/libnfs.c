@@ -115,7 +115,7 @@ struct nfs_pagecache_entry {
 struct nfs_pagecache {
        struct nfs_pagecache_entry *entries;
        uint32_t num_entries;
-       uint32_t ttl;
+       time_t ttl;
 };
 
 struct nfsfh {
@@ -222,6 +222,7 @@ void nfs_pagecache_put(struct nfs_pagecache *pagecache, uint64_t offset, char *b
 		uint32_t entry = nfs_pagecache_hash(pagecache, page_offset);
 		struct nfs_pagecache_entry *e = &pagecache->entries[entry];
 		size_t n = MIN(NFS_BLKSIZE - offset % NFS_BLKSIZE, len);
+
 		/* we can only write to the cache if we add a full page or
 		 * partially update a page that is still valid */
 		if (n == NFS_BLKSIZE ||
