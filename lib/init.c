@@ -26,7 +26,9 @@
 #include "win32_compat.h"
 #endif
 
+#ifndef _GNU_SOURCE
 #define _GNU_SOURCE
+#endif
 
 #ifdef HAVE_UNISTD_H
 #include <unistd.h>
