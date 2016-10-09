@@ -22,9 +22,9 @@ libnfs_la_SOURCES = \
 	socket.c \
 	../win32/win32_compat.c
 
-SOCURRENT=9
-SOREVISION=1
-SOAGE=1
+SOCURRENT=10
+SOREVISION=0
+SOAGE=2
 libnfs_la_LDFLAGS = -version-info $(SOCURRENT):$(SOREVISION):$(SOAGE)
 libnfs_la_LIBADD = \
 	../mount/libmount.la \
