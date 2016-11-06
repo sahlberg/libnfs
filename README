@@ -25,7 +25,7 @@ examples/nfsclient-sync.c provides examples on how to use this API
 
 URL-FORMAT:
 ===========
-Libnfs uses RFC2224 style URLs extended with libnfs specific url arguments some minor extensions.
+Libnfs uses RFC2224 style URLs extended with some minor libnfs extensions.
 The basic syntax of these URLs is :
 
 nfs://<server|ipv4|ipv6>/path[?arg=val[&arg=val]*]
@@ -54,9 +54,9 @@ both these exports as well.
 The reason is because the NFSv3 protocol does not allow a client request
 to return data for an object in a different filesystem/mount.
 (legacy, but it is what it is. One reason for this restriction is to
-guarantee that inodes are uniqe across the mounted system.)
+guarantee that inodes are unique across the mounted system.)
 
-This option, when enabled will make libnfs perform all these mounts
+This option, when enabled, will make libnfs perform all these mounts
 internally for you. This means that one libnfs mount may now have files
 with duplicate inode values so if you cache files based on inode
 make sure you cache files based on BOTH st.st_ino and st.st_dev.
@@ -72,16 +72,19 @@ ports from connecting.
 These servers require you use the "insecure" export option in /etc/exports
 in order to allow libnfs clients to be able to connect.
 
-Some versions of Linux support special capabilities that can be assigned to
-programs to allow non-root users to bind to system ports.
+On Linux we can get around this restriction by setting the NET_BIND_SERVICE
+capability for the application binary.
+
 This is set up by running
     sudo setcap 'cap_net_bind_service=+ep' /path/to/executable
-When libnfs is linked against an executable with this special capability
-assigned to it, libnfs may be able to use system ports even when executing
-under the privilege of a non-root user account.
+This capability allows the binary to use systems ports like this even when
+not running as root. Thus if you set this capability for your application
+you no longer need to edit the export on the NFS server to set "insecure".
 
-This is highly non-portable so IF this works on your linux system, count
-yourself lucky.
+
+I do not know what equivalent "capability" support is available on other
+platforms. Please drop me an email if your os of choice has something similar
+and I can add it to the README.
 
 
 DOCUMENTATION
