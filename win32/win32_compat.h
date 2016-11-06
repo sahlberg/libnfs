@@ -104,6 +104,7 @@ struct pollfd {
 
 /* Wrapper macros to call misc. functions win32 is missing */
 #define poll(x, y, z)        win32_poll(x, y, z)
+#define snprintf             sprintf_s
 #define inet_pton(x,y,z)     win32_inet_pton(x,y,z)
 #define open(x, y, z)        _open(x, y, z)
 #define lseek(x, y, z)       _lseek(x, y, z)
