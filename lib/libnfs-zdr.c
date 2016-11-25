@@ -312,10 +312,6 @@ bool_t libnfs_zdr_array(ZDR *zdrs, char **arrp, uint32_t *size, uint32_t maxsize
 		return FALSE;
 	}
 
-	if (zdrs->pos + (int)(*size * elsize) > zdrs->size) {
-		return FALSE;
-	}
-
 	if (zdrs->x_op == ZDR_DECODE) {
 		*arrp = zdr_malloc(zdrs, *size * elsize);
 		if (*arrp == NULL) {
