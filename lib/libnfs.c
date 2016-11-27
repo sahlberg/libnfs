@@ -628,27 +628,12 @@ static void rpc_connect_program_4_cb(struct rpc_context *rpc, int status, void *
 		return;
 	}
 
-	switch (data->program) {
-	case MOUNT_PROGRAM:
-		if (rpc_mount3_null_async(rpc, rpc_connect_program_5_cb,
-					data) != 0) {
-			data->cb(rpc, status, command_data, data->private_data);
-			free_rpc_cb_data(data);
-			return;
-		}
-		return;
-	case NFS_PROGRAM:
-		if (rpc_nfs3_null_async(rpc, rpc_connect_program_5_cb,
-					data) != 0) {
-			data->cb(rpc, status, command_data, data->private_data);
-			free_rpc_cb_data(data);
-			return;
-		}
-		return;
-	}
-
-	data->cb(rpc, status, NULL, data->private_data);
-	free_rpc_cb_data(data);
+        if (rpc_null_async(rpc, data->program, data->version,
+                           rpc_connect_program_5_cb, data) != 0) {
+                data->cb(rpc, status, command_data, data->private_data);
+                free_rpc_cb_data(data);
+                return;
+        }
 }
 
 static void rpc_connect_program_3_cb(struct rpc_context *rpc, int status, void *command_data, void *private_data)
@@ -5689,4 +5674,23 @@ void nfs_set_timeout(struct nfs_context *nfs,int timeout)
 int nfs_get_timeout(struct nfs_context *nfs)
 {
 	return rpc_get_timeout(nfs->rpc);
+}
+
+int rpc_null_async(struct rpc_context *rpc, int program, int version, rpc_cb cb, void *private_data)
+{
+	struct rpc_pdu *pdu;
+
+	pdu = rpc_allocate_pdu(rpc, program, version, 0, cb, private_data, (zdrproc_t)zdr_void, 0);
+	if (pdu == NULL) {
+		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu for NULL call");
+		return -1;
+	}
+
+	if (rpc_queue_pdu(rpc, pdu) != 0) {
+		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for NULL call");
+		rpc_free_pdu(rpc, pdu);
+		return -1;
+	}
+
+	return 0;
 }

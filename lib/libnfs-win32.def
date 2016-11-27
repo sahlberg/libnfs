@@ -212,6 +212,7 @@ rpc_nsm1_unmon_async
 rpc_nsm1_unmonall_async
 rpc_nsm1_simucrash_async
 rpc_nsm1_notify_async
+rpc_null_async
 rpc_rquota1_null_async
 rpc_rquota1_getquota_async
 rpc_rquota1_getactivequota_async
