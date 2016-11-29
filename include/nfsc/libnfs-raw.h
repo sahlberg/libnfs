@@ -1,3 +1,4 @@
+/* -*-  mode:c; tab-width:8; c-basic-offset:8; indent-tabs-mode:nil;  -*- */
 /*
    Copyright (C) 2010 by Ronnie Sahlberg <ronniesahlberg@gmail.com>
 
@@ -1698,6 +1699,39 @@ EXTERN int rpc_nsm1_simucrash_async(struct rpc_context *rpc, rpc_cb cb, void *pr
  */
 struct NSM1_NOTIFYargs;
 EXTERN int rpc_nsm1_notify_async(struct rpc_context *rpc, rpc_cb cb, struct NSM1_NOTIFYargs *args, void *private_data);
+
+/*
+ * Call NFS4/NULL
+ * Function returns
+ *  0 : The call was initiated. The callback will be invoked when the call completes.
+ * <0 : An error occured when trying to set up the call. The callback will not be invoked.
+ *
+ * When the callback is invoked, status indicates the result:
+ * RPC_STATUS_SUCCESS : We got a successful response from the nfs daemon.
+ *                      data is NULL.
+ * RPC_STATUS_ERROR   : An error occured when trying to contact the nfs daemon.
+ *                      data is the error string.
+ * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
+ *                     data is NULL.
+ */
+EXTERN int rpc_nfs4_null_async(struct rpc_context *rpc, rpc_cb cb, void *private_data);
+
+/*
+ * Call NFS4/COMPOUND
+ * Function returns
+ *  0 : The call was initiated. The callback will be invoked when the call completes.
+ * <0 : An error occured when trying to set up the call. The callback will not be invoked.
+ *
+ * When the callback is invoked, status indicates the result:
+ * RPC_STATUS_SUCCESS : We got a successful response from the nfs daemon.
+ *                      data is COMPOUND4res
+ * RPC_STATUS_ERROR   : An error occured when trying to contact the nfs daemon.
+ *                      data is the error string.
+ * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
+ *                     data is NULL.
+ */
+struct COMPOUND4args;
+EXTERN int rpc_nfs4_compound_async(struct rpc_context *rpc, rpc_cb cb, struct COMPOUND4args *args, void *private_data);
 
 /*
  * Call <generic>/NULL
