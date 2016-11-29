@@ -93,6 +93,14 @@ struct rpc_queue {
 #define ZDR_ENCODE_OVERHEAD 1024
 #define ZDR_ENCODEBUF_MINSIZE 4096
 
+struct rpc_endpoint {
+        struct rpc_endpoint *next;
+        int program;
+        int version;
+        struct service_proc *procs;
+        int num_procs;
+};
+
 struct rpc_context {
 	uint32_t magic;
 	int fd;
@@ -137,6 +145,10 @@ struct rpc_context {
 	int debug;
 	int timeout;
 	char ifname[IFNAMSIZ];
+
+        /* Is a server context ? */
+        int is_server_context;
+        struct rpc_endpoint *endpoints;
 };
 
 struct rpc_pdu {

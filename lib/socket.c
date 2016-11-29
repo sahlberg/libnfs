@@ -384,13 +384,21 @@ int rpc_service(struct rpc_context *rpc, int revents)
 
 	if (revents & POLLIN) {
 		if (rpc_read_from_socket(rpc) != 0) {
-			return rpc_reconnect_requeue(rpc);
+                        if (rpc->is_server_context) {
+                                return -1;
+                        } else {
+                                return rpc_reconnect_requeue(rpc);
+                        }
 		}
 	}
 
 	if (revents & POLLOUT && rpc_has_queue(&rpc->outqueue)) {
 		if (rpc_write_to_socket(rpc) != 0) {
-			return rpc_reconnect_requeue(rpc);
+                        if (rpc->is_server_context) {
+                                return -1;
+                        } else {
+                                return rpc_reconnect_requeue(rpc);
+                        }
 		}
 	}
 
@@ -401,12 +409,21 @@ void rpc_set_autoreconnect(struct rpc_context *rpc)
 {
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
+        /* we can not connect and not reconnect on a server context. */
+        if (rpc->is_server_context) {
+                return;
+        }
+
 	rpc->auto_reconnect = 1;
 }
 
 void rpc_unset_autoreconnect(struct rpc_context *rpc)
 {
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
+
+        if (rpc->is_server_context) {
+                return;
+        }
 
 	rpc->auto_reconnect = 0;
 }
@@ -590,6 +607,11 @@ int rpc_connect_async(struct rpc_context *rpc, const char *server, int port, rpc
 {
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
+        if (rpc->is_server_context) {
+		rpc_set_error(rpc, "Can not connect on a server context");
+                return -1;
+        }
+
 	if (rpc->fd != -1) {
 		rpc_set_error(rpc, "Trying to connect while already connected");
 		return -1;
@@ -633,7 +655,9 @@ int rpc_disconnect(struct rpc_context *rpc, const char *error)
 
 	rpc->is_connected = 0;
 
-	rpc_error_all_pdus(rpc, error);
+        if (!rpc->is_server_context) {
+                rpc_error_all_pdus(rpc, error);
+        }
 
 	return 0;
 }

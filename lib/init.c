@@ -91,6 +91,26 @@ struct rpc_context *rpc_init_context(void)
 	return rpc;
 }
 
+struct rpc_context *rpc_init_server_context(int s)
+{
+	struct rpc_context *rpc;
+
+	rpc = malloc(sizeof(struct rpc_context));
+	if (rpc == NULL) {
+		return NULL;
+	}
+	memset(rpc, 0, sizeof(struct rpc_context));
+
+	rpc->magic = RPC_CONTEXT_MAGIC;
+
+	rpc->is_server_context = 1;
+	rpc->fd = s;
+	rpc->is_connected = 1;
+	rpc_reset_queue(&rpc->outqueue);
+
+	return rpc;
+}
+
 uint32_t static round_to_power_of_two(uint32_t x) {
 	uint32_t power = 1;
 	while (power < x) {
@@ -306,6 +326,14 @@ void rpc_destroy_context(struct rpc_context *rpc)
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
+        /* If we are a server context, free all registered endpoints. */
+        while (rpc->endpoints != NULL) {
+                struct rpc_endpoint *next = rpc->endpoints->next;
+
+                free(rpc->endpoints);
+                rpc->endpoints = next;
+        }
+
 	while((pdu = rpc->outqueue.head) != NULL) {
 		pdu->cb(rpc, RPC_STATUS_CANCEL, NULL, pdu->private_data);
 		LIBNFS_LIST_REMOVE(&rpc->outqueue.head, pdu);
@@ -324,8 +352,10 @@ void rpc_destroy_context(struct rpc_context *rpc)
 
 	rpc_free_all_fragments(rpc);
 
-	auth_destroy(rpc->auth);
-	rpc->auth =NULL;
+        if (rpc->auth) {
+                auth_destroy(rpc->auth);
+                rpc->auth =NULL;
+        }
 
 	if (rpc->fd != -1) {
  		close(rpc->fd);
@@ -352,4 +382,33 @@ int rpc_get_timeout(struct rpc_context *rpc)
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
 	return rpc->timeout;
+}
+
+int rpc_register_service(struct rpc_context *rpc, int program, int version,
+                         struct service_proc *procs, int num_procs)
+{
+        struct rpc_endpoint *endpoint;
+
+        assert(rpc->magic == RPC_CONTEXT_MAGIC);
+
+        if (!rpc->is_server_context) {
+		rpc_set_error(rpc, "Not a server context.");
+                return -1;
+        }
+
+        endpoint = malloc(sizeof(*endpoint));
+        if (endpoint == NULL) {
+		rpc_set_error(rpc, "Out of memory: Failed to allocate endpoint "
+                              "structure");
+                return -1;
+        }
+
+        endpoint->program = program;
+        endpoint->version = version;
+        endpoint->procs = procs;
+        endpoint->num_procs = num_procs;
+        endpoint->next = rpc->endpoints;
+        rpc->endpoints = endpoint;
+
+        return 0;
 }

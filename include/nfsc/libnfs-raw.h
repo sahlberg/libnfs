@@ -72,6 +72,55 @@ int rpc_service(struct rpc_context *rpc, int revents);
 int rpc_queue_length(struct rpc_context *rpc);
 
 /*
+ * Create a server context.
+ */
+struct rpc_context *rpc_init_server_context(int s);
+
+/* This is the callback functions for server contexts.
+ * These are invoked from the library when a CALL has been received and a
+ * service procedure has been found that matches the rpc
+ * program/version/procedure.
+ *
+ * The rpc arguments are stored in call->body.cbody.args;
+ * Example:
+ *  static int pmap2_getport_proc(struct rpc_context *rpc, struct rpc_msg *call)
+ *  {
+ *       pmap2_mapping *args = call->body.cbody.args;
+ *  ...
+ *
+ *  struct service_proc pmap2_pt[] = {
+ *         {PMAP2_GETPORT, pmap2_getport_proc,
+ *           (zdrproc_t)zdr_pmap2_mapping, sizeof(pmap2_mapping)},
+ *  ...
+ *
+ *
+ * The return value is:
+ *  0:  Procedure was completed normally.
+ * !0:  An abnormal error has occured. It is unrecoverable and the only
+ *      meaningful cause of action is to tear down the connection from
+ *      the client.
+ */
+typedef int (*service_fn)(struct rpc_context *rpc, struct rpc_msg *call);
+
+struct service_proc {
+        int proc;
+        service_fn func;
+        zdrproc_t decode_fn;
+        int decode_buf_size;
+};
+
+/*
+ * Register a service callback table for program/version.
+ * Can only be used with contexts created with rpc_init_server_context()
+ */
+int rpc_register_service(struct rpc_context *rpc, int program, int version,
+                         struct service_proc *procs, int num_procs);
+
+int rpc_send_reply(struct rpc_context *rpc, struct rpc_msg *call,
+                   void *reply, zdrproc_t encode_fn,
+                   int alloc_hint);
+
+/*
  * When an operation failed, this function can extract a detailed error string.
  */
 char *rpc_get_error(struct rpc_context *rpc);

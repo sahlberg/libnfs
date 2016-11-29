@@ -165,6 +165,7 @@ struct call_body {
 	uint32_t proc;
 	struct opaque_auth cred;
 	struct opaque_auth verf;
+	void    *args;
 };
 
 struct accepted_reply {

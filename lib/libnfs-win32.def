@@ -104,6 +104,7 @@ rpc_disconnect
 rpc_get_error
 rpc_get_fd
 rpc_init_context
+rpc_init_server_context
 rpc_pmap2_null_async
 rpc_pmap2_getport_async
 rpc_pmap2_set_async
@@ -215,9 +216,11 @@ rpc_nsm1_unmonall_async
 rpc_nsm1_simucrash_async
 rpc_nsm1_notify_async
 rpc_null_async
+rpc_register_service
 rpc_rquota1_null_async
 rpc_rquota1_getquota_async
 rpc_rquota1_getactivequota_async
+rpc_send_reply
 rpc_service
 rpc_set_fd
 rpc_which_events
