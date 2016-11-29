@@ -1,4 +1,4 @@
-noinst_PROGRAMS = nfsclient-async nfsclient-raw nfsclient-sync nfsclient-bcast nfsclient-listservers nfs-io portmap-client
+noinst_PROGRAMS = nfsclient-async nfsclient-raw nfsclient-sync nfsclient-bcast nfsclient-listservers nfs-io nfs4-cat portmap-client
 
 AM_CPPFLAGS = \
 	-I$(abs_top_srcdir)/include \
@@ -6,6 +6,7 @@ AM_CPPFLAGS = \
 	-I$(abs_top_srcdir)/include/win32 \
 	-I$(abs_top_srcdir)/mount \
 	-I$(abs_top_srcdir)/nfs \
+	-I$(abs_top_srcdir)/nfs4 \
 	-I$(abs_top_srcdir)/portmap \
 	-I$(abs_top_srcdir)/rquota \
 	"-D_U_=__attribute__((unused))"
@@ -17,4 +18,5 @@ nfsclient_sync_LDADD = $(COMMON_LIBS)
 nfsclient_bcast_LDADD = $(COMMON_LIBS)
 nfsclient_listservers_LDADD = $(COMMON_LIBS)
 nfs_io_LDADD = $(COMMON_LIBS)
+nfs4_cat_LDADD = $(COMMON_LIBS) -levent
 portmap_client_LDADD = $(COMMON_LIBS)
