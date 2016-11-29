@@ -210,6 +210,11 @@ static int rpc_write_to_socket(struct rpc_context *rpc)
 			if (pdu->next == NULL)
 				rpc->outqueue.tail = NULL;
 
+                        if (pdu->flags & PDU_DISCARD_AFTER_SENDING) {
+                                rpc_free_pdu(rpc, pdu);
+                                return 0;
+                        }
+
 			hash = rpc_hash_xid(pdu->xid);
 			rpc_enqueue(&rpc->waitpdu[hash], pdu);
 		}

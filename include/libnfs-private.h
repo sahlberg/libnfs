@@ -155,6 +155,9 @@ struct rpc_pdu {
 	zdrproc_t zdr_decode_fn;
 	caddr_t zdr_decode_buf;
 	uint32_t zdr_decode_bufsize;
+
+#define PDU_DISCARD_AFTER_SENDING 0x00000001
+        uint32_t flags;
 };
 
 void rpc_reset_queue(struct rpc_queue *q);
