@@ -1,4 +1,4 @@
-noinst_PROGRAMS = nfsclient-async nfsclient-raw nfsclient-sync nfsclient-bcast nfsclient-listservers nfs-io nfs4-cat portmap-client
+noinst_PROGRAMS = nfsclient-async nfsclient-raw nfsclient-sync nfsclient-bcast nfsclient-listservers nfs-io nfs4-cat portmap-client portmap-server
 
 AM_CPPFLAGS = \
 	-I$(abs_top_srcdir)/include \
@@ -20,3 +20,4 @@ nfsclient_listservers_LDADD = $(COMMON_LIBS)
 nfs_io_LDADD = $(COMMON_LIBS)
 nfs4_cat_LDADD = $(COMMON_LIBS) -levent
 portmap_client_LDADD = $(COMMON_LIBS)
+portmap_server_LDADD = $(COMMON_LIBS) -levent
