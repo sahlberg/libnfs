@@ -425,7 +425,7 @@ void rpc_set_tcp_syncnt(struct rpc_context *rpc, int v)
 
 static int rpc_connect_sockaddr_async(struct rpc_context *rpc, struct sockaddr_storage *s)
 {
-	int socksize;
+	socklen_t socksize;
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
