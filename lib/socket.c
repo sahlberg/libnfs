@@ -86,7 +86,6 @@
 #endif
 
 static int rpc_reconnect_requeue(struct rpc_context *rpc);
-static int rpc_connect_sockaddr_async(struct rpc_context *rpc, struct sockaddr_storage *s);
 
 static void set_nonblocking(int fd)
 {
@@ -423,9 +422,10 @@ void rpc_set_tcp_syncnt(struct rpc_context *rpc, int v)
 #define TCP_SYNCNT        7
 #endif
 
-static int rpc_connect_sockaddr_async(struct rpc_context *rpc, struct sockaddr_storage *s)
+static int rpc_connect_sockaddr_async(struct rpc_context *rpc)
 {
-	socklen_t socksize;
+        struct sockaddr_storage *s = &rpc->s;
+        socklen_t socksize;
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
@@ -609,7 +609,7 @@ int rpc_connect_async(struct rpc_context *rpc, const char *server, int port, rpc
 	rpc->connect_cb  = cb;
 	rpc->connect_data = private_data;
 
-	if (rpc_connect_sockaddr_async(rpc, &rpc->s) != 0) {
+	if (rpc_connect_sockaddr_async(rpc) != 0) {
 		return -1;
 	}
 
@@ -688,7 +688,7 @@ static int rpc_reconnect_requeue(struct rpc_context *rpc)
 	if (rpc->auto_reconnect != 0) {
 		rpc->connect_cb  = reconnect_cb;
 		RPC_LOG(rpc, 1, "reconnect initiated");
-		if (rpc_connect_sockaddr_async(rpc, &rpc->s) != 0) {
+		if (rpc_connect_sockaddr_async(rpc) != 0) {
 			rpc_error_all_pdus(rpc, "RPC ERROR: Failed to reconnect async");
 			return -1;
 		}
