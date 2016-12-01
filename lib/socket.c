@@ -552,23 +552,10 @@ static int rpc_connect_sockaddr_async(struct rpc_context *rpc, struct sockaddr_s
 	return 0;
 }
 
-int rpc_connect_async(struct rpc_context *rpc, const char *server, int port, rpc_cb cb, void *private_data)
+static int rpc_set_sockaddr(struct rpc_context *rpc, const char *server,
+                            int port)
 {
 	struct addrinfo *ai = NULL;
-
-	assert(rpc->magic == RPC_CONTEXT_MAGIC);
-
-	if (rpc->fd != -1) {
-		rpc_set_error(rpc, "Trying to connect while already connected");
-		return -1;
-	}
-
-	if (rpc->is_udp != 0) {
-		rpc_set_error(rpc, "Trying to connect on UDP socket");
-		return -1;
-	}
-
-	rpc->auto_reconnect = 0;
 
 	if (getaddrinfo(server, NULL, NULL, &ai) != 0) {
 		rpc_set_error(rpc, "Invalid address:%s. "
@@ -594,11 +581,33 @@ int rpc_connect_async(struct rpc_context *rpc, const char *server, int port, rpc
 #endif
 		break;
 	}
+	freeaddrinfo(ai);
+
+        return 0;
+}
+
+int rpc_connect_async(struct rpc_context *rpc, const char *server, int port, rpc_cb cb, void *private_data)
+{
+	assert(rpc->magic == RPC_CONTEXT_MAGIC);
+
+	if (rpc->fd != -1) {
+		rpc_set_error(rpc, "Trying to connect while already connected");
+		return -1;
+	}
+
+	if (rpc->is_udp != 0) {
+		rpc_set_error(rpc, "Trying to connect on UDP socket");
+		return -1;
+	}
+
+	rpc->auto_reconnect = 0;
+
+        if (rpc_set_sockaddr(rpc, server, port) != 0) {
+                return -1;
+        }
 
 	rpc->connect_cb  = cb;
 	rpc->connect_data = private_data;
-
-	freeaddrinfo(ai);
 
 	if (rpc_connect_sockaddr_async(rpc, &rpc->s) != 0) {
 		return -1;
