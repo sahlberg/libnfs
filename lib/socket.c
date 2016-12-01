@@ -832,3 +832,12 @@ void rpc_set_fd(struct rpc_context *rpc, int fd)
 
 	rpc->fd = fd;
 }
+
+int rpc_is_udp_socket(struct rpc_context *rpc)
+{
+        int type = 0;
+        socklen_t len = sizeof(type);
+
+        getsockopt(rpc->fd, SOL_SOCKET, SO_TYPE, &type, &len);
+        return type == SOCK_DGRAM;
+}

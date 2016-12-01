@@ -106,6 +106,7 @@ struct rpc_context *rpc_init_server_context(int s)
 	rpc->is_server_context = 1;
 	rpc->fd = s;
 	rpc->is_connected = 1;
+        rpc->is_udp = rpc_is_udp_socket(rpc);
 	rpc_reset_queue(&rpc->outqueue);
 
 	return rpc;
