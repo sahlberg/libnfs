@@ -186,7 +186,9 @@ int rpc_queue_pdu(struct rpc_context *rpc, struct rpc_pdu *pdu)
 		unsigned int hash;
 
 // XXX add a rpc->udp_dest_sock_size  and get rid of sys/socket.h and netinet/in.h
-		if (sendto(rpc->fd, pdu->zdr.buf, size, MSG_DONTWAIT, rpc->udp_dest, sizeof(struct sockaddr_in)) < 0) {
+		if (sendto(rpc->fd, pdu->zdr.buf, size, MSG_DONTWAIT,
+                           (struct sockaddr *)&rpc->udp_dest,
+                           sizeof(rpc->udp_dest)) < 0) {
 			rpc_set_error(rpc, "Sendto failed with errno %s", strerror(errno));
 			rpc_free_pdu(rpc, pdu);
 			return -1;

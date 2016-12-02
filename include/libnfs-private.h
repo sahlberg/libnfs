@@ -117,7 +117,7 @@ struct rpc_context {
 
 	/* special fields for UDP, which can sometimes be BROADCASTed */
 	int is_udp;
-	struct sockaddr *udp_dest;
+	struct sockaddr_storage udp_dest;
 	int is_broadcast;
 
 	/* track the address we connect to so we can auto-reconnect on session failure */

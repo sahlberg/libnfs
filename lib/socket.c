@@ -765,17 +765,7 @@ int rpc_set_udp_destination(struct rpc_context *rpc, char *addr, int port, int i
 		return -1;
  	}
 
-	if (rpc->udp_dest) {
-		free(rpc->udp_dest);
-		rpc->udp_dest = NULL;
-	}
-	rpc->udp_dest = malloc(ai->ai_addrlen);
-	if (rpc->udp_dest == NULL) {
-		rpc_set_error(rpc, "Out of memory. Failed to allocate sockaddr structure");
-		freeaddrinfo(ai);
-		return -1;
-	}
-	memcpy(rpc->udp_dest, ai->ai_addr, ai->ai_addrlen);
+	memcpy(&rpc->udp_dest, ai->ai_addr, ai->ai_addrlen);
 	freeaddrinfo(ai);
 
 	rpc->is_broadcast = is_broadcast;
