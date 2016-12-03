@@ -128,6 +128,26 @@ void pmap3_getaddr_cb(struct rpc_context *rpc, int status, void *data, void *pri
 	client->is_finished = 1;
 }
 
+void pmap2_set_cb(struct rpc_context *rpc, int status, void *data, void *private_data)
+{
+	struct client *client = private_data;
+	uint32_t res = *(uint32_t *)data;
+
+	if (status == RPC_STATUS_ERROR) {
+		printf("PORTMAP2/SET call failed with \"%s\"\n", (char *)data);
+		exit(10);
+	}
+	if (status != RPC_STATUS_SUCCESS) {
+		printf("PORTMAP2/SET call failed, status:%d\n", status);
+		exit(10);
+	}
+
+	printf("PORTMAP2/SET:\n");
+	printf("	Res:%d\n", res);
+
+	client->is_finished = 1;
+}
+
 void pmap3_set_cb(struct rpc_context *rpc, int status, void *data, void *private_data)
 {
 	struct client *client = private_data;
@@ -329,6 +349,7 @@ int main(int argc _U_, char *argv[] _U_)
 	int null2 = 0;
 	int dump2 = 0;
 	int null3 = 0;
+	int set2 = 0;
 	int set3 = 0;
 	int unset3 = 0;
 	int getaddr3 = 0;
@@ -337,6 +358,7 @@ int main(int argc _U_, char *argv[] _U_)
 	int u2t3 = 0;
 	int command_found = 0;
 
+	int set2prog, set2vers, set2prot, set2port;
 	int set3prog, set3vers;
 	char *set3netid, *set3addr, *set3owner;
 	int unset3prog, unset3vers;
@@ -364,6 +386,13 @@ int main(int argc _U_, char *argv[] _U_)
 			command_found++;
 		} else if (!strcmp(argv[i], "null2")) {
 			null2 = 1;
+			command_found++;
+		} else if (!strcmp(argv[i], "set2")) {
+			set2 = 1;
+			set2prog = atoi(argv[++i]);
+			set2vers = atoi(argv[++i]);
+			set2prot = atoi(argv[++i]);
+			set2port = atoi(argv[++i]);
 			command_found++;
 		} else if (!strcmp(argv[i], "dump3")) {
 			dump3 = 1;
@@ -461,6 +490,13 @@ int main(int argc _U_, char *argv[] _U_)
 		map.owner = getaddr3owner;
 		if (rpc_pmap3_getaddr_async(rpc, &map, pmap3_getaddr_cb, &client) != 0) {
 			printf("Failed to send GETADDR3 request\n");
+			exit(10);
+		}
+		wait_until_finished(rpc, &client);
+	}
+	if (set2) {
+		if (rpc_pmap2_set_async(rpc, set2prog, set2vers, set2prot, set2port, pmap2_set_cb, &client) != 0) {
+			printf("Failed to send SET2 request\n");
 			exit(10);
 		}
 		wait_until_finished(rpc, &client);
