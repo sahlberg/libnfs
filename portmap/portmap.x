@@ -1,3 +1,4 @@
+/* -*-  mode:c; tab-width:8; c-basic-offset:8; indent-tabs-mode:nil;  -*- */
 /*
 Copyright (c) 2014, Ronnie Sahlberg
 All rights reserved.
@@ -99,53 +100,71 @@ struct pmap3_netbuf {
 	opaque buf<>;
 };
 
+typedef pmap2_mapping     PMAP2SETargs;
+typedef pmap2_mapping     PMAP2UNSETargs;
+typedef pmap2_mapping     PMAP2GETPORTargs;
+typedef pmap2_call_args   PMAP2CALLITargs;
+typedef pmap2_call_result PMAP2CALLITres;
+typedef pmap2_dump_result PMAP2DUMPres;
+
+typedef pmap3_mapping       PMAP3SETargs;
+typedef pmap3_mapping       PMAP3UNSETargs;
+typedef pmap3_mapping       PMAP3GETADDRargs;
+typedef pmap3_string_result PMAP3GETADDRres;
+typedef pmap3_dump_result   PMAP3DUMPres;
+typedef pmap3_call_result   PMAP3CALLITargs;
+typedef pmap3_call_result   PMAP3CALLITres;
+typedef pmap3_netbuf        PMAP3UADDR2TADDRres;
+typedef pmap3_netbuf        PMAP3TADDR2UADDRargs;
+typedef pmap3_string_result PMAP3TADDR2UADDRres;
+
 program PMAP_PROGRAM {
 	version PMAP_V2 {
         	void
 		PMAP2_NULL(void)              = 0;
 
-		bool
-            	PMAP2_SET(pmap2_mapping)       = 1;
+		uint32_t
+		PMAP2_SET(PMAP2SETargs)       = 1;
 
-            	bool
-            	PMAP2_UNSET(pmap2_mapping)     = 2;
+		uint32_t
+		PMAP2_UNSET(PMAP2UNSETargs)   = 2;
 
-            	unsigned int
-            	PMAP2_GETPORT(pmap2_mapping)   = 3;
+		uint32_t
+		PMAP2_GETPORT(PMAP2GETPORTargs) = 3;
 
-		pmap2_dump_result
+		PMAP2DUMPres
 		PMAP2_DUMP(void)               = 4;
 
-		pmap2_call_result
-		PMAP2_CALLIT(pmap2_call_args)  = 5;
+		PMAP2CALLITres
+		PMAP2_CALLIT(PMAP2CALLITargs)  = 5;
 	} = 2;
 	version PMAP_V3 {
         	void
 		PMAP3_NULL(void)              = 0;
 
-		bool
-		PMAP3_SET(pmap3_mapping)      = 1;
+		uint32_t
+		PMAP3_SET(PMAP3SETargs)       = 1;
 
-		bool
-		PMAP3_UNSET(pmap3_mapping)    = 2;
+		uint32_t
+		PMAP3_UNSET(PMAP3UNSETargs)   = 2;
 
-		pmap3_string_result
-		PMAP3_GETADDR(pmap3_mapping)  = 3;
+		PMAP3GETADDRres
+		PMAP3_GETADDR(PMAP3GETADDRargs) = 3;
 
-		pmap3_dump_result
+		PMAP3DUMPres
 		PMAP3_DUMP(void)              = 4;
 
-		pmap3_call_result
-		PMAP3_CALLIT(pmap3_call_args) = 5;
+		PMAP3CALLITres
+		PMAP3_CALLIT(PMAP3CALLITargs) = 5;
 
-		unsigned int
+		uint32_t
 		PMAP3_GETTIME(void)           = 6;
 
-		pmap3_netbuf
+		PMAP3UADDR2TADDRres
 		PMAP3_UADDR2TADDR(string)     = 7;
 
-		struct pmap3_string_result
-		PMAP3_TADDR2UADDR(pmap3_netbuf) = 8;
+		PMAP3TADDR2UADDRres
+		PMAP3_TADDR2UADDR(PMAP3TADDR2UADDRargs) = 8;
 	} = 3;
 } = 100000;
 
