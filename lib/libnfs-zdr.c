@@ -205,7 +205,7 @@ bool_t libnfs_zdr_bool(ZDR *zdrs, bool_t *b)
 	return libnfs_zdr_u_int(zdrs, (uint32_t *)b);
 }
 
-bool_t libnfs_zdr_void(void)
+bool_t libnfs_zdr_void(ZDR *zdrs, void *v)
 {
 	return TRUE;
 }

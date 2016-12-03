@@ -241,7 +241,7 @@ bool_t libnfs_zdr_enum(ZDR *zdrs, enum_t *e);
 bool_t libnfs_zdr_bool(ZDR *zdrs, bool_t *b);
 
 #define zdr_void libnfs_zdr_void
-bool_t libnfs_zdr_void(void);
+bool_t libnfs_zdr_void(ZDR *zdrs, void *);
 
 #define zdr_pointer libnfs_zdr_pointer
 bool_t libnfs_zdr_pointer(ZDR *zdrs, char **objp, uint32_t size, zdrproc_t proc);
