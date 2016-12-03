@@ -96,7 +96,7 @@ typedef uint32_t u_int;
 typedef uint32_t enum_t;
 typedef uint32_t bool_t;
 
-typedef int (*zdrproc_t) (ZDR *, void *,...);
+typedef uint32_t (*zdrproc_t) (ZDR *, void *,...);
 
 #define AUTH_NONE 0
 #define AUTH_NULL 0
