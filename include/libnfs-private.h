@@ -233,6 +233,8 @@ int rpc_is_udp_socket(struct rpc_context *rpc);
 
 const struct nfs_fh3 *nfs_get_rootfh(struct nfs_context *nfs);
 
+void *zdr_malloc(ZDR *zdrs, uint32_t size);
+
 #ifdef __cplusplus
 }
 #endif

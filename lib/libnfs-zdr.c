@@ -78,7 +78,7 @@ void libnfs_zdrmem_create(ZDR *zdrs, const caddr_t addr, uint32_t size, enum zdr
 	zdrs->mem = NULL;
 }
 
-static void *zdr_malloc(ZDR *zdrs, uint32_t size)
+void *zdr_malloc(ZDR *zdrs, uint32_t size)
 {
 	struct zdr_mem *mem;
 	int mem_size;
