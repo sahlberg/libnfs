@@ -23,6 +23,18 @@ stat(), read(), ...
 
 examples/nfsclient-sync.c provides examples on how to use this API
 
+NFSv4:
+======
+NFSv4 is supported but only for the RAW ASYNC interface.
+Examples/nfsv4-cat.c is a "simple" example to illustrate how to use
+NFSv4 to connect to a server and read a file off the server.
+
+SERVER SUPPORT:
+===============
+Libnfs supports building RPC servers.
+Examples/portmapper-server.c is a small "portmapper" example written using
+libnfs.
+
 URL-FORMAT:
 ===========
 Libnfs uses RFC2224 style URLs extended with some minor libnfs extensions.
