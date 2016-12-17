@@ -1,5 +1,9 @@
 noinst_PROGRAMS = nfsclient-async nfsclient-raw nfsclient-sync nfsclient-bcast nfsclient-listservers nfs-io nfs4-cat portmap-client portmap-server
 
+if HAVE_TALLOC_TEVENT
+noinst_PROGRAMS += nfs4-cat-talloc
+endif
+
 AM_CPPFLAGS = \
 	-I$(abs_top_srcdir)/include \
 	-I$(abs_top_srcdir)/include/nfsc \
@@ -19,5 +23,6 @@ nfsclient_bcast_LDADD = $(COMMON_LIBS)
 nfsclient_listservers_LDADD = $(COMMON_LIBS)
 nfs_io_LDADD = $(COMMON_LIBS)
 nfs4_cat_LDADD = $(COMMON_LIBS) -levent
+nfs4_cat_talloc_LDADD = $(COMMON_LIBS) -ltevent -ltalloc
 portmap_client_LDADD = $(COMMON_LIBS)
 portmap_server_LDADD = $(COMMON_LIBS) -levent

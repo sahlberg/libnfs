@@ -205,6 +205,19 @@ AC_CHECK_MEMBER([struct sockaddr_storage.ss_family],
 #include <sys/socket.h>
 ])
 
+# check for tevent + talloc
+AC_CACHE_CHECK([for talloc and tevent support],libnfs_cv_HAVE_TALLOC_TEVENT,[
+AC_TRY_COMPILE([
+#include <talloc.h>
+#include <tevent.h>],
+[struct tevent_context *ctx = tevent_context_init(NULL);
+ int major = talloc_version_major();],
+libiscsi_cv_HAVE_TALLOC_TEVENT=yes,libiscsi_cv_HAVE_TALLOC_TEVENT=no)])
+if test x"$libiscsi_cv_HAVE_TALLOC_TEVENT" = x"yes"; then
+    AC_DEFINE(HAVE_TALLOC_TEVENT,1,[Whether we have talloc nad tevent support])
+fi
+AM_CONDITIONAL([HAVE_TALLOC_TEVENT], [test $libiscsi_cv_HAVE_TALLOC_TEVENT = yes])
+
 AC_CHECK_MEMBERS([struct stat.st_mtim.tv_nsec])
 
 # check where makedev is defined
