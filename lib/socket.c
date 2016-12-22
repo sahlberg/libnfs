@@ -298,6 +298,7 @@ again:
 
 		if (rpc_process_pdu(rpc, buf, pdu_size) != 0) {
 			rpc_set_error(rpc, "Invalid/garbage pdu received from server. Closing socket");
+			free(buf);
 			return -1;
 		}
 		free(buf);
