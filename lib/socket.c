@@ -222,11 +222,11 @@ static int rpc_read_from_socket(struct rpc_context *rpc)
 {
 	uint32_t pdu_size;
 	ssize_t count;
+	char *buf;
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
 	if (rpc->is_udp) {
-		char *buf;
 		socklen_t socklen = sizeof(rpc->udp_src);
 
 		buf = malloc(MAX_UDP_SIZE);
@@ -254,23 +254,27 @@ static int rpc_read_from_socket(struct rpc_context *rpc)
 
 again:
 	/* read record marker, 4 bytes at the beginning of every pdu first */
-	pdu_size = rpc->inpos < 4 ? 4 : rpc_get_pdu_size(rpc->inbuf);
-
-	if (pdu_size > NFS_MAX_XFER_SIZE + 4096) {
-		rpc_set_error(rpc, "Incoming PDU exceeds limit of %d bytes.", NFS_MAX_XFER_SIZE + 4096);
-		return -1;
-	}
-
-	if (rpc->insize < pdu_size) {
-		rpc->inbuf = realloc(rpc->inbuf, pdu_size);
+	if (rpc->inpos < 4) {
+		buf = (void *)rpc->rm_buf;
+		pdu_size = 4;
+	} else {
+		pdu_size = rpc_get_pdu_size((void *)&rpc->rm_buf);
 		if (rpc->inbuf == NULL) {
-			rpc_set_error(rpc, "Failed to allocate buffer of %d bytes for pdu, errno:%d. Closing socket.", pdu_size, errno);
-			return -1;
+			if (pdu_size > NFS_MAX_XFER_SIZE + 4096) {
+				rpc_set_error(rpc, "Incoming PDU exceeds limit of %d bytes.", NFS_MAX_XFER_SIZE + 4096);
+				return -1;
+			}
+			rpc->inbuf = malloc(pdu_size);
+			if (rpc->inbuf == NULL) {
+				rpc_set_error(rpc, "Failed to allocate buffer of %d bytes for pdu, errno:%d. Closing socket.", pdu_size, errno);
+				return -1;
+			}
+			memcpy(rpc->inbuf, &rpc->rm_buf, 4);
 		}
-		rpc->insize = pdu_size;
+		buf = rpc->inbuf;
 	}
 
-	count = recv(rpc->fd, rpc->inbuf + rpc->inpos, rpc->insize - rpc->inpos, MSG_DONTWAIT);
+	count = recv(rpc->fd, buf + rpc->inpos, pdu_size - rpc->inpos, MSG_DONTWAIT);
 	if (count < 0) {
 		if (errno == EINTR || errno == EAGAIN) {
 			return 0;
@@ -289,11 +293,8 @@ again:
 		goto again;
 	}
 
-	if (rpc->inpos == rpc->insize) {
-		char *buf = rpc->inbuf;
-
+	if (rpc->inpos == pdu_size) {
 		rpc->inbuf  = NULL;
-		rpc->insize = 0;
 		rpc->inpos  = 0;
 
 		if (rpc_process_pdu(rpc, buf, pdu_size) != 0) {
@@ -306,7 +307,6 @@ again:
 
 	return 0;
 }
-
 
 static void
 maybe_call_connect_cb(struct rpc_context *rpc, int status)
