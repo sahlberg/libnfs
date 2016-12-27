@@ -835,7 +835,11 @@ void rpc_set_fd(struct rpc_context *rpc, int fd)
 
 int rpc_is_udp_socket(struct rpc_context *rpc)
 {
+#ifdef WIN32
+        char type = 0;
+#else
         int type = 0;
+#endif
         socklen_t len = sizeof(type);
 
         getsockopt(rpc->fd, SOL_SOCKET, SO_TYPE, &type, &len);
