@@ -38,11 +38,11 @@ either expressed or implied, of the FreeBSD Project.
 uint32_t
 zdr_pmap2_mapping (ZDR *zdrs, pmap2_mapping *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 
 	if (zdrs->x_op == ZDR_ENCODE) {
+		int32_t *buf;
 		buf = ZDR_INLINE (zdrs, 4 * BYTES_PER_ZDR_UNIT);
 		if (buf == NULL) {
 			 if (!zdr_u_int (zdrs, &objp->prog))
@@ -61,6 +61,7 @@ zdr_pmap2_mapping (ZDR *zdrs, pmap2_mapping *objp)
 		}
 		return TRUE;
 	} else if (zdrs->x_op == ZDR_DECODE) {
+		int32_t *buf;
 		buf = ZDR_INLINE (zdrs, 4 * BYTES_PER_ZDR_UNIT);
 		if (buf == NULL) {
 			 if (!zdr_u_int (zdrs, &objp->prog))
@@ -94,11 +95,11 @@ zdr_pmap2_mapping (ZDR *zdrs, pmap2_mapping *objp)
 uint32_t
 zdr_pmap2_call_args (ZDR *zdrs, pmap2_call_args *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 
 	if (zdrs->x_op == ZDR_ENCODE) {
+		int32_t *buf;
 		buf = ZDR_INLINE (zdrs, 3 * BYTES_PER_ZDR_UNIT);
 		if (buf == NULL) {
 			 if (!zdr_u_int (zdrs, &objp->prog))
@@ -117,6 +118,7 @@ zdr_pmap2_call_args (ZDR *zdrs, pmap2_call_args *objp)
 			 return FALSE;
 		return TRUE;
 	} else if (zdrs->x_op == ZDR_DECODE) {
+		int32_t *buf;
 		buf = ZDR_INLINE (zdrs, 3 * BYTES_PER_ZDR_UNIT);
 		if (buf == NULL) {
 			 if (!zdr_u_int (zdrs, &objp->prog))
@@ -150,8 +152,7 @@ zdr_pmap2_call_args (ZDR *zdrs, pmap2_call_args *objp)
 uint32_t
 zdr_pmap2_call_result (ZDR *zdrs, pmap2_call_result *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_u_int (zdrs, &objp->port))
 		 return FALSE;
@@ -163,8 +164,7 @@ zdr_pmap2_call_result (ZDR *zdrs, pmap2_call_result *objp)
 uint32_t
 zdr_pmap2_mapping_list (ZDR *zdrs, pmap2_mapping_list *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_pmap2_mapping (zdrs, &objp->map))
 		 return FALSE;
@@ -176,8 +176,7 @@ zdr_pmap2_mapping_list (ZDR *zdrs, pmap2_mapping_list *objp)
 uint32_t
 zdr_pmap2_dump_result (ZDR *zdrs, pmap2_dump_result *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_pointer (zdrs, (char **)&objp->list, sizeof (pmap2_mapping_list), (zdrproc_t) zdr_pmap2_mapping_list))
 		 return FALSE;
@@ -187,8 +186,7 @@ zdr_pmap2_dump_result (ZDR *zdrs, pmap2_dump_result *objp)
 uint32_t
 zdr_pmap3_string_result (ZDR *zdrs, pmap3_string_result *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_string (zdrs, &objp->addr, ~0))
 		 return FALSE;
@@ -198,8 +196,7 @@ zdr_pmap3_string_result (ZDR *zdrs, pmap3_string_result *objp)
 uint32_t
 zdr_pmap3_mapping (ZDR *zdrs, pmap3_mapping *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_u_int (zdrs, &objp->prog))
 		 return FALSE;
@@ -217,8 +214,7 @@ zdr_pmap3_mapping (ZDR *zdrs, pmap3_mapping *objp)
 uint32_t
 zdr_pmap3_mapping_list (ZDR *zdrs, pmap3_mapping_list *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_pmap3_mapping (zdrs, &objp->map))
 		 return FALSE;
@@ -230,8 +226,7 @@ zdr_pmap3_mapping_list (ZDR *zdrs, pmap3_mapping_list *objp)
 uint32_t
 zdr_pmap3_dump_result (ZDR *zdrs, pmap3_dump_result *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_pointer (zdrs, (char **)&objp->list, sizeof (pmap3_mapping_list), (zdrproc_t) zdr_pmap3_mapping_list))
 		 return FALSE;
@@ -241,11 +236,11 @@ zdr_pmap3_dump_result (ZDR *zdrs, pmap3_dump_result *objp)
 uint32_t
 zdr_pmap3_call_args (ZDR *zdrs, pmap3_call_args *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 
 	if (zdrs->x_op == ZDR_ENCODE) {
+		int32_t *buf;
 		buf = ZDR_INLINE (zdrs, 3 * BYTES_PER_ZDR_UNIT);
 		if (buf == NULL) {
 			 if (!zdr_u_int (zdrs, &objp->prog))
@@ -264,6 +259,7 @@ zdr_pmap3_call_args (ZDR *zdrs, pmap3_call_args *objp)
 			 return FALSE;
 		return TRUE;
 	} else if (zdrs->x_op == ZDR_DECODE) {
+		int32_t *buf;
 		buf = ZDR_INLINE (zdrs, 3 * BYTES_PER_ZDR_UNIT);
 		if (buf == NULL) {
 			 if (!zdr_u_int (zdrs, &objp->prog))
@@ -297,8 +293,7 @@ zdr_pmap3_call_args (ZDR *zdrs, pmap3_call_args *objp)
 uint32_t
 zdr_pmap3_call_result (ZDR *zdrs, pmap3_call_result *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_u_int (zdrs, &objp->port))
 		 return FALSE;
@@ -310,8 +305,7 @@ zdr_pmap3_call_result (ZDR *zdrs, pmap3_call_result *objp)
 uint32_t
 zdr_pmap3_netbuf (ZDR *zdrs, pmap3_netbuf *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_u_int (zdrs, &objp->maxlen))
 		 return FALSE;
@@ -323,8 +317,7 @@ zdr_pmap3_netbuf (ZDR *zdrs, pmap3_netbuf *objp)
 uint32_t
 zdr_PMAP2SETargs (ZDR *zdrs, PMAP2SETargs *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_pmap2_mapping (zdrs, objp))
 		 return FALSE;
@@ -334,8 +327,7 @@ zdr_PMAP2SETargs (ZDR *zdrs, PMAP2SETargs *objp)
 uint32_t
 zdr_PMAP2UNSETargs (ZDR *zdrs, PMAP2UNSETargs *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_pmap2_mapping (zdrs, objp))
 		 return FALSE;
@@ -345,8 +337,7 @@ zdr_PMAP2UNSETargs (ZDR *zdrs, PMAP2UNSETargs *objp)
 uint32_t
 zdr_PMAP2GETPORTargs (ZDR *zdrs, PMAP2GETPORTargs *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_pmap2_mapping (zdrs, objp))
 		 return FALSE;
@@ -356,8 +347,7 @@ zdr_PMAP2GETPORTargs (ZDR *zdrs, PMAP2GETPORTargs *objp)
 uint32_t
 zdr_PMAP2CALLITargs (ZDR *zdrs, PMAP2CALLITargs *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_pmap2_call_args (zdrs, objp))
 		 return FALSE;
@@ -367,8 +357,7 @@ zdr_PMAP2CALLITargs (ZDR *zdrs, PMAP2CALLITargs *objp)
 uint32_t
 zdr_PMAP2CALLITres (ZDR *zdrs, PMAP2CALLITres *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_pmap2_call_result (zdrs, objp))
 		 return FALSE;
@@ -378,8 +367,7 @@ zdr_PMAP2CALLITres (ZDR *zdrs, PMAP2CALLITres *objp)
 uint32_t
 zdr_PMAP2DUMPres (ZDR *zdrs, PMAP2DUMPres *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_pmap2_dump_result (zdrs, objp))
 		 return FALSE;
@@ -389,8 +377,7 @@ zdr_PMAP2DUMPres (ZDR *zdrs, PMAP2DUMPres *objp)
 uint32_t
 zdr_PMAP3SETargs (ZDR *zdrs, PMAP3SETargs *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_pmap3_mapping (zdrs, objp))
 		 return FALSE;
@@ -400,8 +387,7 @@ zdr_PMAP3SETargs (ZDR *zdrs, PMAP3SETargs *objp)
 uint32_t
 zdr_PMAP3UNSETargs (ZDR *zdrs, PMAP3UNSETargs *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_pmap3_mapping (zdrs, objp))
 		 return FALSE;
@@ -411,8 +397,7 @@ zdr_PMAP3UNSETargs (ZDR *zdrs, PMAP3UNSETargs *objp)
 uint32_t
 zdr_PMAP3GETADDRargs (ZDR *zdrs, PMAP3GETADDRargs *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_pmap3_mapping (zdrs, objp))
 		 return FALSE;
@@ -422,8 +407,7 @@ zdr_PMAP3GETADDRargs (ZDR *zdrs, PMAP3GETADDRargs *objp)
 uint32_t
 zdr_PMAP3GETADDRres (ZDR *zdrs, PMAP3GETADDRres *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_pmap3_string_result (zdrs, objp))
 		 return FALSE;
@@ -433,8 +417,7 @@ zdr_PMAP3GETADDRres (ZDR *zdrs, PMAP3GETADDRres *objp)
 uint32_t
 zdr_PMAP3DUMPres (ZDR *zdrs, PMAP3DUMPres *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_pmap3_dump_result (zdrs, objp))
 		 return FALSE;
@@ -444,8 +427,7 @@ zdr_PMAP3DUMPres (ZDR *zdrs, PMAP3DUMPres *objp)
 uint32_t
 zdr_PMAP3CALLITargs (ZDR *zdrs, PMAP3CALLITargs *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_pmap3_call_result (zdrs, objp))
 		 return FALSE;
@@ -455,8 +437,7 @@ zdr_PMAP3CALLITargs (ZDR *zdrs, PMAP3CALLITargs *objp)
 uint32_t
 zdr_PMAP3CALLITres (ZDR *zdrs, PMAP3CALLITres *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_pmap3_call_result (zdrs, objp))
 		 return FALSE;
@@ -466,8 +447,7 @@ zdr_PMAP3CALLITres (ZDR *zdrs, PMAP3CALLITres *objp)
 uint32_t
 zdr_PMAP3UADDR2TADDRres (ZDR *zdrs, PMAP3UADDR2TADDRres *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_pmap3_netbuf (zdrs, objp))
 		 return FALSE;
@@ -477,8 +457,7 @@ zdr_PMAP3UADDR2TADDRres (ZDR *zdrs, PMAP3UADDR2TADDRres *objp)
 uint32_t
 zdr_PMAP3TADDR2UADDRargs (ZDR *zdrs, PMAP3TADDR2UADDRargs *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_pmap3_netbuf (zdrs, objp))
 		 return FALSE;
@@ -488,8 +467,7 @@ zdr_PMAP3TADDR2UADDRargs (ZDR *zdrs, PMAP3TADDR2UADDRargs *objp)
 uint32_t
 zdr_PMAP3TADDR2UADDRres (ZDR *zdrs, PMAP3TADDR2UADDRres *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_pmap3_string_result (zdrs, objp))
 		 return FALSE;
