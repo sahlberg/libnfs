@@ -88,7 +88,7 @@ int nfsstat3_to_errno(int error)
 	case NFS3ERR_NAMETOOLONG: return -ENAMETOOLONG; break;
 	case NFS3ERR_NOTEMPTY:    return -ENOTEMPTY; break;
 	case NFS3ERR_DQUOT:       return -ERANGE; break;
-	case NFS3ERR_STALE:       return -EIO; break;
+	case NFS3ERR_STALE:       return -ESTALE; break;
 	case NFS3ERR_REMOTE:      return -EIO; break;
 	case NFS3ERR_BADHANDLE:   return -EIO; break;
 	case NFS3ERR_NOT_SYNC:    return -EIO; break;
