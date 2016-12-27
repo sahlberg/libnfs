@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <Filter Include="Source Files">
@@ -18,6 +18,12 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\nfs\nfsacl.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\nfs4\libnfs-raw-nfs4.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\nfs4\nfs4.c">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\rquota\libnfs-raw-rquota.c">
@@ -74,6 +80,9 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\nfs\libnfs-raw-nfs.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\nfs4\libnfs-raw-nfs4.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\rquota\libnfs-raw-rquota.h">
