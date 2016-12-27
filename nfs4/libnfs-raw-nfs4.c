@@ -38,8 +38,7 @@
 uint32_t
 zdr_nfs_ftype4 (ZDR *zdrs, nfs_ftype4 *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_enum (zdrs, (enum_t *) objp))
 		 return FALSE;
@@ -49,8 +48,7 @@ zdr_nfs_ftype4 (ZDR *zdrs, nfs_ftype4 *objp)
 uint32_t
 zdr_nfsstat4 (ZDR *zdrs, nfsstat4 *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_enum (zdrs, (enum_t *) objp))
 		 return FALSE;
@@ -60,8 +58,7 @@ zdr_nfsstat4 (ZDR *zdrs, nfsstat4 *objp)
 uint32_t
 zdr_bitmap4 (ZDR *zdrs, bitmap4 *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_array (zdrs, (char **)&objp->bitmap4_val, (u_int *) &objp->bitmap4_len, ~0,
 		sizeof (uint32_t), (zdrproc_t) zdr_uint32_t))
@@ -72,8 +69,7 @@ zdr_bitmap4 (ZDR *zdrs, bitmap4 *objp)
 uint32_t
 zdr_offset4 (ZDR *zdrs, offset4 *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_uint64_t (zdrs, objp))
 		 return FALSE;
@@ -83,8 +79,7 @@ zdr_offset4 (ZDR *zdrs, offset4 *objp)
 uint32_t
 zdr_count4 (ZDR *zdrs, count4 *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_uint32_t (zdrs, objp))
 		 return FALSE;
@@ -94,8 +89,7 @@ zdr_count4 (ZDR *zdrs, count4 *objp)
 uint32_t
 zdr_length4 (ZDR *zdrs, length4 *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_uint64_t (zdrs, objp))
 		 return FALSE;
@@ -105,8 +99,7 @@ zdr_length4 (ZDR *zdrs, length4 *objp)
 uint32_t
 zdr_clientid4 (ZDR *zdrs, clientid4 *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_uint64_t (zdrs, objp))
 		 return FALSE;
@@ -116,8 +109,7 @@ zdr_clientid4 (ZDR *zdrs, clientid4 *objp)
 uint32_t
 zdr_seqid4 (ZDR *zdrs, seqid4 *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_uint32_t (zdrs, objp))
 		 return FALSE;
@@ -127,8 +119,7 @@ zdr_seqid4 (ZDR *zdrs, seqid4 *objp)
 uint32_t
 zdr_utf8string (ZDR *zdrs, utf8string *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_bytes (zdrs, (char **)&objp->utf8string_val, (u_int *) &objp->utf8string_len, ~0))
 		 return FALSE;
@@ -138,8 +129,7 @@ zdr_utf8string (ZDR *zdrs, utf8string *objp)
 uint32_t
 zdr_utf8str_cis (ZDR *zdrs, utf8str_cis *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_utf8string (zdrs, objp))
 		 return FALSE;
@@ -149,8 +139,7 @@ zdr_utf8str_cis (ZDR *zdrs, utf8str_cis *objp)
 uint32_t
 zdr_utf8str_cs (ZDR *zdrs, utf8str_cs *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_utf8string (zdrs, objp))
 		 return FALSE;
@@ -160,8 +149,7 @@ zdr_utf8str_cs (ZDR *zdrs, utf8str_cs *objp)
 uint32_t
 zdr_utf8str_mixed (ZDR *zdrs, utf8str_mixed *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_utf8string (zdrs, objp))
 		 return FALSE;
@@ -171,8 +159,7 @@ zdr_utf8str_mixed (ZDR *zdrs, utf8str_mixed *objp)
 uint32_t
 zdr_component4 (ZDR *zdrs, component4 *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_utf8str_cs (zdrs, objp))
 		 return FALSE;
@@ -182,8 +169,7 @@ zdr_component4 (ZDR *zdrs, component4 *objp)
 uint32_t
 zdr_pathname4 (ZDR *zdrs, pathname4 *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_array (zdrs, (char **)&objp->pathname4_val, (u_int *) &objp->pathname4_len, ~0,
 		sizeof (component4), (zdrproc_t) zdr_component4))
@@ -194,8 +180,7 @@ zdr_pathname4 (ZDR *zdrs, pathname4 *objp)
 uint32_t
 zdr_nfs_lockid4 (ZDR *zdrs, nfs_lockid4 *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_uint64_t (zdrs, objp))
 		 return FALSE;
@@ -205,8 +190,7 @@ zdr_nfs_lockid4 (ZDR *zdrs, nfs_lockid4 *objp)
 uint32_t
 zdr_nfs_cookie4 (ZDR *zdrs, nfs_cookie4 *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_uint64_t (zdrs, objp))
 		 return FALSE;
@@ -216,8 +200,7 @@ zdr_nfs_cookie4 (ZDR *zdrs, nfs_cookie4 *objp)
 uint32_t
 zdr_linktext4 (ZDR *zdrs, linktext4 *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_utf8str_cs (zdrs, objp))
 		 return FALSE;
@@ -227,8 +210,7 @@ zdr_linktext4 (ZDR *zdrs, linktext4 *objp)
 uint32_t
 zdr_sec_oid4 (ZDR *zdrs, sec_oid4 *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_bytes (zdrs, (char **)&objp->sec_oid4_val, (u_int *) &objp->sec_oid4_len, ~0))
 		 return FALSE;
@@ -238,8 +220,7 @@ zdr_sec_oid4 (ZDR *zdrs, sec_oid4 *objp)
 uint32_t
 zdr_qop4 (ZDR *zdrs, qop4 *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_uint32_t (zdrs, objp))
 		 return FALSE;
@@ -249,8 +230,7 @@ zdr_qop4 (ZDR *zdrs, qop4 *objp)
 uint32_t
 zdr_mode4 (ZDR *zdrs, mode4 *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_uint32_t (zdrs, objp))
 		 return FALSE;
@@ -260,8 +240,7 @@ zdr_mode4 (ZDR *zdrs, mode4 *objp)
 uint32_t
 zdr_changeid4 (ZDR *zdrs, changeid4 *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_uint64_t (zdrs, objp))
 		 return FALSE;
@@ -271,8 +250,7 @@ zdr_changeid4 (ZDR *zdrs, changeid4 *objp)
 uint32_t
 zdr_verifier4 (ZDR *zdrs, verifier4 objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_opaque (zdrs, objp, NFS4_VERIFIER_SIZE))
 		 return FALSE;
@@ -282,8 +260,7 @@ zdr_verifier4 (ZDR *zdrs, verifier4 objp)
 uint32_t
 zdr_nfstime4 (ZDR *zdrs, nfstime4 *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_int64_t (zdrs, &objp->seconds))
 		 return FALSE;
@@ -295,8 +272,7 @@ zdr_nfstime4 (ZDR *zdrs, nfstime4 *objp)
 uint32_t
 zdr_time_how4 (ZDR *zdrs, time_how4 *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_enum (zdrs, (enum_t *) objp))
 		 return FALSE;
@@ -306,8 +282,7 @@ zdr_time_how4 (ZDR *zdrs, time_how4 *objp)
 uint32_t
 zdr_settime4 (ZDR *zdrs, settime4 *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_time_how4 (zdrs, &objp->set_it))
 		 return FALSE;
@@ -325,8 +300,7 @@ zdr_settime4 (ZDR *zdrs, settime4 *objp)
 uint32_t
 zdr_nfs_fh4 (ZDR *zdrs, nfs_fh4 *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_bytes (zdrs, (char **)&objp->nfs_fh4_val, (u_int *) &objp->nfs_fh4_len, NFS4_FHSIZE))
 		 return FALSE;
@@ -336,8 +310,7 @@ zdr_nfs_fh4 (ZDR *zdrs, nfs_fh4 *objp)
 uint32_t
 zdr_fsid4 (ZDR *zdrs, fsid4 *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_uint64_t (zdrs, &objp->major))
 		 return FALSE;
@@ -349,8 +322,7 @@ zdr_fsid4 (ZDR *zdrs, fsid4 *objp)
 uint32_t
 zdr_fs_location4 (ZDR *zdrs, fs_location4 *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_array (zdrs, (char **)&objp->server.server_val, (u_int *) &objp->server.server_len, ~0,
 		sizeof (utf8str_cis), (zdrproc_t) zdr_utf8str_cis))
@@ -363,8 +335,7 @@ zdr_fs_location4 (ZDR *zdrs, fs_location4 *objp)
 uint32_t
 zdr_fs_locations4 (ZDR *zdrs, fs_locations4 *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_pathname4 (zdrs, &objp->fs_root))
 		 return FALSE;
@@ -377,8 +348,7 @@ zdr_fs_locations4 (ZDR *zdrs, fs_locations4 *objp)
 uint32_t
 zdr_acetype4 (ZDR *zdrs, acetype4 *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_uint32_t (zdrs, objp))
 		 return FALSE;
@@ -388,8 +358,7 @@ zdr_acetype4 (ZDR *zdrs, acetype4 *objp)
 uint32_t
 zdr_aceflag4 (ZDR *zdrs, aceflag4 *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_uint32_t (zdrs, objp))
 		 return FALSE;
@@ -399,8 +368,7 @@ zdr_aceflag4 (ZDR *zdrs, aceflag4 *objp)
 uint32_t
 zdr_acemask4 (ZDR *zdrs, acemask4 *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_uint32_t (zdrs, objp))
 		 return FALSE;
@@ -410,8 +378,7 @@ zdr_acemask4 (ZDR *zdrs, acemask4 *objp)
 uint32_t
 zdr_nfsace4 (ZDR *zdrs, nfsace4 *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_acetype4 (zdrs, &objp->type))
 		 return FALSE;
@@ -427,8 +394,7 @@ zdr_nfsace4 (ZDR *zdrs, nfsace4 *objp)
 uint32_t
 zdr_specdata4 (ZDR *zdrs, specdata4 *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_uint32_t (zdrs, &objp->specdata1))
 		 return FALSE;
@@ -440,8 +406,7 @@ zdr_specdata4 (ZDR *zdrs, specdata4 *objp)
 uint32_t
 zdr_fattr4_supported_attrs (ZDR *zdrs, fattr4_supported_attrs *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_bitmap4 (zdrs, objp))
 		 return FALSE;
@@ -451,8 +416,7 @@ zdr_fattr4_supported_attrs (ZDR *zdrs, fattr4_supported_attrs *objp)
 uint32_t
 zdr_fattr4_type (ZDR *zdrs, fattr4_type *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_nfs_ftype4 (zdrs, objp))
 		 return FALSE;
@@ -462,8 +426,7 @@ zdr_fattr4_type (ZDR *zdrs, fattr4_type *objp)
 uint32_t
 zdr_fattr4_fh_expire_type (ZDR *zdrs, fattr4_fh_expire_type *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_uint32_t (zdrs, objp))
 		 return FALSE;
@@ -473,8 +436,7 @@ zdr_fattr4_fh_expire_type (ZDR *zdrs, fattr4_fh_expire_type *objp)
 uint32_t
 zdr_fattr4_change (ZDR *zdrs, fattr4_change *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_changeid4 (zdrs, objp))
 		 return FALSE;
@@ -484,8 +446,7 @@ zdr_fattr4_change (ZDR *zdrs, fattr4_change *objp)
 uint32_t
 zdr_fattr4_size (ZDR *zdrs, fattr4_size *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_uint64_t (zdrs, objp))
 		 return FALSE;
@@ -495,8 +456,7 @@ zdr_fattr4_size (ZDR *zdrs, fattr4_size *objp)
 uint32_t
 zdr_fattr4_link_support (ZDR *zdrs, fattr4_link_support *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_bool (zdrs, objp))
 		 return FALSE;
@@ -506,8 +466,7 @@ zdr_fattr4_link_support (ZDR *zdrs, fattr4_link_support *objp)
 uint32_t
 zdr_fattr4_symlink_support (ZDR *zdrs, fattr4_symlink_support *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_bool (zdrs, objp))
 		 return FALSE;
@@ -517,8 +476,7 @@ zdr_fattr4_symlink_support (ZDR *zdrs, fattr4_symlink_support *objp)
 uint32_t
 zdr_fattr4_named_attr (ZDR *zdrs, fattr4_named_attr *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_bool (zdrs, objp))
 		 return FALSE;
@@ -528,8 +486,7 @@ zdr_fattr4_named_attr (ZDR *zdrs, fattr4_named_attr *objp)
 uint32_t
 zdr_fattr4_fsid (ZDR *zdrs, fattr4_fsid *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_fsid4 (zdrs, objp))
 		 return FALSE;
@@ -539,8 +496,7 @@ zdr_fattr4_fsid (ZDR *zdrs, fattr4_fsid *objp)
 uint32_t
 zdr_fattr4_unique_handles (ZDR *zdrs, fattr4_unique_handles *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_bool (zdrs, objp))
 		 return FALSE;
@@ -550,8 +506,7 @@ zdr_fattr4_unique_handles (ZDR *zdrs, fattr4_unique_handles *objp)
 uint32_t
 zdr_fattr4_lease_time (ZDR *zdrs, fattr4_lease_time *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_uint32_t (zdrs, objp))
 		 return FALSE;
@@ -561,8 +516,7 @@ zdr_fattr4_lease_time (ZDR *zdrs, fattr4_lease_time *objp)
 uint32_t
 zdr_fattr4_rdattr_error (ZDR *zdrs, fattr4_rdattr_error *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_nfsstat4 (zdrs, objp))
 		 return FALSE;
@@ -572,8 +526,7 @@ zdr_fattr4_rdattr_error (ZDR *zdrs, fattr4_rdattr_error *objp)
 uint32_t
 zdr_fattr4_acl (ZDR *zdrs, fattr4_acl *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_array (zdrs, (char **)&objp->fattr4_acl_val, (u_int *) &objp->fattr4_acl_len, ~0,
 		sizeof (nfsace4), (zdrproc_t) zdr_nfsace4))
@@ -584,8 +537,7 @@ zdr_fattr4_acl (ZDR *zdrs, fattr4_acl *objp)
 uint32_t
 zdr_fattr4_aclsupport (ZDR *zdrs, fattr4_aclsupport *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_uint32_t (zdrs, objp))
 		 return FALSE;
@@ -595,8 +547,7 @@ zdr_fattr4_aclsupport (ZDR *zdrs, fattr4_aclsupport *objp)
 uint32_t
 zdr_fattr4_archive (ZDR *zdrs, fattr4_archive *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_bool (zdrs, objp))
 		 return FALSE;
@@ -606,8 +557,7 @@ zdr_fattr4_archive (ZDR *zdrs, fattr4_archive *objp)
 uint32_t
 zdr_fattr4_cansettime (ZDR *zdrs, fattr4_cansettime *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_bool (zdrs, objp))
 		 return FALSE;
@@ -617,8 +567,7 @@ zdr_fattr4_cansettime (ZDR *zdrs, fattr4_cansettime *objp)
 uint32_t
 zdr_fattr4_case_insensitive (ZDR *zdrs, fattr4_case_insensitive *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_bool (zdrs, objp))
 		 return FALSE;
@@ -628,8 +577,7 @@ zdr_fattr4_case_insensitive (ZDR *zdrs, fattr4_case_insensitive *objp)
 uint32_t
 zdr_fattr4_case_preserving (ZDR *zdrs, fattr4_case_preserving *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_bool (zdrs, objp))
 		 return FALSE;
@@ -639,8 +587,7 @@ zdr_fattr4_case_preserving (ZDR *zdrs, fattr4_case_preserving *objp)
 uint32_t
 zdr_fattr4_chown_restricted (ZDR *zdrs, fattr4_chown_restricted *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_bool (zdrs, objp))
 		 return FALSE;
@@ -650,8 +597,7 @@ zdr_fattr4_chown_restricted (ZDR *zdrs, fattr4_chown_restricted *objp)
 uint32_t
 zdr_fattr4_fileid (ZDR *zdrs, fattr4_fileid *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_uint64_t (zdrs, objp))
 		 return FALSE;
@@ -661,8 +607,7 @@ zdr_fattr4_fileid (ZDR *zdrs, fattr4_fileid *objp)
 uint32_t
 zdr_fattr4_files_avail (ZDR *zdrs, fattr4_files_avail *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_uint64_t (zdrs, objp))
 		 return FALSE;
@@ -672,8 +617,7 @@ zdr_fattr4_files_avail (ZDR *zdrs, fattr4_files_avail *objp)
 uint32_t
 zdr_fattr4_filehandle (ZDR *zdrs, fattr4_filehandle *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_nfs_fh4 (zdrs, objp))
 		 return FALSE;
@@ -683,8 +627,7 @@ zdr_fattr4_filehandle (ZDR *zdrs, fattr4_filehandle *objp)
 uint32_t
 zdr_fattr4_files_free (ZDR *zdrs, fattr4_files_free *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_uint64_t (zdrs, objp))
 		 return FALSE;
@@ -694,8 +637,7 @@ zdr_fattr4_files_free (ZDR *zdrs, fattr4_files_free *objp)
 uint32_t
 zdr_fattr4_files_total (ZDR *zdrs, fattr4_files_total *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_uint64_t (zdrs, objp))
 		 return FALSE;
@@ -705,8 +647,7 @@ zdr_fattr4_files_total (ZDR *zdrs, fattr4_files_total *objp)
 uint32_t
 zdr_fattr4_fs_locations (ZDR *zdrs, fattr4_fs_locations *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_fs_locations4 (zdrs, objp))
 		 return FALSE;
@@ -716,8 +657,7 @@ zdr_fattr4_fs_locations (ZDR *zdrs, fattr4_fs_locations *objp)
 uint32_t
 zdr_fattr4_hidden (ZDR *zdrs, fattr4_hidden *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_bool (zdrs, objp))
 		 return FALSE;
@@ -727,8 +667,7 @@ zdr_fattr4_hidden (ZDR *zdrs, fattr4_hidden *objp)
 uint32_t
 zdr_fattr4_homogeneous (ZDR *zdrs, fattr4_homogeneous *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_bool (zdrs, objp))
 		 return FALSE;
@@ -738,8 +677,7 @@ zdr_fattr4_homogeneous (ZDR *zdrs, fattr4_homogeneous *objp)
 uint32_t
 zdr_fattr4_maxfilesize (ZDR *zdrs, fattr4_maxfilesize *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_uint64_t (zdrs, objp))
 		 return FALSE;
@@ -749,8 +687,7 @@ zdr_fattr4_maxfilesize (ZDR *zdrs, fattr4_maxfilesize *objp)
 uint32_t
 zdr_fattr4_maxlink (ZDR *zdrs, fattr4_maxlink *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_uint32_t (zdrs, objp))
 		 return FALSE;
@@ -760,8 +697,7 @@ zdr_fattr4_maxlink (ZDR *zdrs, fattr4_maxlink *objp)
 uint32_t
 zdr_fattr4_maxname (ZDR *zdrs, fattr4_maxname *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_uint32_t (zdrs, objp))
 		 return FALSE;
@@ -771,8 +707,7 @@ zdr_fattr4_maxname (ZDR *zdrs, fattr4_maxname *objp)
 uint32_t
 zdr_fattr4_maxread (ZDR *zdrs, fattr4_maxread *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_uint64_t (zdrs, objp))
 		 return FALSE;
@@ -782,8 +717,7 @@ zdr_fattr4_maxread (ZDR *zdrs, fattr4_maxread *objp)
 uint32_t
 zdr_fattr4_maxwrite (ZDR *zdrs, fattr4_maxwrite *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_uint64_t (zdrs, objp))
 		 return FALSE;
@@ -793,8 +727,7 @@ zdr_fattr4_maxwrite (ZDR *zdrs, fattr4_maxwrite *objp)
 uint32_t
 zdr_fattr4_mimetype (ZDR *zdrs, fattr4_mimetype *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_utf8str_cs (zdrs, objp))
 		 return FALSE;
@@ -804,8 +737,7 @@ zdr_fattr4_mimetype (ZDR *zdrs, fattr4_mimetype *objp)
 uint32_t
 zdr_fattr4_mode (ZDR *zdrs, fattr4_mode *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_mode4 (zdrs, objp))
 		 return FALSE;
@@ -815,8 +747,7 @@ zdr_fattr4_mode (ZDR *zdrs, fattr4_mode *objp)
 uint32_t
 zdr_fattr4_mounted_on_fileid (ZDR *zdrs, fattr4_mounted_on_fileid *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_uint64_t (zdrs, objp))
 		 return FALSE;
@@ -826,8 +757,7 @@ zdr_fattr4_mounted_on_fileid (ZDR *zdrs, fattr4_mounted_on_fileid *objp)
 uint32_t
 zdr_fattr4_no_trunc (ZDR *zdrs, fattr4_no_trunc *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_bool (zdrs, objp))
 		 return FALSE;
@@ -837,8 +767,7 @@ zdr_fattr4_no_trunc (ZDR *zdrs, fattr4_no_trunc *objp)
 uint32_t
 zdr_fattr4_numlinks (ZDR *zdrs, fattr4_numlinks *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_uint32_t (zdrs, objp))
 		 return FALSE;
@@ -848,8 +777,7 @@ zdr_fattr4_numlinks (ZDR *zdrs, fattr4_numlinks *objp)
 uint32_t
 zdr_fattr4_owner (ZDR *zdrs, fattr4_owner *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_utf8str_mixed (zdrs, objp))
 		 return FALSE;
@@ -859,8 +787,7 @@ zdr_fattr4_owner (ZDR *zdrs, fattr4_owner *objp)
 uint32_t
 zdr_fattr4_owner_group (ZDR *zdrs, fattr4_owner_group *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_utf8str_mixed (zdrs, objp))
 		 return FALSE;
@@ -870,8 +797,7 @@ zdr_fattr4_owner_group (ZDR *zdrs, fattr4_owner_group *objp)
 uint32_t
 zdr_fattr4_quota_avail_hard (ZDR *zdrs, fattr4_quota_avail_hard *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_uint64_t (zdrs, objp))
 		 return FALSE;
@@ -881,8 +807,7 @@ zdr_fattr4_quota_avail_hard (ZDR *zdrs, fattr4_quota_avail_hard *objp)
 uint32_t
 zdr_fattr4_quota_avail_soft (ZDR *zdrs, fattr4_quota_avail_soft *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_uint64_t (zdrs, objp))
 		 return FALSE;
@@ -892,8 +817,7 @@ zdr_fattr4_quota_avail_soft (ZDR *zdrs, fattr4_quota_avail_soft *objp)
 uint32_t
 zdr_fattr4_quota_used (ZDR *zdrs, fattr4_quota_used *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_uint64_t (zdrs, objp))
 		 return FALSE;
@@ -903,8 +827,7 @@ zdr_fattr4_quota_used (ZDR *zdrs, fattr4_quota_used *objp)
 uint32_t
 zdr_fattr4_rawdev (ZDR *zdrs, fattr4_rawdev *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_specdata4 (zdrs, objp))
 		 return FALSE;
@@ -914,8 +837,7 @@ zdr_fattr4_rawdev (ZDR *zdrs, fattr4_rawdev *objp)
 uint32_t
 zdr_fattr4_space_avail (ZDR *zdrs, fattr4_space_avail *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_uint64_t (zdrs, objp))
 		 return FALSE;
@@ -925,8 +847,7 @@ zdr_fattr4_space_avail (ZDR *zdrs, fattr4_space_avail *objp)
 uint32_t
 zdr_fattr4_space_free (ZDR *zdrs, fattr4_space_free *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_uint64_t (zdrs, objp))
 		 return FALSE;
@@ -936,8 +857,7 @@ zdr_fattr4_space_free (ZDR *zdrs, fattr4_space_free *objp)
 uint32_t
 zdr_fattr4_space_total (ZDR *zdrs, fattr4_space_total *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_uint64_t (zdrs, objp))
 		 return FALSE;
@@ -947,8 +867,7 @@ zdr_fattr4_space_total (ZDR *zdrs, fattr4_space_total *objp)
 uint32_t
 zdr_fattr4_space_used (ZDR *zdrs, fattr4_space_used *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_uint64_t (zdrs, objp))
 		 return FALSE;
@@ -958,8 +877,7 @@ zdr_fattr4_space_used (ZDR *zdrs, fattr4_space_used *objp)
 uint32_t
 zdr_fattr4_system (ZDR *zdrs, fattr4_system *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_bool (zdrs, objp))
 		 return FALSE;
@@ -969,8 +887,7 @@ zdr_fattr4_system (ZDR *zdrs, fattr4_system *objp)
 uint32_t
 zdr_fattr4_time_access (ZDR *zdrs, fattr4_time_access *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_nfstime4 (zdrs, objp))
 		 return FALSE;
@@ -980,8 +897,7 @@ zdr_fattr4_time_access (ZDR *zdrs, fattr4_time_access *objp)
 uint32_t
 zdr_fattr4_time_access_set (ZDR *zdrs, fattr4_time_access_set *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_settime4 (zdrs, objp))
 		 return FALSE;
@@ -991,8 +907,7 @@ zdr_fattr4_time_access_set (ZDR *zdrs, fattr4_time_access_set *objp)
 uint32_t
 zdr_fattr4_time_backup (ZDR *zdrs, fattr4_time_backup *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_nfstime4 (zdrs, objp))
 		 return FALSE;
@@ -1002,8 +917,7 @@ zdr_fattr4_time_backup (ZDR *zdrs, fattr4_time_backup *objp)
 uint32_t
 zdr_fattr4_time_create (ZDR *zdrs, fattr4_time_create *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_nfstime4 (zdrs, objp))
 		 return FALSE;
@@ -1013,8 +927,7 @@ zdr_fattr4_time_create (ZDR *zdrs, fattr4_time_create *objp)
 uint32_t
 zdr_fattr4_time_delta (ZDR *zdrs, fattr4_time_delta *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_nfstime4 (zdrs, objp))
 		 return FALSE;
@@ -1024,8 +937,7 @@ zdr_fattr4_time_delta (ZDR *zdrs, fattr4_time_delta *objp)
 uint32_t
 zdr_fattr4_time_metadata (ZDR *zdrs, fattr4_time_metadata *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_nfstime4 (zdrs, objp))
 		 return FALSE;
@@ -1035,8 +947,7 @@ zdr_fattr4_time_metadata (ZDR *zdrs, fattr4_time_metadata *objp)
 uint32_t
 zdr_fattr4_time_modify (ZDR *zdrs, fattr4_time_modify *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_nfstime4 (zdrs, objp))
 		 return FALSE;
@@ -1046,8 +957,7 @@ zdr_fattr4_time_modify (ZDR *zdrs, fattr4_time_modify *objp)
 uint32_t
 zdr_fattr4_time_modify_set (ZDR *zdrs, fattr4_time_modify_set *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_settime4 (zdrs, objp))
 		 return FALSE;
@@ -1057,8 +967,7 @@ zdr_fattr4_time_modify_set (ZDR *zdrs, fattr4_time_modify_set *objp)
 uint32_t
 zdr_attrlist4 (ZDR *zdrs, attrlist4 *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_bytes (zdrs, (char **)&objp->attrlist4_val, (u_int *) &objp->attrlist4_len, ~0))
 		 return FALSE;
@@ -1068,8 +977,7 @@ zdr_attrlist4 (ZDR *zdrs, attrlist4 *objp)
 uint32_t
 zdr_fattr4 (ZDR *zdrs, fattr4 *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_bitmap4 (zdrs, &objp->attrmask))
 		 return FALSE;
@@ -1081,8 +989,7 @@ zdr_fattr4 (ZDR *zdrs, fattr4 *objp)
 uint32_t
 zdr_change_info4 (ZDR *zdrs, change_info4 *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_bool (zdrs, &objp->atomic))
 		 return FALSE;
@@ -1096,8 +1003,7 @@ zdr_change_info4 (ZDR *zdrs, change_info4 *objp)
 uint32_t
 zdr_clientaddr4 (ZDR *zdrs, clientaddr4 *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_string (zdrs, &objp->r_netid, ~0))
 		 return FALSE;
@@ -1109,8 +1015,7 @@ zdr_clientaddr4 (ZDR *zdrs, clientaddr4 *objp)
 uint32_t
 zdr_cb_client4 (ZDR *zdrs, cb_client4 *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_uint32_t (zdrs, &objp->cb_program))
 		 return FALSE;
@@ -1122,8 +1027,7 @@ zdr_cb_client4 (ZDR *zdrs, cb_client4 *objp)
 uint32_t
 zdr_stateid4 (ZDR *zdrs, stateid4 *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	
 	 if (!zdr_uint32_t (zdrs, &objp->seqid))
@@ -1136,8 +1040,7 @@ zdr_stateid4 (ZDR *zdrs, stateid4 *objp)
 uint32_t
 zdr_nfs_client_id4 (ZDR *zdrs, nfs_client_id4 *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_verifier4 (zdrs, objp->verifier))
 		 return FALSE;
@@ -1149,8 +1052,7 @@ zdr_nfs_client_id4 (ZDR *zdrs, nfs_client_id4 *objp)
 uint32_t
 zdr_open_owner4 (ZDR *zdrs, open_owner4 *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_clientid4 (zdrs, &objp->clientid))
 		 return FALSE;
@@ -1162,8 +1064,7 @@ zdr_open_owner4 (ZDR *zdrs, open_owner4 *objp)
 uint32_t
 zdr_lock_owner4 (ZDR *zdrs, lock_owner4 *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_clientid4 (zdrs, &objp->clientid))
 		 return FALSE;
@@ -1175,8 +1076,7 @@ zdr_lock_owner4 (ZDR *zdrs, lock_owner4 *objp)
 uint32_t
 zdr_nfs_lock_type4 (ZDR *zdrs, nfs_lock_type4 *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_enum (zdrs, (enum_t *) objp))
 		 return FALSE;
@@ -1186,8 +1086,7 @@ zdr_nfs_lock_type4 (ZDR *zdrs, nfs_lock_type4 *objp)
 uint32_t
 zdr_ACCESS4args (ZDR *zdrs, ACCESS4args *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_uint32_t (zdrs, &objp->access))
 		 return FALSE;
@@ -1197,8 +1096,7 @@ zdr_ACCESS4args (ZDR *zdrs, ACCESS4args *objp)
 uint32_t
 zdr_ACCESS4resok (ZDR *zdrs, ACCESS4resok *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_uint32_t (zdrs, &objp->supported))
 		 return FALSE;
@@ -1210,8 +1108,7 @@ zdr_ACCESS4resok (ZDR *zdrs, ACCESS4resok *objp)
 uint32_t
 zdr_ACCESS4res (ZDR *zdrs, ACCESS4res *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_nfsstat4 (zdrs, &objp->status))
 		 return FALSE;
@@ -1229,8 +1126,7 @@ zdr_ACCESS4res (ZDR *zdrs, ACCESS4res *objp)
 uint32_t
 zdr_CLOSE4args (ZDR *zdrs, CLOSE4args *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_seqid4 (zdrs, &objp->seqid))
 		 return FALSE;
@@ -1242,8 +1138,7 @@ zdr_CLOSE4args (ZDR *zdrs, CLOSE4args *objp)
 uint32_t
 zdr_CLOSE4res (ZDR *zdrs, CLOSE4res *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_nfsstat4 (zdrs, &objp->status))
 		 return FALSE;
@@ -1261,8 +1156,7 @@ zdr_CLOSE4res (ZDR *zdrs, CLOSE4res *objp)
 uint32_t
 zdr_COMMIT4args (ZDR *zdrs, COMMIT4args *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_offset4 (zdrs, &objp->offset))
 		 return FALSE;
@@ -1274,8 +1168,7 @@ zdr_COMMIT4args (ZDR *zdrs, COMMIT4args *objp)
 uint32_t
 zdr_COMMIT4resok (ZDR *zdrs, COMMIT4resok *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_verifier4 (zdrs, objp->writeverf))
 		 return FALSE;
@@ -1285,8 +1178,7 @@ zdr_COMMIT4resok (ZDR *zdrs, COMMIT4resok *objp)
 uint32_t
 zdr_COMMIT4res (ZDR *zdrs, COMMIT4res *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_nfsstat4 (zdrs, &objp->status))
 		 return FALSE;
@@ -1304,8 +1196,7 @@ zdr_COMMIT4res (ZDR *zdrs, COMMIT4res *objp)
 uint32_t
 zdr_createtype4 (ZDR *zdrs, createtype4 *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_nfs_ftype4 (zdrs, &objp->type))
 		 return FALSE;
@@ -1332,8 +1223,7 @@ zdr_createtype4 (ZDR *zdrs, createtype4 *objp)
 uint32_t
 zdr_CREATE4args (ZDR *zdrs, CREATE4args *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_createtype4 (zdrs, &objp->objtype))
 		 return FALSE;
@@ -1347,8 +1237,7 @@ zdr_CREATE4args (ZDR *zdrs, CREATE4args *objp)
 uint32_t
 zdr_CREATE4resok (ZDR *zdrs, CREATE4resok *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_change_info4 (zdrs, &objp->cinfo))
 		 return FALSE;
@@ -1360,8 +1249,7 @@ zdr_CREATE4resok (ZDR *zdrs, CREATE4resok *objp)
 uint32_t
 zdr_CREATE4res (ZDR *zdrs, CREATE4res *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_nfsstat4 (zdrs, &objp->status))
 		 return FALSE;
@@ -1379,8 +1267,7 @@ zdr_CREATE4res (ZDR *zdrs, CREATE4res *objp)
 uint32_t
 zdr_DELEGPURGE4args (ZDR *zdrs, DELEGPURGE4args *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_clientid4 (zdrs, &objp->clientid))
 		 return FALSE;
@@ -1390,8 +1277,7 @@ zdr_DELEGPURGE4args (ZDR *zdrs, DELEGPURGE4args *objp)
 uint32_t
 zdr_DELEGPURGE4res (ZDR *zdrs, DELEGPURGE4res *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_nfsstat4 (zdrs, &objp->status))
 		 return FALSE;
@@ -1401,8 +1287,7 @@ zdr_DELEGPURGE4res (ZDR *zdrs, DELEGPURGE4res *objp)
 uint32_t
 zdr_DELEGRETURN4args (ZDR *zdrs, DELEGRETURN4args *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_stateid4 (zdrs, &objp->deleg_stateid))
 		 return FALSE;
@@ -1412,8 +1297,7 @@ zdr_DELEGRETURN4args (ZDR *zdrs, DELEGRETURN4args *objp)
 uint32_t
 zdr_DELEGRETURN4res (ZDR *zdrs, DELEGRETURN4res *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_nfsstat4 (zdrs, &objp->status))
 		 return FALSE;
@@ -1423,8 +1307,7 @@ zdr_DELEGRETURN4res (ZDR *zdrs, DELEGRETURN4res *objp)
 uint32_t
 zdr_GETATTR4args (ZDR *zdrs, GETATTR4args *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_bitmap4 (zdrs, &objp->attr_request))
 		 return FALSE;
@@ -1434,8 +1317,7 @@ zdr_GETATTR4args (ZDR *zdrs, GETATTR4args *objp)
 uint32_t
 zdr_GETATTR4resok (ZDR *zdrs, GETATTR4resok *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_fattr4 (zdrs, &objp->obj_attributes))
 		 return FALSE;
@@ -1445,8 +1327,7 @@ zdr_GETATTR4resok (ZDR *zdrs, GETATTR4resok *objp)
 uint32_t
 zdr_GETATTR4res (ZDR *zdrs, GETATTR4res *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_nfsstat4 (zdrs, &objp->status))
 		 return FALSE;
@@ -1464,8 +1345,7 @@ zdr_GETATTR4res (ZDR *zdrs, GETATTR4res *objp)
 uint32_t
 zdr_GETFH4resok (ZDR *zdrs, GETFH4resok *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_nfs_fh4 (zdrs, &objp->object))
 		 return FALSE;
@@ -1475,8 +1355,7 @@ zdr_GETFH4resok (ZDR *zdrs, GETFH4resok *objp)
 uint32_t
 zdr_GETFH4res (ZDR *zdrs, GETFH4res *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_nfsstat4 (zdrs, &objp->status))
 		 return FALSE;
@@ -1494,8 +1373,7 @@ zdr_GETFH4res (ZDR *zdrs, GETFH4res *objp)
 uint32_t
 zdr_LINK4args (ZDR *zdrs, LINK4args *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_component4 (zdrs, &objp->newname))
 		 return FALSE;
@@ -1505,8 +1383,7 @@ zdr_LINK4args (ZDR *zdrs, LINK4args *objp)
 uint32_t
 zdr_LINK4resok (ZDR *zdrs, LINK4resok *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_change_info4 (zdrs, &objp->cinfo))
 		 return FALSE;
@@ -1516,8 +1393,7 @@ zdr_LINK4resok (ZDR *zdrs, LINK4resok *objp)
 uint32_t
 zdr_LINK4res (ZDR *zdrs, LINK4res *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_nfsstat4 (zdrs, &objp->status))
 		 return FALSE;
@@ -1535,8 +1411,7 @@ zdr_LINK4res (ZDR *zdrs, LINK4res *objp)
 uint32_t
 zdr_open_to_lock_owner4 (ZDR *zdrs, open_to_lock_owner4 *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_seqid4 (zdrs, &objp->open_seqid))
 		 return FALSE;
@@ -1552,8 +1427,7 @@ zdr_open_to_lock_owner4 (ZDR *zdrs, open_to_lock_owner4 *objp)
 uint32_t
 zdr_exist_lock_owner4 (ZDR *zdrs, exist_lock_owner4 *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_stateid4 (zdrs, &objp->lock_stateid))
 		 return FALSE;
@@ -1565,8 +1439,7 @@ zdr_exist_lock_owner4 (ZDR *zdrs, exist_lock_owner4 *objp)
 uint32_t
 zdr_locker4 (ZDR *zdrs, locker4 *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_bool (zdrs, &objp->new_lock_owner))
 		 return FALSE;
@@ -1588,8 +1461,7 @@ zdr_locker4 (ZDR *zdrs, locker4 *objp)
 uint32_t
 zdr_LOCK4args (ZDR *zdrs, LOCK4args *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_nfs_lock_type4 (zdrs, &objp->locktype))
 		 return FALSE;
@@ -1607,8 +1479,7 @@ zdr_LOCK4args (ZDR *zdrs, LOCK4args *objp)
 uint32_t
 zdr_LOCK4denied (ZDR *zdrs, LOCK4denied *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_offset4 (zdrs, &objp->offset))
 		 return FALSE;
@@ -1624,8 +1495,7 @@ zdr_LOCK4denied (ZDR *zdrs, LOCK4denied *objp)
 uint32_t
 zdr_LOCK4resok (ZDR *zdrs, LOCK4resok *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_stateid4 (zdrs, &objp->lock_stateid))
 		 return FALSE;
@@ -1635,8 +1505,7 @@ zdr_LOCK4resok (ZDR *zdrs, LOCK4resok *objp)
 uint32_t
 zdr_LOCK4res (ZDR *zdrs, LOCK4res *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_nfsstat4 (zdrs, &objp->status))
 		 return FALSE;
@@ -1658,8 +1527,7 @@ zdr_LOCK4res (ZDR *zdrs, LOCK4res *objp)
 uint32_t
 zdr_LOCKT4args (ZDR *zdrs, LOCKT4args *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_nfs_lock_type4 (zdrs, &objp->locktype))
 		 return FALSE;
@@ -1675,8 +1543,7 @@ zdr_LOCKT4args (ZDR *zdrs, LOCKT4args *objp)
 uint32_t
 zdr_LOCKT4res (ZDR *zdrs, LOCKT4res *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_nfsstat4 (zdrs, &objp->status))
 		 return FALSE;
@@ -1696,8 +1563,7 @@ zdr_LOCKT4res (ZDR *zdrs, LOCKT4res *objp)
 uint32_t
 zdr_LOCKU4args (ZDR *zdrs, LOCKU4args *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_nfs_lock_type4 (zdrs, &objp->locktype))
 		 return FALSE;
@@ -1715,8 +1581,7 @@ zdr_LOCKU4args (ZDR *zdrs, LOCKU4args *objp)
 uint32_t
 zdr_LOCKU4res (ZDR *zdrs, LOCKU4res *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_nfsstat4 (zdrs, &objp->status))
 		 return FALSE;
@@ -1734,8 +1599,7 @@ zdr_LOCKU4res (ZDR *zdrs, LOCKU4res *objp)
 uint32_t
 zdr_LOOKUP4args (ZDR *zdrs, LOOKUP4args *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_component4 (zdrs, &objp->objname))
 		 return FALSE;
@@ -1745,8 +1609,7 @@ zdr_LOOKUP4args (ZDR *zdrs, LOOKUP4args *objp)
 uint32_t
 zdr_LOOKUP4res (ZDR *zdrs, LOOKUP4res *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_nfsstat4 (zdrs, &objp->status))
 		 return FALSE;
@@ -1756,8 +1619,7 @@ zdr_LOOKUP4res (ZDR *zdrs, LOOKUP4res *objp)
 uint32_t
 zdr_LOOKUPP4res (ZDR *zdrs, LOOKUPP4res *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_nfsstat4 (zdrs, &objp->status))
 		 return FALSE;
@@ -1767,8 +1629,7 @@ zdr_LOOKUPP4res (ZDR *zdrs, LOOKUPP4res *objp)
 uint32_t
 zdr_NVERIFY4args (ZDR *zdrs, NVERIFY4args *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_fattr4 (zdrs, &objp->obj_attributes))
 		 return FALSE;
@@ -1778,8 +1639,7 @@ zdr_NVERIFY4args (ZDR *zdrs, NVERIFY4args *objp)
 uint32_t
 zdr_NVERIFY4res (ZDR *zdrs, NVERIFY4res *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_nfsstat4 (zdrs, &objp->status))
 		 return FALSE;
@@ -1789,8 +1649,7 @@ zdr_NVERIFY4res (ZDR *zdrs, NVERIFY4res *objp)
 uint32_t
 zdr_createmode4 (ZDR *zdrs, createmode4 *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_enum (zdrs, (enum_t *) objp))
 		 return FALSE;
@@ -1800,8 +1659,7 @@ zdr_createmode4 (ZDR *zdrs, createmode4 *objp)
 uint32_t
 zdr_createhow4 (ZDR *zdrs, createhow4 *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_createmode4 (zdrs, &objp->mode))
 		 return FALSE;
@@ -1824,8 +1682,7 @@ zdr_createhow4 (ZDR *zdrs, createhow4 *objp)
 uint32_t
 zdr_opentype4 (ZDR *zdrs, opentype4 *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_enum (zdrs, (enum_t *) objp))
 		 return FALSE;
@@ -1835,8 +1692,7 @@ zdr_opentype4 (ZDR *zdrs, opentype4 *objp)
 uint32_t
 zdr_openflag4 (ZDR *zdrs, openflag4 *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_opentype4 (zdrs, &objp->opentype))
 		 return FALSE;
@@ -1854,8 +1710,7 @@ zdr_openflag4 (ZDR *zdrs, openflag4 *objp)
 uint32_t
 zdr_limit_by4 (ZDR *zdrs, limit_by4 *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_enum (zdrs, (enum_t *) objp))
 		 return FALSE;
@@ -1865,8 +1720,7 @@ zdr_limit_by4 (ZDR *zdrs, limit_by4 *objp)
 uint32_t
 zdr_nfs_modified_limit4 (ZDR *zdrs, nfs_modified_limit4 *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_uint32_t (zdrs, &objp->num_blocks))
 		 return FALSE;
@@ -1878,8 +1732,7 @@ zdr_nfs_modified_limit4 (ZDR *zdrs, nfs_modified_limit4 *objp)
 uint32_t
 zdr_nfs_space_limit4 (ZDR *zdrs, nfs_space_limit4 *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_limit_by4 (zdrs, &objp->limitby))
 		 return FALSE;
@@ -1901,8 +1754,7 @@ zdr_nfs_space_limit4 (ZDR *zdrs, nfs_space_limit4 *objp)
 uint32_t
 zdr_open_delegation_type4 (ZDR *zdrs, open_delegation_type4 *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_enum (zdrs, (enum_t *) objp))
 		 return FALSE;
@@ -1912,8 +1764,7 @@ zdr_open_delegation_type4 (ZDR *zdrs, open_delegation_type4 *objp)
 uint32_t
 zdr_open_claim_type4 (ZDR *zdrs, open_claim_type4 *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_enum (zdrs, (enum_t *) objp))
 		 return FALSE;
@@ -1923,8 +1774,7 @@ zdr_open_claim_type4 (ZDR *zdrs, open_claim_type4 *objp)
 uint32_t
 zdr_open_claim_delegate_cur4 (ZDR *zdrs, open_claim_delegate_cur4 *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_stateid4 (zdrs, &objp->delegate_stateid))
 		 return FALSE;
@@ -1936,8 +1786,7 @@ zdr_open_claim_delegate_cur4 (ZDR *zdrs, open_claim_delegate_cur4 *objp)
 uint32_t
 zdr_open_claim4 (ZDR *zdrs, open_claim4 *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_open_claim_type4 (zdrs, &objp->claim))
 		 return FALSE;
@@ -1967,8 +1816,7 @@ zdr_open_claim4 (ZDR *zdrs, open_claim4 *objp)
 uint32_t
 zdr_OPEN4args (ZDR *zdrs, OPEN4args *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_seqid4 (zdrs, &objp->seqid))
 		 return FALSE;
@@ -1988,8 +1836,7 @@ zdr_OPEN4args (ZDR *zdrs, OPEN4args *objp)
 uint32_t
 zdr_open_read_delegation4 (ZDR *zdrs, open_read_delegation4 *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_stateid4 (zdrs, &objp->stateid))
 		 return FALSE;
@@ -2003,8 +1850,7 @@ zdr_open_read_delegation4 (ZDR *zdrs, open_read_delegation4 *objp)
 uint32_t
 zdr_open_write_delegation4 (ZDR *zdrs, open_write_delegation4 *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_stateid4 (zdrs, &objp->stateid))
 		 return FALSE;
@@ -2020,8 +1866,7 @@ zdr_open_write_delegation4 (ZDR *zdrs, open_write_delegation4 *objp)
 uint32_t
 zdr_open_delegation4 (ZDR *zdrs, open_delegation4 *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_open_delegation_type4 (zdrs, &objp->delegation_type))
 		 return FALSE;
@@ -2045,8 +1890,7 @@ zdr_open_delegation4 (ZDR *zdrs, open_delegation4 *objp)
 uint32_t
 zdr_OPEN4resok (ZDR *zdrs, OPEN4resok *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_stateid4 (zdrs, &objp->stateid))
 		 return FALSE;
@@ -2064,8 +1908,7 @@ zdr_OPEN4resok (ZDR *zdrs, OPEN4resok *objp)
 uint32_t
 zdr_OPEN4res (ZDR *zdrs, OPEN4res *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_nfsstat4 (zdrs, &objp->status))
 		 return FALSE;
@@ -2083,8 +1926,7 @@ zdr_OPEN4res (ZDR *zdrs, OPEN4res *objp)
 uint32_t
 zdr_OPENATTR4args (ZDR *zdrs, OPENATTR4args *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_bool (zdrs, &objp->createdir))
 		 return FALSE;
@@ -2094,8 +1936,7 @@ zdr_OPENATTR4args (ZDR *zdrs, OPENATTR4args *objp)
 uint32_t
 zdr_OPENATTR4res (ZDR *zdrs, OPENATTR4res *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_nfsstat4 (zdrs, &objp->status))
 		 return FALSE;
@@ -2105,8 +1946,7 @@ zdr_OPENATTR4res (ZDR *zdrs, OPENATTR4res *objp)
 uint32_t
 zdr_OPEN_CONFIRM4args (ZDR *zdrs, OPEN_CONFIRM4args *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_stateid4 (zdrs, &objp->open_stateid))
 		 return FALSE;
@@ -2118,8 +1958,7 @@ zdr_OPEN_CONFIRM4args (ZDR *zdrs, OPEN_CONFIRM4args *objp)
 uint32_t
 zdr_OPEN_CONFIRM4resok (ZDR *zdrs, OPEN_CONFIRM4resok *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_stateid4 (zdrs, &objp->open_stateid))
 		 return FALSE;
@@ -2129,8 +1968,7 @@ zdr_OPEN_CONFIRM4resok (ZDR *zdrs, OPEN_CONFIRM4resok *objp)
 uint32_t
 zdr_OPEN_CONFIRM4res (ZDR *zdrs, OPEN_CONFIRM4res *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_nfsstat4 (zdrs, &objp->status))
 		 return FALSE;
@@ -2148,8 +1986,7 @@ zdr_OPEN_CONFIRM4res (ZDR *zdrs, OPEN_CONFIRM4res *objp)
 uint32_t
 zdr_OPEN_DOWNGRADE4args (ZDR *zdrs, OPEN_DOWNGRADE4args *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_stateid4 (zdrs, &objp->open_stateid))
 		 return FALSE;
@@ -2165,8 +2002,7 @@ zdr_OPEN_DOWNGRADE4args (ZDR *zdrs, OPEN_DOWNGRADE4args *objp)
 uint32_t
 zdr_OPEN_DOWNGRADE4resok (ZDR *zdrs, OPEN_DOWNGRADE4resok *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_stateid4 (zdrs, &objp->open_stateid))
 		 return FALSE;
@@ -2176,8 +2012,7 @@ zdr_OPEN_DOWNGRADE4resok (ZDR *zdrs, OPEN_DOWNGRADE4resok *objp)
 uint32_t
 zdr_OPEN_DOWNGRADE4res (ZDR *zdrs, OPEN_DOWNGRADE4res *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_nfsstat4 (zdrs, &objp->status))
 		 return FALSE;
@@ -2195,8 +2030,7 @@ zdr_OPEN_DOWNGRADE4res (ZDR *zdrs, OPEN_DOWNGRADE4res *objp)
 uint32_t
 zdr_PUTFH4args (ZDR *zdrs, PUTFH4args *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_nfs_fh4 (zdrs, &objp->object))
 		 return FALSE;
@@ -2206,8 +2040,7 @@ zdr_PUTFH4args (ZDR *zdrs, PUTFH4args *objp)
 uint32_t
 zdr_PUTFH4res (ZDR *zdrs, PUTFH4res *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_nfsstat4 (zdrs, &objp->status))
 		 return FALSE;
@@ -2217,8 +2050,7 @@ zdr_PUTFH4res (ZDR *zdrs, PUTFH4res *objp)
 uint32_t
 zdr_PUTPUBFH4res (ZDR *zdrs, PUTPUBFH4res *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_nfsstat4 (zdrs, &objp->status))
 		 return FALSE;
@@ -2228,8 +2060,7 @@ zdr_PUTPUBFH4res (ZDR *zdrs, PUTPUBFH4res *objp)
 uint32_t
 zdr_PUTROOTFH4res (ZDR *zdrs, PUTROOTFH4res *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_nfsstat4 (zdrs, &objp->status))
 		 return FALSE;
@@ -2239,8 +2070,7 @@ zdr_PUTROOTFH4res (ZDR *zdrs, PUTROOTFH4res *objp)
 uint32_t
 zdr_READ4args (ZDR *zdrs, READ4args *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_stateid4 (zdrs, &objp->stateid))
 		 return FALSE;
@@ -2254,8 +2084,7 @@ zdr_READ4args (ZDR *zdrs, READ4args *objp)
 uint32_t
 zdr_READ4resok (ZDR *zdrs, READ4resok *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_bool (zdrs, &objp->eof))
 		 return FALSE;
@@ -2267,8 +2096,7 @@ zdr_READ4resok (ZDR *zdrs, READ4resok *objp)
 uint32_t
 zdr_READ4res (ZDR *zdrs, READ4res *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_nfsstat4 (zdrs, &objp->status))
 		 return FALSE;
@@ -2286,8 +2114,7 @@ zdr_READ4res (ZDR *zdrs, READ4res *objp)
 uint32_t
 zdr_READDIR4args (ZDR *zdrs, READDIR4args *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_nfs_cookie4 (zdrs, &objp->cookie))
 		 return FALSE;
@@ -2305,8 +2132,7 @@ zdr_READDIR4args (ZDR *zdrs, READDIR4args *objp)
 uint32_t
 zdr_entry4 (ZDR *zdrs, entry4 *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_nfs_cookie4 (zdrs, &objp->cookie))
 		 return FALSE;
@@ -2322,8 +2148,7 @@ zdr_entry4 (ZDR *zdrs, entry4 *objp)
 uint32_t
 zdr_dirlist4 (ZDR *zdrs, dirlist4 *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_pointer (zdrs, (char **)&objp->entries, sizeof (entry4), (zdrproc_t) zdr_entry4))
 		 return FALSE;
@@ -2335,8 +2160,7 @@ zdr_dirlist4 (ZDR *zdrs, dirlist4 *objp)
 uint32_t
 zdr_READDIR4resok (ZDR *zdrs, READDIR4resok *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_verifier4 (zdrs, objp->cookieverf))
 		 return FALSE;
@@ -2348,8 +2172,7 @@ zdr_READDIR4resok (ZDR *zdrs, READDIR4resok *objp)
 uint32_t
 zdr_READDIR4res (ZDR *zdrs, READDIR4res *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_nfsstat4 (zdrs, &objp->status))
 		 return FALSE;
@@ -2367,8 +2190,7 @@ zdr_READDIR4res (ZDR *zdrs, READDIR4res *objp)
 uint32_t
 zdr_READLINK4resok (ZDR *zdrs, READLINK4resok *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_linktext4 (zdrs, &objp->link))
 		 return FALSE;
@@ -2378,8 +2200,7 @@ zdr_READLINK4resok (ZDR *zdrs, READLINK4resok *objp)
 uint32_t
 zdr_READLINK4res (ZDR *zdrs, READLINK4res *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_nfsstat4 (zdrs, &objp->status))
 		 return FALSE;
@@ -2397,8 +2218,7 @@ zdr_READLINK4res (ZDR *zdrs, READLINK4res *objp)
 uint32_t
 zdr_REMOVE4args (ZDR *zdrs, REMOVE4args *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_component4 (zdrs, &objp->target))
 		 return FALSE;
@@ -2408,8 +2228,7 @@ zdr_REMOVE4args (ZDR *zdrs, REMOVE4args *objp)
 uint32_t
 zdr_REMOVE4resok (ZDR *zdrs, REMOVE4resok *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_change_info4 (zdrs, &objp->cinfo))
 		 return FALSE;
@@ -2419,8 +2238,7 @@ zdr_REMOVE4resok (ZDR *zdrs, REMOVE4resok *objp)
 uint32_t
 zdr_REMOVE4res (ZDR *zdrs, REMOVE4res *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_nfsstat4 (zdrs, &objp->status))
 		 return FALSE;
@@ -2438,8 +2256,7 @@ zdr_REMOVE4res (ZDR *zdrs, REMOVE4res *objp)
 uint32_t
 zdr_RENAME4args (ZDR *zdrs, RENAME4args *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_component4 (zdrs, &objp->oldname))
 		 return FALSE;
@@ -2451,8 +2268,7 @@ zdr_RENAME4args (ZDR *zdrs, RENAME4args *objp)
 uint32_t
 zdr_RENAME4resok (ZDR *zdrs, RENAME4resok *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_change_info4 (zdrs, &objp->source_cinfo))
 		 return FALSE;
@@ -2464,8 +2280,7 @@ zdr_RENAME4resok (ZDR *zdrs, RENAME4resok *objp)
 uint32_t
 zdr_RENAME4res (ZDR *zdrs, RENAME4res *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_nfsstat4 (zdrs, &objp->status))
 		 return FALSE;
@@ -2483,8 +2298,7 @@ zdr_RENAME4res (ZDR *zdrs, RENAME4res *objp)
 uint32_t
 zdr_RENEW4args (ZDR *zdrs, RENEW4args *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_clientid4 (zdrs, &objp->clientid))
 		 return FALSE;
@@ -2494,8 +2308,7 @@ zdr_RENEW4args (ZDR *zdrs, RENEW4args *objp)
 uint32_t
 zdr_RENEW4res (ZDR *zdrs, RENEW4res *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_nfsstat4 (zdrs, &objp->status))
 		 return FALSE;
@@ -2505,8 +2318,7 @@ zdr_RENEW4res (ZDR *zdrs, RENEW4res *objp)
 uint32_t
 zdr_RESTOREFH4res (ZDR *zdrs, RESTOREFH4res *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_nfsstat4 (zdrs, &objp->status))
 		 return FALSE;
@@ -2516,8 +2328,7 @@ zdr_RESTOREFH4res (ZDR *zdrs, RESTOREFH4res *objp)
 uint32_t
 zdr_SAVEFH4res (ZDR *zdrs, SAVEFH4res *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_nfsstat4 (zdrs, &objp->status))
 		 return FALSE;
@@ -2527,8 +2338,7 @@ zdr_SAVEFH4res (ZDR *zdrs, SAVEFH4res *objp)
 uint32_t
 zdr_SETATTR4args (ZDR *zdrs, SETATTR4args *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_stateid4 (zdrs, &objp->stateid))
 		 return FALSE;
@@ -2540,8 +2350,7 @@ zdr_SETATTR4args (ZDR *zdrs, SETATTR4args *objp)
 uint32_t
 zdr_SETATTR4res (ZDR *zdrs, SETATTR4res *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_nfsstat4 (zdrs, &objp->status))
 		 return FALSE;
@@ -2553,8 +2362,7 @@ zdr_SETATTR4res (ZDR *zdrs, SETATTR4res *objp)
 uint32_t
 zdr_SETCLIENTID4args (ZDR *zdrs, SETCLIENTID4args *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_nfs_client_id4 (zdrs, &objp->client))
 		 return FALSE;
@@ -2568,8 +2376,7 @@ zdr_SETCLIENTID4args (ZDR *zdrs, SETCLIENTID4args *objp)
 uint32_t
 zdr_SETCLIENTID4resok (ZDR *zdrs, SETCLIENTID4resok *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_clientid4 (zdrs, &objp->clientid))
 		 return FALSE;
@@ -2581,8 +2388,7 @@ zdr_SETCLIENTID4resok (ZDR *zdrs, SETCLIENTID4resok *objp)
 uint32_t
 zdr_SETCLIENTID4res (ZDR *zdrs, SETCLIENTID4res *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_nfsstat4 (zdrs, &objp->status))
 		 return FALSE;
@@ -2604,8 +2410,7 @@ zdr_SETCLIENTID4res (ZDR *zdrs, SETCLIENTID4res *objp)
 uint32_t
 zdr_SETCLIENTID_CONFIRM4args (ZDR *zdrs, SETCLIENTID_CONFIRM4args *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_clientid4 (zdrs, &objp->clientid))
 		 return FALSE;
@@ -2617,8 +2422,7 @@ zdr_SETCLIENTID_CONFIRM4args (ZDR *zdrs, SETCLIENTID_CONFIRM4args *objp)
 uint32_t
 zdr_SETCLIENTID_CONFIRM4res (ZDR *zdrs, SETCLIENTID_CONFIRM4res *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_nfsstat4 (zdrs, &objp->status))
 		 return FALSE;
@@ -2628,8 +2432,7 @@ zdr_SETCLIENTID_CONFIRM4res (ZDR *zdrs, SETCLIENTID_CONFIRM4res *objp)
 uint32_t
 zdr_VERIFY4args (ZDR *zdrs, VERIFY4args *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_fattr4 (zdrs, &objp->obj_attributes))
 		 return FALSE;
@@ -2639,8 +2442,7 @@ zdr_VERIFY4args (ZDR *zdrs, VERIFY4args *objp)
 uint32_t
 zdr_VERIFY4res (ZDR *zdrs, VERIFY4res *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_nfsstat4 (zdrs, &objp->status))
 		 return FALSE;
@@ -2650,8 +2452,7 @@ zdr_VERIFY4res (ZDR *zdrs, VERIFY4res *objp)
 uint32_t
 zdr_stable_how4 (ZDR *zdrs, stable_how4 *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_enum (zdrs, (enum_t *) objp))
 		 return FALSE;
@@ -2661,8 +2462,7 @@ zdr_stable_how4 (ZDR *zdrs, stable_how4 *objp)
 uint32_t
 zdr_WRITE4args (ZDR *zdrs, WRITE4args *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_stateid4 (zdrs, &objp->stateid))
 		 return FALSE;
@@ -2678,8 +2478,7 @@ zdr_WRITE4args (ZDR *zdrs, WRITE4args *objp)
 uint32_t
 zdr_WRITE4resok (ZDR *zdrs, WRITE4resok *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_count4 (zdrs, &objp->count))
 		 return FALSE;
@@ -2693,8 +2492,7 @@ zdr_WRITE4resok (ZDR *zdrs, WRITE4resok *objp)
 uint32_t
 zdr_WRITE4res (ZDR *zdrs, WRITE4res *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_nfsstat4 (zdrs, &objp->status))
 		 return FALSE;
@@ -2712,8 +2510,7 @@ zdr_WRITE4res (ZDR *zdrs, WRITE4res *objp)
 uint32_t
 zdr_RELEASE_LOCKOWNER4args (ZDR *zdrs, RELEASE_LOCKOWNER4args *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_lock_owner4 (zdrs, &objp->lock_owner))
 		 return FALSE;
@@ -2723,8 +2520,7 @@ zdr_RELEASE_LOCKOWNER4args (ZDR *zdrs, RELEASE_LOCKOWNER4args *objp)
 uint32_t
 zdr_RELEASE_LOCKOWNER4res (ZDR *zdrs, RELEASE_LOCKOWNER4res *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_nfsstat4 (zdrs, &objp->status))
 		 return FALSE;
@@ -2734,8 +2530,7 @@ zdr_RELEASE_LOCKOWNER4res (ZDR *zdrs, RELEASE_LOCKOWNER4res *objp)
 uint32_t
 zdr_ILLEGAL4res (ZDR *zdrs, ILLEGAL4res *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_nfsstat4 (zdrs, &objp->status))
 		 return FALSE;
@@ -2745,8 +2540,7 @@ zdr_ILLEGAL4res (ZDR *zdrs, ILLEGAL4res *objp)
 uint32_t
 zdr_nfs_opnum4 (ZDR *zdrs, nfs_opnum4 *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_enum (zdrs, (enum_t *) objp))
 		 return FALSE;
@@ -2756,8 +2550,7 @@ zdr_nfs_opnum4 (ZDR *zdrs, nfs_opnum4 *objp)
 uint32_t
 zdr_nfs_argop4 (ZDR *zdrs, nfs_argop4 *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_nfs_opnum4 (zdrs, &objp->argop))
 		 return FALSE;
@@ -2903,8 +2696,7 @@ zdr_nfs_argop4 (ZDR *zdrs, nfs_argop4 *objp)
 uint32_t
 zdr_nfs_resop4 (ZDR *zdrs, nfs_resop4 *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_nfs_opnum4 (zdrs, &objp->resop))
 		 return FALSE;
@@ -3066,8 +2858,7 @@ zdr_nfs_resop4 (ZDR *zdrs, nfs_resop4 *objp)
 uint32_t
 zdr_COMPOUND4args (ZDR *zdrs, COMPOUND4args *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_utf8str_cs (zdrs, &objp->tag))
 		 return FALSE;
@@ -3082,8 +2873,7 @@ zdr_COMPOUND4args (ZDR *zdrs, COMPOUND4args *objp)
 uint32_t
 zdr_COMPOUND4res (ZDR *zdrs, COMPOUND4res *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_nfsstat4 (zdrs, &objp->status))
 		 return FALSE;
@@ -3098,8 +2888,7 @@ zdr_COMPOUND4res (ZDR *zdrs, COMPOUND4res *objp)
 uint32_t
 zdr_CB_GETATTR4args (ZDR *zdrs, CB_GETATTR4args *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_nfs_fh4 (zdrs, &objp->fh))
 		 return FALSE;
@@ -3111,8 +2900,7 @@ zdr_CB_GETATTR4args (ZDR *zdrs, CB_GETATTR4args *objp)
 uint32_t
 zdr_CB_GETATTR4resok (ZDR *zdrs, CB_GETATTR4resok *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_fattr4 (zdrs, &objp->obj_attributes))
 		 return FALSE;
@@ -3122,8 +2910,7 @@ zdr_CB_GETATTR4resok (ZDR *zdrs, CB_GETATTR4resok *objp)
 uint32_t
 zdr_CB_GETATTR4res (ZDR *zdrs, CB_GETATTR4res *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_nfsstat4 (zdrs, &objp->status))
 		 return FALSE;
@@ -3141,8 +2928,7 @@ zdr_CB_GETATTR4res (ZDR *zdrs, CB_GETATTR4res *objp)
 uint32_t
 zdr_CB_RECALL4args (ZDR *zdrs, CB_RECALL4args *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_stateid4 (zdrs, &objp->stateid))
 		 return FALSE;
@@ -3156,8 +2942,7 @@ zdr_CB_RECALL4args (ZDR *zdrs, CB_RECALL4args *objp)
 uint32_t
 zdr_CB_RECALL4res (ZDR *zdrs, CB_RECALL4res *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_nfsstat4 (zdrs, &objp->status))
 		 return FALSE;
@@ -3167,8 +2952,7 @@ zdr_CB_RECALL4res (ZDR *zdrs, CB_RECALL4res *objp)
 uint32_t
 zdr_CB_ILLEGAL4res (ZDR *zdrs, CB_ILLEGAL4res *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_nfsstat4 (zdrs, &objp->status))
 		 return FALSE;
@@ -3178,8 +2962,7 @@ zdr_CB_ILLEGAL4res (ZDR *zdrs, CB_ILLEGAL4res *objp)
 uint32_t
 zdr_nfs_cb_opnum4 (ZDR *zdrs, nfs_cb_opnum4 *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_enum (zdrs, (enum_t *) objp))
 		 return FALSE;
@@ -3189,8 +2972,7 @@ zdr_nfs_cb_opnum4 (ZDR *zdrs, nfs_cb_opnum4 *objp)
 uint32_t
 zdr_nfs_cb_argop4 (ZDR *zdrs, nfs_cb_argop4 *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_u_int (zdrs, &objp->argop))
 		 return FALSE;
@@ -3214,8 +2996,7 @@ zdr_nfs_cb_argop4 (ZDR *zdrs, nfs_cb_argop4 *objp)
 uint32_t
 zdr_nfs_cb_resop4 (ZDR *zdrs, nfs_cb_resop4 *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_u_int (zdrs, &objp->resop))
 		 return FALSE;
@@ -3241,8 +3022,7 @@ zdr_nfs_cb_resop4 (ZDR *zdrs, nfs_cb_resop4 *objp)
 uint32_t
 zdr_CB_COMPOUND4args (ZDR *zdrs, CB_COMPOUND4args *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_utf8str_cs (zdrs, &objp->tag))
 		 return FALSE;
@@ -3259,8 +3039,7 @@ zdr_CB_COMPOUND4args (ZDR *zdrs, CB_COMPOUND4args *objp)
 uint32_t
 zdr_CB_COMPOUND4res (ZDR *zdrs, CB_COMPOUND4res *objp)
 {
-	register int32_t *buf;
-	buf = NULL;
+	
 
 	 if (!zdr_nfsstat4 (zdrs, &objp->status))
 		 return FALSE;
