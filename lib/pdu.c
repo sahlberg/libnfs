@@ -392,7 +392,7 @@ static int rpc_process_call(struct rpc_context *rpc, ZDR *zdr)
 {
 	struct rpc_msg call;
         struct rpc_endpoint *endpoint;
-        int i, min_version, max_version, found_program = 0;
+        int i, min_version = 0, max_version = 0, found_program = 0;
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
