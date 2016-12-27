@@ -1125,7 +1125,7 @@ zdr_stateid4 (ZDR *zdrs, stateid4 *objp)
 	register int32_t *buf;
 	buf = NULL;
 
-	int i;
+	
 	 if (!zdr_uint32_t (zdrs, &objp->seqid))
 		 return FALSE;
 	 if (!zdr_opaque (zdrs, objp->other, 12))
