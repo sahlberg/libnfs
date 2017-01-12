@@ -106,6 +106,7 @@ struct rpc_context {
 	int fd;
 	int old_fd;
 	int is_connected;
+	int is_nonblocking;
 
 	char *error_string;
 
