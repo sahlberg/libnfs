@@ -239,6 +239,7 @@ int rpc_queue_pdu(struct rpc_context *rpc, struct rpc_pdu *pdu)
 
 		hash = rpc_hash_xid(pdu->xid);
 		rpc_enqueue(&rpc->waitpdu[hash], pdu);
+		rpc->waitpdu_len++;
 		return 0;
 	}
 
@@ -547,6 +548,7 @@ int rpc_process_pdu(struct rpc_context *rpc, char *buf, int size)
 				q->tail = prev_pdu;
 			if (prev_pdu != NULL)
 				prev_pdu->next = pdu->next;
+			rpc->waitpdu_len--;
 		}
 		if (rpc_process_reply(rpc, pdu, &zdr) != 0) {
 			rpc_set_error(rpc, "rpc_procdess_reply failed");

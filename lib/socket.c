@@ -216,6 +216,7 @@ static int rpc_write_to_socket(struct rpc_context *rpc)
 
 			hash = rpc_hash_xid(pdu->xid);
 			rpc_enqueue(&rpc->waitpdu[hash], pdu);
+			rpc->waitpdu_len++;
 		}
 	}
 	return 0;
@@ -709,6 +710,7 @@ static int rpc_reconnect_requeue(struct rpc_context *rpc)
 		}
 		rpc_reset_queue(q);
 	}
+	rpc->waitpdu_len = 0;
 
 	if (rpc->auto_reconnect != 0) {
 		rpc->connect_cb  = reconnect_cb;
@@ -808,9 +810,8 @@ struct sockaddr *rpc_get_recv_sockaddr(struct rpc_context *rpc)
 
 int rpc_queue_length(struct rpc_context *rpc)
 {
-	int i=0;
+	int i = 0;
 	struct rpc_pdu *pdu;
-	unsigned int n;
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
@@ -818,12 +819,8 @@ int rpc_queue_length(struct rpc_context *rpc)
 		i++;
 	}
 
-	for (n = 0; n < HASHES; n++) {
-		struct rpc_queue *q = &rpc->waitpdu[n];
+	i += rpc->waitpdu_len;
 
-		for(pdu = q->head; pdu; pdu = pdu->next)
-			i++;
-	}
 	return i;
 }
 
