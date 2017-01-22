@@ -87,7 +87,7 @@
 
 static int rpc_reconnect_requeue(struct rpc_context *rpc);
 
-static void set_nonblocking(int fd)
+static int set_nonblocking(int fd)
 {
 	int v = 0;
 #if defined(WIN32)
@@ -95,8 +95,9 @@ static void set_nonblocking(int fd)
 	v = ioctl(fd, FIONBIO, &nonblocking);
 #else
 	v = fcntl(fd, F_GETFL, 0);
-        fcntl(fd, F_SETFL, v | O_NONBLOCK);
+	v = fcntl(fd, F_SETFL, v | O_NONBLOCK);
 #endif //FIXME
+	return v;
 }
 
 static void set_nolinger(int fd)
@@ -216,6 +217,7 @@ static int rpc_write_to_socket(struct rpc_context *rpc)
 
 			hash = rpc_hash_xid(pdu->xid);
 			rpc_enqueue(&rpc->waitpdu[hash], pdu);
+			rpc->waitpdu_len++;
 		}
 	}
 	return 0;
@@ -256,58 +258,59 @@ static int rpc_read_from_socket(struct rpc_context *rpc)
 		return 0;
 	}
 
-again:
-	/* read record marker, 4 bytes at the beginning of every pdu first */
-	if (rpc->inpos < 4) {
-		buf = (void *)rpc->rm_buf;
-		pdu_size = 4;
-	} else {
-		pdu_size = rpc_get_pdu_size((void *)&rpc->rm_buf);
-		if (rpc->inbuf == NULL) {
-			if (pdu_size > NFS_MAX_XFER_SIZE + 4096) {
-				rpc_set_error(rpc, "Incoming PDU exceeds limit of %d bytes.", NFS_MAX_XFER_SIZE + 4096);
-				return -1;
-			}
-			rpc->inbuf = malloc(pdu_size);
+	do {
+		/* read record marker, 4 bytes at the beginning of every pdu first */
+		if (rpc->inpos < 4) {
+			buf = (void *)rpc->rm_buf;
+			pdu_size = 4;
+		} else {
+			pdu_size = rpc_get_pdu_size((void *)&rpc->rm_buf);
 			if (rpc->inbuf == NULL) {
-				rpc_set_error(rpc, "Failed to allocate buffer of %d bytes for pdu, errno:%d. Closing socket.", pdu_size, errno);
-				return -1;
+				if (pdu_size > NFS_MAX_XFER_SIZE + 4096) {
+					rpc_set_error(rpc, "Incoming PDU exceeds limit of %d bytes.", NFS_MAX_XFER_SIZE + 4096);
+					return -1;
+				}
+				rpc->inbuf = malloc(pdu_size);
+				if (rpc->inbuf == NULL) {
+					rpc_set_error(rpc, "Failed to allocate buffer of %d bytes for pdu, errno:%d. Closing socket.", pdu_size, errno);
+					return -1;
+				}
+				memcpy(rpc->inbuf, &rpc->rm_buf, 4);
 			}
-			memcpy(rpc->inbuf, &rpc->rm_buf, 4);
+			buf = rpc->inbuf;
 		}
-		buf = rpc->inbuf;
-	}
 
-	count = recv(rpc->fd, buf + rpc->inpos, pdu_size - rpc->inpos, MSG_DONTWAIT);
-	if (count < 0) {
-		if (errno == EINTR || errno == EAGAIN) {
-			return 0;
-		}
-		rpc_set_error(rpc, "Read from socket failed, errno:%d. Closing socket.", errno);
-		return -1;
-	}
-	if (count == 0) {
-		/* remote side has closed the socket. Reconnect. */
-		return -1;
-	}
-	rpc->inpos += count;
-
-	if (rpc->inpos == 4) {
-		/* we have just read the header there is likely more data available */
-		goto again;
-	}
-
-	if (rpc->inpos == pdu_size) {
-		rpc->inbuf  = NULL;
-		rpc->inpos  = 0;
-
-		if (rpc_process_pdu(rpc, buf, pdu_size) != 0) {
-			rpc_set_error(rpc, "Invalid/garbage pdu received from server. Closing socket");
-			free(buf);
+		count = recv(rpc->fd, buf + rpc->inpos, pdu_size - rpc->inpos, MSG_DONTWAIT);
+		if (count < 0) {
+			if (errno == EINTR || errno == EAGAIN) {
+				break;
+			}
+			rpc_set_error(rpc, "Read from socket failed, errno:%d. Closing socket.", errno);
 			return -1;
 		}
-		free(buf);
-	}
+		if (count == 0) {
+			/* remote side has closed the socket. Reconnect. */
+			return -1;
+		}
+		rpc->inpos += count;
+
+		if (rpc->inpos == 4) {
+			/* we have just read the header there is likely more data available */
+			continue;
+		}
+
+		if (rpc->inpos == pdu_size) {
+			rpc->inbuf  = NULL;
+			rpc->inpos  = 0;
+
+			if (rpc_process_pdu(rpc, buf, pdu_size) != 0) {
+				rpc_set_error(rpc, "Invalid/garbage pdu received from server. Closing socket");
+				free(buf);
+				return -1;
+			}
+			free(buf);
+		}
+	} while (rpc->is_nonblocking && rpc->waitpdu_len > 0);
 
 	return 0;
 }
@@ -559,7 +562,7 @@ static int rpc_connect_sockaddr_async(struct rpc_context *rpc)
 		} while (rc != 0 && portOfs != startOfs);
 	}
 
-	set_nonblocking(rpc->fd);
+	rpc->is_nonblocking = !set_nonblocking(rpc->fd);
 	set_nolinger(rpc->fd);
 
 	if (connect(rpc->fd, (struct sockaddr *)s, socksize) != 0 && errno != EINPROGRESS) {
@@ -709,6 +712,7 @@ static int rpc_reconnect_requeue(struct rpc_context *rpc)
 		}
 		rpc_reset_queue(q);
 	}
+	rpc->waitpdu_len = 0;
 
 	if (rpc->auto_reconnect != 0) {
 		rpc->connect_cb  = reconnect_cb;
@@ -808,9 +812,8 @@ struct sockaddr *rpc_get_recv_sockaddr(struct rpc_context *rpc)
 
 int rpc_queue_length(struct rpc_context *rpc)
 {
-	int i=0;
+	int i = 0;
 	struct rpc_pdu *pdu;
-	unsigned int n;
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
@@ -818,12 +821,8 @@ int rpc_queue_length(struct rpc_context *rpc)
 		i++;
 	}
 
-	for (n = 0; n < HASHES; n++) {
-		struct rpc_queue *q = &rpc->waitpdu[n];
+	i += rpc->waitpdu_len;
 
-		for(pdu = q->head; pdu; pdu = pdu->next)
-			i++;
-	}
 	return i;
 }
 

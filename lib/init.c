@@ -275,6 +275,7 @@ void rpc_error_all_pdus(struct rpc_context *rpc, const char *error)
 		}
 		q->tail = NULL;
 	}
+	rpc->waitpdu_len = 0;
 }
 
 static void rpc_free_fragment(struct rpc_fragment *fragment)

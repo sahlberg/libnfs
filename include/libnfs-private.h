@@ -106,6 +106,7 @@ struct rpc_context {
 	int fd;
 	int old_fd;
 	int is_connected;
+	int is_nonblocking;
 
 	char *error_string;
 
@@ -118,6 +119,7 @@ struct rpc_context {
 	struct rpc_queue outqueue;
 	struct sockaddr_storage udp_src;
 	struct rpc_queue waitpdu[HASHES];
+	uint32_t waitpdu_len;
 
 	uint32_t inpos;
 	char rm_buf[4];
