@@ -75,8 +75,8 @@ struct rpc_context *rpc_init_context(void)
 	rpc->tcp_syncnt = RPC_PARAM_UNDEFINED;
 	rpc->pagecache_ttl = NFS_PAGECACHE_DEFAULT_TTL;
 #if defined(WIN32) || defined(ANDROID)
-	rpc->uid = 65534;
-	rpc->gid = 65534;
+	rpc->uid = 0;
+	rpc->gid = 0;
 #else
 	rpc->uid = getuid();
 	rpc->gid = getgid();
