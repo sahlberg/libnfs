@@ -72,6 +72,14 @@ int rpc_service(struct rpc_context *rpc, int revents);
 int rpc_queue_length(struct rpc_context *rpc);
 
 /*
+ * Set which UID/GID to use in the authenticator.
+ * By default libnfs will use getuid()/getgid() where available
+ * and 65534/65534 where not.
+ */
+void rpc_set_uid(struct rpc_context *rpc, int uid);
+void rpc_set_gid(struct rpc_context *rpc, int gid);
+
+/*
  * Create a server context.
  */
 struct rpc_context *rpc_init_server_context(int s);

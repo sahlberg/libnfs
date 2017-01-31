@@ -223,4 +223,6 @@ rpc_rquota1_getactivequota_async
 rpc_send_reply
 rpc_service
 rpc_set_fd
+rpc_set_gid
+rpc_set_uid
 rpc_which_events

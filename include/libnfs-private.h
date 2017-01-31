@@ -221,8 +221,6 @@ void rpc_unset_autoreconnect(struct rpc_context *rpc);
 void rpc_set_interface(struct rpc_context *rpc, const char *ifname);
 
 void rpc_set_tcp_syncnt(struct rpc_context *rpc, int v);
-void rpc_set_uid(struct rpc_context *rpc, int uid);
-void rpc_set_gid(struct rpc_context *rpc, int gid);
 void rpc_set_pagecache(struct rpc_context *rpc, uint32_t v);
 void rpc_set_pagecache_ttl(struct rpc_context *rpc, uint32_t v);
 void rpc_set_readahead(struct rpc_context *rpc, uint32_t v);
