@@ -216,7 +216,7 @@ void nfs_pagecache_invalidate(struct nfs_context *nfs, struct nfsfh *nfsfh) {
 	}
 }
 
-static void nfs_pagecache_put(struct nfs_pagecache *pagecache, uint64_t offset, char *buf, size_t len) {
+static void nfs_pagecache_put(struct nfs_pagecache *pagecache, uint64_t offset, const char *buf, size_t len) {
 	time_t ts = pagecache->ttl ? time(NULL) : 1;
 	if (!pagecache->num_entries) return;
 	while (len > 0) {
@@ -286,7 +286,7 @@ struct nfs_cb_data {
        uint64_t offset, max_offset, org_offset;
        char *buffer;
        int not_my_buffer;
-       char *usrbuf;
+       const char *usrbuf;
        int update_pos;
 };
 
@@ -2499,7 +2499,7 @@ int nfs_read_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t count,
  * Async pwrite()
  */
 static void nfs_fill_WRITE3args (WRITE3args *args, struct nfsfh *fh, uint64_t offset, uint64_t count,
-                                 void *buf)
+                                 const void *buf)
 {
 	memset(args, 0, sizeof(WRITE3args));
 	args->file = fh->fh;
@@ -2507,7 +2507,7 @@ static void nfs_fill_WRITE3args (WRITE3args *args, struct nfsfh *fh, uint64_t of
 	args->count  = (count3)count;
 	args->stable = fh->is_sync ? FILE_SYNC : UNSTABLE;
 	args->data.data_len = (count3)count;
-	args->data.data_val = buf;
+	args->data.data_val = (char *)buf;
 }
 
 static void nfs_pwrite_mcb(struct rpc_context *rpc, int status, void *command_data, void *private_data)
@@ -2601,7 +2601,7 @@ static void nfs_pwrite_mcb(struct rpc_context *rpc, int status, void *command_da
 }
 
 
-static int nfs_pwrite_async_internal(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t offset, size_t count, char *buf, nfs_cb cb, void *private_data, int update_pos)
+static int nfs_pwrite_async_internal(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t offset, size_t count, const char *buf, nfs_cb cb, void *private_data, int update_pos)
 {
 	struct nfs_cb_data *data;
 
@@ -2673,7 +2673,7 @@ static int nfs_pwrite_async_internal(struct nfs_context *nfs, struct nfsfh *nfsf
 	return 0;
 }
 
-int nfs_pwrite_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t offset, uint64_t count, char *buf, nfs_cb cb, void *private_data)
+int nfs_pwrite_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t offset, uint64_t count, const void *buf, nfs_cb cb, void *private_data)
 {
 	return nfs_pwrite_async_internal(nfs, nfsfh, offset, (size_t)count, buf, cb, private_data, 0);
 }
@@ -2716,7 +2716,7 @@ static void nfs_write_append_cb(struct rpc_context *rpc, int status, void *comma
 	free_nfs_cb_data(data);
 }
 
-int nfs_write_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t count, char *buf, nfs_cb cb, void *private_data)
+int nfs_write_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t count, const void *buf, nfs_cb cb, void *private_data)
 {
 	if (nfsfh->is_append) {
 		struct GETATTR3args args;

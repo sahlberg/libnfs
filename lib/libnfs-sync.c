@@ -395,7 +395,7 @@ static void pread_cb(int status, struct nfs_context *nfs, void *data, void *priv
 	memcpy(buffer, (char *)data, status);
 }
 
-int nfs_pread(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t offset, uint64_t count, char *buffer)
+int nfs_pread(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t offset, uint64_t count, void *buffer)
 {
 	struct sync_cb_data cb_data;
 
@@ -416,7 +416,7 @@ int nfs_pread(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t offset, uin
 /*
  * read()
  */
-int nfs_read(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t count, char *buffer)
+int nfs_read(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t count, void *buffer)
 {
 	struct sync_cb_data cb_data;
 
@@ -526,7 +526,7 @@ static void pwrite_cb(int status, struct nfs_context *nfs, void *data, void *pri
 		nfs_set_error(nfs, "%s call failed with \"%s\"", cb_data->call, (char *)data);
 }
 
-int nfs_pwrite(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t offset, uint64_t count, char *buf)
+int nfs_pwrite(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t offset, uint64_t count, const void *buf)
 {
 	struct sync_cb_data cb_data;
 
@@ -546,7 +546,7 @@ int nfs_pwrite(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t offset, ui
 /*
  * write()
  */
-int nfs_write(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t count, char *buf)
+int nfs_write(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t count, const void *buf)
 {
 	struct sync_cb_data cb_data;
 
