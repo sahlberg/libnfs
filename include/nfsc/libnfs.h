@@ -538,7 +538,7 @@ EXTERN int nfs_pread_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_
  *    >=0 : numer of bytes read.
  * -errno : An error occured.
  */
-EXTERN int nfs_pread(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t offset, uint64_t count, char *buf);
+EXTERN int nfs_pread(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t offset, uint64_t count, void *buf);
 
 
 
@@ -566,7 +566,7 @@ EXTERN int nfs_read_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t
  *    >=0 : numer of bytes read.
  * -errno : An error occured.
  */
-EXTERN int nfs_read(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t count, char *buf);
+EXTERN int nfs_read(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t count, void *buf);
 
 
 
@@ -587,14 +587,14 @@ EXTERN int nfs_read(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t count
  * -errno : An error occured.
  *          data is the error string.
  */
-EXTERN int nfs_pwrite_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t offset, uint64_t count, char *buf, nfs_cb cb, void *private_data);
+EXTERN int nfs_pwrite_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t offset, uint64_t count, const void *buf, nfs_cb cb, void *private_data);
 /*
  * Sync pwrite()
  * Function returns
  *    >=0 : numer of bytes written.
  * -errno : An error occured.
  */
-EXTERN int nfs_pwrite(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t offset, uint64_t count, char *buf);
+EXTERN int nfs_pwrite(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t offset, uint64_t count, const void *buf);
 
 
 /*
@@ -613,14 +613,14 @@ EXTERN int nfs_pwrite(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t off
  * -errno : An error occured.
  *          data is the error string.
  */
-EXTERN int nfs_write_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t count, char *buf, nfs_cb cb, void *private_data);
+EXTERN int nfs_write_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t count, const void *buf, nfs_cb cb, void *private_data);
 /*
  * Sync write()
  * Function returns
  *    >=0 : numer of bytes written.
  * -errno : An error occured.
  */
-EXTERN int nfs_write(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t count, char *buf);
+EXTERN int nfs_write(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t count, const void *buf);
 
 
 /*
