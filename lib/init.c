@@ -112,7 +112,7 @@ struct rpc_context *rpc_init_server_context(int s)
 	return rpc;
 }
 
-uint32_t static round_to_power_of_two(uint32_t x) {
+static uint32_t round_to_power_of_two(uint32_t x) {
 	uint32_t power = 1;
 	while (power < x) {
 		power <<= 1;
