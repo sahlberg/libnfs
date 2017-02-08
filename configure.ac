@@ -22,7 +22,7 @@ if test "$SAVE_CFLAGS" = "x"; then
 fi
 
 # We always want 64 bit file offsets
-CFLAGS="${CFLAGS} -D_FILE_OFFSET_BITS=64"
+AC_SYS_LARGEFILE
 
 #option: utils
 AC_ARG_ENABLE([utils],
