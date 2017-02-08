@@ -89,6 +89,15 @@ static int rpc_reconnect_requeue(struct rpc_context *rpc);
 
 static int create_socket(int domain, int type, int protocol)
 {
+#ifdef SOCK_CLOEXEC
+	/* Linux-specific extension (since 2.6.27): set the
+	   close-on-exec flag on all sockets to avoid leaking file
+	   descriptors to child processes */
+	int fd = socket(domain, type|SOCK_CLOEXEC, protocol);
+	if (fd >= 0 || errno != EINVAL)
+		return fd;
+#endif
+
 	return socket(domain, type, protocol);
 }
 
