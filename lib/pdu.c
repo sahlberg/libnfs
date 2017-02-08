@@ -110,6 +110,7 @@ static struct rpc_pdu *rpc_allocate_reply_pdu(struct rpc_context *rpc,
 	pdu->outdata.data = malloc(ZDR_ENCODEBUF_MINSIZE + alloc_hint);
 	if (pdu->outdata.data == NULL) {
 		rpc_set_error(rpc, "Out of memory: Failed to allocate encode buffer");
+		free(pdu);
 		return NULL;
 	}
 
@@ -122,6 +123,7 @@ static struct rpc_pdu *rpc_allocate_reply_pdu(struct rpc_context *rpc,
 		rpc_set_error(rpc, "zdr_replymsg failed with %s",
 			      rpc_get_error(rpc));
 		zdr_destroy(&pdu->zdr);
+		free(pdu->outdata.data);
 		free(pdu);
 		return NULL;
 	}
@@ -158,6 +160,7 @@ struct rpc_pdu *rpc_allocate_pdu2(struct rpc_context *rpc, int program, int vers
 	pdu->outdata.data = malloc(ZDR_ENCODEBUF_MINSIZE + alloc_hint);
 	if (pdu->outdata.data == NULL) {
 		rpc_set_error(rpc, "Out of memory: Failed to allocate encode buffer");
+		free(pdu);
 		return NULL;
 	}
 
@@ -180,6 +183,7 @@ struct rpc_pdu *rpc_allocate_pdu2(struct rpc_context *rpc, int program, int vers
 		rpc_set_error(rpc, "zdr_callmsg failed with %s",
 			      rpc_get_error(rpc));
 		zdr_destroy(&pdu->zdr);
+		free(pdu->outdata.data);
 		free(pdu);
 		return NULL;
 	}
