@@ -200,9 +200,7 @@ void rpc_free_pdu(struct rpc_context *rpc, struct rpc_pdu *pdu)
 {
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
-	if (pdu->outdata.data != NULL) {
-		free(pdu->outdata.data);
-	}
+	free(pdu->outdata.data);
 
 	if (pdu->zdr_decode_buf != NULL) {
 		zdr_free(pdu->zdr_decode_fn, pdu->zdr_decode_buf);
