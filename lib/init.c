@@ -258,8 +258,8 @@ void rpc_error_all_pdus(struct rpc_context *rpc, const char *error)
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
 	while ((pdu = rpc->outqueue.head) != NULL) {
-          pdu->cb(rpc, RPC_STATUS_ERROR, (void *)error, pdu->private_data);
 		rpc->outqueue.head = pdu->next;
+          pdu->cb(rpc, RPC_STATUS_ERROR, (void *)error, pdu->private_data);
 		rpc_free_pdu(rpc, pdu);
 	}
 	rpc->outqueue.tail = NULL;
@@ -268,9 +268,9 @@ void rpc_error_all_pdus(struct rpc_context *rpc, const char *error)
 		struct rpc_queue *q = &rpc->waitpdu[i];
 
 		while((pdu = q->head) != NULL) {
+			q->head = pdu->next;
                   pdu->cb(rpc, RPC_STATUS_ERROR, (void *)error,
                           pdu->private_data);
-			q->head = pdu->next;
 			rpc_free_pdu(rpc, pdu);
 		}
 		q->tail = NULL;
@@ -337,8 +337,8 @@ void rpc_destroy_context(struct rpc_context *rpc)
         }
 
 	while((pdu = rpc->outqueue.head) != NULL) {
-		pdu->cb(rpc, RPC_STATUS_CANCEL, NULL, pdu->private_data);
 		LIBNFS_LIST_REMOVE(&rpc->outqueue.head, pdu);
+		pdu->cb(rpc, RPC_STATUS_CANCEL, NULL, pdu->private_data);
 		rpc_free_pdu(rpc, pdu);
 	}
 
@@ -346,8 +346,8 @@ void rpc_destroy_context(struct rpc_context *rpc)
 		struct rpc_queue *q = &rpc->waitpdu[i];
 
 		while((pdu = q->head) != NULL) {
-			pdu->cb(rpc, RPC_STATUS_CANCEL, NULL, pdu->private_data);
 			LIBNFS_LIST_REMOVE(&q->head, pdu);
+			pdu->cb(rpc, RPC_STATUS_CANCEL, NULL, pdu->private_data);
 			rpc_free_pdu(rpc, pdu);
 		}
 	}
