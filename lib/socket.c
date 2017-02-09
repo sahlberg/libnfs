@@ -87,6 +87,20 @@
 
 static int rpc_reconnect_requeue(struct rpc_context *rpc);
 
+static int create_socket(int domain, int type, int protocol)
+{
+#ifdef SOCK_CLOEXEC
+	/* Linux-specific extension (since 2.6.27): set the
+	   close-on-exec flag on all sockets to avoid leaking file
+	   descriptors to child processes */
+	int fd = socket(domain, type|SOCK_CLOEXEC, protocol);
+	if (fd >= 0 || errno != EINVAL)
+		return fd;
+#endif
+
+	return socket(domain, type, protocol);
+}
+
 static int set_nonblocking(int fd)
 {
 	int v = 0;
@@ -453,7 +467,7 @@ static int rpc_connect_sockaddr_async(struct rpc_context *rpc)
 	switch (s->ss_family) {
 	case AF_INET:
 		socksize = sizeof(struct sockaddr_in);
-		rpc->fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+		rpc->fd = create_socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 		if (set_bind_device(rpc->fd, rpc->ifname) != 0) {
 			rpc_set_error (rpc, "Failed to bind to interface");
 			return -1;
@@ -467,7 +481,7 @@ static int rpc_connect_sockaddr_async(struct rpc_context *rpc)
 		break;
 	case AF_INET6:
 		socksize = sizeof(struct sockaddr_in6);
-		rpc->fd = socket(AF_INET6, SOCK_STREAM, IPPROTO_TCP);
+		rpc->fd = create_socket(AF_INET6, SOCK_STREAM, IPPROTO_TCP);
 		if (set_bind_device(rpc->fd, rpc->ifname) != 0) {
 			rpc_set_error (rpc, "Failed to bind to interface");
 			return -1;
@@ -751,7 +765,7 @@ int rpc_bind_udp(struct rpc_context *rpc, char *addr, int port)
 
 	switch(ai->ai_family) {
 	case AF_INET:
-		rpc->fd = socket(ai->ai_family, SOCK_DGRAM, 0);
+		rpc->fd = create_socket(ai->ai_family, SOCK_DGRAM, 0);
 		if (rpc->fd == -1) {
 			rpc_set_error(rpc, "Failed to create UDP socket: %s", strerror(errno));
 			freeaddrinfo(ai);
