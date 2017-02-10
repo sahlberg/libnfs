@@ -42,10 +42,8 @@ AC_ARG_ENABLE([examples],
 # We need popt to compile the examples
 if test x$ENABLE_EXAMPLES = xyes; then
 AC_MSG_CHECKING(whether libpopt is available)
-ac_save_CFLAGS="$CFLAGS"
 ac_save_LIBS="$LIBS"
-CFLAGS="$CFLAGS $GLIB_CFLAGS"
-LIBS="$GLIB_LIBS $LIBS -lpopt"
+LIBS="$LIBS -lpopt"
 AC_TRY_RUN([
 /*
  * Just see if we can compile/link with popt
@@ -64,7 +62,6 @@ int main(int argc, const char *argv[])
 ], ac_cv_have_popt=yes, ac_cv_have_popt=no,
    [echo $ac_n "compile with POPT. Assuming OK... $ac_c"
     ac_cv_have_popt=yes])
-CFLAGS="$ac_save_CFLAGS"
 LIBS="$ac_save_LIBS"
 if test "$ac_cv_have_popt" = yes ; then
   AC_MSG_RESULT(yes)
