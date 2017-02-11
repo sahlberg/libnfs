@@ -188,7 +188,6 @@ int rpc_nfs4_null_async(struct rpc_context *rpc, rpc_cb cb, void *private_data)
 
 	if (rpc_queue_pdu(rpc, pdu) != 0) {
 		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for NFS4/NULL call");
-		rpc_free_pdu(rpc, pdu);
 		return -2;
 	}
 
@@ -213,7 +212,6 @@ int rpc_nfs4_compound_async(struct rpc_context *rpc, rpc_cb cb, struct COMPOUND4
 
 	if (rpc_queue_pdu(rpc, pdu) != 0) {
 		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for NFS4/COMPOUND4 call");
-		rpc_free_pdu(rpc, pdu);
 		return -3;
 	}
 

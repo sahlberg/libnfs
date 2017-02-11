@@ -40,7 +40,6 @@ int rpc_pmap2_null_async(struct rpc_context *rpc, rpc_cb cb, void *private_data)
 
 	if (rpc_queue_pdu(rpc, pdu) != 0) {
 		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for PORTMAP2/NULL call");
-		rpc_free_pdu(rpc, pdu);
 		return -1;
 	}
 
@@ -70,7 +69,6 @@ int rpc_pmap2_getport_async(struct rpc_context *rpc, int program, int version, i
 
 	if (rpc_queue_pdu(rpc, pdu) != 0) {
 		rpc_set_error(rpc, "Failed to queue PORTMAP2/GETPORT pdu");
-		rpc_free_pdu(rpc, pdu);
 		return -1;
 	}
 
@@ -100,7 +98,6 @@ int rpc_pmap2_set_async(struct rpc_context *rpc, int program, int version, int p
 
 	if (rpc_queue_pdu(rpc, pdu) != 0) {
 		rpc_set_error(rpc, "Failed to queue PORTMAP2/SET pdu");
-		rpc_free_pdu(rpc, pdu);
 		return -1;
 	}
 
@@ -130,7 +127,6 @@ int rpc_pmap2_unset_async(struct rpc_context *rpc, int program, int version, int
 
 	if (rpc_queue_pdu(rpc, pdu) != 0) {
 		rpc_set_error(rpc, "Failed to queue PORTMAP2/UNSET pdu");
-		rpc_free_pdu(rpc, pdu);
 		return -1;
 	}
 
@@ -149,7 +145,6 @@ int rpc_pmap2_dump_async(struct rpc_context *rpc, rpc_cb cb, void *private_data)
 
 	if (rpc_queue_pdu(rpc, pdu) != 0) {
 		rpc_set_error(rpc, "Failed to queue PORTMAP2/DUMP pdu");
-		rpc_free_pdu(rpc, pdu);
 		return -1;
 	}
 
@@ -202,7 +197,6 @@ int rpc_pmap3_null_async(struct rpc_context *rpc, rpc_cb cb, void *private_data)
 
 	if (rpc_queue_pdu(rpc, pdu) != 0) {
 		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for PORTMAP3/NULL call");
-		rpc_free_pdu(rpc, pdu);
 		return -1;
 	}
 
@@ -227,7 +221,6 @@ int rpc_pmap3_set_async(struct rpc_context *rpc, struct pmap3_mapping *map, rpc_
 
 	if (rpc_queue_pdu(rpc, pdu) != 0) {
 		rpc_set_error(rpc, "Failed to queue PORTMAP3/SET pdu");
-		rpc_free_pdu(rpc, pdu);
 		return -1;
 	}
 
@@ -252,7 +245,6 @@ int rpc_pmap3_unset_async(struct rpc_context *rpc, struct pmap3_mapping *map, rp
 
 	if (rpc_queue_pdu(rpc, pdu) != 0) {
 		rpc_set_error(rpc, "Failed to queue PORTMAP3/UNSET pdu");
-		rpc_free_pdu(rpc, pdu);
 		return -1;
 	}
 
@@ -277,7 +269,6 @@ int rpc_pmap3_getaddr_async(struct rpc_context *rpc, struct pmap3_mapping *map, 
 
 	if (rpc_queue_pdu(rpc, pdu) != 0) {
 		rpc_set_error(rpc, "Failed to queue PORTMAP3/GETADDR pdu");
-		rpc_free_pdu(rpc, pdu);
 		return -1;
 	}
 
@@ -296,7 +287,6 @@ int rpc_pmap3_dump_async(struct rpc_context *rpc, rpc_cb cb, void *private_data)
 
 	if (rpc_queue_pdu(rpc, pdu) != 0) {
 		rpc_set_error(rpc, "Failed to queue PORTMAP3/DUMP pdu");
-		rpc_free_pdu(rpc, pdu);
 		return -1;
 	}
 
@@ -315,7 +305,6 @@ int rpc_pmap3_gettime_async(struct rpc_context *rpc, rpc_cb cb, void *private_da
 
 	if (rpc_queue_pdu(rpc, pdu) != 0) {
 		rpc_set_error(rpc, "Failed to queue PORTMAP3/GETTIME pdu");
-		rpc_free_pdu(rpc, pdu);
 		return -1;
 	}
 
