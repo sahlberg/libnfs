@@ -105,7 +105,7 @@ static int set_nonblocking(int fd)
 {
 	int v = 0;
 #if defined(WIN32)
-	long nonblocking=1;
+	u_long nonblocking=1;
 	v = ioctl(fd, FIONBIO, &nonblocking);
 #else
 	v = fcntl(fd, F_GETFL, 0);
