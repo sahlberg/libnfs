@@ -534,6 +534,7 @@ void nfs_destroy_context(struct nfs_context *nfs)
 		LIBNFS_LIST_REMOVE(&nfs->nested_mounts, mnt);
 		free(mnt->path);
 		free(mnt->fh.data.data_val);
+                free(mnt);
 	}
 
 	rpc_destroy_context(nfs->rpc);
