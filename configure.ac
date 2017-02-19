@@ -42,29 +42,19 @@ AC_ARG_ENABLE([examples],
 # We need popt to compile the examples
 if test x$ENABLE_EXAMPLES = xyes; then
 AC_MSG_CHECKING(whether libpopt is available)
-ac_save_CFLAGS="$CFLAGS"
 ac_save_LIBS="$LIBS"
-CFLAGS="$CFLAGS $GLIB_CFLAGS"
-LIBS="$GLIB_LIBS $LIBS -lpopt"
-AC_TRY_RUN([
+LIBS="$LIBS -lpopt"
+AC_TRY_LINK([#include <popt.h>], [
 /*
  * Just see if we can compile/link with popt
  */
-#include <popt.h>
-
-int main(int argc, const char *argv[])
-{
+	int _argc;
+	char **_argv;
 	struct poptOption popt_options[] = {
 		POPT_TABLEEND
 	};
-	poptGetContext(argv[0], argc, argv, popt_options, POPT_CONTEXT_KEEP_FIRST);
-
-	return 0;
-}
-], ac_cv_have_popt=yes, ac_cv_have_popt=no,
-   [echo $ac_n "compile with POPT. Assuming OK... $ac_c"
-    ac_cv_have_popt=yes])
-CFLAGS="$ac_save_CFLAGS"
+	poptGetContext(_argv[0], _argc, _argv, popt_options, POPT_CONTEXT_KEEP_FIRST);
+], ac_cv_have_popt=yes, ac_cv_have_popt=no)
 LIBS="$ac_save_LIBS"
 if test "$ac_cv_have_popt" = yes ; then
   AC_MSG_RESULT(yes)
@@ -79,20 +69,9 @@ fi
 AC_SUBST(MAYBE_EXAMPLES)
 
 AC_MSG_CHECKING(whether SO_BINDTODEVICE is available)
-AC_TRY_RUN([
-/*
- * Just see if we can compile with SO_BINDTODEVICE
- */
-#include <net/if.h>
-
-int main(int argc, const char *argv[])
-{
+AC_TRY_COMPILE([#include <net/if.h>], [
         int i = SO_BINDTODEVICE;
-	return 0;
-}
-], ac_cv_have_so_bindtodevice=yes, ac_cv_have_so_bindtodevice=no,
-   [echo $ac_n "compile with SO_BINDTODEVICE. Assuming OK... $ac_c"
-    ac_cv_have_so_bindtodevice=yes])
+], ac_cv_have_so_bindtodevice=yes, ac_cv_have_so_bindtodevice=no)
 if test "$ac_cv_have_so_bindtodevice" = yes ; then
   AC_MSG_RESULT(yes)
   AC_DEFINE(HAVE_SO_BINDTODEVICE, 1, [Whether our sockets support SO_BINDTODEVICE])
