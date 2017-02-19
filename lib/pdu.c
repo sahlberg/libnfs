@@ -114,10 +114,11 @@ static struct rpc_pdu *rpc_allocate_reply_pdu(struct rpc_context *rpc,
 		return NULL;
 	}
 
-	zdrmem_create(&pdu->zdr, pdu->outdata.data, ZDR_ENCODEBUF_MINSIZE + alloc_hint, ZDR_ENCODE);
-	if (rpc->is_udp == 0) {
-		zdr_setpos(&pdu->zdr, 4); /* skip past the record marker */
-	}
+        /* Add an iovector for the record marker. Ignored for UDP */
+        rpc_add_iovector(rpc, &pdu->out, pdu->outdata.data, 4, NULL);
+
+	zdrmem_create(&pdu->zdr, &pdu->outdata.data[4],
+                      ZDR_ENCODEBUF_MINSIZE + alloc_hint, ZDR_ENCODE);
 
 	if (zdr_replymsg(rpc, &pdu->zdr, res) == 0) {
 		rpc_set_error(rpc, "zdr_replymsg failed with %s",
@@ -127,6 +128,10 @@ static struct rpc_pdu *rpc_allocate_reply_pdu(struct rpc_context *rpc,
 		free(pdu);
 		return NULL;
 	}
+
+        /* Add an iovector for the header */
+        rpc_add_iovector(rpc, &pdu->out, &pdu->outdata.data[4],
+                         zdr_getpos(&pdu->zdr), NULL);
 
 	return pdu;
 }
@@ -164,10 +169,11 @@ struct rpc_pdu *rpc_allocate_pdu2(struct rpc_context *rpc, int program, int vers
 		return NULL;
 	}
 
-	zdrmem_create(&pdu->zdr, pdu->outdata.data, ZDR_ENCODEBUF_MINSIZE + alloc_hint, ZDR_ENCODE);
-	if (rpc->is_udp == 0) {
-		zdr_setpos(&pdu->zdr, 4); /* skip past the record marker */
-	}
+        /* Add an iovector for the record marker. Ignored for UDP */
+        rpc_add_iovector(rpc, &pdu->out, pdu->outdata.data, 4, NULL);
+
+        zdrmem_create(&pdu->zdr, &pdu->outdata.data[4],
+                      ZDR_ENCODEBUF_MINSIZE + alloc_hint, ZDR_ENCODE);
 
 	memset(&msg, 0, sizeof(struct rpc_msg));
 	msg.xid                = pdu->xid;
@@ -188,6 +194,10 @@ struct rpc_pdu *rpc_allocate_pdu2(struct rpc_context *rpc, int program, int vers
 		return NULL;
 	}
 
+        /* Add an iovector for the header */
+        rpc_add_iovector(rpc, &pdu->out, &pdu->outdata.data[4],
+                         zdr_getpos(&pdu->zdr), NULL);
+
 	return pdu;
 }
 
@@ -201,6 +211,7 @@ void rpc_free_pdu(struct rpc_context *rpc, struct rpc_pdu *pdu)
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
 	free(pdu->outdata.data);
+        rpc_free_iovector(rpc, &pdu->out);
 
 	if (pdu->zdr_decode_buf != NULL) {
 		zdr_free(pdu->zdr_decode_fn, pdu->zdr_decode_buf);
@@ -218,35 +229,70 @@ void rpc_set_next_xid(struct rpc_context *rpc, uint32_t xid)
 
 int rpc_queue_pdu(struct rpc_context *rpc, struct rpc_pdu *pdu)
 {
-	int size, recordmarker;
+	int i, size = 0, pos = zdr_getpos(&pdu->zdr);
+        uint32_t recordmarker;
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
-	size = zdr_getpos(&pdu->zdr);
+        for (i = 1; i < pdu->out.niov; i++) {
+                size += pdu->out.iov[i].len;
+        }
+        pdu->out.total_size = size + 4;
+
+        /* If we need to add any additional iovectors
+         *
+         * We expect to almost always add an iovector here for the remainder
+         * of the outdata marshalling buffer.
+         * The exception is WRITE where we add an explicit iovector instead
+         * of marshalling it in ZDR. This so that we can do zero-copy for
+         * the WRITE path.
+         */
+        if (pos > size) {
+                int count = pos - size;
+
+                rpc_add_iovector(rpc, &pdu->out,
+                                 &pdu->outdata.data[pdu->out.total_size],
+                                 count, NULL);
+                pdu->out.total_size += count;
+                size = pos;
+        }
+
+	/* write recordmarker */
+        recordmarker = htonl(size | 0x80000000);
+	memcpy(pdu->out.iov[0].buf, &recordmarker, 4);
 
 	/* for udp we dont queue, we just send it straight away */
 	if (rpc->is_udp != 0) {
 		unsigned int hash;
 
-// XXX add a rpc->udp_dest_sock_size  and get rid of sys/socket.h and netinet/in.h
-		if (sendto(rpc->fd, pdu->zdr.buf, size, MSG_DONTWAIT,
-                           (struct sockaddr *)&rpc->udp_dest,
-                           sizeof(rpc->udp_dest)) < 0) {
-			rpc_set_error(rpc, "Sendto failed with errno %s", strerror(errno));
-			rpc_free_pdu(rpc, pdu);
-			return -1;
-		}
+                if (rpc->is_broadcast) {
+                        if (sendto(rpc->fd, pdu->zdr.buf, size, MSG_DONTWAIT,
+                                   (struct sockaddr *)&rpc->udp_dest,
+                                   sizeof(rpc->udp_dest)) < 0) {
+                                rpc_set_error(rpc, "Sendto failed with errno %s", strerror(errno));
+                                rpc_free_pdu(rpc, pdu);
+                                return -1;
+                        }
+                } else {
+                        struct iovec iov[RPC_MAX_VECTORS];
+                        int niov = pdu->out.niov;
+
+                        for (i = 0; i < niov; i++) {
+                                iov[i].iov_base = pdu->out.iov[i].buf;
+                                iov[i].iov_len = pdu->out.iov[i].len;
+                        }
+                        if (writev(rpc->fd, &iov[1], niov - 1) < 0) {
+                                rpc_set_error(rpc, "Sendto failed with errno %s", strerror(errno));
+                                rpc_free_pdu(rpc, pdu);
+                                return -1;
+                        }
+                }
 
 		hash = rpc_hash_xid(pdu->xid);
 		rpc_enqueue(&rpc->waitpdu[hash], pdu);
 		rpc->waitpdu_len++;
 		return 0;
 	}
-
-	/* write recordmarker */
-	zdr_setpos(&pdu->zdr, 0);
-	recordmarker = (size - 4) | 0x80000000;
-	zdr_int(&pdu->zdr, &recordmarker);
 
 	pdu->outdata.size = size;
 	rpc_enqueue(&rpc->outqueue, pdu);
