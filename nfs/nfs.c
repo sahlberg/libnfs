@@ -34,6 +34,8 @@
 #include "libnfs-private.h"
 #include "libnfs-raw-nfs.h"
 
+uint32_t zero_padding;
+
 char *nfsstat3_to_str(int error)
 {
 	switch (error) {
@@ -312,9 +314,29 @@ int rpc_nfs_read_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh, u
 	return rpc_nfs3_read_async(rpc, cb, &args, private_data);
 }
 
+/* Replacement WRITE3args so that we can add the data as an iovector
+ * instead of marshalling it in the out buffer.
+ * This will marshall the WRITE3args structure except for the final
+ * byte/array for the actual data.
+ */
+uint32_t
+zdr_WRITE3args_zerocopy(ZDR *zdrs, WRITE3args *objp)
+{
+	if (!zdr_nfs_fh3 (zdrs, &objp->file))
+                return FALSE;
+        if (!zdr_offset3 (zdrs, &objp->offset))
+                return FALSE;
+        if (!zdr_count3 (zdrs, &objp->count))
+                return FALSE;
+        if (!zdr_stable_how (zdrs, &objp->stable))
+                return FALSE;
+	return TRUE;
+}
+
 int rpc_nfs3_write_async(struct rpc_context *rpc, rpc_cb cb, struct WRITE3args *args, void *private_data)
 {
 	struct rpc_pdu *pdu;
+        int start;
 
 	pdu = rpc_allocate_pdu2(rpc, NFS_PROGRAM, NFS_V3, NFS3_WRITE, cb, private_data, (zdrproc_t)zdr_WRITE3res, sizeof(WRITE3res), args->count);
 	if (pdu == NULL) {
@@ -322,11 +344,34 @@ int rpc_nfs3_write_async(struct rpc_context *rpc, rpc_cb cb, struct WRITE3args *
 		return -1;
 	}
 
-	if (zdr_WRITE3args(&pdu->zdr, args) == 0) {
+        start = zdr_getpos(&pdu->zdr);
+
+	if (zdr_WRITE3args_zerocopy(&pdu->zdr, args) == 0) {
 		rpc_set_error(rpc, "ZDR error: Failed to encode WRITE3args");
 		rpc_free_pdu(rpc, pdu);
 		return -2;
 	}
+
+        /* Add an iovector for the WRITE3 header */
+        rpc_add_iovector(rpc, &pdu->out, &pdu->outdata.data[start + 4],
+                         zdr_getpos(&pdu->zdr) - start, NULL);
+
+
+        /* Add an iovector for the length of the byte/array blob */
+        start = zdr_getpos(&pdu->zdr);
+        zdr_u_int(&pdu->zdr, &args->data.data_len);
+        rpc_add_iovector(rpc, &pdu->out, &pdu->outdata.data[start + 4],
+                         4, NULL);
+
+        /* Add an iovector for the data itself */
+        rpc_add_iovector(rpc, &pdu->out, args->data.data_val,
+                         args->data.data_len, NULL);
+
+        /* We may need to pad this to 4 byte boundary */
+        if (args->data.data_len & 0x03) {
+                rpc_add_iovector(rpc, &pdu->out, (char *)&zero_padding,
+                                 4 - args->data.data_len & 0x03, NULL);
+        }
 
 	if (rpc_queue_pdu(rpc, pdu) != 0) {
 		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for NFS3/WRITE call");
