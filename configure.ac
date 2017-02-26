@@ -148,6 +148,10 @@ AC_CHECK_HEADERS([sys/vfs.h])
 dnl Check for sys/statvfs.h
 AC_CHECK_HEADERS([sys/statvfs.h])
 
+# check for fuse.h
+dnl Check for fuse.h
+AC_CHECK_HEADERS([fuse.h])
+
 # check for sys/socket.h
 dnl Check for sys/socket.h
 AC_CHECK_HEADERS([sys/socket.h])
