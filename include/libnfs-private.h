@@ -133,6 +133,7 @@ struct rpc_context {
 	/* track the address we connect to so we can auto-reconnect on session failure */
 	struct sockaddr_storage s;
 	int auto_reconnect;
+	int auto_reconnect_retries;
 
 	/* fragment reassembly */
 	struct rpc_fragment *fragments;

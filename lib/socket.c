@@ -85,6 +85,8 @@
 #include "win32_errnowrapper.h"
 #endif
 
+#define NR_RECONNECT_RETRIES 10
+
 static int rpc_reconnect_requeue(struct rpc_context *rpc);
 
 static int create_socket(int domain, int type, int protocol)
@@ -703,6 +705,9 @@ static int rpc_reconnect_requeue(struct rpc_context *rpc)
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
+	if (rpc->is_connected)
+		rpc->auto_reconnect_retries = NR_RECONNECT_RETRIES;
+
 	if (rpc->fd != -1) {
 		rpc->old_fd = rpc->fd;
 	}
@@ -728,7 +733,8 @@ static int rpc_reconnect_requeue(struct rpc_context *rpc)
 	}
 	rpc->waitpdu_len = 0;
 
-	if (rpc->auto_reconnect != 0) {
+	if (rpc->auto_reconnect != 0 && rpc->auto_reconnect_retries > 0) {
+		rpc->auto_reconnect_retries--;
 		rpc->connect_cb  = reconnect_cb;
 		RPC_LOG(rpc, 1, "reconnect initiated");
 		if (rpc_connect_sockaddr_async(rpc) != 0) {
