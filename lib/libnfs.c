@@ -27,9 +27,12 @@
 
 #ifdef WIN32
 #include "win32_compat.h"
-#define PRIu64 "llu"
-#else
+#endif
+
+#ifdef HAVE_INTTYPES_H
 #include <inttypes.h>
+#else
+#define PRIu64 "llu"
 #endif
 
 #ifdef HAVE_UTIME_H
