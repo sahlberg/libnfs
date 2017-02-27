@@ -22,14 +22,11 @@
 #define _LIBNFS_H_
 
 #include <stdint.h>
-#if defined(__ANDROID__)
+#if defined(__ANDROID__) || defined(AROS) \
+ || ( defined(__APPLE__) && defined(__MACH__) )
 #include <sys/time.h>
-#endif
-#if defined(AROS)
-#include <sys/time.h>
-#endif
-#if defined(__APPLE__) && defined(__MACH__)
-#include <sys/time.h>
+#else
+#include <time.h>
 #endif
 
 #ifdef __cplusplus
@@ -57,7 +54,10 @@ struct nfs_url {
 #define EXTERN
 #endif
 
-#if defined(WIN32)
+#ifdef WIN32
+#ifdef HAVE_FUSE_H
+#include <fuse.h>
+#else
 struct statvfs {
 	uint32_t	f_bsize;
 	uint32_t	f_frsize;
@@ -71,6 +71,7 @@ struct statvfs {
 	uint32_t	f_flag;
 	uint32_t	f_namemax;
 };
+#endif
 #if !defined(__MINGW32__)
 struct utimbuf {
 	time_t actime;
