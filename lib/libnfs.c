@@ -5692,7 +5692,6 @@ int rpc_null_async(struct rpc_context *rpc, int program, int version, rpc_cb cb,
 
 	if (rpc_queue_pdu(rpc, pdu) != 0) {
 		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for NULL call");
-		rpc_free_pdu(rpc, pdu);
 		return -1;
 	}
 
