@@ -102,7 +102,7 @@ case $host in
     AC_CHECK_LIB([socket], [main], , [AC_MSG_ERROR([Can not find required library])])
     AC_CHECK_LIB([nsl],    [main], , [AC_MSG_ERROR([Can not find required library])])
     ;;
-  *mingw32* | *cygwin* | *wince* | *mingwce*)
+  *mingw32* | *wince* | *mingwce*)
     LIBSOCKET='-lws2_32'
     SYS=mingw32
     ;;
