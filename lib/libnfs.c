@@ -2759,12 +2759,30 @@ int nfs_write_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t count
  * close
  */
 
+static void nfs_close_cb(int err, struct nfs_context *nfs, void *ret_data, void *private_data) {
+    struct nfs_cb_data *data = private_data;
+    free_nfsfh(data->nfsfh);
+    data->cb(err, nfs, ret_data, data->private_data);
+    free_nfs_cb_data(data);
+}
+
 int nfs_close_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_cb cb, void *private_data)
 {
-	free_nfsfh(nfsfh);
-	cb(0, nfs, NULL, private_data);
-	return 0;
-};
+    struct nfs_cb_data *data;
+
+    data = malloc(sizeof(struct nfs_cb_data));
+    if (data == NULL) {
+        rpc_set_error(nfs->rpc, "out of memory: failed to allocate nfs_cb_data structure");
+        return -1;
+    }
+    memset(data, 0, sizeof(struct nfs_cb_data));
+
+    data->nfsfh = nfsfh;
+    data->cb = cb;
+    data->private_data = private_data;
+
+    return nfs_fsync_async(nfs, nfsfh, nfs_close_cb, data);
+}
 
 
 
