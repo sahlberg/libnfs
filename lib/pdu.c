@@ -86,6 +86,51 @@ unsigned int rpc_hash_xid(uint32_t xid)
 
 #define PAD_TO_8_BYTES(x) ((x + 0x07) & ~0x07)
 
+static struct rpc_pdu *rpc_allocate_reply_pdu(struct rpc_context *rpc,
+                                              struct rpc_msg *res,
+                                              size_t alloc_hint)
+{
+	struct rpc_pdu *pdu;
+
+	assert(rpc->magic == RPC_CONTEXT_MAGIC);
+
+	pdu = malloc(sizeof(struct rpc_pdu));
+	if (pdu == NULL) {
+		rpc_set_error(rpc, "Out of memory: Failed to allocate pdu structure");
+		return NULL;
+	}
+	memset(pdu, 0, sizeof(struct rpc_pdu));
+        pdu->flags              = PDU_DISCARD_AFTER_SENDING;
+	pdu->xid                = 0;
+	pdu->cb                 = NULL;
+	pdu->private_data       = NULL;
+	pdu->zdr_decode_fn      = NULL;
+	pdu->zdr_decode_bufsize = 0;
+
+	pdu->outdata.data = malloc(ZDR_ENCODEBUF_MINSIZE + alloc_hint);
+	if (pdu->outdata.data == NULL) {
+		rpc_set_error(rpc, "Out of memory: Failed to allocate encode buffer");
+		free(pdu);
+		return NULL;
+	}
+
+	zdrmem_create(&pdu->zdr, pdu->outdata.data, ZDR_ENCODEBUF_MINSIZE + alloc_hint, ZDR_ENCODE);
+	if (rpc->is_udp == 0) {
+		zdr_setpos(&pdu->zdr, 4); /* skip past the record marker */
+	}
+
+	if (zdr_replymsg(rpc, &pdu->zdr, res) == 0) {
+		rpc_set_error(rpc, "zdr_replymsg failed with %s",
+			      rpc_get_error(rpc));
+		zdr_destroy(&pdu->zdr);
+		free(pdu->outdata.data);
+		free(pdu);
+		return NULL;
+	}
+
+	return pdu;
+}
+
 struct rpc_pdu *rpc_allocate_pdu2(struct rpc_context *rpc, int program, int version, int procedure, rpc_cb cb, void *private_data, zdrproc_t zdr_decode_fn, int zdr_decode_bufsize, size_t alloc_hint)
 {
 	struct rpc_pdu *pdu;
@@ -115,6 +160,7 @@ struct rpc_pdu *rpc_allocate_pdu2(struct rpc_context *rpc, int program, int vers
 	pdu->outdata.data = malloc(ZDR_ENCODEBUF_MINSIZE + alloc_hint);
 	if (pdu->outdata.data == NULL) {
 		rpc_set_error(rpc, "Out of memory: Failed to allocate encode buffer");
+		free(pdu);
 		return NULL;
 	}
 
@@ -137,6 +183,7 @@ struct rpc_pdu *rpc_allocate_pdu2(struct rpc_context *rpc, int program, int vers
 		rpc_set_error(rpc, "zdr_callmsg failed with %s",
 			      rpc_get_error(rpc));
 		zdr_destroy(&pdu->zdr);
+		free(pdu->outdata.data);
 		free(pdu);
 		return NULL;
 	}
@@ -153,14 +200,10 @@ void rpc_free_pdu(struct rpc_context *rpc, struct rpc_pdu *pdu)
 {
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
-	if (pdu->outdata.data != NULL) {
-		free(pdu->outdata.data);
-		pdu->outdata.data = NULL;
-	}
+	free(pdu->outdata.data);
 
 	if (pdu->zdr_decode_buf != NULL) {
 		zdr_free(pdu->zdr_decode_fn, pdu->zdr_decode_buf);
-		pdu->zdr_decode_buf = NULL;
 	}
 
 	zdr_destroy(&pdu->zdr);
@@ -186,7 +229,9 @@ int rpc_queue_pdu(struct rpc_context *rpc, struct rpc_pdu *pdu)
 		unsigned int hash;
 
 // XXX add a rpc->udp_dest_sock_size  and get rid of sys/socket.h and netinet/in.h
-		if (sendto(rpc->fd, pdu->zdr.buf, size, MSG_DONTWAIT, rpc->udp_dest, sizeof(struct sockaddr_in)) < 0) {
+		if (sendto(rpc->fd, pdu->zdr.buf, size, MSG_DONTWAIT,
+                           (struct sockaddr *)&rpc->udp_dest,
+                           sizeof(rpc->udp_dest)) < 0) {
 			rpc_set_error(rpc, "Sendto failed with errno %s", strerror(errno));
 			rpc_free_pdu(rpc, pdu);
 			return -1;
@@ -194,6 +239,7 @@ int rpc_queue_pdu(struct rpc_context *rpc, struct rpc_pdu *pdu)
 
 		hash = rpc_hash_xid(pdu->xid);
 		rpc_enqueue(&rpc->waitpdu[hash], pdu);
+		rpc->waitpdu_len++;
 		return 0;
 	}
 
@@ -230,7 +276,6 @@ static int rpc_process_reply(struct rpc_context *rpc, struct rpc_pdu *pdu, ZDR *
 	}
 	msg.body.rbody.reply.areply.reply_data.results.where = pdu->zdr_decode_buf;
 	msg.body.rbody.reply.areply.reply_data.results.proc  = pdu->zdr_decode_fn;
-
 	if (zdr_replymsg(rpc, zdr, &msg) == 0) {
 		rpc_set_error(rpc, "zdr_replymsg failed in rpc_process_reply: "
 			      "%s", rpc_get_error(rpc));
@@ -270,6 +315,137 @@ static int rpc_process_reply(struct rpc_context *rpc, struct rpc_pdu *pdu, ZDR *
 	}
 
 	return 0;
+}
+
+static int rpc_send_error_reply(struct rpc_context *rpc,
+                                struct rpc_msg *call,
+                                enum accept_stat err,
+                                int min_vers, int max_vers)
+{
+        struct rpc_pdu *pdu;
+        struct rpc_msg res;
+
+	assert(rpc->magic == RPC_CONTEXT_MAGIC);
+
+	memset(&res, 0, sizeof(struct rpc_msg));
+	res.xid                                      = call->xid;
+        res.direction                                = REPLY;
+        res.body.rbody.stat                          = MSG_ACCEPTED;
+        res.body.rbody.reply.areply.reply_data.mismatch_info.low  = min_vers;
+        res.body.rbody.reply.areply.reply_data.mismatch_info.high = max_vers;
+	res.body.rbody.reply.areply.verf             = _null_auth;
+	res.body.rbody.reply.areply.stat             = err;
+
+        if (rpc->is_udp) {
+                /* send the reply back to the client */
+                memcpy(&rpc->udp_dest, &rpc->udp_src, sizeof(rpc->udp_dest));
+        }
+
+        pdu  = rpc_allocate_reply_pdu(rpc, &res, 0);
+        if (pdu == NULL) {
+                rpc_set_error(rpc, "Failed to send error_reply: %s",
+                              rpc_get_error(rpc));
+                return -1;
+        }
+        rpc_queue_pdu(rpc, pdu);
+
+        return 0;
+}
+
+int rpc_send_reply(struct rpc_context *rpc,
+                   struct rpc_msg *call,
+                   void *reply,
+                   zdrproc_t encode_fn,
+                   int alloc_hint)
+{
+        struct rpc_pdu *pdu;
+        struct rpc_msg res;
+
+	assert(rpc->magic == RPC_CONTEXT_MAGIC);
+
+	memset(&res, 0, sizeof(struct rpc_msg));
+	res.xid                                      = call->xid;
+        res.direction                                = REPLY;
+        res.body.rbody.stat                          = MSG_ACCEPTED;
+	res.body.rbody.reply.areply.verf             = _null_auth;
+	res.body.rbody.reply.areply.stat             = SUCCESS;
+
+        res.body.rbody.reply.areply.reply_data.results.where = reply;
+	res.body.rbody.reply.areply.reply_data.results.proc  = encode_fn;
+
+        if (rpc->is_udp) {
+                /* send the reply back to the client */
+                memcpy(&rpc->udp_dest, &rpc->udp_src, sizeof(rpc->udp_dest));
+        }
+
+        pdu  = rpc_allocate_reply_pdu(rpc, &res, alloc_hint);
+        if (pdu == NULL) {
+                rpc_set_error(rpc, "Failed to send error_reply: %s",
+                              rpc_get_error(rpc));
+                return -1;
+        }
+        rpc_queue_pdu(rpc, pdu);
+
+        return 0;
+}
+
+static int rpc_process_call(struct rpc_context *rpc, ZDR *zdr)
+{
+	struct rpc_msg call;
+        struct rpc_endpoint *endpoint;
+        int i, min_version = 0, max_version = 0, found_program = 0;
+
+	assert(rpc->magic == RPC_CONTEXT_MAGIC);
+
+	memset(&call, 0, sizeof(struct rpc_msg));
+	if (zdr_callmsg(rpc, zdr, &call) == 0) {
+		rpc_set_error(rpc, "Failed to decode CALL message. %s",
+                              rpc_get_error(rpc));
+                return rpc_send_error_reply(rpc, &call, GARBAGE_ARGS, 0, 0);
+        }
+        for (endpoint = rpc->endpoints; endpoint; endpoint = endpoint->next) {
+                if (call.body.cbody.prog == endpoint->program) {
+                        if (!found_program) {
+                                min_version = max_version = endpoint->version;
+                        }
+                        if (endpoint->version < min_version) {
+                                min_version = endpoint->version;
+                        }
+                        if (endpoint->version > max_version) {
+                                max_version = endpoint->version;
+                        }
+                        found_program = 1;
+                        if (call.body.cbody.vers == endpoint->version) {
+                                break;
+                        }
+                }
+        }
+        if (endpoint == NULL) {
+		rpc_set_error(rpc, "No endpoint found for CALL "
+                              "program:0x%08x version:%d\n",
+                              call.body.cbody.prog, call.body.cbody.vers);
+                if (!found_program) {
+                        return rpc_send_error_reply(rpc, &call, PROG_UNAVAIL,
+                                                    0, 0);
+                }
+                return rpc_send_error_reply(rpc, &call, PROG_MISMATCH,
+                                            min_version, max_version);
+        }
+        for (i = 0; i < endpoint->num_procs; i++) {
+                if (endpoint->procs[i].proc == call.body.cbody.proc) {
+                        if (endpoint->procs[i].decode_buf_size) {
+                                call.body.cbody.args = zdr_malloc(zdr, endpoint->procs[i].decode_buf_size);
+                        }
+                        if (!endpoint->procs[i].decode_fn(zdr, call.body.cbody.args)) {
+                                rpc_set_error(rpc, "Failed to unmarshall "
+                                              "call payload");
+                                return rpc_send_error_reply(rpc, &call, GARBAGE_ARGS, 0 ,0);
+                        }
+                        return endpoint->procs[i].func(rpc, &call);
+                }
+        }
+
+        return rpc_send_error_reply(rpc, &call, PROC_UNAVAIL, 0 ,0);
 }
 
 int rpc_process_pdu(struct rpc_context *rpc, char *buf, int size)
@@ -330,6 +506,17 @@ int rpc_process_pdu(struct rpc_context *rpc, char *buf, int size)
 		rpc_free_all_fragments(rpc);
 	}
 
+        if (rpc->is_server_context) {
+                int ret;
+
+                ret = rpc_process_call(rpc, &zdr);
+                zdr_destroy(&zdr);
+                if (reasbuf != NULL) {
+                        free(reasbuf);
+                }
+                return ret;
+        }
+
 	pos = zdr_getpos(&zdr);
 	if (zdr_int(&zdr, (int *)&xid) == 0) {
 		rpc_set_error(rpc, "zdr_int reading xid failed");
@@ -361,6 +548,7 @@ int rpc_process_pdu(struct rpc_context *rpc, char *buf, int size)
 				q->tail = prev_pdu;
 			if (prev_pdu != NULL)
 				prev_pdu->next = pdu->next;
+			rpc->waitpdu_len--;
 		}
 		if (rpc_process_reply(rpc, pdu, &zdr) != 0) {
 			rpc_set_error(rpc, "rpc_procdess_reply failed");

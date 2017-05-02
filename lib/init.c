@@ -26,7 +26,9 @@
 #include "win32_compat.h"
 #endif
 
+#ifndef _GNU_SOURCE
 #define _GNU_SOURCE
+#endif
 
 #ifdef HAVE_UNISTD_H
 #include <unistd.h>
@@ -89,7 +91,28 @@ struct rpc_context *rpc_init_context(void)
 	return rpc;
 }
 
-uint32_t static round_to_power_of_two(uint32_t x) {
+struct rpc_context *rpc_init_server_context(int s)
+{
+	struct rpc_context *rpc;
+
+	rpc = malloc(sizeof(struct rpc_context));
+	if (rpc == NULL) {
+		return NULL;
+	}
+	memset(rpc, 0, sizeof(struct rpc_context));
+
+	rpc->magic = RPC_CONTEXT_MAGIC;
+
+	rpc->is_server_context = 1;
+	rpc->fd = s;
+	rpc->is_connected = 1;
+        rpc->is_udp = rpc_is_udp_socket(rpc);
+	rpc_reset_queue(&rpc->outqueue);
+
+	return rpc;
+}
+
+static uint32_t round_to_power_of_two(uint32_t x) {
 	uint32_t power = 1;
 	while (power < x) {
 		power <<= 1;
@@ -116,8 +139,9 @@ void rpc_set_pagecache_ttl(struct rpc_context *rpc, uint32_t v) {
 
 void rpc_set_readahead(struct rpc_context *rpc, uint32_t v)
 {
-	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 	uint32_t min_pagecache;
+
+	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 	if (v) {
 		v = MAX(NFS_BLKSIZE, round_to_power_of_two(v));
 	}
@@ -131,6 +155,7 @@ void rpc_set_readahead(struct rpc_context *rpc, uint32_t v)
 	}
 }
 
+#ifdef HAVE_SO_BINDTODEVICE
 void rpc_set_interface(struct rpc_context *rpc, const char *ifname)
 {
 	/*
@@ -149,6 +174,7 @@ void rpc_set_interface(struct rpc_context *rpc, const char *ifname)
 		strncpy(rpc->ifname, ifname, sizeof(rpc->ifname) - 1);
 	}
 }
+#endif
 
 void rpc_set_debug(struct rpc_context *rpc, int level)
 {
@@ -232,8 +258,8 @@ void rpc_error_all_pdus(struct rpc_context *rpc, const char *error)
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
 	while ((pdu = rpc->outqueue.head) != NULL) {
-          pdu->cb(rpc, RPC_STATUS_ERROR, (void *)error, pdu->private_data);
 		rpc->outqueue.head = pdu->next;
+          pdu->cb(rpc, RPC_STATUS_ERROR, (void *)error, pdu->private_data);
 		rpc_free_pdu(rpc, pdu);
 	}
 	rpc->outqueue.tail = NULL;
@@ -242,13 +268,14 @@ void rpc_error_all_pdus(struct rpc_context *rpc, const char *error)
 		struct rpc_queue *q = &rpc->waitpdu[i];
 
 		while((pdu = q->head) != NULL) {
+			q->head = pdu->next;
                   pdu->cb(rpc, RPC_STATUS_ERROR, (void *)error,
                           pdu->private_data);
-			q->head = pdu->next;
 			rpc_free_pdu(rpc, pdu);
 		}
 		q->tail = NULL;
 	}
+	rpc->waitpdu_len = 0;
 }
 
 static void rpc_free_fragment(struct rpc_fragment *fragment)
@@ -271,7 +298,7 @@ void rpc_free_all_fragments(struct rpc_context *rpc)
 	}
 }
 
-int rpc_add_fragment(struct rpc_context *rpc, char *data, uint64_t size)
+int rpc_add_fragment(struct rpc_context *rpc, char *data, uint32_t size)
 {
 	struct rpc_fragment *fragment;
 
@@ -301,9 +328,17 @@ void rpc_destroy_context(struct rpc_context *rpc)
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
+        /* If we are a server context, free all registered endpoints. */
+        while (rpc->endpoints != NULL) {
+                struct rpc_endpoint *next = rpc->endpoints->next;
+
+                free(rpc->endpoints);
+                rpc->endpoints = next;
+        }
+
 	while((pdu = rpc->outqueue.head) != NULL) {
-		pdu->cb(rpc, RPC_STATUS_CANCEL, NULL, pdu->private_data);
 		LIBNFS_LIST_REMOVE(&rpc->outqueue.head, pdu);
+		pdu->cb(rpc, RPC_STATUS_CANCEL, NULL, pdu->private_data);
 		rpc_free_pdu(rpc, pdu);
 	}
 
@@ -311,16 +346,18 @@ void rpc_destroy_context(struct rpc_context *rpc)
 		struct rpc_queue *q = &rpc->waitpdu[i];
 
 		while((pdu = q->head) != NULL) {
-			pdu->cb(rpc, RPC_STATUS_CANCEL, NULL, pdu->private_data);
 			LIBNFS_LIST_REMOVE(&q->head, pdu);
+			pdu->cb(rpc, RPC_STATUS_CANCEL, NULL, pdu->private_data);
 			rpc_free_pdu(rpc, pdu);
 		}
 	}
 
 	rpc_free_all_fragments(rpc);
 
-	auth_destroy(rpc->auth);
-	rpc->auth =NULL;
+        if (rpc->auth) {
+                auth_destroy(rpc->auth);
+                rpc->auth =NULL;
+        }
 
 	if (rpc->fd != -1) {
  		close(rpc->fd);
@@ -329,11 +366,6 @@ void rpc_destroy_context(struct rpc_context *rpc)
 	if (rpc->error_string != NULL) {
 		free(rpc->error_string);
 		rpc->error_string = NULL;
-	}
-
-	if (rpc->udp_dest != NULL) {
-		free(rpc->udp_dest);
-		rpc->udp_dest = NULL;
 	}
 
 	rpc->magic = 0;
@@ -352,4 +384,33 @@ int rpc_get_timeout(struct rpc_context *rpc)
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
 	return rpc->timeout;
+}
+
+int rpc_register_service(struct rpc_context *rpc, int program, int version,
+                         struct service_proc *procs, int num_procs)
+{
+        struct rpc_endpoint *endpoint;
+
+        assert(rpc->magic == RPC_CONTEXT_MAGIC);
+
+        if (!rpc->is_server_context) {
+		rpc_set_error(rpc, "Not a server context.");
+                return -1;
+        }
+
+        endpoint = malloc(sizeof(*endpoint));
+        if (endpoint == NULL) {
+		rpc_set_error(rpc, "Out of memory: Failed to allocate endpoint "
+                              "structure");
+                return -1;
+        }
+
+        endpoint->program = program;
+        endpoint->version = version;
+        endpoint->procs = procs;
+        endpoint->num_procs = num_procs;
+        endpoint->next = rpc->endpoints;
+        rpc->endpoints = endpoint;
+
+        return 0;
 }

@@ -112,6 +112,21 @@ Utility programs for LibNFS
 %{_mandir}/man1/nfs-ls.1.gz
 
 %changelog
+* Sun Oct 9 2016 : Version 1.11.0
+ - Reduce the number of memory allocations in the ZDR layer.
+ - Check both seconds and nanoseconds field when validating dir cache.
+ - Invalidate the dir cache immediately if we do something that would cause
+   it to become stale, such as adding/removing objects from the cache.
+ - Add options to enable/disable dir caching.
+ - Discard readahead cache on [p]write and truncate.
+ - Android fixes
+ - Windows fixes
+ - Support timeouts for sync functions
+ - Add an internal pagecache
+ - Add nfs_rewinddir(), nfs_seekdir() and nfs_telldir()
+ - Fix crash in nfs_truncate()
+ - Fix segfault that can trigger if we rpc_disconnect() during the mount.
+ - Add support to bind to a specific interface (linux only)
 * Sun Jan 31 2016 : Version 1.10.0
  - Fix a leak where we leaked one rdpe_cb_data structure on each open_dir()
  - Make building the utils optional

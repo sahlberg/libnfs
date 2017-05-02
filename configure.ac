@@ -1,5 +1,5 @@
 AC_PREREQ(2.50)
-AC_INIT([libnfs], [1.10.0], [ronniesahlberg@gmail.com])
+AC_INIT([libnfs], [1.11.0], [ronniesahlberg@gmail.com])
 AC_CONFIG_HEADERS([config.h])
 AM_INIT_AUTOMAKE([-Wall foreign subdir-objects])
 AC_CANONICAL_HOST
@@ -22,7 +22,7 @@ if test "$SAVE_CFLAGS" = "x"; then
 fi
 
 # We always want 64 bit file offsets
-CFLAGS="${CFLAGS} -D_FILE_OFFSET_BITS=64"
+AC_SYS_LARGEFILE
 
 #option: utils
 AC_ARG_ENABLE([utils],
@@ -42,29 +42,19 @@ AC_ARG_ENABLE([examples],
 # We need popt to compile the examples
 if test x$ENABLE_EXAMPLES = xyes; then
 AC_MSG_CHECKING(whether libpopt is available)
-ac_save_CFLAGS="$CFLAGS"
 ac_save_LIBS="$LIBS"
-CFLAGS="$CFLAGS $GLIB_CFLAGS"
-LIBS="$GLIB_LIBS $LIBS -lpopt"
-AC_TRY_RUN([
+LIBS="$LIBS -lpopt"
+AC_TRY_LINK([#include <popt.h>], [
 /*
  * Just see if we can compile/link with popt
  */
-#include <popt.h>
-
-int main(int argc, const char *argv[])
-{
+	int _argc;
+	char **_argv;
 	struct poptOption popt_options[] = {
 		POPT_TABLEEND
 	};
-	poptGetContext(argv[0], argc, argv, popt_options, POPT_CONTEXT_KEEP_FIRST);
-
-	return 0;
-}
-], ac_cv_have_popt=yes, ac_cv_have_popt=no,
-   [echo $ac_n "compile with POPT. Assuming OK... $ac_c"
-    ac_cv_have_popt=yes])
-CFLAGS="$ac_save_CFLAGS"
+	poptGetContext(_argv[0], _argc, _argv, popt_options, POPT_CONTEXT_KEEP_FIRST);
+], ac_cv_have_popt=yes, ac_cv_have_popt=no)
 LIBS="$ac_save_LIBS"
 if test "$ac_cv_have_popt" = yes ; then
   AC_MSG_RESULT(yes)
@@ -77,6 +67,19 @@ fi
 fi
 
 AC_SUBST(MAYBE_EXAMPLES)
+
+AC_MSG_CHECKING(whether SO_BINDTODEVICE is available)
+AC_TRY_COMPILE([#include <net/if.h>], [
+        int i = SO_BINDTODEVICE;
+], ac_cv_have_so_bindtodevice=yes, ac_cv_have_so_bindtodevice=no)
+if test "$ac_cv_have_so_bindtodevice" = yes ; then
+  AC_MSG_RESULT(yes)
+  AC_DEFINE(HAVE_SO_BINDTODEVICE, 1, [Whether our sockets support SO_BINDTODEVICE])
+else
+  AC_MSG_RESULT(no)
+  AC_MSG_NOTICE(SO_BINDTODEVICE support for if= support is missing.)
+  AC_MSG_NOTICE(Compiling without if= support.)
+fi
 
 AC_ARG_ENABLE([werror], [AS_HELP_STRING([--disable-werror],
               [Disables building with -Werror by default])])
@@ -99,7 +102,7 @@ case $host in
     AC_CHECK_LIB([socket], [main], , [AC_MSG_ERROR([Can not find required library])])
     AC_CHECK_LIB([nsl],    [main], , [AC_MSG_ERROR([Can not find required library])])
     ;;
-  *mingw32* | *cygwin* | *wince* | *mingwce*)
+  *mingw32* | *wince* | *mingwce*)
     LIBSOCKET='-lws2_32'
     SYS=mingw32
     ;;
@@ -145,6 +148,10 @@ AC_CHECK_HEADERS([sys/vfs.h])
 dnl Check for sys/statvfs.h
 AC_CHECK_HEADERS([sys/statvfs.h])
 
+# check for fuse.h
+dnl Check for fuse.h
+AC_CHECK_HEADERS([fuse.h])
+
 # check for sys/socket.h
 dnl Check for sys/socket.h
 AC_CHECK_HEADERS([sys/socket.h])
@@ -181,6 +188,19 @@ AC_CHECK_MEMBER([struct sockaddr_storage.ss_family],
 #include <sys/socket.h>
 ])
 
+# check for tevent + talloc
+AC_CACHE_CHECK([for talloc and tevent support],libnfs_cv_HAVE_TALLOC_TEVENT,[
+AC_TRY_COMPILE([
+#include <talloc.h>
+#include <tevent.h>],
+[struct tevent_context *ctx = tevent_context_init(NULL);
+ int major = talloc_version_major();],
+libiscsi_cv_HAVE_TALLOC_TEVENT=yes,libiscsi_cv_HAVE_TALLOC_TEVENT=no)])
+if test x"$libiscsi_cv_HAVE_TALLOC_TEVENT" = x"yes"; then
+    AC_DEFINE(HAVE_TALLOC_TEVENT,1,[Whether we have talloc nad tevent support])
+fi
+AM_CONDITIONAL([HAVE_TALLOC_TEVENT], [test $libiscsi_cv_HAVE_TALLOC_TEVENT = yes])
+
 AC_CHECK_MEMBERS([struct stat.st_mtim.tv_nsec])
 
 # check where makedev is defined
@@ -193,6 +213,7 @@ AC_CONFIG_FILES([Makefile]
                 [lib/Makefile]
                 [mount/Makefile]
                 [nfs/Makefile]
+                [nfs4/Makefile]
                 [nlm/Makefile]
                 [nsm/Makefile]
                 [portmap/Makefile]

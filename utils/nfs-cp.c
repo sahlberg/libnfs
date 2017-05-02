@@ -94,16 +94,18 @@ fstat_file(struct file_context *fc, struct stat *st)
 		int res;
 		struct nfs_stat_64 nfs_st;
 		res = nfs_fstat64(fc->nfs, fc->nfsfh, &nfs_st);
-		st->st_dev          = nfs_st.nfs_dev;
-		st->st_ino          = nfs_st.nfs_ino;
-		st->st_mode         = nfs_st.nfs_mode;
-		st->st_nlink        = nfs_st.nfs_nlink;
-		st->st_uid          = nfs_st.nfs_uid;
-		st->st_gid          = nfs_st.nfs_gid;
-		st->st_rdev         = nfs_st.nfs_rdev;
-		st->st_size         = nfs_st.nfs_size;
+		st->st_dev          = (dev_t)nfs_st.nfs_dev;
+		st->st_ino          = (ino_t)nfs_st.nfs_ino;
+#ifndef WIN32
+		st->st_mode         = (mode_t)nfs_st.nfs_mode;
+		st->st_nlink        = (nlink_t)nfs_st.nfs_nlink;
 		st->st_blksize      = nfs_st.nfs_blksize;
 		st->st_blocks       = nfs_st.nfs_blocks;
+#endif
+		st->st_uid          = (uid_t)nfs_st.nfs_uid;
+		st->st_gid          = (gid_t)nfs_st.nfs_gid;
+		st->st_rdev         = (dev_t)nfs_st.nfs_rdev;
+		st->st_size         = (off_t)nfs_st.nfs_size;
 		st->st_atime        = nfs_st.nfs_atime;
 		st->st_mtime        = nfs_st.nfs_mtime;
 		st->st_ctime        = nfs_st.nfs_ctime;
@@ -112,8 +114,8 @@ fstat_file(struct file_context *fc, struct stat *st)
 	}
 }
 
-static int64_t
-file_pread(struct file_context *fc, char *buf, int64_t count, uint64_t off)
+static ssize_t
+file_pread(struct file_context *fc, char *buf, size_t count, off_t off)
 {
 	if (fc->is_nfs == 0) {
 		lseek(fc->fd, off, SEEK_SET);
@@ -123,8 +125,8 @@ file_pread(struct file_context *fc, char *buf, int64_t count, uint64_t off)
 	}
 }
 
-static int64_t
-file_pwrite(struct file_context *fc, char *buf, int64_t count, uint64_t off)
+static ssize_t
+file_pwrite(struct file_context *fc, char *buf, size_t count, off_t off)
 {
 	if (fc->is_nfs == 0) {
 		lseek(fc->fd, off, SEEK_SET);
@@ -212,12 +214,11 @@ static char buf[BUFSIZE];
 
 int main(int argc, char *argv[])
 {
-	int ret;
 	struct stat st;
 	struct file_context *src;
 	struct file_context *dst;
-	uint64_t off;
-	int64_t count;
+	off_t off;
+	ssize_t count;
 	
 #ifdef WIN32
 	if (WSAStartup(MAKEWORD(2,2), &wsaData) != 0) {
@@ -256,7 +257,7 @@ int main(int argc, char *argv[])
 
 	off = 0;
 	while (off < st.st_size) {
-		count = st.st_size - off;
+		count = (size_t)(st.st_size - off);
 		if (count > BUFSIZE) {
 			count = BUFSIZE;
 		}

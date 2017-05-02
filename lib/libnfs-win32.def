@@ -104,6 +104,7 @@ rpc_disconnect
 rpc_get_error
 rpc_get_fd
 rpc_init_context
+rpc_init_server_context
 rpc_pmap2_null_async
 rpc_pmap2_getport_async
 rpc_pmap2_set_async
@@ -200,6 +201,8 @@ rpc_nfs3_readlink_async
 rpc_nfs3_symlink_async
 rpc_nfs3_rename_async
 rpc_nfs3_link_async
+rpc_nfs4_compound_async
+rpc_nfs4_null_async
 rpc_nlm4_null_async
 rpc_nlm4_test_async
 rpc_nlm4_lock_async
@@ -212,9 +215,14 @@ rpc_nsm1_unmon_async
 rpc_nsm1_unmonall_async
 rpc_nsm1_simucrash_async
 rpc_nsm1_notify_async
+rpc_null_async
+rpc_register_service
 rpc_rquota1_null_async
 rpc_rquota1_getquota_async
 rpc_rquota1_getactivequota_async
+rpc_send_reply
 rpc_service
 rpc_set_fd
+rpc_set_gid
+rpc_set_uid
 rpc_which_events

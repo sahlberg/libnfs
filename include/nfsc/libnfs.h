@@ -22,14 +22,11 @@
 #define _LIBNFS_H_
 
 #include <stdint.h>
-#if defined(__ANDROID__)
+#if defined(__ANDROID__) || defined(AROS) \
+ || ( defined(__APPLE__) && defined(__MACH__) )
 #include <sys/time.h>
-#endif
-#if defined(AROS)
-#include <sys/time.h>
-#endif
-#if defined(__APPLE__) && defined(__MACH__)
-#include <sys/time.h>
+#else
+#include <time.h>
 #endif
 
 #ifdef __cplusplus
@@ -57,7 +54,10 @@ struct nfs_url {
 #define EXTERN
 #endif
 
-#if defined(WIN32)
+#ifdef WIN32
+#ifdef HAVE_FUSE_H
+#include <fuse.h>
+#else
 struct statvfs {
 	uint32_t	f_bsize;
 	uint32_t	f_frsize;
@@ -71,6 +71,7 @@ struct statvfs {
 	uint32_t	f_flag;
 	uint32_t	f_namemax;
 };
+#endif
 #if !defined(__MINGW32__)
 struct utimbuf {
 	time_t actime;
@@ -121,6 +122,7 @@ EXTERN void nfs_set_auth(struct nfs_context *nfs, struct AUTH *auth);
 
 /*
  * Used if you need to bind to a specific interface.
+ * Only available on platforms that support SO_BINDTODEVICE.
  */
 EXTERN void nfs_set_interface(struct nfs_context *nfs, const char *ifname);
 
@@ -537,7 +539,7 @@ EXTERN int nfs_pread_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_
  *    >=0 : numer of bytes read.
  * -errno : An error occured.
  */
-EXTERN int nfs_pread(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t offset, uint64_t count, char *buf);
+EXTERN int nfs_pread(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t offset, uint64_t count, void *buf);
 
 
 
@@ -565,7 +567,7 @@ EXTERN int nfs_read_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t
  *    >=0 : numer of bytes read.
  * -errno : An error occured.
  */
-EXTERN int nfs_read(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t count, char *buf);
+EXTERN int nfs_read(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t count, void *buf);
 
 
 
@@ -586,14 +588,14 @@ EXTERN int nfs_read(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t count
  * -errno : An error occured.
  *          data is the error string.
  */
-EXTERN int nfs_pwrite_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t offset, uint64_t count, char *buf, nfs_cb cb, void *private_data);
+EXTERN int nfs_pwrite_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t offset, uint64_t count, const void *buf, nfs_cb cb, void *private_data);
 /*
  * Sync pwrite()
  * Function returns
  *    >=0 : numer of bytes written.
  * -errno : An error occured.
  */
-EXTERN int nfs_pwrite(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t offset, uint64_t count, char *buf);
+EXTERN int nfs_pwrite(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t offset, uint64_t count, const void *buf);
 
 
 /*
@@ -612,14 +614,14 @@ EXTERN int nfs_pwrite(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t off
  * -errno : An error occured.
  *          data is the error string.
  */
-EXTERN int nfs_write_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t count, char *buf, nfs_cb cb, void *private_data);
+EXTERN int nfs_write_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t count, const void *buf, nfs_cb cb, void *private_data);
 /*
  * Sync write()
  * Function returns
  *    >=0 : numer of bytes written.
  * -errno : An error occured.
  */
-EXTERN int nfs_write(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t count, char *buf);
+EXTERN int nfs_write(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t count, const void *buf);
 
 
 /*

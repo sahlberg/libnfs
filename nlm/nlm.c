@@ -39,7 +39,6 @@ int rpc_nlm4_null_async(struct rpc_context *rpc, rpc_cb cb, void *private_data)
 
 	if (rpc_queue_pdu(rpc, pdu) != 0) {
 		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for nlm/null call");
-		rpc_free_pdu(rpc, pdu);
 		return -1;
 	}
 
@@ -64,7 +63,6 @@ int rpc_nlm4_test_async(struct rpc_context *rpc, rpc_cb cb, struct NLM4_TESTargs
 
 	if (rpc_queue_pdu(rpc, pdu) != 0) {
 		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for nlm/test call");
-		rpc_free_pdu(rpc, pdu);
 		return -1;
 	}
 
@@ -89,7 +87,6 @@ int rpc_nlm4_lock_async(struct rpc_context *rpc, rpc_cb cb, struct NLM4_LOCKargs
 
 	if (rpc_queue_pdu(rpc, pdu) != 0) {
 		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for nlm/lock call");
-		rpc_free_pdu(rpc, pdu);
 		return -1;
 	}
 
@@ -114,7 +111,6 @@ int rpc_nlm4_cancel_async(struct rpc_context *rpc, rpc_cb cb, struct NLM4_CANCar
 
 	if (rpc_queue_pdu(rpc, pdu) != 0) {
 		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for nlm/cancel call");
-		rpc_free_pdu(rpc, pdu);
 		return -1;
 	}
 
@@ -139,7 +135,6 @@ int rpc_nlm4_unlock_async(struct rpc_context *rpc, rpc_cb cb, struct NLM4_UNLOCK
 
 	if (rpc_queue_pdu(rpc, pdu) != 0) {
 		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for nlm/unlock call");
-		rpc_free_pdu(rpc, pdu);
 		return -1;
 	}
 

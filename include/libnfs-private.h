@@ -30,6 +30,10 @@
 #include <sys/socket.h>  /* struct sockaddr_storage */
 #endif
 
+#if defined(WIN32) && !defined(IFNAMSIZ)
+#define IFNAMSIZ 255
+#endif
+
 #include "libnfs-zdr.h"
 
 #ifdef __cplusplus
@@ -69,7 +73,7 @@ struct sockaddr_storage {
 
 struct rpc_fragment {
 	struct rpc_fragment *next;
-	uint64_t size;
+	uint32_t size;
 	char *data;
 };
 
@@ -89,11 +93,20 @@ struct rpc_queue {
 #define ZDR_ENCODE_OVERHEAD 1024
 #define ZDR_ENCODEBUF_MINSIZE 4096
 
+struct rpc_endpoint {
+        struct rpc_endpoint *next;
+        int program;
+        int version;
+        struct service_proc *procs;
+        int num_procs;
+};
+
 struct rpc_context {
 	uint32_t magic;
 	int fd;
 	int old_fd;
 	int is_connected;
+	int is_nonblocking;
 
 	char *error_string;
 
@@ -106,19 +119,21 @@ struct rpc_context {
 	struct rpc_queue outqueue;
 	struct sockaddr_storage udp_src;
 	struct rpc_queue waitpdu[HASHES];
+	uint32_t waitpdu_len;
 
 	uint32_t inpos;
-	uint32_t insize;
+	char rm_buf[4];
 	char *inbuf;
 
 	/* special fields for UDP, which can sometimes be BROADCASTed */
 	int is_udp;
-	struct sockaddr *udp_dest;
+	struct sockaddr_storage udp_dest;
 	int is_broadcast;
 
 	/* track the address we connect to so we can auto-reconnect on session failure */
 	struct sockaddr_storage s;
 	int auto_reconnect;
+	int auto_reconnect_retries;
 
 	/* fragment reassembly */
 	struct rpc_fragment *fragments;
@@ -133,6 +148,10 @@ struct rpc_context {
 	int debug;
 	int timeout;
 	char ifname[IFNAMSIZ];
+
+        /* Is a server context ? */
+        int is_server_context;
+        struct rpc_endpoint *endpoints;
 };
 
 struct rpc_pdu {
@@ -151,6 +170,9 @@ struct rpc_pdu {
 	zdrproc_t zdr_decode_fn;
 	caddr_t zdr_decode_buf;
 	uint32_t zdr_decode_bufsize;
+
+#define PDU_DISCARD_AFTER_SENDING 0x00000001
+        uint32_t flags;
 };
 
 void rpc_reset_queue(struct rpc_queue *q);
@@ -200,18 +222,19 @@ void rpc_unset_autoreconnect(struct rpc_context *rpc);
 void rpc_set_interface(struct rpc_context *rpc, const char *ifname);
 
 void rpc_set_tcp_syncnt(struct rpc_context *rpc, int v);
-void rpc_set_uid(struct rpc_context *rpc, int uid);
-void rpc_set_gid(struct rpc_context *rpc, int gid);
 void rpc_set_pagecache(struct rpc_context *rpc, uint32_t v);
 void rpc_set_pagecache_ttl(struct rpc_context *rpc, uint32_t v);
 void rpc_set_readahead(struct rpc_context *rpc, uint32_t v);
 void rpc_set_debug(struct rpc_context *rpc, int level);
 void rpc_set_timeout(struct rpc_context *rpc, int timeout);
 int rpc_get_timeout(struct rpc_context *rpc);
-int rpc_add_fragment(struct rpc_context *rpc, char *data, uint64_t size);
+int rpc_add_fragment(struct rpc_context *rpc, char *data, uint32_t size);
 void rpc_free_all_fragments(struct rpc_context *rpc);
+int rpc_is_udp_socket(struct rpc_context *rpc);
 
 const struct nfs_fh3 *nfs_get_rootfh(struct nfs_context *nfs);
+
+void *zdr_malloc(ZDR *zdrs, uint32_t size);
 
 #ifdef __cplusplus
 }

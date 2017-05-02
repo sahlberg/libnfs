@@ -96,7 +96,7 @@ typedef uint32_t u_int;
 typedef uint32_t enum_t;
 typedef uint32_t bool_t;
 
-typedef int (*zdrproc_t) (ZDR *, void *,...);
+typedef uint32_t (*zdrproc_t) (ZDR *, void *,...);
 
 #define AUTH_NONE 0
 #define AUTH_NULL 0
@@ -165,6 +165,7 @@ struct call_body {
 	uint32_t proc;
 	struct opaque_auth cred;
 	struct opaque_auth verf;
+	void    *args;
 };
 
 struct accepted_reply {
@@ -221,9 +222,11 @@ void libnfs_zdr_destroy(ZDR *zdrs);
 bool_t libnfs_zdr_bytes(ZDR *zdrs, char **bufp, uint32_t *size, uint32_t maxsize);
 
 #define zdr_u_int libnfs_zdr_u_int
+#define zdr_uint32_t libnfs_zdr_u_int
 bool_t libnfs_zdr_u_int(ZDR *zdrs, uint32_t *u);
 
 #define zdr_int libnfs_zdr_int
+#define zdr_int32_t libnfs_zdr_int
 bool_t libnfs_zdr_int(ZDR *zdrs, int32_t *i);
 
 #define zdr_uint64_t libnfs_zdr_uint64_t
@@ -239,7 +242,7 @@ bool_t libnfs_zdr_enum(ZDR *zdrs, enum_t *e);
 bool_t libnfs_zdr_bool(ZDR *zdrs, bool_t *b);
 
 #define zdr_void libnfs_zdr_void
-bool_t libnfs_zdr_void(void);
+bool_t libnfs_zdr_void(ZDR *zdrs, void *);
 
 #define zdr_pointer libnfs_zdr_pointer
 bool_t libnfs_zdr_pointer(ZDR *zdrs, char **objp, uint32_t size, zdrproc_t proc);

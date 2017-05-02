@@ -1,3 +1,4 @@
+/* -*-  mode:c; tab-width:8; c-basic-offset:8; indent-tabs-mode:nil;  -*- */
 /*
    Copyright (C) 2010 by Ronnie Sahlberg <ronniesahlberg@gmail.com>
 
@@ -69,6 +70,63 @@ int rpc_service(struct rpc_context *rpc, int revents);
  * or if the connection is completely idle.
  */
 int rpc_queue_length(struct rpc_context *rpc);
+
+/*
+ * Set which UID/GID to use in the authenticator.
+ * By default libnfs will use getuid()/getgid() where available
+ * and 65534/65534 where not.
+ */
+void rpc_set_uid(struct rpc_context *rpc, int uid);
+void rpc_set_gid(struct rpc_context *rpc, int gid);
+
+/*
+ * Create a server context.
+ */
+struct rpc_context *rpc_init_server_context(int s);
+
+/* This is the callback functions for server contexts.
+ * These are invoked from the library when a CALL has been received and a
+ * service procedure has been found that matches the rpc
+ * program/version/procedure.
+ *
+ * The rpc arguments are stored in call->body.cbody.args;
+ * Example:
+ *  static int pmap2_getport_proc(struct rpc_context *rpc, struct rpc_msg *call)
+ *  {
+ *       pmap2_mapping *args = call->body.cbody.args;
+ *  ...
+ *
+ *  struct service_proc pmap2_pt[] = {
+ *         {PMAP2_GETPORT, pmap2_getport_proc,
+ *           (zdrproc_t)zdr_pmap2_mapping, sizeof(pmap2_mapping)},
+ *  ...
+ *
+ *
+ * The return value is:
+ *  0:  Procedure was completed normally.
+ * !0:  An abnormal error has occured. It is unrecoverable and the only
+ *      meaningful cause of action is to tear down the connection from
+ *      the client.
+ */
+typedef int (*service_fn)(struct rpc_context *rpc, struct rpc_msg *call);
+
+struct service_proc {
+        int proc;
+        service_fn func;
+        zdrproc_t decode_fn;
+        int decode_buf_size;
+};
+
+/*
+ * Register a service callback table for program/version.
+ * Can only be used with contexts created with rpc_init_server_context()
+ */
+int rpc_register_service(struct rpc_context *rpc, int program, int version,
+                         struct service_proc *procs, int num_procs);
+
+int rpc_send_reply(struct rpc_context *rpc, struct rpc_msg *call,
+                   void *reply, zdrproc_t encode_fn,
+                   int alloc_hint);
 
 /*
  * When an operation failed, this function can extract a detailed error string.
@@ -1698,6 +1756,56 @@ EXTERN int rpc_nsm1_simucrash_async(struct rpc_context *rpc, rpc_cb cb, void *pr
  */
 struct NSM1_NOTIFYargs;
 EXTERN int rpc_nsm1_notify_async(struct rpc_context *rpc, rpc_cb cb, struct NSM1_NOTIFYargs *args, void *private_data);
+
+/*
+ * Call NFS4/NULL
+ * Function returns
+ *  0 : The call was initiated. The callback will be invoked when the call completes.
+ * <0 : An error occured when trying to set up the call. The callback will not be invoked.
+ *
+ * When the callback is invoked, status indicates the result:
+ * RPC_STATUS_SUCCESS : We got a successful response from the nfs daemon.
+ *                      data is NULL.
+ * RPC_STATUS_ERROR   : An error occured when trying to contact the nfs daemon.
+ *                      data is the error string.
+ * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
+ *                     data is NULL.
+ */
+EXTERN int rpc_nfs4_null_async(struct rpc_context *rpc, rpc_cb cb, void *private_data);
+
+/*
+ * Call NFS4/COMPOUND
+ * Function returns
+ *  0 : The call was initiated. The callback will be invoked when the call completes.
+ * <0 : An error occured when trying to set up the call. The callback will not be invoked.
+ *
+ * When the callback is invoked, status indicates the result:
+ * RPC_STATUS_SUCCESS : We got a successful response from the nfs daemon.
+ *                      data is COMPOUND4res
+ * RPC_STATUS_ERROR   : An error occured when trying to contact the nfs daemon.
+ *                      data is the error string.
+ * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
+ *                     data is NULL.
+ */
+struct COMPOUND4args;
+EXTERN int rpc_nfs4_compound_async(struct rpc_context *rpc, rpc_cb cb, struct COMPOUND4args *args, void *private_data);
+
+/*
+ * Call <generic>/NULL
+ * Function returns
+ *  0 : The connection was initiated. Once the connection establish finishes, the callback will be invoked.
+ * <0 : An error occured when trying to set up the connection. The callback will not be invoked.
+ *
+ * When the callback is invoked, status indicates the result:
+ * RPC_STATUS_SUCCESS : We got a successful response from the portmapper daemon.
+ *                      data is NULL.
+ * RPC_STATUS_ERROR   : An error occured when trying to contact the portmapper.
+ *                      data is the error string.
+ * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
+ *                     data is NULL.
+ */
+EXTERN int
+rpc_null_async(struct rpc_context *rpc, int program, int version, rpc_cb cb, void *private_data);
 
 #ifdef __cplusplus
 }
