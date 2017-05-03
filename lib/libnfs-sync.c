@@ -1420,7 +1420,8 @@ int nfs_link(struct nfs_context *nfs, const char *oldpath, const char *newpath)
 	cb_data.is_finished = 0;
 
 	if (nfs_link_async(nfs, oldpath, newpath, link_cb, &cb_data) != 0) {
-		nfs_set_error(nfs, "nfs_link_async failed");
+		nfs_set_error(nfs, "nfs_link_async failed: %s",
+			      nfs_get_error(nfs));
 		return -1;
 	}
 
