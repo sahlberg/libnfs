@@ -5392,7 +5392,7 @@ static void nfs_link_cb(struct rpc_context *rpc, int status, void *command_data,
 		return;
 	}
 
-	nfs_dircache_drop(nfs, &data->fh);
+	nfs_dircache_drop(nfs, &link_data->newdir);
 	data->cb(0, nfs, NULL, data->private_data);
 	free_nfs_cb_data(data);
 }
