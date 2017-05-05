@@ -1524,6 +1524,26 @@ struct nfs_server_list {
 struct nfs_server_list *nfs_find_local_servers(void);
 void free_nfs_srvr_list(struct nfs_server_list *srv);
 
+/*
+ * sync nfs_set_timeout()
+ * This function sets the timeout used for sync nfs rpc calls.
+ *
+ * Function returns nothing.
+ *
+ * int milliseconds : timeout to be applied in milliseconds (-1 no timeout)
+ */
+EXTERN void nfs_set_timeout(struct nfs_context *nfs, int milliseconds);
+
+/*
+ * sync nfs_get_timeout()
+ * This function gets the timeout used for sync nfs rpc calls.
+ *
+ * Function returns
+ *    -1 : No timeout applied
+ *   > 0 : Timeout in milliseconds
+ */
+EXTERN int nfs_get_timeout(struct nfs_context *nfs);
+
 #ifdef __cplusplus
 }
 #endif
