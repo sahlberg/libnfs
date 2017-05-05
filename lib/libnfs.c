@@ -3052,6 +3052,7 @@ static void nfs_mkdir_cb(struct rpc_context *rpc, int status, void *command_data
 static int nfs_mkdir_continue_internal(struct nfs_context *nfs, fattr3 *attr _U_, struct nfs_cb_data *data)
 {
 	char *str = data->continue_data;
+	int mode = data->continue_int;
 	MKDIR3args args;
 
 	str = &str[strlen(str) + 1];
@@ -3060,7 +3061,7 @@ static int nfs_mkdir_continue_internal(struct nfs_context *nfs, fattr3 *attr _U_
 	args.where.dir = data->fh;
 	args.where.name = str;
 	args.attributes.mode.set_it = 1;
-	args.attributes.mode.set_mode3_u.mode = 0755;
+	args.attributes.mode.set_mode3_u.mode = mode;
 
 	if (rpc_nfs3_mkdir_async(nfs->rpc, nfs_mkdir_cb, &args, data) != 0) {
 		rpc_set_error(nfs->rpc, "RPC error: Failed to send MKDIR call for %s", data->path);
@@ -3071,7 +3072,7 @@ static int nfs_mkdir_continue_internal(struct nfs_context *nfs, fattr3 *attr _U_
 	return 0;
 }
 
-int nfs_mkdir_async(struct nfs_context *nfs, const char *path, nfs_cb cb, void *private_data)
+int nfs_mkdir2_async(struct nfs_context *nfs, const char *path, int mode, nfs_cb cb, void *private_data)
 {
 	char *new_path;
 	char *ptr;
@@ -3091,7 +3092,7 @@ int nfs_mkdir_async(struct nfs_context *nfs, const char *path, nfs_cb cb, void *
 	*ptr = 0;
 
 	/* new_path now points to the parent directory,  and beyond the nul terminateor is the new directory to create */
-	if (nfs_lookuppath_async(nfs, new_path, 0, cb, private_data, nfs_mkdir_continue_internal, new_path, free, 0) != 0) {
+	if (nfs_lookuppath_async(nfs, new_path, 0, cb, private_data, nfs_mkdir_continue_internal, new_path, free, mode) != 0) {
 		rpc_set_error(nfs->rpc, "Out of memory: failed to start parsing the path component");
 		return -1;
 	}
@@ -3099,6 +3100,10 @@ int nfs_mkdir_async(struct nfs_context *nfs, const char *path, nfs_cb cb, void *
 	return 0;
 }
 
+int nfs_mkdir_async(struct nfs_context *nfs, const char *path, nfs_cb cb, void *private_data)
+{
+	return nfs_mkdir2_async(nfs, path, 0755, cb, private_data);
+}
 
 
 
