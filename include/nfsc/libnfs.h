@@ -240,12 +240,6 @@ EXTERN void nfs_set_dircache(struct nfs_context *nfs, int enabled);
 EXTERN void nfs_pagecache_invalidate(struct nfs_context *nfs, struct nfsfh *nfsfh);
 
 /*
- * Sets timeout in milliseconds. A negative value means infinite timeout.
- */
-EXTERN void nfs_set_timeout(struct nfs_context *nfs, int timeout);
-EXTERN int  nfs_get_timeout(struct nfs_context *nfs);
-
-/*
  * MOUNT THE EXPORT
  */
 /*
@@ -1526,7 +1520,7 @@ void free_nfs_srvr_list(struct nfs_server_list *srv);
 
 /*
  * sync nfs_set_timeout()
- * This function sets the timeout used for sync nfs rpc calls.
+ * This function sets the timeout used for nfs rpc calls.
  *
  * Function returns nothing.
  *
@@ -1536,7 +1530,7 @@ EXTERN void nfs_set_timeout(struct nfs_context *nfs, int milliseconds);
 
 /*
  * sync nfs_get_timeout()
- * This function gets the timeout used for sync nfs rpc calls.
+ * This function gets the timeout used for nfs rpc calls.
  *
  * Function returns
  *    -1 : No timeout applied
