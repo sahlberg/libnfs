@@ -455,13 +455,14 @@ EXTERN uint16_t nfs_umask(struct nfs_context *nfs, uint16_t mask);
  * Async open(<filename>)
  *
  * mode is a combination of the flags :
- * O_RDONLY, O_WRONLY, O_RDWR , O_SYNC, O_APPEND, O_TRUNC
+ * O_RDONLY, O_WRONLY, O_RDWR , O_SYNC, O_APPEND, O_TRUNC, O_NOFOLLOW
  *
  * Function returns
  *  0 : The operation was initiated. Once the operation finishes, the callback will be invoked.
  * <0 : An error occured when trying to set up the operation. The callback will not be invoked.
  *
  * Supported flags are
+ * O_NOFOLLOW
  * O_APPEND
  * O_RDONLY
  * O_WRONLY
@@ -812,6 +813,7 @@ EXTERN int nfs_creat(struct nfs_context *nfs, const char *path, int mode, struct
  * Async create()
  *
  * Same as nfs_creat_async but allows passing flags:
+ * O_NOFOLLOW
  * O_APPEND
  * O_SYNC
  * O_EXCL

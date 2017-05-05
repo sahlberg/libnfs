@@ -1461,28 +1461,35 @@ static int nfs_lookup_path_async_internal(struct nfs_context *nfs, fattr3 *attr,
 	path = data->path;
 	slash = strchr(path, '/');
 
-	if (attr && attr->type == NF3LNK && (!data->no_follow || *path != '\0')) {
-		READLINK3args rl_args;
-
-		if (data->link_count++ >= MAX_LINK_COUNT) {
-			data->cb(-ELOOP, nfs, "Too many levels of symbolic links", data->private_data);
+	if (attr && attr->type == NF3LNK) {
+		if (data->continue_int & O_NOFOLLOW) {
+			data->cb(-ELOOP, nfs, "Symbolic link encountered", data->private_data);
 			free_nfs_cb_data(data);
 			return -1;
 		}
+		if (!data->no_follow || *path != '\0') {
+			READLINK3args rl_args;
 
-		rl_args.symlink = *fh;
+			if (data->link_count++ >= MAX_LINK_COUNT) {
+				data->cb(-ELOOP, nfs, "Too many levels of symbolic links", data->private_data);
+				free_nfs_cb_data(data);
+				return -1;
+                        }
 
-		if (rpc_nfs3_readlink_async(nfs->rpc, nfs_lookup_path_2_cb, &rl_args, data) != 0) {
-			rpc_set_error(nfs->rpc, "RPC error: Failed to send READLINK call for %s", data->path);
-			data->cb(-ENOMEM, nfs, rpc_get_error(nfs->rpc), data->private_data);
-			free_nfs_cb_data(data);
-			return -1;
+			rl_args.symlink = *fh;
+
+			if (rpc_nfs3_readlink_async(nfs->rpc, nfs_lookup_path_2_cb, &rl_args, data) != 0) {
+				rpc_set_error(nfs->rpc, "RPC error: Failed to send READLINK call for %s", data->path);
+				data->cb(-ENOMEM, nfs, rpc_get_error(nfs->rpc), data->private_data);
+				free_nfs_cb_data(data);
+				return -1;
+			}
+
+			if (slash != NULL) {
+				*slash = '/';
+			}
+			return 0;
 		}
-
-		if (slash != NULL) {
-			*slash = '/';
-		}
-		return 0;
 	}
 
 	if (slash != NULL) {
