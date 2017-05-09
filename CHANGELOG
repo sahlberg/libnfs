@@ -1,7 +1,9 @@
 Changes since 1.11.0
 
+Add support for RPC timeouts for the async interface.
+
 Fix NULL pointer read in nfs_link()
-	
+
 Clamp read/write size for servers (Ganesha) that offer very large io sizes
 instead of failing to connect to the export
 
