@@ -1086,6 +1086,17 @@ finished:
 
 	rpc_disconnect(rpc, "normal disconnect");
 
+	if (status == RPC_STATUS_ERROR) {
+		data->cb(-EFAULT, nfs, command_data, data->private_data);
+		free_nfs_cb_data(data);
+		return;
+	}
+	if (status == RPC_STATUS_CANCEL) {
+		data->cb(-EINTR, nfs, "Command was cancelled", data->private_data);
+		free_nfs_cb_data(data);
+		return;
+	}
+
 	if (rpc_connect_program_async(nfs->rpc, nfs->server, NFS_PROGRAM, NFS_V3, nfs_mount_9_cb, data) != 0) {
 		data->cb(-ENOMEM, nfs, command_data, data->private_data);
 		free_nfs_cb_data(data);
