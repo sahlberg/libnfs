@@ -1018,6 +1018,49 @@ int nfs_readlink(struct nfs_context *nfs, const char *path, char *buf, int bufsi
 	return cb_data.status;
 }
 
+static void readlink2_cb(int status, struct nfs_context *nfs, void *data, void *private_data)
+{
+	struct sync_cb_data *cb_data = private_data;
+	char **bufptr;
+	char *buf;
+
+	cb_data->is_finished = 1;
+	cb_data->status = status;
+
+	if (status < 0) {
+		nfs_set_error(nfs, "readlink call failed with \"%s\"", (char *)data);
+		return;
+	}
+
+	buf = strdup(data);
+	if (buf == NULL) {
+		cb_data->status = errno ? -errno : -ENOMEM;
+		return;
+	}
+
+	bufptr = cb_data->return_data;
+	if (bufptr)
+		*bufptr = buf;
+}
+
+int nfs_readlink2(struct nfs_context *nfs, const char *path, char **bufptr)
+{
+	struct sync_cb_data cb_data;
+
+	*bufptr = NULL;
+	cb_data.is_finished = 0;
+	cb_data.return_data = bufptr;
+
+	if (nfs_readlink_async(nfs, path, readlink2_cb, &cb_data) != 0) {
+		nfs_set_error(nfs, "nfs_readlink_async failed");
+		return -1;
+	}
+
+	wait_for_nfs_reply(nfs, &cb_data);
+
+	return cb_data.status;
+}
+
 
 
 /*
