@@ -749,6 +749,27 @@ EXTERN int nfs_mkdir_async(struct nfs_context *nfs, const char *path, nfs_cb cb,
  */
 EXTERN int nfs_mkdir(struct nfs_context *nfs, const char *path);
 
+/*
+ * Async mkdir2()
+ *
+ * Function returns
+ *  0 : The operation was initiated. Once the operation finishes, the callback will be invoked.
+ * <0 : An error occured when trying to set up the operation. The callback will not be invoked.
+ *
+ * When the callback is invoked, status indicates the result:
+ *      0 : Success.
+ * -errno : An error occured.
+ *          data is the error string.
+ */
+EXTERN int nfs_mkdir2_async(struct nfs_context *nfs, const char *path, int mode, nfs_cb cb, void *private_data);
+/*
+ * Sync mkdir2()
+ * Function returns
+ *      0 : Success
+ * -errno : An error occured.
+ */
+EXTERN int nfs_mkdir2(struct nfs_context *nfs, const char *path, int mode);
+
 
 
 /*
