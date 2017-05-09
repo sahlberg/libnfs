@@ -65,6 +65,8 @@ nfs_read_async
 nfs_readdir
 nfs_readlink
 nfs_readlink_async
+nfs_readlink2
+nfs_readlink2_async
 nfs_rename
 nfs_rename_async
 nfs_rmdir
