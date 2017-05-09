@@ -82,6 +82,10 @@ typedef int socklen_t;
 #define O_NONBLOCK 0x40000000
 #define O_SYNC 0
 
+#ifndef O_NOFOLLOW
+#define O_NOFOLLOW	00400000
+#endif
+
 #define MSG_DONTWAIT 0
 #define ssize_t SSIZE_T
 
