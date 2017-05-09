@@ -173,6 +173,8 @@ struct rpc_pdu {
 
 #define PDU_DISCARD_AFTER_SENDING 0x00000001
         uint32_t flags;
+
+	time_t timeout;
 };
 
 void rpc_reset_queue(struct rpc_queue *q);

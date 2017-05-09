@@ -222,6 +222,12 @@ int rpc_queue_pdu(struct rpc_context *rpc, struct rpc_pdu *pdu)
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
+	if (rpc->timeout > 0) {
+		pdu->timeout = time(NULL) + rpc->timeout / 1000;
+	} else {
+		pdu->timeout = 0;
+	}
+
 	size = zdr_getpos(&pdu->zdr);
 
 	/* for udp we dont queue, we just send it straight away */

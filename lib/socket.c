@@ -344,10 +344,59 @@ maybe_call_connect_cb(struct rpc_context *rpc, int status)
 	tmp_cb(rpc, status, rpc->error_string, rpc->connect_data);
 }
 
+static void
+rpc_timeout_scan(struct rpc_context *rpc)
+{
+	struct rpc_pdu *pdu;
+	struct rpc_pdu *next_pdu;
+	time_t t = time(NULL);
+	unsigned int i;
+
+	for (pdu = rpc->outqueue.head; pdu; pdu = next_pdu) {
+		next_pdu = pdu->next;
+
+		if (pdu->timeout == 0) {
+			/* no timeout for this pdu */
+			continue;
+		}
+		if (t < pdu->timeout) {
+			/* not expired yet */
+			continue;
+		}
+		LIBNFS_LIST_REMOVE(&rpc->outqueue.head, pdu);
+		rpc_set_error(rpc, "command timed out");
+		pdu->cb(rpc, RPC_STATUS_TIMEOUT,
+			NULL, pdu->private_data);
+		rpc_free_pdu(rpc, pdu);
+	}
+	for (i = 0; i < HASHES; i++) {
+		struct rpc_queue *q = &rpc->waitpdu[i];
+
+		for (pdu = q->head; pdu; pdu = next_pdu) {
+			next_pdu = pdu->next;
+
+			if (pdu->timeout == 0) {
+				/* no timeout for this pdu */
+				continue;
+			}
+			if (t < pdu->timeout) {
+				/* not expired yet */
+				continue;
+			}
+			LIBNFS_LIST_REMOVE(&q->head, pdu);
+			rpc_set_error(rpc, "command timed out");
+			pdu->cb(rpc, RPC_STATUS_TIMEOUT,
+				NULL, pdu->private_data);
+			rpc_free_pdu(rpc, pdu);
+		}
+	}
+}
+
 int rpc_service(struct rpc_context *rpc, int revents)
 {
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
-	if (revents & (POLLERR|POLLHUP)) {
+
+	if (revents & (POLLERR | POLLHUP)) {
 		if (revents & POLLERR) {
 #ifdef WIN32
 			char err = 0;
@@ -380,7 +429,7 @@ int rpc_service(struct rpc_context *rpc, int revents)
 
 	}
 
-	if (rpc->is_connected == 0 && rpc->fd != -1 && revents&POLLOUT) {
+	if (rpc->is_connected == 0 && rpc->fd != -1 && (revents & POLLOUT)) {
 		int err = 0;
 		socklen_t err_size = sizeof(err);
 
@@ -422,6 +471,7 @@ int rpc_service(struct rpc_context *rpc, int revents)
 		}
 	}
 
+	rpc_timeout_scan(rpc);
 	return 0;
 }
 

@@ -1525,6 +1525,8 @@ void free_nfs_srvr_list(struct nfs_server_list *srv);
  * Function returns nothing.
  *
  * int milliseconds : timeout to be applied in milliseconds (-1 no timeout)
+ *                    timeouts must currently be set in whole seconds,
+ *                    i.e. units of 1000
  */
 EXTERN void nfs_set_timeout(struct nfs_context *nfs, int milliseconds);
 
