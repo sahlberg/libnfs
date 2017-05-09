@@ -71,7 +71,7 @@
 #include <sys/mkdev.h>
 #endif
 
-#ifdef MAJOR_IN_SYSMACROS
+#ifdef HAVE_SYS_SYSMACROS_H
 #include <sys/sysmacros.h>
 #endif
 

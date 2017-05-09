@@ -112,6 +112,10 @@ esac
 AM_CONDITIONAL(HAVE_WIN32,   test "${SYS}" = "mingw32")
 AC_SUBST([LIBSOCKET])
 
+# check for sys/sysmacros.h
+dnl Check for sys/sysmacros.h
+AC_CHECK_HEADERS([sys/sysmacros.h])
+
 # check for poll.h
 dnl Check for poll.h
 AC_CHECK_HEADERS([poll.h])
