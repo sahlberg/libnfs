@@ -1,5 +1,7 @@
 Changes since 1.11.0
 
+Add a new mkdir2 command that also takes a mode argument.
+
 Add support for RPC timeouts for the async interface.
 
 Fix NULL pointer read in nfs_link()
