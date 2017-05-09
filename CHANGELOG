@@ -19,6 +19,9 @@ Abort the mount process correctly if MOUNT/MNT returns error or is cancelled.
 
 Fix memory leak in error path in nfs_create_2_cb().
 
+Fix leak of rpc->inbuf if we destroy the context while we still have PDUs
+in flight.
+
 
 FEATURES
 ========
