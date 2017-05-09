@@ -1091,16 +1091,6 @@ EXTERN int nfs_readlink_async(struct nfs_context *nfs, const char *path, nfs_cb 
  */
 EXTERN int nfs_readlink(struct nfs_context *nfs, const char *path, char *buf, int bufsize);
 
-/*
- * Sync readlink2(<name>)
- * Function returns
- *   NULL : The command failed.
- *    buf : The content of the link. The returned buffer must be freed
- *          by the caller.
- */
-EXTERN char *nfs_readlink2(struct nfs_context *nfs, const char *path);
-
-
 
 
 /*
