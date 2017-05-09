@@ -341,6 +341,9 @@ void rpc_destroy_context(struct rpc_context *rpc)
 		rpc->udp_dest = NULL;
 	}
 
+	free(rpc->inbuf);
+	rpc->inbuf = NULL;
+
 	rpc->magic = 0;
 	free(rpc);
 }
