@@ -22,14 +22,11 @@
 #define _LIBNFS_H_
 
 #include <stdint.h>
-#if defined(__ANDROID__)
+#if defined(__ANDROID__) || defined(AROS) \
+ || ( defined(__APPLE__) && defined(__MACH__) )
 #include <sys/time.h>
-#endif
-#if defined(AROS)
-#include <sys/time.h>
-#endif
-#if defined(__APPLE__) && defined(__MACH__)
-#include <sys/time.h>
+#else
+#include <time.h>
 #endif
 
 #ifdef __cplusplus
@@ -57,7 +54,10 @@ struct nfs_url {
 #define EXTERN
 #endif
 
-#if defined(WIN32)
+#ifdef WIN32
+#ifdef HAVE_FUSE_H
+#include <fuse.h>
+#else
 struct statvfs {
 	uint32_t	f_bsize;
 	uint32_t	f_frsize;
@@ -71,6 +71,7 @@ struct statvfs {
 	uint32_t	f_flag;
 	uint32_t	f_namemax;
 };
+#endif
 #if !defined(__MINGW32__)
 struct utimbuf {
 	time_t actime;
@@ -237,12 +238,6 @@ EXTERN void nfs_set_dircache(struct nfs_context *nfs, int enabled);
  *  Invalidate the pagecache
  */
 EXTERN void nfs_pagecache_invalidate(struct nfs_context *nfs, struct nfsfh *nfsfh);
-
-/*
- * Sets timeout in milliseconds. A negative value means infinite timeout.
- */
-EXTERN void nfs_set_timeout(struct nfs_context *nfs, int timeout);
-EXTERN int  nfs_get_timeout(struct nfs_context *nfs);
 
 /*
  * MOUNT THE EXPORT
@@ -455,13 +450,14 @@ EXTERN uint16_t nfs_umask(struct nfs_context *nfs, uint16_t mask);
  * Async open(<filename>)
  *
  * mode is a combination of the flags :
- * O_RDONLY, O_WRONLY, O_RDWR , O_SYNC, O_APPEND, O_TRUNC
+ * O_RDONLY, O_WRONLY, O_RDWR , O_SYNC, O_APPEND, O_TRUNC, O_NOFOLLOW
  *
  * Function returns
  *  0 : The operation was initiated. Once the operation finishes, the callback will be invoked.
  * <0 : An error occured when trying to set up the operation. The callback will not be invoked.
  *
  * Supported flags are
+ * O_NOFOLLOW
  * O_APPEND
  * O_RDONLY
  * O_WRONLY
@@ -538,7 +534,7 @@ EXTERN int nfs_pread_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_
  *    >=0 : numer of bytes read.
  * -errno : An error occured.
  */
-EXTERN int nfs_pread(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t offset, uint64_t count, char *buf);
+EXTERN int nfs_pread(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t offset, uint64_t count, void *buf);
 
 
 
@@ -566,7 +562,7 @@ EXTERN int nfs_read_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t
  *    >=0 : numer of bytes read.
  * -errno : An error occured.
  */
-EXTERN int nfs_read(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t count, char *buf);
+EXTERN int nfs_read(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t count, void *buf);
 
 
 
@@ -587,14 +583,14 @@ EXTERN int nfs_read(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t count
  * -errno : An error occured.
  *          data is the error string.
  */
-EXTERN int nfs_pwrite_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t offset, uint64_t count, char *buf, nfs_cb cb, void *private_data);
+EXTERN int nfs_pwrite_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t offset, uint64_t count, const void *buf, nfs_cb cb, void *private_data);
 /*
  * Sync pwrite()
  * Function returns
  *    >=0 : numer of bytes written.
  * -errno : An error occured.
  */
-EXTERN int nfs_pwrite(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t offset, uint64_t count, char *buf);
+EXTERN int nfs_pwrite(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t offset, uint64_t count, const void *buf);
 
 
 /*
@@ -613,14 +609,14 @@ EXTERN int nfs_pwrite(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t off
  * -errno : An error occured.
  *          data is the error string.
  */
-EXTERN int nfs_write_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t count, char *buf, nfs_cb cb, void *private_data);
+EXTERN int nfs_write_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t count, const void *buf, nfs_cb cb, void *private_data);
 /*
  * Sync write()
  * Function returns
  *    >=0 : numer of bytes written.
  * -errno : An error occured.
  */
-EXTERN int nfs_write(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t count, char *buf);
+EXTERN int nfs_write(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t count, const void *buf);
 
 
 /*
@@ -754,6 +750,27 @@ EXTERN int nfs_mkdir_async(struct nfs_context *nfs, const char *path, nfs_cb cb,
  */
 EXTERN int nfs_mkdir(struct nfs_context *nfs, const char *path);
 
+/*
+ * Async mkdir2()
+ *
+ * Function returns
+ *  0 : The operation was initiated. Once the operation finishes, the callback will be invoked.
+ * <0 : An error occured when trying to set up the operation. The callback will not be invoked.
+ *
+ * When the callback is invoked, status indicates the result:
+ *      0 : Success.
+ * -errno : An error occured.
+ *          data is the error string.
+ */
+EXTERN int nfs_mkdir2_async(struct nfs_context *nfs, const char *path, int mode, nfs_cb cb, void *private_data);
+/*
+ * Sync mkdir2()
+ * Function returns
+ *      0 : Success
+ * -errno : An error occured.
+ */
+EXTERN int nfs_mkdir2(struct nfs_context *nfs, const char *path, int mode);
+
 
 
 /*
@@ -812,6 +829,7 @@ EXTERN int nfs_creat(struct nfs_context *nfs, const char *path, int mode, struct
  * Async create()
  *
  * Same as nfs_creat_async but allows passing flags:
+ * O_NOFOLLOW
  * O_APPEND
  * O_SYNC
  * O_EXCL
@@ -1522,6 +1540,28 @@ struct nfs_server_list {
  */
 struct nfs_server_list *nfs_find_local_servers(void);
 void free_nfs_srvr_list(struct nfs_server_list *srv);
+
+/*
+ * sync nfs_set_timeout()
+ * This function sets the timeout used for nfs rpc calls.
+ *
+ * Function returns nothing.
+ *
+ * int milliseconds : timeout to be applied in milliseconds (-1 no timeout)
+ *                    timeouts must currently be set in whole seconds,
+ *                    i.e. units of 1000
+ */
+EXTERN void nfs_set_timeout(struct nfs_context *nfs, int milliseconds);
+
+/*
+ * sync nfs_get_timeout()
+ * This function gets the timeout used for nfs rpc calls.
+ *
+ * Function returns
+ *    -1 : No timeout applied
+ *   > 0 : Timeout in milliseconds
+ */
+EXTERN int nfs_get_timeout(struct nfs_context *nfs);
 
 #ifdef __cplusplus
 }

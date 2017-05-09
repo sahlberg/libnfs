@@ -39,7 +39,6 @@ int rpc_mount3_null_async(struct rpc_context *rpc, rpc_cb cb, void *private_data
 
 	if (rpc_queue_pdu(rpc, pdu) != 0) {
 		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for mount/null call");
-		rpc_free_pdu(rpc, pdu);
 		return -1;
 	}
 
@@ -69,7 +68,6 @@ int rpc_mount3_mnt_async(struct rpc_context *rpc, rpc_cb cb, char *export, void 
 
 	if (rpc_queue_pdu(rpc, pdu) != 0) {
 		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for mount/mnt call");
-		rpc_free_pdu(rpc, pdu);
 		return -1;
 	}
 
@@ -93,7 +91,6 @@ int rpc_mount3_dump_async(struct rpc_context *rpc, rpc_cb cb, void *private_data
 
 	if (rpc_queue_pdu(rpc, pdu) != 0) {
 		rpc_set_error(rpc, "Failed to queue mount/dump pdu");
-		rpc_free_pdu(rpc, pdu);
 		return -1;
 	}
 
@@ -123,7 +120,6 @@ int rpc_mount3_umnt_async(struct rpc_context *rpc, rpc_cb cb, char *export, void
 
 	if (rpc_queue_pdu(rpc, pdu) != 0) {
 		rpc_set_error(rpc, "Failed to queue mount/umnt pdu");
-		rpc_free_pdu(rpc, pdu);
 		return -1;
 	}
 
@@ -147,7 +143,6 @@ int rpc_mount3_umntall_async(struct rpc_context *rpc, rpc_cb cb, void *private_d
 
 	if (rpc_queue_pdu(rpc, pdu) != 0) {
 		rpc_set_error(rpc, "Failed to queue mount/umntall pdu");
-		rpc_free_pdu(rpc, pdu);
 		return -1;
 	}
 
@@ -171,7 +166,6 @@ int rpc_mount3_export_async(struct rpc_context *rpc, rpc_cb cb, void *private_da
 
 	if (rpc_queue_pdu(rpc, pdu) != 0) {
 		rpc_set_error(rpc, "Failed to queue mount/export pdu");
-		rpc_free_pdu(rpc, pdu);
 		return -1;
 	}
 
@@ -235,7 +229,6 @@ int rpc_mount1_null_async(struct rpc_context *rpc, rpc_cb cb, void *private_data
 
 	if (rpc_queue_pdu(rpc, pdu) != 0) {
 		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for MOUNT1/NULL call");
-		rpc_free_pdu(rpc, pdu);
 		return -1;
 	}
 
@@ -260,7 +253,6 @@ int rpc_mount1_mnt_async(struct rpc_context *rpc, rpc_cb cb, char *export, void 
 
 	if (rpc_queue_pdu(rpc, pdu) != 0) {
 		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for MOUNT1/MNT call");
-		rpc_free_pdu(rpc, pdu);
 		return -1;
 	}
 
@@ -279,7 +271,6 @@ int rpc_mount1_dump_async(struct rpc_context *rpc, rpc_cb cb, void *private_data
 
 	if (rpc_queue_pdu(rpc, pdu) != 0) {
 		rpc_set_error(rpc, "Failed to queue MOUNT1/DUMP pdu");
-		rpc_free_pdu(rpc, pdu);
 		return -1;
 	}
 
@@ -304,7 +295,6 @@ int rpc_mount1_umnt_async(struct rpc_context *rpc, rpc_cb cb, char *export, void
 
 	if (rpc_queue_pdu(rpc, pdu) != 0) {
 		rpc_set_error(rpc, "Failed to queue MOUNT1/UMNT pdu");
-		rpc_free_pdu(rpc, pdu);
 		return -1;
 	}
 
@@ -323,7 +313,6 @@ int rpc_mount1_umntall_async(struct rpc_context *rpc, rpc_cb cb, void *private_d
 
 	if (rpc_queue_pdu(rpc, pdu) != 0) {
 		rpc_set_error(rpc, "Failed to queue MOUNT1/UMNTALL pdu");
-		rpc_free_pdu(rpc, pdu);
 		return -1;
 	}
 
@@ -342,7 +331,6 @@ int rpc_mount1_export_async(struct rpc_context *rpc, rpc_cb cb, void *private_da
 
 	if (rpc_queue_pdu(rpc, pdu) != 0) {
 		rpc_set_error(rpc, "Failed to queue MOUNT1/EXPORT pdu");
-		rpc_free_pdu(rpc, pdu);
 		return -1;
 	}
 

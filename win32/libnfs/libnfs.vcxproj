@@ -89,7 +89,7 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_USRDLL;_U_=;_USE_32BIT_TIME_T;__STDC_CONSTANT_MACROS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>..\..\include\nfsc;..\..\include;..\..\.;..\..\win32;..\..\mount;..\..\nfs;..\..\portmap;..\..\lib</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\include\nfsc;..\..\include;..\..\.;..\..\win32;..\..\mount;..\..\nfs;..\..\nfs4;..\..\portmap;..\..\lib</AdditionalIncludeDirectories>
       <CompileAs>Default</CompileAs>
       <DisableSpecificWarnings>4996</DisableSpecificWarnings>
     </ClCompile>
@@ -112,7 +112,7 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_USRDLL;_U_=;__STDC_CONSTANT_MACROS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>..\..\include\nfsc;..\..\include;..\..\.;..\..\win32;..\..\mount;..\..\nfs;..\..\portmap;..\..\lib</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\include\nfsc;..\..\include;..\..\.;..\..\win32;..\..\mount;..\..\nfs;..\..\nfs4;..\..\portmap;..\..\lib</AdditionalIncludeDirectories>
       <CompileAs>Default</CompileAs>
       <DisableSpecificWarnings>4996</DisableSpecificWarnings>
     </ClCompile>
@@ -137,7 +137,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_USRDLL;_U_=;_USE_32BIT_TIME_T;__STDC_CONSTANT_MACROS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>..\..\include\nfsc;..\..\include;..\..\.;..\..\win32;..\..\mount;..\..\nfs;..\..\portmap;..\..\lib</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\include\nfsc;..\..\include;..\..\.;..\..\win32;..\..\mount;..\..\nfs;..\..\nfs4;..\..\portmap;..\..\lib</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>4996</DisableSpecificWarnings>
     </ClCompile>
     <Link>
@@ -162,7 +162,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_USRDLL;_U_=;__STDC_CONSTANT_MACROS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>..\..\include\nfsc;..\..\include;..\..\.;..\..\win32;..\..\mount;..\..\nfs;..\..\portmap;..\..\lib</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\include\nfsc;..\..\include;..\..\.;..\..\win32;..\..\mount;..\..\nfs;..\..\nfs4;..\..\portmap;..\..\lib</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>4996</DisableSpecificWarnings>
       <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
@@ -192,6 +192,8 @@
     <ClCompile Include="..\..\nfs\libnfs-raw-nfs.c" />
     <ClCompile Include="..\..\nfs\nfs.c" />
     <ClCompile Include="..\..\nfs\nfsacl.c" />
+    <ClCompile Include="..\..\nfs4\libnfs-raw-nfs4.c" />
+    <ClCompile Include="..\..\nfs4\nfs4.c" />
     <ClCompile Include="..\..\nlm\libnfs-raw-nlm.c" />
     <ClCompile Include="..\..\nlm\nlm.c" />
     <ClCompile Include="..\..\nsm\libnfs-raw-nsm.c" />
@@ -206,6 +208,7 @@
   <ClInclude Include="..\..\include\nfsc\libnfs-zdr.h" />
     <ClInclude Include="..\..\mount\libnfs-raw-mount.h" />
     <ClInclude Include="..\..\nfs\libnfs-raw-nfs.h" />
+    <ClInclude Include="..\..\nfs4\libnfs-raw-nfs4.h" />
     <ClInclude Include="..\..\nlm\libnfs-raw-nlm.h" />
     <ClInclude Include="..\..\nsm\libnfs-raw-nsm.h" />
     <ClInclude Include="..\..\portmap\libnfs-raw-portmap.h" />

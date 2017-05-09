@@ -395,7 +395,7 @@ static void pread_cb(int status, struct nfs_context *nfs, void *data, void *priv
 	memcpy(buffer, (char *)data, status);
 }
 
-int nfs_pread(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t offset, uint64_t count, char *buffer)
+int nfs_pread(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t offset, uint64_t count, void *buffer)
 {
 	struct sync_cb_data cb_data;
 
@@ -416,7 +416,7 @@ int nfs_pread(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t offset, uin
 /*
  * read()
  */
-int nfs_read(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t count, char *buffer)
+int nfs_read(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t count, void *buffer)
 {
 	struct sync_cb_data cb_data;
 
@@ -526,7 +526,7 @@ static void pwrite_cb(int status, struct nfs_context *nfs, void *data, void *pri
 		nfs_set_error(nfs, "%s call failed with \"%s\"", cb_data->call, (char *)data);
 }
 
-int nfs_pwrite(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t offset, uint64_t count, char *buf)
+int nfs_pwrite(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t offset, uint64_t count, const void *buf)
 {
 	struct sync_cb_data cb_data;
 
@@ -546,7 +546,7 @@ int nfs_pwrite(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t offset, ui
 /*
  * write()
  */
-int nfs_write(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t count, char *buf)
+int nfs_write(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t count, const void *buf)
 {
 	struct sync_cb_data cb_data;
 
@@ -697,6 +697,21 @@ int nfs_mkdir(struct nfs_context *nfs, const char *path)
 	return cb_data.status;
 }
 
+int nfs_mkdir2(struct nfs_context *nfs, const char *path, int mode)
+{
+	struct sync_cb_data cb_data;
+
+	cb_data.is_finished = 0;
+
+	if (nfs_mkdir2_async(nfs, path, mode, mkdir_cb, &cb_data) != 0) {
+		nfs_set_error(nfs, "nfs_mkdir2_async failed");
+		return -1;
+	}
+
+	wait_for_nfs_reply(nfs, &cb_data);
+
+	return cb_data.status;
+}
 
 
 
@@ -1420,7 +1435,8 @@ int nfs_link(struct nfs_context *nfs, const char *oldpath, const char *newpath)
 	cb_data.is_finished = 0;
 
 	if (nfs_link_async(nfs, oldpath, newpath, link_cb, &cb_data) != 0) {
-		nfs_set_error(nfs, "nfs_link_async failed");
+		nfs_set_error(nfs, "nfs_link_async failed: %s",
+			      nfs_get_error(nfs));
 		return -1;
 	}
 

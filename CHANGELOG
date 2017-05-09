@@ -1,0 +1,36 @@
+Changes since 1.11.0
+
+Add a new mkdir2 command that also takes a mode argument.
+
+Add support for RPC timeouts for the async interface.
+
+Fix NULL pointer read in nfs_link()
+
+Clamp read/write size for servers (Ganesha) that offer very large io sizes
+instead of failing to connect to the export
+
+Tell the server to commit all data to stable storage when we close files.
+
+Double free fix: don't call rpc_free_pdu() after rpc_queue_pdu() failure
+
+bootstrap updates
+
+Build fixes for Mingw and Cygwin
+
+Update README to document two new Windows builds
+
+Fix for memory leak in rpc_allocate_*()
+
+Use SOCK_CLOEXEC for the sockets
+
+Make rpc_set{g|u}id() public
+
+Performance optimization: socket: Batch pdu read in rpc_read_from_socket
+
+Low level support for NFSv4 and some examples
+
+Support for building RPC servers
+
+README updates
+
+Fixes to build nfs-ls and nfs-cp on win32

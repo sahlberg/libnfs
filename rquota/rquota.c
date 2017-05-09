@@ -62,7 +62,6 @@ int rpc_rquota1_null_async(struct rpc_context *rpc, rpc_cb cb, void *private_dat
 
 	if (rpc_queue_pdu(rpc, pdu) != 0) {
 		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for rquota1/null call");
-		rpc_free_pdu(rpc, pdu);
 		return -2;
 	}
 
@@ -91,7 +90,6 @@ int rpc_rquota1_getquota_async(struct rpc_context *rpc, rpc_cb cb, char *export,
 
 	if (rpc_queue_pdu(rpc, pdu) != 0) {
 		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for rquota1/getquota call");
-		rpc_free_pdu(rpc, pdu);
 		return -3;
 	}
 
@@ -120,7 +118,6 @@ int rpc_rquota1_getactivequota_async(struct rpc_context *rpc, rpc_cb cb, char *e
 
 	if (rpc_queue_pdu(rpc, pdu) != 0) {
 		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for rquota1/getactivequota call");
-		rpc_free_pdu(rpc, pdu);
 		return -3;
 	}
 
@@ -140,7 +137,6 @@ int rpc_rquota2_null_async(struct rpc_context *rpc, rpc_cb cb, void *private_dat
 
 	if (rpc_queue_pdu(rpc, pdu) != 0) {
 		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for rquota2/null call");
-		rpc_free_pdu(rpc, pdu);
 		return -2;
 	}
 
@@ -170,7 +166,6 @@ int rpc_rquota2_getquota_async(struct rpc_context *rpc, rpc_cb cb, char *export,
 
 	if (rpc_queue_pdu(rpc, pdu) != 0) {
 		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for rquota2/getquota call");
-		rpc_free_pdu(rpc, pdu);
 		return -3;
 	}
 
@@ -200,7 +195,6 @@ int rpc_rquota2_getactivequota_async(struct rpc_context *rpc, rpc_cb cb, char *e
 
 	if (rpc_queue_pdu(rpc, pdu) != 0) {
 		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for rquota2/getactivequota call");
-		rpc_free_pdu(rpc, pdu);
 		return -3;
 	}
 

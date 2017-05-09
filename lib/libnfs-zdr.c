@@ -78,7 +78,7 @@ void libnfs_zdrmem_create(ZDR *zdrs, const caddr_t addr, uint32_t size, enum zdr
 	zdrs->mem = NULL;
 }
 
-static void *zdr_malloc(ZDR *zdrs, uint32_t size)
+void *zdr_malloc(ZDR *zdrs, uint32_t size)
 {
 	struct zdr_mem *mem;
 	int mem_size;
@@ -205,7 +205,7 @@ bool_t libnfs_zdr_bool(ZDR *zdrs, bool_t *b)
 	return libnfs_zdr_u_int(zdrs, (uint32_t *)b);
 }
 
-bool_t libnfs_zdr_void(void)
+bool_t libnfs_zdr_void(ZDR *zdrs, void *v)
 {
 	return TRUE;
 }
@@ -309,10 +309,6 @@ bool_t libnfs_zdr_array(ZDR *zdrs, char **arrp, uint32_t *size, uint32_t maxsize
 	int  i;
 
 	if (!libnfs_zdr_u_int(zdrs, size)) {
-		return FALSE;
-	}
-
-	if (zdrs->pos + (int)(*size * elsize) > zdrs->size) {
 		return FALSE;
 	}
 

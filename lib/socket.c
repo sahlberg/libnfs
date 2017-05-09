@@ -85,19 +85,35 @@
 #include "win32_errnowrapper.h"
 #endif
 
-static int rpc_reconnect_requeue(struct rpc_context *rpc);
-static int rpc_connect_sockaddr_async(struct rpc_context *rpc, struct sockaddr_storage *s);
+#define NR_RECONNECT_RETRIES 10
 
-static void set_nonblocking(int fd)
+static int rpc_reconnect_requeue(struct rpc_context *rpc);
+
+static int create_socket(int domain, int type, int protocol)
+{
+#ifdef SOCK_CLOEXEC
+	/* Linux-specific extension (since 2.6.27): set the
+	   close-on-exec flag on all sockets to avoid leaking file
+	   descriptors to child processes */
+	int fd = socket(domain, type|SOCK_CLOEXEC, protocol);
+	if (fd >= 0 || errno != EINVAL)
+		return fd;
+#endif
+
+	return socket(domain, type, protocol);
+}
+
+static int set_nonblocking(int fd)
 {
 	int v = 0;
 #if defined(WIN32)
-	long nonblocking=1;
+	u_long nonblocking=1;
 	v = ioctl(fd, FIONBIO, &nonblocking);
 #else
 	v = fcntl(fd, F_GETFL, 0);
-        fcntl(fd, F_SETFL, v | O_NONBLOCK);
+	v = fcntl(fd, F_SETFL, v | O_NONBLOCK);
 #endif //FIXME
+	return v;
 }
 
 static void set_nolinger(int fd)
@@ -210,8 +226,14 @@ static int rpc_write_to_socket(struct rpc_context *rpc)
 			if (pdu->next == NULL)
 				rpc->outqueue.tail = NULL;
 
+                        if (pdu->flags & PDU_DISCARD_AFTER_SENDING) {
+                                rpc_free_pdu(rpc, pdu);
+                                return 0;
+                        }
+
 			hash = rpc_hash_xid(pdu->xid);
 			rpc_enqueue(&rpc->waitpdu[hash], pdu);
+			rpc->waitpdu_len++;
 		}
 	}
 	return 0;
@@ -222,11 +244,11 @@ static int rpc_read_from_socket(struct rpc_context *rpc)
 {
 	uint32_t pdu_size;
 	ssize_t count;
+	char *buf;
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
 	if (rpc->is_udp) {
-		char *buf;
 		socklen_t socklen = sizeof(rpc->udp_src);
 
 		buf = malloc(MAX_UDP_SIZE);
@@ -252,60 +274,62 @@ static int rpc_read_from_socket(struct rpc_context *rpc)
 		return 0;
 	}
 
-again:
-	/* read record marker, 4 bytes at the beginning of every pdu first */
-	pdu_size = rpc->inpos < 4 ? 4 : rpc_get_pdu_size(rpc->inbuf);
+	do {
+		/* read record marker, 4 bytes at the beginning of every pdu first */
+		if (rpc->inpos < 4) {
+			buf = (void *)rpc->rm_buf;
+			pdu_size = 4;
+		} else {
+			pdu_size = rpc_get_pdu_size((void *)&rpc->rm_buf);
+			if (rpc->inbuf == NULL) {
+				if (pdu_size > NFS_MAX_XFER_SIZE + 4096) {
+					rpc_set_error(rpc, "Incoming PDU exceeds limit of %d bytes.", NFS_MAX_XFER_SIZE + 4096);
+					return -1;
+				}
+				rpc->inbuf = malloc(pdu_size);
+				if (rpc->inbuf == NULL) {
+					rpc_set_error(rpc, "Failed to allocate buffer of %d bytes for pdu, errno:%d. Closing socket.", pdu_size, errno);
+					return -1;
+				}
+				memcpy(rpc->inbuf, &rpc->rm_buf, 4);
+			}
+			buf = rpc->inbuf;
+		}
 
-	if (pdu_size > NFS_MAX_XFER_SIZE + 4096) {
-		rpc_set_error(rpc, "Incoming PDU exceeds limit of %d bytes.", NFS_MAX_XFER_SIZE + 4096);
-		return -1;
-	}
-
-	if (rpc->insize < pdu_size) {
-		rpc->inbuf = realloc(rpc->inbuf, pdu_size);
-		if (rpc->inbuf == NULL) {
-			rpc_set_error(rpc, "Failed to allocate buffer of %d bytes for pdu, errno:%d. Closing socket.", pdu_size, errno);
+		count = recv(rpc->fd, buf + rpc->inpos, pdu_size - rpc->inpos, MSG_DONTWAIT);
+		if (count < 0) {
+			if (errno == EINTR || errno == EAGAIN) {
+				break;
+			}
+			rpc_set_error(rpc, "Read from socket failed, errno:%d. Closing socket.", errno);
 			return -1;
 		}
-		rpc->insize = pdu_size;
-	}
-
-	count = recv(rpc->fd, rpc->inbuf + rpc->inpos, rpc->insize - rpc->inpos, MSG_DONTWAIT);
-	if (count < 0) {
-		if (errno == EINTR || errno == EAGAIN) {
-			return 0;
-		}
-		rpc_set_error(rpc, "Read from socket failed, errno:%d. Closing socket.", errno);
-		return -1;
-	}
-	if (count == 0) {
-		/* remote side has closed the socket. Reconnect. */
-		return -1;
-	}
-	rpc->inpos += count;
-
-	if (rpc->inpos == 4) {
-		/* we have just read the header there is likely more data available */
-		goto again;
-	}
-
-	if (rpc->inpos == rpc->insize) {
-		char *buf = rpc->inbuf;
-
-		rpc->inbuf  = NULL;
-		rpc->insize = 0;
-		rpc->inpos  = 0;
-
-		if (rpc_process_pdu(rpc, buf, pdu_size) != 0) {
-			rpc_set_error(rpc, "Invalid/garbage pdu received from server. Closing socket");
+		if (count == 0) {
+			/* remote side has closed the socket. Reconnect. */
 			return -1;
 		}
-		free(buf);
-	}
+		rpc->inpos += count;
+
+		if (rpc->inpos == 4) {
+			/* we have just read the header there is likely more data available */
+			continue;
+		}
+
+		if (rpc->inpos == pdu_size) {
+			rpc->inbuf  = NULL;
+			rpc->inpos  = 0;
+
+			if (rpc_process_pdu(rpc, buf, pdu_size) != 0) {
+				rpc_set_error(rpc, "Invalid/garbage pdu received from server. Closing socket");
+				free(buf);
+				return -1;
+			}
+			free(buf);
+		}
+	} while (rpc->is_nonblocking && rpc->waitpdu_len > 0);
 
 	return 0;
 }
-
 
 static void
 maybe_call_connect_cb(struct rpc_context *rpc, int status)
@@ -320,10 +344,59 @@ maybe_call_connect_cb(struct rpc_context *rpc, int status)
 	tmp_cb(rpc, status, rpc->error_string, rpc->connect_data);
 }
 
+static void
+rpc_timeout_scan(struct rpc_context *rpc)
+{
+	struct rpc_pdu *pdu;
+	struct rpc_pdu *next_pdu;
+	time_t t = time(NULL);
+	unsigned int i;
+
+	for (pdu = rpc->outqueue.head; pdu; pdu = next_pdu) {
+		next_pdu = pdu->next;
+
+		if (pdu->timeout == 0) {
+			/* no timeout for this pdu */
+			continue;
+		}
+		if (t < pdu->timeout) {
+			/* not expired yet */
+			continue;
+		}
+		LIBNFS_LIST_REMOVE(&rpc->outqueue.head, pdu);
+		rpc_set_error(rpc, "command timed out");
+		pdu->cb(rpc, RPC_STATUS_TIMEOUT,
+			NULL, pdu->private_data);
+		rpc_free_pdu(rpc, pdu);
+	}
+	for (i = 0; i < HASHES; i++) {
+		struct rpc_queue *q = &rpc->waitpdu[i];
+
+		for (pdu = q->head; pdu; pdu = next_pdu) {
+			next_pdu = pdu->next;
+
+			if (pdu->timeout == 0) {
+				/* no timeout for this pdu */
+				continue;
+			}
+			if (t < pdu->timeout) {
+				/* not expired yet */
+				continue;
+			}
+			LIBNFS_LIST_REMOVE(&q->head, pdu);
+			rpc_set_error(rpc, "command timed out");
+			pdu->cb(rpc, RPC_STATUS_TIMEOUT,
+				NULL, pdu->private_data);
+			rpc_free_pdu(rpc, pdu);
+		}
+	}
+}
+
 int rpc_service(struct rpc_context *rpc, int revents)
 {
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
-	if (revents & (POLLERR|POLLHUP)) {
+
+	if (revents & (POLLERR | POLLHUP)) {
 		if (revents & POLLERR) {
 #ifdef WIN32
 			char err = 0;
@@ -356,7 +429,7 @@ int rpc_service(struct rpc_context *rpc, int revents)
 
 	}
 
-	if (rpc->is_connected == 0 && rpc->fd != -1 && revents&POLLOUT) {
+	if (rpc->is_connected == 0 && rpc->fd != -1 && (revents & POLLOUT)) {
 		int err = 0;
 		socklen_t err_size = sizeof(err);
 
@@ -380,16 +453,25 @@ int rpc_service(struct rpc_context *rpc, int revents)
 
 	if (revents & POLLIN) {
 		if (rpc_read_from_socket(rpc) != 0) {
-			return rpc_reconnect_requeue(rpc);
+                        if (rpc->is_server_context) {
+                                return -1;
+                        } else {
+                                return rpc_reconnect_requeue(rpc);
+                        }
 		}
 	}
 
 	if (revents & POLLOUT && rpc_has_queue(&rpc->outqueue)) {
 		if (rpc_write_to_socket(rpc) != 0) {
-			return rpc_reconnect_requeue(rpc);
+                        if (rpc->is_server_context) {
+                                return -1;
+                        } else {
+                                return rpc_reconnect_requeue(rpc);
+                        }
 		}
 	}
 
+	rpc_timeout_scan(rpc);
 	return 0;
 }
 
@@ -397,12 +479,21 @@ void rpc_set_autoreconnect(struct rpc_context *rpc)
 {
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
+        /* we can not connect and not reconnect on a server context. */
+        if (rpc->is_server_context) {
+                return;
+        }
+
 	rpc->auto_reconnect = 1;
 }
 
 void rpc_unset_autoreconnect(struct rpc_context *rpc)
 {
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
+
+        if (rpc->is_server_context) {
+                return;
+        }
 
 	rpc->auto_reconnect = 0;
 }
@@ -418,16 +509,17 @@ void rpc_set_tcp_syncnt(struct rpc_context *rpc, int v)
 #define TCP_SYNCNT        7
 #endif
 
-static int rpc_connect_sockaddr_async(struct rpc_context *rpc, struct sockaddr_storage *s)
+static int rpc_connect_sockaddr_async(struct rpc_context *rpc)
 {
-	int socksize;
+        struct sockaddr_storage *s = &rpc->s;
+        socklen_t socksize;
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
 	switch (s->ss_family) {
 	case AF_INET:
 		socksize = sizeof(struct sockaddr_in);
-		rpc->fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+		rpc->fd = create_socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 		if (set_bind_device(rpc->fd, rpc->ifname) != 0) {
 			rpc_set_error (rpc, "Failed to bind to interface");
 			return -1;
@@ -441,7 +533,7 @@ static int rpc_connect_sockaddr_async(struct rpc_context *rpc, struct sockaddr_s
 		break;
 	case AF_INET6:
 		socksize = sizeof(struct sockaddr_in6);
-		rpc->fd = socket(AF_INET6, SOCK_STREAM, IPPROTO_TCP);
+		rpc->fd = create_socket(AF_INET6, SOCK_STREAM, IPPROTO_TCP);
 		if (set_bind_device(rpc->fd, rpc->ifname) != 0) {
 			rpc_set_error (rpc, "Failed to bind to interface");
 			return -1;
@@ -536,7 +628,7 @@ static int rpc_connect_sockaddr_async(struct rpc_context *rpc, struct sockaddr_s
 		} while (rc != 0 && portOfs != startOfs);
 	}
 
-	set_nonblocking(rpc->fd);
+	rpc->is_nonblocking = !set_nonblocking(rpc->fd);
 	set_nolinger(rpc->fd);
 
 	if (connect(rpc->fd, (struct sockaddr *)s, socksize) != 0 && errno != EINPROGRESS) {
@@ -547,23 +639,10 @@ static int rpc_connect_sockaddr_async(struct rpc_context *rpc, struct sockaddr_s
 	return 0;
 }
 
-int rpc_connect_async(struct rpc_context *rpc, const char *server, int port, rpc_cb cb, void *private_data)
+static int rpc_set_sockaddr(struct rpc_context *rpc, const char *server,
+                            int port)
 {
 	struct addrinfo *ai = NULL;
-
-	assert(rpc->magic == RPC_CONTEXT_MAGIC);
-
-	if (rpc->fd != -1) {
-		rpc_set_error(rpc, "Trying to connect while already connected");
-		return -1;
-	}
-
-	if (rpc->is_udp != 0) {
-		rpc_set_error(rpc, "Trying to connect on UDP socket");
-		return -1;
-	}
-
-	rpc->auto_reconnect = 0;
 
 	if (getaddrinfo(server, NULL, NULL, &ai) != 0) {
 		rpc_set_error(rpc, "Invalid address:%s. "
@@ -589,13 +668,40 @@ int rpc_connect_async(struct rpc_context *rpc, const char *server, int port, rpc
 #endif
 		break;
 	}
+	freeaddrinfo(ai);
+
+        return 0;
+}
+
+int rpc_connect_async(struct rpc_context *rpc, const char *server, int port, rpc_cb cb, void *private_data)
+{
+	assert(rpc->magic == RPC_CONTEXT_MAGIC);
+
+        if (rpc->is_server_context) {
+		rpc_set_error(rpc, "Can not connect on a server context");
+                return -1;
+        }
+
+	if (rpc->fd != -1) {
+		rpc_set_error(rpc, "Trying to connect while already connected");
+		return -1;
+	}
+
+	if (rpc->is_udp != 0) {
+		rpc_set_error(rpc, "Trying to connect on UDP socket");
+		return -1;
+	}
+
+	rpc->auto_reconnect = 0;
+
+        if (rpc_set_sockaddr(rpc, server, port) != 0) {
+                return -1;
+        }
 
 	rpc->connect_cb  = cb;
 	rpc->connect_data = private_data;
 
-	freeaddrinfo(ai);
-
-	if (rpc_connect_sockaddr_async(rpc, &rpc->s) != 0) {
+	if (rpc_connect_sockaddr_async(rpc) != 0) {
 		return -1;
 	}
 
@@ -619,7 +725,9 @@ int rpc_disconnect(struct rpc_context *rpc, const char *error)
 
 	rpc->is_connected = 0;
 
-	rpc_error_all_pdus(rpc, error);
+        if (!rpc->is_server_context) {
+                rpc_error_all_pdus(rpc, error);
+        }
 
 	return 0;
 }
@@ -647,6 +755,9 @@ static int rpc_reconnect_requeue(struct rpc_context *rpc)
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
+	if (rpc->is_connected)
+		rpc->auto_reconnect_retries = NR_RECONNECT_RETRIES;
+
 	if (rpc->fd != -1) {
 		rpc->old_fd = rpc->fd;
 	}
@@ -670,11 +781,13 @@ static int rpc_reconnect_requeue(struct rpc_context *rpc)
 		}
 		rpc_reset_queue(q);
 	}
+	rpc->waitpdu_len = 0;
 
-	if (rpc->auto_reconnect != 0) {
+	if (rpc->auto_reconnect != 0 && rpc->auto_reconnect_retries > 0) {
+		rpc->auto_reconnect_retries--;
 		rpc->connect_cb  = reconnect_cb;
 		RPC_LOG(rpc, 1, "reconnect initiated");
-		if (rpc_connect_sockaddr_async(rpc, &rpc->s) != 0) {
+		if (rpc_connect_sockaddr_async(rpc) != 0) {
 			rpc_error_all_pdus(rpc, "RPC ERROR: Failed to reconnect async");
 			return -1;
 		}
@@ -708,7 +821,7 @@ int rpc_bind_udp(struct rpc_context *rpc, char *addr, int port)
 
 	switch(ai->ai_family) {
 	case AF_INET:
-		rpc->fd = socket(ai->ai_family, SOCK_DGRAM, 0);
+		rpc->fd = create_socket(ai->ai_family, SOCK_DGRAM, 0);
 		if (rpc->fd == -1) {
 			rpc_set_error(rpc, "Failed to create UDP socket: %s", strerror(errno));
 			freeaddrinfo(ai);
@@ -751,17 +864,7 @@ int rpc_set_udp_destination(struct rpc_context *rpc, char *addr, int port, int i
 		return -1;
  	}
 
-	if (rpc->udp_dest) {
-		free(rpc->udp_dest);
-		rpc->udp_dest = NULL;
-	}
-	rpc->udp_dest = malloc(ai->ai_addrlen);
-	if (rpc->udp_dest == NULL) {
-		rpc_set_error(rpc, "Out of memory. Failed to allocate sockaddr structure");
-		freeaddrinfo(ai);
-		return -1;
-	}
-	memcpy(rpc->udp_dest, ai->ai_addr, ai->ai_addrlen);
+	memcpy(&rpc->udp_dest, ai->ai_addr, ai->ai_addrlen);
 	freeaddrinfo(ai);
 
 	rpc->is_broadcast = is_broadcast;
@@ -779,9 +882,8 @@ struct sockaddr *rpc_get_recv_sockaddr(struct rpc_context *rpc)
 
 int rpc_queue_length(struct rpc_context *rpc)
 {
-	int i=0;
+	int i = 0;
 	struct rpc_pdu *pdu;
-	unsigned int n;
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
@@ -789,12 +891,8 @@ int rpc_queue_length(struct rpc_context *rpc)
 		i++;
 	}
 
-	for (n = 0; n < HASHES; n++) {
-		struct rpc_queue *q = &rpc->waitpdu[n];
+	i += rpc->waitpdu_len;
 
-		for(pdu = q->head; pdu; pdu = pdu->next)
-			i++;
-	}
 	return i;
 }
 
@@ -803,4 +901,17 @@ void rpc_set_fd(struct rpc_context *rpc, int fd)
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
 	rpc->fd = fd;
+}
+
+int rpc_is_udp_socket(struct rpc_context *rpc)
+{
+#ifdef WIN32
+        char type = 0;
+#else
+        int type = 0;
+#endif
+        socklen_t len = sizeof(type);
+
+        getsockopt(rpc->fd, SOL_SOCKET, SO_TYPE, &type, &len);
+        return type == SOCK_DGRAM;
 }
