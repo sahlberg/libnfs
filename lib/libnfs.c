@@ -957,12 +957,27 @@ static void nfs_mount_10_cb(struct rpc_context *rpc, int status, void *command_d
 	nfs->readmax = res->FSINFO3res_u.resok.rtmax;
 	nfs->writemax = res->FSINFO3res_u.resok.wtmax;
 
-	if (nfs->readmax > NFS_MAX_XFER_SIZE) {
+	/* The server supports sizes up to rtmax and wtmax, so it is legal
+	 * to use smaller transfers sizes.
+	 */
+	if (nfs->readmax > NFS_MAX_XFER_SIZE)
 		nfs->readmax = NFS_MAX_XFER_SIZE;
+	else if (nfs->readmax < NFSMAXDATA2) {
+		rpc_set_error(
+			rpc, "server max rsize of %" PRIu64, nfs->readmax);
+		data->cb(-EINVAL, nfs, command_data, data->private_data);
+		free_nfs_cb_data(data);
+		return;
 	}
 
-	if (nfs->writemax > NFS_MAX_XFER_SIZE) {
+	if (nfs->writemax > NFS_MAX_XFER_SIZE)
 		nfs->writemax = NFS_MAX_XFER_SIZE;
+	else if (nfs->writemax < NFSMAXDATA2) {
+		rpc_set_error(
+			rpc, "server max wsize of %" PRIu64, nfs->writemax);
+		data->cb(-EINVAL, nfs, command_data, data->private_data);
+		free_nfs_cb_data(data);
+		return;
 	}
 
 	memset(&args, 0, sizeof(GETATTR3args));
