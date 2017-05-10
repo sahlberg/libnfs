@@ -1009,6 +1009,8 @@ static void nfs_mount_9_cb(struct rpc_context *rpc, int status, void *command_da
 
 struct mount_discovery_cb {
 	int wait_count;
+	int error;
+	int status;
 	struct nfs_cb_data *data;
 };
 
@@ -1028,18 +1030,30 @@ static void nfs_mount_8_cb(struct rpc_context *rpc, int status, void *command_da
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
-	if (status == RPC_STATUS_ERROR)
+	if (status == RPC_STATUS_ERROR) {
+		rpc_set_error(nfs->rpc, "MOUNT failed with RPC_STATUS_ERROR");
+		md_cb->error = -EFAULT;
 		goto finished;
-	if (status == RPC_STATUS_CANCEL)
+	}
+	if (status == RPC_STATUS_CANCEL) {
+		rpc_set_error(nfs->rpc, "MOUNT failed with RPC_STATUS_CANCEL");
+		md_cb->status = RPC_STATUS_CANCEL;
 		goto finished;
+	}
 
 	res = command_data;
-	if (res->fhs_status != MNT3_OK)
+	if (res->fhs_status != MNT3_OK) {
+		rpc_set_error(rpc, "RPC error: Mount failed with error %s(%d) %s(%d)", mountstat3_to_str(res->fhs_status), res->fhs_status, strerror(-mountstat3_to_errno(res->fhs_status)), -mountstat3_to_errno(res->fhs_status));
+		md_cb->error = mountstat3_to_errno(res->fhs_status);
 		goto finished;
+	}
 
 	mnt = malloc(sizeof(*mnt));
-	if (mnt == NULL)
+	if (mnt == NULL) {
+		rpc_set_error(rpc, "Out of memory. Could not allocate memory to store mount handle");
+		md_cb->error = -ENOMEM;
 		goto finished;
+	}
 	memset(mnt, 0, sizeof(*mnt));
 
 	mnt->fh.data.data_len = res->mountres3_u.mountinfo.fhandle.fhandle3_len;
@@ -1067,13 +1081,13 @@ finished:
 
 	rpc_disconnect(rpc, "normal disconnect");
 
-	if (status == RPC_STATUS_ERROR) {
-		data->cb(-EFAULT, nfs, command_data, data->private_data);
+	if (md_cb->status == RPC_STATUS_CANCEL) {
+		data->cb(-EINTR, nfs, "Command was cancelled", data->private_data);
 		free_nfs_cb_data(data);
 		return;
 	}
-	if (status == RPC_STATUS_CANCEL) {
-		data->cb(-EINTR, nfs, "Command was cancelled", data->private_data);
+	if (md_cb->error) {
+		data->cb(md_cb->error, nfs, command_data, data->private_data);
 		free_nfs_cb_data(data);
 		return;
 	}
@@ -1155,6 +1169,8 @@ static void nfs_mount_7_cb(struct rpc_context *rpc, int status, void *command_da
 			}
 			memset(md_cb, 0, sizeof(*md_cb));
 			md_cb->data = data;
+			md_cb->status = RPC_STATUS_SUCCESS;
+			md_cb->error = 0;
 		}
 		md_item_cb->md_cb = md_cb;
 
