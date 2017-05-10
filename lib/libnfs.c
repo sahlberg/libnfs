@@ -954,6 +954,13 @@ static void nfs_mount_10_cb(struct rpc_context *rpc, int status, void *command_d
 		return;
 	}
 
+	if (res->status != NFS3_OK) {
+		rpc_set_error(nfs->rpc, "NFS: FSINFO of %s failed with %s(%d)", nfs->export, nfsstat3_to_str(res->status), nfsstat3_to_errno(res->status));
+		data->cb(nfsstat3_to_errno(res->status), nfs, rpc_get_error(nfs->rpc), data->private_data);
+		free_nfs_cb_data(data);
+		return;
+        }
+
 	nfs->readmax = res->FSINFO3res_u.resok.rtmax;
 	nfs->writemax = res->FSINFO3res_u.resok.wtmax;
 
