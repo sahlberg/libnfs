@@ -232,6 +232,7 @@ EXTERN void nfs_set_pagecache_ttl(struct nfs_context *nfs, uint32_t v);
 EXTERN void nfs_set_readahead(struct nfs_context *nfs, uint32_t v);
 EXTERN void nfs_set_debug(struct nfs_context *nfs, int level);
 EXTERN void nfs_set_dircache(struct nfs_context *nfs, int enabled);
+EXTERN void nfs_set_autoreconnect(struct nfs_context *nfs, int enabled);
 
 /*
  *  Invalidate the pagecache
