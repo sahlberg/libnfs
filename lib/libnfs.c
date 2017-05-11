@@ -148,6 +148,7 @@ struct nfs_context {
        uint64_t writemax;
        char *cwd;
        int dircache_enabled;
+       int auto_reconnect_enabled;
        struct nfsdir *dircache;
        uint16_t	mask;
 
@@ -360,6 +361,8 @@ static int nfs_set_context_args(struct nfs_context *nfs, const char *arg, const 
 		nfs->auto_traverse_mounts = atoi(val);
 	} else if (!strcmp(arg, "dircache")) {
 		nfs_set_dircache(nfs, atoi(val));
+	} else if (!strcmp(arg, "autoreconnect")) {
+		nfs_set_autoreconnect(nfs, atoi(val));
 #ifdef HAVE_SO_BINDTODEVICE
 	} else if (!strcmp(arg, "if")) {
 		nfs_set_interface(nfs, val);
@@ -529,6 +532,7 @@ struct nfs_context *nfs_init_context(void)
 	nfs->mask = 022;
 	nfs->auto_traverse_mounts = 1;
 	nfs->dircache_enabled = 1;
+	nfs->auto_reconnect_enabled = 1;
 	return nfs;
 }
 
@@ -1022,7 +1026,8 @@ static void nfs_mount_9_cb(struct rpc_context *rpc, int status, void *command_da
 	/* NFS TCP connections should be autoreconnected after sessions have
          * been torn down (due to inactivity or error)
          */
-	rpc_set_autoreconnect(rpc);
+	if (nfs->auto_reconnect_enabled)
+		rpc_set_autoreconnect(rpc);
 
 	args.fsroot = nfs->rootfh;
 	if (rpc_nfs3_fsinfo_async(rpc, nfs_mount_10_cb, &args, data) != 0) {
@@ -5597,6 +5602,10 @@ void nfs_set_debug(struct nfs_context *nfs, int level) {
 
 void nfs_set_dircache(struct nfs_context *nfs, int enabled) {
 	nfs->dircache_enabled = enabled;
+}
+
+void nfs_set_autoreconnect(struct nfs_context *nfs, int enabled) {
+	nfs->auto_reconnect_enabled = enabled;
 }
 
 void nfs_set_error(struct nfs_context *nfs, char *error_string, ...)

@@ -72,6 +72,7 @@ nfs_rmdir
 nfs_rmdir_async
 nfs_service
 nfs_set_auth
+nfs_set_autoreconnect
 nfs_set_debug
 nfs_set_dircache
 nfs_set_gid
