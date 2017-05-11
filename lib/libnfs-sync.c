@@ -110,6 +110,7 @@ struct sync_cb_data {
 static void wait_for_reply(struct rpc_context *rpc, struct sync_cb_data *cb_data)
 {
 	struct pollfd pfd;
+	int revents;
 	int ret;
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
@@ -119,25 +120,26 @@ static void wait_for_reply(struct rpc_context *rpc, struct sync_cb_data *cb_data
 		pfd.fd = rpc_get_fd(rpc);
 		pfd.events = rpc_which_events(rpc);
 
-		ret =  poll(&pfd, 1, rpc_get_timeout(rpc));
+		ret = poll(&pfd, 1, rpc_get_timeout(rpc));
 		if (ret < 0) {
 			rpc_set_error(rpc, "Poll failed");
-			cb_data->status = -EIO;
-			break;
+			revents = -1;
 		} else if(ret == 0) {
 			rpc_set_error(rpc, "Timed out after [%d] milliseconds",rpc_get_timeout(rpc));
-			cb_data->status = -EIO;
-			break;
+			revents = -1;
+		} else {
+			revents = pfd.revents;
 		}
 
-		if (rpc_service(rpc, pfd.revents) < 0) {
-			rpc_set_error(rpc, "rpc_service failed");
+		if (rpc_service(rpc, revents) < 0) {
+			if (revents != -1)
+				rpc_set_error(rpc, "rpc_service failed");
 			cb_data->status = -EIO;
 			break;
 		}
 
 		if (rpc_get_fd(rpc) == -1) {
-			rpc_set_error(rpc, "Socket closed\n");
+			rpc_set_error(rpc, "Socket closed");
 			break;
 		}
 	}
@@ -146,6 +148,7 @@ static void wait_for_reply(struct rpc_context *rpc, struct sync_cb_data *cb_data
 static void wait_for_nfs_reply(struct nfs_context *nfs, struct sync_cb_data *cb_data)
 {
 	struct pollfd pfd;
+	int revents;
 	int ret = -1;
 
 	while (!cb_data->is_finished) {
@@ -153,19 +156,20 @@ static void wait_for_nfs_reply(struct nfs_context *nfs, struct sync_cb_data *cb_
 		pfd.fd = nfs_get_fd(nfs);
 		pfd.events = nfs_which_events(nfs);
 
-		ret =  poll(&pfd, 1, nfs_get_timeout(nfs));
+		ret = poll(&pfd, 1, nfs_get_timeout(nfs));
 		if (ret < 0) {
 			nfs_set_error(nfs, "Poll failed");
-			cb_data->status = -EIO;
-			break;
+			revents = -1;
 		} else if(ret == 0) {
 			nfs_set_error(nfs, "Timed out after [%d] milliseconds",nfs_get_timeout(nfs));
-			cb_data->status = -EIO;
-			break;
+			revents = -1;
+		} else {
+			revents = pfd.revents;
 		}
 
-		if (nfs_service(nfs, pfd.revents) < 0) {
-			nfs_set_error(nfs, "nfs_service failed");
+		if (nfs_service(nfs, revents) < 0) {
+			if (revents != -1)
+				nfs_set_error(nfs, "nfs_service failed");
 			cb_data->status = -EIO;
 			break;
 		}
