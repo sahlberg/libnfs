@@ -209,6 +209,14 @@ int nfs_mount(struct nfs_context *nfs, const char *server, const char *export)
 	/* Dont want any more callbacks even if the socket is closed */
 	rpc->connect_cb = NULL;
 
+	/* Ensure that no RPCs are pending. In error case (e.g. timeout in
+	 * wait_for_nfs_reply()) we can disconnect; in success case all RPCs
+	 * are completed by definition.
+	 */
+	if (cb_data.status) {
+		rpc_disconnect(rpc, "failed mount");
+	}
+
 	return cb_data.status;
 }
 
