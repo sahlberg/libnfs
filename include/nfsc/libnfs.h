@@ -183,6 +183,20 @@ EXTERN void nfs_destroy_context(struct nfs_context *nfs);
  *                   : Should libnfs try to traverse across nested mounts
  *                     automatically or not. Default is 1 == enabled.
  * dircache=<0|1>    : Disable/enable directory caching. Enabled by default.
+ * autoreconnect=<0|1> : Whether libnfs will try to reconnect failed/torn-down
+ *                     TCP sessions. Disabling this allows a client
+ *                     application to detect a session failure much quicker.
+ *                     This can be useful for certain server failover/migration
+ *                     configurations but beware :
+ *                     * On session failure, any/all in-flight commands
+ *                       will be dropped and libnfs will not try to recover
+ *                       or re-send the commands.
+ *                     * Servers will often deliberately tear-down TCP
+ *                       connections once they have been idle for some period
+ *                       of time, often 10-15min and thus depend on the clients
+ *                       transparently re-connecting the TCP connection on
+ *                       demand.
+ *                     The default is 1.
  */
 /*
  * Parse a complete NFS URL including, server, path and
