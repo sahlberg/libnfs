@@ -233,6 +233,7 @@ int rpc_get_timeout(struct rpc_context *rpc);
 int rpc_add_fragment(struct rpc_context *rpc, char *data, uint32_t size);
 void rpc_free_all_fragments(struct rpc_context *rpc);
 int rpc_is_udp_socket(struct rpc_context *rpc);
+int rpc_current_time(void);
 
 const struct nfs_fh3 *nfs_get_rootfh(struct nfs_context *nfs);
 

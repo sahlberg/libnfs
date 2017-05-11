@@ -349,7 +349,7 @@ rpc_timeout_scan(struct rpc_context *rpc)
 {
 	struct rpc_pdu *pdu;
 	struct rpc_pdu *next_pdu;
-	time_t t = time(NULL);
+	time_t t = rpc_current_time();
 	unsigned int i;
 
 	for (pdu = rpc->outqueue.head; pdu; pdu = next_pdu) {
@@ -589,7 +589,7 @@ static int rpc_connect_sockaddr_async(struct rpc_context *rpc)
 		int startOfs, port, rc;
 
 		if (portOfs == 0) {
-			portOfs = time(NULL) % 400;
+			portOfs = rpc_current_time() % 400;
 		}
 		startOfs = portOfs;
 		do {

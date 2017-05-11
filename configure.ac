@@ -192,6 +192,20 @@ AC_CHECK_MEMBER([struct sockaddr_storage.ss_family],
 #include <sys/socket.h>
 ])
 
+# check for clock_gettime(CLOCK_MONOTONIC_COARSE)
+AC_MSG_CHECKING(if clock_gettime(CLOCK_MONOTONIC_COARSE) is available)
+AC_TRY_COMPILE([#include <time.h>], [
+        int i = clock_gettime(CLOCK_MONOTONIC_COARSE, NULL);
+], ac_cv_have_clock_gettime=yes, ac_cv_have_clock_gettime=no)
+if test "$ac_cv_have_clock_gettime" = yes ; then
+  AC_MSG_RESULT(yes)
+  AC_DEFINE(HAVE_CLOCK_GETTIME, 1, [Whether we have clock_gettime])
+else
+  AC_MSG_RESULT(no)
+  AC_MSG_NOTICE(clock_gettime(CLOCK_MONOTONIC_COARSE) support is missing.)
+  AC_MSG_NOTICE(Compiling without clock_gettime support..)
+fi
+
 # check for tevent + talloc
 AC_CACHE_CHECK([for talloc and tevent support],libnfs_cv_HAVE_TALLOC_TEVENT,[
 AC_TRY_COMPILE([

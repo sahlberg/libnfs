@@ -556,7 +556,7 @@ struct AUTH *libnfs_authunix_create(const char *host, uint32_t uid, uint32_t gid
 	memset(auth->ah_cred.oa_base, 0x00, size);
 	buf = (uint32_t *)(void *)auth->ah_cred.oa_base;
 	idx = 0;
-	buf[idx++] = htonl(time(NULL));
+	buf[idx++] = htonl(rpc_current_time());
 	buf[idx++] = htonl(strlen(host));
 	memcpy(&buf[2], host, strlen(host));
 

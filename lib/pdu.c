@@ -223,7 +223,7 @@ int rpc_queue_pdu(struct rpc_context *rpc, struct rpc_pdu *pdu)
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
 	if (rpc->timeout > 0) {
-		pdu->timeout = time(NULL) + rpc->timeout / 1000;
+		pdu->timeout = rpc_current_time() + rpc->timeout / 1000;
 	} else {
 		pdu->timeout = 0;
 	}
