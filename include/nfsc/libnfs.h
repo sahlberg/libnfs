@@ -182,6 +182,11 @@ EXTERN void nfs_destroy_context(struct nfs_context *nfs);
  *                   : Should libnfs try to traverse across nested mounts
  *                     automatically or not. Default is 1 == enabled.
  * dircache=<0|1>    : Disable/enable directory caching. Enabled by default.
+ * autoreconnect=<0|1>
+ *                   : Disable/enable reconnection when connections close.
+ *                     When disabled, closed connections will cause an
+ *                     immediate error return, with loss of commands and
+ *                     data that are still inflight. Default is 1 == enabled.
  */
 /*
  * Parse a complete NFS URL including, server, path and
