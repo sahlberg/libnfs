@@ -396,8 +396,9 @@ int rpc_service(struct rpc_context *rpc, int revents)
 {
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
-	if (revents & (POLLERR | POLLHUP)) {
-		if (revents & POLLERR) {
+	if (revents == -1 || revents & (POLLERR|POLLHUP)) {
+		if (revents != -1 && revents & POLLERR) {
+
 #ifdef WIN32
 			char err = 0;
 #else
@@ -418,7 +419,7 @@ int rpc_service(struct rpc_context *rpc, int revents)
 						   "Unknown socket error.");
 			}
 		}
-		if (revents & POLLHUP) {
+		if (revents != -1 && revents & POLLHUP) {
 			rpc_set_error(rpc, "Socket failed with POLLHUP");
 		}
 		if (rpc->auto_reconnect) {
