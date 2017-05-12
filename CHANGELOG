@@ -1,0 +1,48 @@
+Changes since 1.11.0
+
+BUGS
+====
+Fix NULL pointer crash in nfs_link().
+
+Clamp read/write size for servers (Ganesha) that offer very large io sizes
+instead of failing to connect to the export.
+
+Tell the server to commit all data to stable storage when we close files.
+
+Double free fix: don't call rpc_free_pdu() after rpc_queue_pdu() failure.
+
+Fix for memory leak in rpc_allocate_*().
+
+Fixes to build nfs-ls and nfs-cp on win32.
+
+Abort the mount process correctly if MOUNT/MNT returns error or is cancelled.
+
+Fix memory leak in error path in nfs_create_2_cb().
+
+Fix leak of rpc->inbuf if we destroy the context while we still have PDUs
+in flight.
+
+
+FEATURES
+========
+Add O_NOFOLLOW support for nfs_open()
+
+Add a new mkdir2 command that also takes a mode argument.
+
+Add a new readlink2 command that avoids having to preallocate the buffer.
+
+Add support for RPC timeouts for the async interface.
+
+Build fixes for Mingw and Cygwin
+
+Update README to document two new Windows builds
+
+Use SOCK_CLOEXEC for the sockets
+
+Make rpc_set{g|u}id() public
+
+Performance optimization: socket: Batch pdu read in rpc_read_from_socket
+
+Low level support for NFSv4 and some examples
+
+Support for building RPC servers

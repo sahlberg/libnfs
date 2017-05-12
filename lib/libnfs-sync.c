@@ -213,6 +213,14 @@ int nfs_mount(struct nfs_context *nfs, const char *server, const char *export)
 	/* Dont want any more callbacks even if the socket is closed */
 	rpc->connect_cb = NULL;
 
+	/* Ensure that no RPCs are pending. In error case (e.g. timeout in
+	 * wait_for_nfs_reply()) we can disconnect; in success case all RPCs
+	 * are completed by definition.
+	 */
+	if (cb_data.status) {
+		rpc_disconnect(rpc, "failed mount");
+	}
+
 	return cb_data.status;
 }
 
@@ -399,7 +407,7 @@ static void pread_cb(int status, struct nfs_context *nfs, void *data, void *priv
 	memcpy(buffer, (char *)data, status);
 }
 
-int nfs_pread(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t offset, uint64_t count, char *buffer)
+int nfs_pread(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t offset, uint64_t count, void *buffer)
 {
 	struct sync_cb_data cb_data;
 
@@ -420,7 +428,7 @@ int nfs_pread(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t offset, uin
 /*
  * read()
  */
-int nfs_read(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t count, char *buffer)
+int nfs_read(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t count, void *buffer)
 {
 	struct sync_cb_data cb_data;
 
@@ -530,7 +538,7 @@ static void pwrite_cb(int status, struct nfs_context *nfs, void *data, void *pri
 		nfs_set_error(nfs, "%s call failed with \"%s\"", cb_data->call, (char *)data);
 }
 
-int nfs_pwrite(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t offset, uint64_t count, char *buf)
+int nfs_pwrite(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t offset, uint64_t count, const void *buf)
 {
 	struct sync_cb_data cb_data;
 
@@ -550,7 +558,7 @@ int nfs_pwrite(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t offset, ui
 /*
  * write()
  */
-int nfs_write(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t count, char *buf)
+int nfs_write(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t count, const void *buf)
 {
 	struct sync_cb_data cb_data;
 
@@ -701,6 +709,21 @@ int nfs_mkdir(struct nfs_context *nfs, const char *path)
 	return cb_data.status;
 }
 
+int nfs_mkdir2(struct nfs_context *nfs, const char *path, int mode)
+{
+	struct sync_cb_data cb_data;
+
+	cb_data.is_finished = 0;
+
+	if (nfs_mkdir2_async(nfs, path, mode, mkdir_cb, &cb_data) != 0) {
+		nfs_set_error(nfs, "nfs_mkdir2_async failed");
+		return -1;
+	}
+
+	wait_for_nfs_reply(nfs, &cb_data);
+
+	return cb_data.status;
+}
 
 
 
@@ -998,6 +1021,49 @@ int nfs_readlink(struct nfs_context *nfs, const char *path, char *buf, int bufsi
 	cb_data.return_int  = bufsize;
 
 	if (nfs_readlink_async(nfs, path, readlink_cb, &cb_data) != 0) {
+		nfs_set_error(nfs, "nfs_readlink_async failed");
+		return -1;
+	}
+
+	wait_for_nfs_reply(nfs, &cb_data);
+
+	return cb_data.status;
+}
+
+static void readlink2_cb(int status, struct nfs_context *nfs, void *data, void *private_data)
+{
+	struct sync_cb_data *cb_data = private_data;
+	char **bufptr;
+	char *buf;
+
+	cb_data->is_finished = 1;
+	cb_data->status = status;
+
+	if (status < 0) {
+		nfs_set_error(nfs, "readlink call failed with \"%s\"", (char *)data);
+		return;
+	}
+
+	buf = strdup(data);
+	if (buf == NULL) {
+		cb_data->status = errno ? -errno : -ENOMEM;
+		return;
+	}
+
+	bufptr = cb_data->return_data;
+	if (bufptr)
+		*bufptr = buf;
+}
+
+int nfs_readlink2(struct nfs_context *nfs, const char *path, char **bufptr)
+{
+	struct sync_cb_data cb_data;
+
+	*bufptr = NULL;
+	cb_data.is_finished = 0;
+	cb_data.return_data = bufptr;
+
+	if (nfs_readlink_async(nfs, path, readlink2_cb, &cb_data) != 0) {
 		nfs_set_error(nfs, "nfs_readlink_async failed");
 		return -1;
 	}
@@ -1424,7 +1490,8 @@ int nfs_link(struct nfs_context *nfs, const char *oldpath, const char *newpath)
 	cb_data.is_finished = 0;
 
 	if (nfs_link_async(nfs, oldpath, newpath, link_cb, &cb_data) != 0) {
-		nfs_set_error(nfs, "nfs_link_async failed");
+		nfs_set_error(nfs, "nfs_link_async failed: %s",
+			      nfs_get_error(nfs));
 		return -1;
 	}
 

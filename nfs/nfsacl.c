@@ -42,7 +42,6 @@ int rpc_nfsacl_null_async(struct rpc_context *rpc, rpc_cb cb, void *private_data
 
 	if (rpc_queue_pdu(rpc, pdu) != 0) {
 		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for nfsacl/null call");
-		rpc_free_pdu(rpc, pdu);
 		return -2;
 	}
 
@@ -68,7 +67,6 @@ int rpc_nfsacl_getacl_async(struct rpc_context *rpc, rpc_cb cb, struct GETACL3ar
 
 	if (rpc_queue_pdu(rpc, pdu) != 0) {
 		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for nfsacl/getacl call");
-		rpc_free_pdu(rpc, pdu);
 		return -2;
 	}
 
@@ -93,7 +91,6 @@ int rpc_nfsacl_setacl_async(struct rpc_context *rpc, rpc_cb cb, struct SETACL3ar
 
 	if (rpc_queue_pdu(rpc, pdu) != 0) {
 		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for nfsacl/setacl call");
-		rpc_free_pdu(rpc, pdu);
 		return -2;
 	}
 

@@ -39,7 +39,6 @@ int rpc_nsm1_null_async(struct rpc_context *rpc, rpc_cb cb, void *private_data)
 
 	if (rpc_queue_pdu(rpc, pdu) != 0) {
 		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for nsm/null call");
-		rpc_free_pdu(rpc, pdu);
 		return -1;
 	}
 
@@ -64,7 +63,6 @@ int rpc_nsm1_stat_async(struct rpc_context *rpc, rpc_cb cb, struct NSM1_STATargs
 
 	if (rpc_queue_pdu(rpc, pdu) != 0) {
 		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for nsm/stat call");
-		rpc_free_pdu(rpc, pdu);
 		return -1;
 	}
 
@@ -89,7 +87,6 @@ int rpc_nsm1_mon_async(struct rpc_context *rpc, rpc_cb cb, struct NSM1_MONargs *
 
 	if (rpc_queue_pdu(rpc, pdu) != 0) {
 		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for nsm/mon call");
-		rpc_free_pdu(rpc, pdu);
 		return -1;
 	}
 
@@ -114,7 +111,6 @@ int rpc_nsm1_unmon_async(struct rpc_context *rpc, rpc_cb cb, struct NSM1_UNMONar
 
 	if (rpc_queue_pdu(rpc, pdu) != 0) {
 		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for nsm/unmon call");
-		rpc_free_pdu(rpc, pdu);
 		return -1;
 	}
 
@@ -139,7 +135,6 @@ int rpc_nsm1_unmonall_async(struct rpc_context *rpc, rpc_cb cb, struct NSM1_UNMO
 
 	if (rpc_queue_pdu(rpc, pdu) != 0) {
 		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for nsm/unmonall call");
-		rpc_free_pdu(rpc, pdu);
 		return -1;
 	}
 
@@ -158,7 +153,6 @@ int rpc_nsm1_simucrash_async(struct rpc_context *rpc, rpc_cb cb, void *private_d
 
 	if (rpc_queue_pdu(rpc, pdu) != 0) {
 		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for nsm/simucrash call");
-		rpc_free_pdu(rpc, pdu);
 		return -1;
 	}
 
@@ -183,7 +177,6 @@ int rpc_nsm1_notify_async(struct rpc_context *rpc, rpc_cb cb, struct NSM1_NOTIFY
 
 	if (rpc_queue_pdu(rpc, pdu) != 0) {
 		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for nsm/notify call");
-		rpc_free_pdu(rpc, pdu);
 		return -1;
 	}
 
