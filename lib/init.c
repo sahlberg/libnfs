@@ -50,6 +50,18 @@
 #include "libnfs-raw.h"
 #include "libnfs-private.h"
 
+int rpc_current_time(void)
+{
+#ifdef HAVE_CLOCK_GETTIME
+	struct timespec tp;
+
+	clock_gettime(CLOCK_MONOTONIC_COARSE, &tp);
+	return tp.tv_sec;
+#else
+	return time(NULL);
+#endif
+}
+
 struct rpc_context *rpc_init_context(void)
 {
 	struct rpc_context *rpc;
@@ -69,7 +81,7 @@ struct rpc_context *rpc_init_context(void)
 		free(rpc);
 		return NULL;
 	}
-	rpc->xid = salt + time(NULL) + (getpid() << 16);
+	rpc->xid = salt + rpc_current_time() + (getpid() << 16);
 	salt += 0x01000000;
 	rpc->fd = -1;
 	rpc->tcp_syncnt = RPC_PARAM_UNDEFINED;
@@ -91,7 +103,28 @@ struct rpc_context *rpc_init_context(void)
 	return rpc;
 }
 
-uint32_t static round_to_power_of_two(uint32_t x) {
+struct rpc_context *rpc_init_server_context(int s)
+{
+	struct rpc_context *rpc;
+
+	rpc = malloc(sizeof(struct rpc_context));
+	if (rpc == NULL) {
+		return NULL;
+	}
+	memset(rpc, 0, sizeof(struct rpc_context));
+
+	rpc->magic = RPC_CONTEXT_MAGIC;
+
+	rpc->is_server_context = 1;
+	rpc->fd = s;
+	rpc->is_connected = 1;
+        rpc->is_udp = rpc_is_udp_socket(rpc);
+	rpc_reset_queue(&rpc->outqueue);
+
+	return rpc;
+}
+
+static uint32_t round_to_power_of_two(uint32_t x) {
 	uint32_t power = 1;
 	while (power < x) {
 		power <<= 1;
@@ -327,8 +360,10 @@ void rpc_destroy_context(struct rpc_context *rpc)
 
 	rpc_free_all_fragments(rpc);
 
-	auth_destroy(rpc->auth);
-	rpc->auth =NULL;
+        if (rpc->auth) {
+                auth_destroy(rpc->auth);
+                rpc->auth =NULL;
+        }
 
 	if (rpc->fd != -1) {
  		close(rpc->fd);
@@ -339,10 +374,8 @@ void rpc_destroy_context(struct rpc_context *rpc)
 		rpc->error_string = NULL;
 	}
 
-	if (rpc->udp_dest != NULL) {
-		free(rpc->udp_dest);
-		rpc->udp_dest = NULL;
-	}
+	free(rpc->inbuf);
+	rpc->inbuf = NULL;
 
 	rpc->magic = 0;
 	free(rpc);
@@ -360,4 +393,33 @@ int rpc_get_timeout(struct rpc_context *rpc)
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
 	return rpc->timeout;
+}
+
+int rpc_register_service(struct rpc_context *rpc, int program, int version,
+                         struct service_proc *procs, int num_procs)
+{
+        struct rpc_endpoint *endpoint;
+
+        assert(rpc->magic == RPC_CONTEXT_MAGIC);
+
+        if (!rpc->is_server_context) {
+		rpc_set_error(rpc, "Not a server context.");
+                return -1;
+        }
+
+        endpoint = malloc(sizeof(*endpoint));
+        if (endpoint == NULL) {
+		rpc_set_error(rpc, "Out of memory: Failed to allocate endpoint "
+                              "structure");
+                return -1;
+        }
+
+        endpoint->program = program;
+        endpoint->version = version;
+        endpoint->procs = procs;
+        endpoint->num_procs = num_procs;
+        endpoint->next = rpc->endpoints;
+        rpc->endpoints = endpoint;
+
+        return 0;
 }
