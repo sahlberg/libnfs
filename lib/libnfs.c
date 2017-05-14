@@ -1107,26 +1107,29 @@ finished:
 	md_cb->wait_count--;
 	if (md_cb->wait_count > 0)
 		return;
-	free(md_cb);
 
 	rpc_disconnect(rpc, "normal disconnect");
 
 	if (md_cb->status == RPC_STATUS_CANCEL) {
 		data->cb(-EINTR, nfs, "Command was cancelled", data->private_data);
+		free(md_cb);
 		free_nfs_cb_data(data);
 		return;
 	}
 	if (md_cb->error) {
 		data->cb(md_cb->error, nfs, command_data, data->private_data);
+		free(md_cb);
 		free_nfs_cb_data(data);
 		return;
 	}
 
 	if (rpc_connect_program_async(nfs->rpc, nfs->server, NFS_PROGRAM, NFS_V3, nfs_mount_9_cb, data) != 0) {
 		data->cb(-ENOMEM, nfs, command_data, data->private_data);
+		free(md_cb);
 		free_nfs_cb_data(data);
 		return;
 	}
+	free(md_cb);
 }
 
 static void nfs_mount_7_cb(struct rpc_context *rpc, int status, void *command_data, void *private_data)
