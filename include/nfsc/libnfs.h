@@ -183,11 +183,15 @@ EXTERN void nfs_destroy_context(struct nfs_context *nfs);
  *                   : Should libnfs try to traverse across nested mounts
  *                     automatically or not. Default is 1 == enabled.
  * dircache=<0|1>    : Disable/enable directory caching. Enabled by default.
- * autoreconnect=<0|1>
- *                   : Disable/enable reconnection when connections close.
- *                     When disabled, closed connections will cause an
- *                     immediate error return, with loss of commands and
- *                     data that are still inflight. Default is 1 == enabled.
+ * autoreconnect=<-1|0|>=1>
+ *                   : Control the auto-reconnect behaviour to the NFS session.
+ *                    -1 : Try to reconnect forever on session failures.
+ *                         Just like normal NFS clients do.
+ *                     0 : Disable auto-reconnect completely and immediately
+ *                         return a failure to the application.
+ *                   >=1 : Retry to connect back to the server this many
+ *                         times before failing and returing an error back
+ *                         to the application.
  */
 /*
  * Parse a complete NFS URL including, server, path and
@@ -238,7 +242,7 @@ EXTERN void nfs_set_pagecache_ttl(struct nfs_context *nfs, uint32_t v);
 EXTERN void nfs_set_readahead(struct nfs_context *nfs, uint32_t v);
 EXTERN void nfs_set_debug(struct nfs_context *nfs, int level);
 EXTERN void nfs_set_dircache(struct nfs_context *nfs, int enabled);
-EXTERN void nfs_set_autoreconnect(struct nfs_context *nfs, int enabled);
+EXTERN void nfs_set_autoreconnect(struct nfs_context *nfs, int num_retries);
 
 /*
  *  Invalidate the pagecache

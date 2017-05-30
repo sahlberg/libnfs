@@ -148,7 +148,7 @@ struct nfs_context {
        uint64_t writemax;
        char *cwd;
        int dircache_enabled;
-       int auto_reconnect_enabled;
+       int auto_reconnect;
        struct nfsdir *dircache;
        uint16_t	mask;
 
@@ -532,7 +532,8 @@ struct nfs_context *nfs_init_context(void)
 	nfs->mask = 022;
 	nfs->auto_traverse_mounts = 1;
 	nfs->dircache_enabled = 1;
-	nfs->auto_reconnect_enabled = 1;
+	/* Default is never give up, never surrender */
+	nfs->auto_reconnect = -1;
 	return nfs;
 }
 
@@ -1023,11 +1024,10 @@ static void nfs_mount_9_cb(struct rpc_context *rpc, int status, void *command_da
 		return;
 	}
 
-	/* NFS TCP connections should be autoreconnected after sessions have
-         * been torn down (due to inactivity or error)
+	/* NFS TCP: As we are connected now we can pass on the auto-reconnect
+	 * settings to the RPC layer.
          */
-	if (nfs->auto_reconnect_enabled)
-		rpc_set_autoreconnect(rpc);
+	rpc_set_autoreconnect(rpc, nfs->auto_reconnect);
 
 	args.fsroot = nfs->rootfh;
 	if (rpc_nfs3_fsinfo_async(rpc, nfs_mount_10_cb, &args, data) != 0) {
@@ -5607,8 +5607,8 @@ void nfs_set_dircache(struct nfs_context *nfs, int enabled) {
 	nfs->dircache_enabled = enabled;
 }
 
-void nfs_set_autoreconnect(struct nfs_context *nfs, int enabled) {
-	nfs->auto_reconnect_enabled = enabled;
+void nfs_set_autoreconnect(struct nfs_context *nfs, int num_retries) {
+	nfs->auto_reconnect = num_retries;
 }
 
 void nfs_set_error(struct nfs_context *nfs, char *error_string, ...)

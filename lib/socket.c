@@ -85,8 +85,6 @@
 #include "win32_errnowrapper.h"
 #endif
 
-#define NR_RECONNECT_RETRIES 10
-
 static int rpc_reconnect_requeue(struct rpc_context *rpc);
 
 static int create_socket(int domain, int type, int protocol)
@@ -476,7 +474,7 @@ int rpc_service(struct rpc_context *rpc, int revents)
 	return 0;
 }
 
-void rpc_set_autoreconnect(struct rpc_context *rpc)
+void rpc_set_autoreconnect(struct rpc_context *rpc, int num_retries)
 {
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
@@ -485,18 +483,7 @@ void rpc_set_autoreconnect(struct rpc_context *rpc)
                 return;
         }
 
-	rpc->auto_reconnect = 1;
-}
-
-void rpc_unset_autoreconnect(struct rpc_context *rpc)
-{
-	assert(rpc->magic == RPC_CONTEXT_MAGIC);
-
-        if (rpc->is_server_context) {
-                return;
-        }
-
-	rpc->auto_reconnect = 0;
+	rpc->auto_reconnect = num_retries;
 }
 
 void rpc_set_tcp_syncnt(struct rpc_context *rpc, int v)
@@ -717,7 +704,8 @@ int rpc_disconnect(struct rpc_context *rpc, const char *error)
 	if (!rpc->is_connected) {
 		return 0;
 	}
-	rpc_unset_autoreconnect(rpc);
+	/* Disable autoreconnect */
+	rpc_set_autoreconnect(rpc, 0);
 
 	if (rpc->fd != -1) {
 		close(rpc->fd);
@@ -756,8 +744,15 @@ static int rpc_reconnect_requeue(struct rpc_context *rpc)
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
-	if (rpc->is_connected)
-		rpc->auto_reconnect_retries = NR_RECONNECT_RETRIES;
+	if (rpc->auto_reconnect == 0) {
+		RPC_LOG(rpc, 1, "reconnect is disabled");
+		rpc_error_all_pdus(rpc, "RPC ERROR: Failed to reconnect async");
+		return -1;
+	}
+
+	if (rpc->is_connected) {
+		rpc->num_retries = rpc->auto_reconnect;
+	}
 
 	if (rpc->fd != -1) {
 		rpc->old_fd = rpc->fd;
@@ -784,20 +779,20 @@ static int rpc_reconnect_requeue(struct rpc_context *rpc)
 	}
 	rpc->waitpdu_len = 0;
 
-	if (rpc->auto_reconnect != 0 && rpc->auto_reconnect_retries > 0) {
-		rpc->auto_reconnect_retries--;
+	if (rpc->auto_reconnect < 0 || rpc->num_retries > 0) {
+		rpc->num_retries--;
 		rpc->connect_cb  = reconnect_cb;
 		RPC_LOG(rpc, 1, "reconnect initiated");
 		if (rpc_connect_sockaddr_async(rpc) != 0) {
 			rpc_error_all_pdus(rpc, "RPC ERROR: Failed to reconnect async");
 			return -1;
 		}
-	} else {
-		RPC_LOG(rpc, 1, "reconnect NOT initiated, auto-reconnect is disabled");
-		return -1;
+		return 0;
 	}
 
-	return 0;
+	RPC_LOG(rpc, 1, "reconnect: all attempts failed.");
+	rpc_error_all_pdus(rpc, "RPC ERROR: All attempts to reconnect failed.");
+	return -1;
 }
 
 

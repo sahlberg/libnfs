@@ -133,7 +133,7 @@ struct rpc_context {
 	/* track the address we connect to so we can auto-reconnect on session failure */
 	struct sockaddr_storage s;
 	int auto_reconnect;
-	int auto_reconnect_retries;
+	int num_retries;
 
 	/* fragment reassembly */
 	struct rpc_fragment *fragments;
@@ -218,8 +218,7 @@ int rpc_set_udp_destination(struct rpc_context *rpc, char *addr, int port, int i
 struct rpc_context *rpc_init_udp_context(void);
 struct sockaddr *rpc_get_recv_sockaddr(struct rpc_context *rpc);
 
-void rpc_set_autoreconnect(struct rpc_context *rpc);
-void rpc_unset_autoreconnect(struct rpc_context *rpc);
+void rpc_set_autoreconnect(struct rpc_context *rpc, int num_retries);
 
 void rpc_set_interface(struct rpc_context *rpc, const char *ifname);
 
