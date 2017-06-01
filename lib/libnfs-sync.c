@@ -120,12 +120,9 @@ static void wait_for_reply(struct rpc_context *rpc, struct sync_cb_data *cb_data
 		pfd.fd = rpc_get_fd(rpc);
 		pfd.events = rpc_which_events(rpc);
 
-		ret = poll(&pfd, 1, rpc_get_timeout(rpc));
+		ret = poll(&pfd, 1, 100);
 		if (ret < 0) {
 			rpc_set_error(rpc, "Poll failed");
-			revents = -1;
-		} else if(ret == 0) {
-			rpc_set_error(rpc, "Timed out after [%d] milliseconds",rpc_get_timeout(rpc));
 			revents = -1;
 		} else {
 			revents = pfd.revents;
