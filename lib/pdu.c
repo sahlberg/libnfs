@@ -568,11 +568,11 @@ int rpc_process_pdu(struct rpc_context *rpc, char *buf, int size)
 		}
 		return 0;
 	}
-	rpc_set_error(rpc, "No matching pdu found for xid:%d", xid);
+
 	zdr_destroy(&zdr);
 	if (reasbuf != NULL) {
 		free(reasbuf);
 	}
-	return -1;
+	return 0;
 }
 
