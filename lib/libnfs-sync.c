@@ -153,12 +153,9 @@ static void wait_for_nfs_reply(struct nfs_context *nfs, struct sync_cb_data *cb_
 		pfd.fd = nfs_get_fd(nfs);
 		pfd.events = nfs_which_events(nfs);
 
-		ret = poll(&pfd, 1, nfs_get_timeout(nfs));
+		ret = poll(&pfd, 1, 100);
 		if (ret < 0) {
 			nfs_set_error(nfs, "Poll failed");
-			revents = -1;
-		} else if(ret == 0) {
-			nfs_set_error(nfs, "Timed out after [%d] milliseconds",nfs_get_timeout(nfs));
 			revents = -1;
 		} else {
 			revents = pfd.revents;
