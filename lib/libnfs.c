@@ -605,13 +605,8 @@ static void rpc_connect_program_5_cb(struct rpc_context *rpc, int status, void *
 	/* Dont want any more callbacks even if the socket is closed */
 	rpc->connect_cb = NULL;
 
-	if (status == RPC_STATUS_ERROR) {
+	if (status != RPC_STATUS_SUCCESS) {
 		data->cb(rpc, status, command_data, data->private_data);
-		free_rpc_cb_data(data);
-		return;
-	}
-	if (status == RPC_STATUS_CANCEL) {
-		data->cb(rpc, status, "Command was cancelled", data->private_data);
 		free_rpc_cb_data(data);
 		return;
 	}
@@ -629,13 +624,8 @@ static void rpc_connect_program_4_cb(struct rpc_context *rpc, int status, void *
 	/* Dont want any more callbacks even if the socket is closed */
 	rpc->connect_cb = NULL;
 
-	if (status == RPC_STATUS_ERROR) {
+	if (status != RPC_STATUS_SUCCESS) {
 		data->cb(rpc, status, command_data, data->private_data);
-		free_rpc_cb_data(data);
-		return;
-	}
-	if (status == RPC_STATUS_CANCEL) {
-		data->cb(rpc, status, "Command was cancelled", data->private_data);
 		free_rpc_cb_data(data);
 		return;
 	}
@@ -657,13 +647,8 @@ static void rpc_connect_program_3_cb(struct rpc_context *rpc, int status, void *
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
-	if (status == RPC_STATUS_ERROR) {
+	if (status != RPC_STATUS_SUCCESS) {
 		data->cb(rpc, status, command_data, data->private_data);
-		free_rpc_cb_data(data);
-		return;
-	}
-	if (status == RPC_STATUS_CANCEL) {
-		data->cb(rpc, status, "Command was cancelled", data->private_data);
 		free_rpc_cb_data(data);
 		return;
 	}
@@ -713,13 +698,8 @@ static void rpc_connect_program_2_cb(struct rpc_context *rpc, int status, void *
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
-	if (status == RPC_STATUS_ERROR) {
+	if (status != RPC_STATUS_SUCCESS) {
 		data->cb(rpc, status, command_data, data->private_data);
-		free_rpc_cb_data(data);
-		return;
-	}
-	if (status == RPC_STATUS_CANCEL) {
-		data->cb(rpc, status, "Command was cancelled", data->private_data);
 		free_rpc_cb_data(data);
 		return;
 	}
@@ -756,13 +736,8 @@ static void rpc_connect_program_1_cb(struct rpc_context *rpc, int status, void *
 	/* Dont want any more callbacks even if the socket is closed */
 	rpc->connect_cb = NULL;
 
-	if (status == RPC_STATUS_ERROR) {
+	if (status != RPC_STATUS_SUCCESS) {
 		data->cb(rpc, status, command_data, data->private_data);
-		free_rpc_cb_data(data);
-		return;
-	}
-	if (status == RPC_STATUS_CANCEL) {
-		data->cb(rpc, status, "Command was cancelled", data->private_data);
 		free_rpc_cb_data(data);
 		return;
 	}
@@ -856,10 +831,9 @@ static void nfs_mount_12_cb(struct rpc_context *rpc, int status, void *command_d
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
-	if (status == RPC_STATUS_ERROR)
+	if (status != RPC_STATUS_SUCCESS) {
 		goto finished;
-	if (status == RPC_STATUS_CANCEL)
-		goto finished;
+	}
 
 	res = command_data;
 	if (res->status != NFS3_OK)
@@ -5650,13 +5624,8 @@ static void mount_export_5_cb(struct rpc_context *rpc, int status, void *command
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
-	if (status == RPC_STATUS_ERROR) {
+	if (status != RPC_STATUS_SUCCESS) {
 		data->cb(rpc, -EFAULT, command_data, data->private_data);
-		free_mount_cb_data(data);
-		return;
-	}
-	if (status == RPC_STATUS_CANCEL) {
-		data->cb(rpc, -EINTR, "Command was cancelled", data->private_data);
 		free_mount_cb_data(data);
 		return;
 	}
@@ -5677,13 +5646,8 @@ static void mount_export_4_cb(struct rpc_context *rpc, int status, void *command
 	/* Dont want any more callbacks even if the socket is closed */
 	rpc->connect_cb = NULL;
 
-	if (status == RPC_STATUS_ERROR) {
+	if (status != RPC_STATUS_SUCCESS) {
 		data->cb(rpc, -EFAULT, command_data, data->private_data);
-		free_mount_cb_data(data);
-		return;
-	}
-	if (status == RPC_STATUS_CANCEL) {
-		data->cb(rpc, -EINTR, "Command was cancelled", data->private_data);
 		free_mount_cb_data(data);
 		return;
 	}
