@@ -4179,38 +4179,17 @@ void nfs_getcwd(struct nfs_context *nfs, const char **cwd)
 /*
  * Async lseek()
  */
-struct lseek_cb_data {
-       struct nfs_context *nfs;
-       struct nfsfh *nfsfh;
-       int64_t offset;
-       nfs_cb cb;
-       void *private_data;
-};
-
 static void nfs_lseek_1_cb(struct rpc_context *rpc, int status, void *command_data, void *private_data)
 {
 	GETATTR3res *res;
-	struct lseek_cb_data *data = private_data;
+	struct nfs_cb_data *data = private_data;
 	struct nfs_context *nfs = data->nfs;
 	uint64_t size = 0;
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
-	if (status == RPC_STATUS_ERROR) {
-		data->cb(-EFAULT, nfs, command_data, data->private_data);
-		free(data);
-		return;
-	}
-	if (status == RPC_STATUS_CANCEL) {
-		data->cb(-EINTR, nfs, "Command was cancelled",
-			 data->private_data);
-		free(data);
-		return;
-	}
-	if (status == RPC_STATUS_TIMEOUT) {
-		data->cb(-EINTR, nfs, "Command timed out",
-			 data->private_data);
-		free(data);
+	if (check_nfs_error(nfs, status, data, command_data)) {
+		free_nfs_cb_data(data);
 		return;
 	}
 
@@ -4237,7 +4216,7 @@ static void nfs_lseek_1_cb(struct rpc_context *rpc, int status, void *command_da
 
 int nfs_lseek_async(struct nfs_context *nfs, struct nfsfh *nfsfh, int64_t offset, int whence, nfs_cb cb, void *private_data)
 {
-	struct lseek_cb_data *data;
+	struct nfs_cb_data *data;
 	struct GETATTR3args args;
 
 	if (whence == SEEK_SET) {
@@ -4260,9 +4239,10 @@ int nfs_lseek_async(struct nfs_context *nfs, struct nfsfh *nfsfh, int64_t offset
 		return 0;
 	}
 
-	data = malloc(sizeof(struct lseek_cb_data));
+	data = malloc(sizeof(struct nfs_cb_data));
 	if (data == NULL) {
-		rpc_set_error(nfs->rpc, "Out Of Memory: Failed to malloc lseek cb data");
+		rpc_set_error(nfs->rpc, "Out Of Memory: Failed to malloc nfs "
+			      "cb data");
 		return -1;
 	}
 
@@ -4276,7 +4256,8 @@ int nfs_lseek_async(struct nfs_context *nfs, struct nfsfh *nfsfh, int64_t offset
 	args.object = nfsfh->fh;
 
 	if (rpc_nfs3_getattr_async(nfs->rpc, nfs_lseek_1_cb, &args, data) != 0) {
-		rpc_set_error(nfs->rpc, "RPC error: Failed to send LSEEK GETATTR call");
+		rpc_set_error(nfs->rpc, "RPC error: Failed to send LSEEK "
+			      "GETATTR call");
 		free(data);
 		return -1;
 	}
