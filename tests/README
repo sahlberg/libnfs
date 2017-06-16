@@ -1,0 +1,8 @@
+Testsuite for libnfs.
+
+To run the tests :
+  sudo make test
+
+It needs to run under sudo as it needs to create/remove nfs shares to test
+against.
+
