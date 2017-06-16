@@ -1,5 +1,3 @@
-export TGT_IPC_SOCKET=`pwd`/tgtd.socket 
-
 TESTDIR=`pwd`/testdata
 TESTSHARE="127.0.0.1:${TESTDIR}"
 TESTURL="nfs://127.0.0.1${TESTDIR}"
