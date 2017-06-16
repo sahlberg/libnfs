@@ -4245,6 +4245,7 @@ int nfs_lseek_async(struct nfs_context *nfs, struct nfsfh *nfsfh, int64_t offset
 			      "cb data");
 		return -1;
 	}
+	memset(data, 0, sizeof(struct nfs_cb_data));
 
 	data->nfs          = nfs;
 	data->nfsfh        = nfsfh;
