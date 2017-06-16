@@ -112,6 +112,29 @@ Utility programs for LibNFS
 %{_mandir}/man1/nfs-ls.1.gz
 
 %changelog
+* Fri Jun 16 2017 : Version 2.0.0
+ - Add RPC/RAW layer support for NFSv4
+ - Add support for building RPC servers using libnfs
+ - Add support for setting RPC timeouts for all interfaces.
+ - Add O_NOFOLLOW to nfs_open()
+ - Add a new mkdir2 command that also takes a mode argument.
+ - Add a new readlink2 command that avoids having to preallocate the
+   output buffer.
+ - Build fixes for Mingw and Cygwin.
+ - Use SOCK_CLOEXEC for the sockets
+ - Make rpc_set{g|u}id() public
+ - Performance optimization: socket: Batch pdu read in rpc_read_from_socket
+ - Fix NULL pointer crash in nfs_link().
+ - Clamp read/write size for servers (Ganesha) that offer very large io sizes
+   instead of failing to connect to the export.
+ - Tell the server to commit all data to stable storage when we close files.
+ - Double free fix: don't call rpc_free_pdu() after rpc_queue_pdu() failure.
+ - Fix for memory leak in rpc_allocate_*().
+ - Fixes to build nfs-ls and nfs-cp on win32.
+ - Abort the mount process correctly if MOUNT/MNT returns error or is cancelled.
+ - Fix memory leak in error path in nfs_create_2_cb().
+ - Fix leak of rpc->inbuf if we destroy the context while we still have PDUs
+   in flight.
 * Sun Oct 9 2016 : Version 1.11.0
  - Reduce the number of memory allocations in the ZDR layer.
  - Check both seconds and nanoseconds field when validating dir cache.

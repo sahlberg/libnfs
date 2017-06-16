@@ -31,7 +31,7 @@ Add a new mkdir2 command that also takes a mode argument.
 
 Add a new readlink2 command that avoids having to preallocate the buffer.
 
-Add support for RPC timeouts for the async interface.
+Add support for RPC timeouts for both the sync and async interfaces.
 
 Build fixes for Mingw and Cygwin
 
