@@ -4,7 +4,7 @@ AM_CPPFLAGS = -I${srcdir}/../include -I${srcdir}/../include/nfsc \
 AM_CFLAGS = $(WARN_CFLAGS)
 LDADD = ../lib/libnfs.la
 
-noinst_PROGRAMS = prog_stat
+noinst_PROGRAMS = prog_fstat prog_stat
 
 T = `ls test_*.sh`
 

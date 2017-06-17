@@ -31,14 +31,15 @@
 
 void usage(void)
 {
-	fprintf(stderr, "Usage: prog-stat <file>\n");
+	fprintf(stderr, "Usage: prog-fstat <file>\n");
 	exit(1);
 }
 
 int main(int argc, char *argv[])
 {
-	struct nfs_context *nfs = NULL;
-	struct nfs_url *url = NULL;
+	struct nfs_context *nfs;
+	struct nfsfh *nfsfh;
+	struct nfs_url *url;
 	struct nfs_stat_64 st;
 
 	if (argc != 2) {
@@ -63,7 +64,13 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 
-	if (nfs_stat64(nfs, url->file, &st)) {
+	if (nfs_open(nfs, url->file, O_RDONLY, &nfsfh)) {
+ 		fprintf(stderr, "Failed to open file : %s\n",
+			nfs_get_error(nfs));
+		exit(1);
+	}
+
+	if (nfs_fstat64(nfs, nfsfh, &st)) {
  		fprintf(stderr, "Failed to stat file : %s\n",
 			nfs_get_error(nfs));
 		exit(1);
@@ -80,6 +87,7 @@ int main(int argc, char *argv[])
 	printf("nfs_ctime:%" PRIu64 "\n", st.nfs_ctime);
 
 	nfs_destroy_url(url);
+	nfs_close(nfs, nfsfh);
 	nfs_destroy_context(nfs);
 
 	return 0;
