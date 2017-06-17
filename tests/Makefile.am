@@ -1,9 +1,10 @@
-AM_CPPFLAGS = -I${srcdir}/../include "-D_U_=__attribute__((unused))" \
+AM_CPPFLAGS = -I${srcdir}/../include -I${srcdir}/../include/nfsc \
+	"-D_U_=__attribute__((unused))" \
 	"-D_R_(A,B)=__attribute__((format(printf,A,B)))"
 AM_CFLAGS = $(WARN_CFLAGS)
 LDADD = ../lib/libnfs.la
 
-#noinst_PROGRAMS = prog_reconnect
+noinst_PROGRAMS = prog_stat
 
 T = `ls test_*.sh`
 
