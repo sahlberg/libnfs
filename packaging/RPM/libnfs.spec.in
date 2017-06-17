@@ -47,7 +47,7 @@ libtoolize -c -f -i
 automake --add-missing
 
 
-CFLAGS="$RPM_OPT_FLAGS $EXTRA -O0 -g -D_GNU_SOURCE" %configure
+CFLAGS="$RPM_OPT_FLAGS $EXTRA -O2 -g -D_GNU_SOURCE" %configure
 
 %install
 # Clean up in case there is trash left from a previous build
@@ -87,6 +87,7 @@ development libraries for LibNFS
 %{_includedir}/nfsc/libnfs-raw.h
 %{_includedir}/nfsc/libnfs-raw-mount.h
 %{_includedir}/nfsc/libnfs-raw-nfs.h
+%{_includedir}/nfsc/libnfs-raw-nfs4.h
 %{_includedir}/nfsc/libnfs-raw-portmap.h
 %{_includedir}/nfsc/libnfs-raw-rquota.h
 %{_includedir}/nfsc/libnfs-raw-nlm.h
