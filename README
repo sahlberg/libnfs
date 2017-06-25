@@ -66,6 +66,7 @@ Arguments supported by libnfs are :
                          times before failing and returing an error back
                          to the application.
  if=<interface>    : Interface name (e.g., eth1) to bind; requires `root`
+ version=<3|4>     : NFS Version. Default is 3.
 
 Auto_traverse_mounts
 ====================

@@ -91,6 +91,7 @@
 #include "libnfs-raw.h"
 #include "libnfs-raw-mount.h"
 #include "libnfs-raw-nfs.h"
+#include "libnfs-raw-nfs4.h"
 #include "libnfs-raw-portmap.h"
 #include "libnfs-private.h"
 
@@ -154,6 +155,8 @@ struct nfs_context {
 
        int auto_traverse_mounts;
        struct nested_mounts *nested_mounts;
+
+       int version;
 };
 
 void nfs_free_nfsdir(struct nfsdir *nfsdir)
@@ -367,6 +370,12 @@ static int nfs_set_context_args(struct nfs_context *nfs, const char *arg, const 
 	} else if (!strcmp(arg, "if")) {
 		nfs_set_interface(nfs, val);
 #endif
+	} else if (!strcmp(arg, "version")) {
+		if (nfs_set_version(nfs, atoi(val)) < 0) {
+			nfs_set_error(nfs, "NFS version %d is not supported",
+				      atoi(val));
+			return -1;
+		}
 	}
 	return 0;
 }
@@ -534,6 +543,8 @@ struct nfs_context *nfs_init_context(void)
 	nfs->dircache_enabled = 1;
 	/* Default is never give up, never surrender */
 	nfs->auto_reconnect = -1;
+	nfs->version = NFS_V3;
+
 	return nfs;
 }
 
@@ -5408,6 +5419,19 @@ void nfs_set_dircache(struct nfs_context *nfs, int enabled) {
 
 void nfs_set_autoreconnect(struct nfs_context *nfs, int num_retries) {
 	nfs->auto_reconnect = num_retries;
+}
+
+int nfs_set_version(struct nfs_context *nfs, int version) {
+	switch (version) {
+	case NFS_V3:
+	case NFS_V4:
+		nfs->version = version;
+		break;
+	default:
+		nfs_set_error(nfs, "NFS version %d is not supported", version);
+		return -1;
+	}
+	return 0;
 }
 
 void nfs_set_error(struct nfs_context *nfs, char *error_string, ...)
