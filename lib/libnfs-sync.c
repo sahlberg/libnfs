@@ -1,3 +1,4 @@
+/* -*-  mode:c; tab-width:8; c-basic-offset:8; indent-tabs-mode:nil;  -*- */
 /*
    Copyright (C) 2010 by Ronnie Sahlberg <ronniesahlberg@gmail.com>
 
@@ -185,7 +186,8 @@ static void mount_cb(int status, struct nfs_context *nfs, void *data, void *priv
 	cb_data->status = status;
 
 	if (status < 0) {
-		nfs_set_error(nfs, "mount/mnt call failed with \"%s\"", (char *)data);
+		nfs_set_error(nfs, "%s: %s",
+                              __FUNCTION__, nfs_get_error(nfs));
 		return;
 	}
 }
@@ -200,7 +202,8 @@ int nfs_mount(struct nfs_context *nfs, const char *server, const char *export)
 	cb_data.is_finished = 0;
 
 	if (nfs_mount_async(nfs, server, export, mount_cb, &cb_data) != 0) {
-		nfs_set_error(nfs, "nfs_mount_async failed");
+		nfs_set_error(nfs, "nfs_mount_async failed. %s",
+			      nfs_get_error(nfs));
 		return -1;
 	}
 
