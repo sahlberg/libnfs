@@ -1,3 +1,4 @@
+/* -*-  mode:c; tab-width:8; c-basic-offset:8; indent-tabs-mode:nil;  -*- */
 /*
    Copyright (C) 2010 by Ronnie Sahlberg <ronniesahlberg@gmail.com>
 
@@ -234,10 +235,229 @@ void rpc_free_all_fragments(struct rpc_context *rpc);
 int rpc_is_udp_socket(struct rpc_context *rpc);
 int rpc_current_time(void);
 
-const struct nfs_fh3 *nfs_get_rootfh(struct nfs_context *nfs);
-
 void *zdr_malloc(ZDR *zdrs, uint32_t size);
 
+
+struct nfs_cb_data;
+void free_nfs_cb_data(struct nfs_cb_data *data);
+
+int check_nfs_error(struct nfs_context *nfs, int status,
+		    struct nfs_cb_data *data, void *command_data);
+
+struct nfs_specdata {
+        uint32_t specdata1;
+        uint32_t specdata2;
+};
+struct nfs_time {
+        uint32_t seconds;
+        uint32_t nseconds;
+};
+struct nfs_attr {
+        uint32_t type;
+        uint32_t mode;
+        uint32_t uid;
+        uint32_t gid;
+        uint32_t nlink;
+        uint64_t size;
+        uint64_t used;
+        uint64_t fsid;
+        struct nfs_specdata rdev;
+        struct nfs_time atime;
+        struct nfs_time mtime;
+        struct nfs_time ctime;
+};
+
+struct nfs_fh {
+        int len;
+        char *val;
+};
+
+struct nfs_context {
+       struct rpc_context *rpc;
+       char *server;
+       char *export;
+       struct nfs_fh rootfh;
+       uint64_t readmax;
+       uint64_t writemax;
+       char *cwd;
+       int dircache_enabled;
+       int auto_reconnect;
+       struct nfsdir *dircache;
+       uint16_t	mask;
+
+       int auto_traverse_mounts;
+       struct nested_mounts *nested_mounts;
+
+       int version;
+};
+
+typedef int (*continue_func)(struct nfs_context *nfs, struct nfs_attr *attr,
+			     struct nfs_cb_data *data);
+
+struct nfs_cb_data {
+       struct nfs_context *nfs;
+       struct nfsfh *nfsfh;
+       char *saved_path, *path;
+       int link_count, no_follow;
+
+       nfs_cb cb;
+       void *private_data;
+
+       continue_func continue_cb;
+       void *continue_data;
+       void (*free_continue_data)(void *);
+       uint64_t continue_int;
+
+       struct nfs_fh fh;
+
+       /* for multi-read/write calls. */
+       int error;
+       int cancel;
+       int oom;
+       int num_calls;
+       size_t count, org_count;
+       uint64_t offset, max_offset, org_offset;
+       char *buffer;
+       int not_my_buffer;
+       const char *usrbuf;
+       int update_pos;
+};
+
+struct nested_mounts {
+       struct nested_mounts *next;
+       char *path;
+       struct nfs_fh fh;
+       struct nfs_attr attr;
+};
+
+#define MAX_DIR_CACHE 128
+#define MAX_LINK_COUNT 40
+
+struct nfsdir {
+       struct nfs_fh fh;
+       struct nfs_attr attr;
+       struct nfsdir *next;
+
+       struct nfsdirent *entries;
+       struct nfsdirent *current;
+};
+
+struct nfs_readahead {
+       uint64_t fh_offset;
+       uint32_t cur_ra;
+};
+
+struct nfs_pagecache_entry {
+       char buf[NFS_BLKSIZE];
+       uint64_t offset;
+       time_t ts;
+};
+
+struct nfs_pagecache {
+       struct nfs_pagecache_entry *entries;
+       uint32_t num_entries;
+       time_t ttl;
+};
+
+struct nfsfh {
+       struct nfs_fh fh;
+       int is_sync;
+       int is_append;
+       uint64_t offset;
+       struct nfs_readahead ra;
+       struct nfs_pagecache pagecache;
+};
+
+const struct nfs_fh *nfs_get_rootfh(struct nfs_context *nfs);
+
+int nfs_normalize_path(struct nfs_context *nfs, char *path);
+void nfs_free_nfsdir(struct nfsdir *nfsdir);
+void nfs_free_nfsfh(struct nfsfh *nfsfh);
+
+void nfs_dircache_add(struct nfs_context *nfs, struct nfsdir *nfsdir);
+struct nfsdir *nfs_dircache_find(struct nfs_context *nfs, struct nfs_fh *fh);
+void nfs_dircache_drop(struct nfs_context *nfs, struct nfs_fh *fh);
+
+char * nfs_pagecache_get(struct nfs_pagecache *pagecache, uint64_t offset);
+void nfs_pagecache_put(struct nfs_pagecache *pagecache, uint64_t offset,
+                       const char *buf, size_t len);
+
+int nfs3_access_async(struct nfs_context *nfs, const char *path, int mode,
+                      nfs_cb cb, void *private_data);
+int nfs3_access2_async(struct nfs_context *nfs, const char *path, nfs_cb cb,
+                       void *private_data);
+int nfs3_chdir_async(struct nfs_context *nfs, const char *path,
+                     nfs_cb cb, void *private_data);
+int nfs3_chmod_async_internal(struct nfs_context *nfs, const char *path,
+                              int no_follow, int mode, nfs_cb cb,
+                              void *private_data);
+int nfs3_chown_async_internal(struct nfs_context *nfs, const char *path,
+                              int no_follow, int uid, int gid,
+                              nfs_cb cb, void *private_data);
+int nfs3_close_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_cb cb,
+                     void *private_data);
+int nfs3_create_async(struct nfs_context *nfs, const char *path, int flags,
+                      int mode, nfs_cb cb, void *private_data);
+int nfs3_fchmod_async(struct nfs_context *nfs, struct nfsfh *nfsfh, int mode,
+                      nfs_cb cb, void *private_data);
+int nfs3_fchown_async(struct nfs_context *nfs, struct nfsfh *nfsfh, int uid,
+                      int gid, nfs_cb cb, void *private_data);
+int nfs3_fstat_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_cb cb,
+                     void *private_data);
+int nfs3_fstat64_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_cb cb,
+                       void *private_data);
+int nfs3_fsync_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_cb cb,
+                     void *private_data);
+int nfs3_ftruncate_async(struct nfs_context *nfs, struct nfsfh *nfsfh,
+                         uint64_t length, nfs_cb cb, void *private_data);
+int nfs3_link_async(struct nfs_context *nfs, const char *oldpath,
+		    const char *newpath, nfs_cb cb, void *private_data);
+int nfs3_lseek_async(struct nfs_context *nfs, struct nfsfh *nfsfh,
+                     int64_t offset, int whence, nfs_cb cb, void *private_data);
+int nfs3_mkdir2_async(struct nfs_context *nfs, const char *path, int mode,
+                      nfs_cb cb, void *private_data);
+int nfs3_mknod_async(struct nfs_context *nfs, const char *path, int mode,
+                     int dev, nfs_cb cb, void *private_data);
+int nfs3_mount_async(struct nfs_context *nfs, const char *server,
+		     const char *export, nfs_cb cb, void *private_data);
+int nfs3_open_async(struct nfs_context *nfs, const char *path, int flags,
+                    nfs_cb cb, void *private_data);
+int nfs3_opendir_async(struct nfs_context *nfs, const char *path, nfs_cb cb,
+                       void *private_data);
+int nfs3_pread_async_internal(struct nfs_context *nfs, struct nfsfh *nfsfh,
+                              uint64_t offset, size_t count, nfs_cb cb,
+                              void *private_data, int update_pos);
+int nfs3_pwrite_async_internal(struct nfs_context *nfs, struct nfsfh *nfsfh,
+                               uint64_t offset, size_t count, const char *buf,
+                               nfs_cb cb, void *private_data, int update_pos);
+int nfs3_readlink_async(struct nfs_context *nfs, const char *path, nfs_cb cb,
+                        void *private_data);
+int nfs3_rename_async(struct nfs_context *nfs, const char *oldpath,
+		      const char *newpath, nfs_cb cb, void *private_data);
+int nfs3_rmdir_async(struct nfs_context *nfs, const char *path, nfs_cb cb,
+                     void *private_data);
+int nfs3_stat_async(struct nfs_context *nfs, const char *path,
+                    nfs_cb cb, void *private_data);
+int nfs3_stat64_async_internal(struct nfs_context *nfs, const char *path,
+                               int no_follow, nfs_cb cb, void *private_data);
+int nfs3_statvfs_async(struct nfs_context *nfs, const char *path, nfs_cb cb,
+                       void *private_data);
+int nfs3_symlink_async(struct nfs_context *nfs, const char *oldpath,
+                       const char *newpath, nfs_cb cb, void *private_data);
+int nfs3_truncate_async(struct nfs_context *nfs, const char *path,
+                        uint64_t length, nfs_cb cb, void *private_data);
+int nfs3_unlink_async(struct nfs_context *nfs, const char *path, nfs_cb cb,
+                      void *private_data);
+int nfs3_utime_async(struct nfs_context *nfs, const char *path,
+                     struct utimbuf *times, nfs_cb cb, void *private_data);
+int nfs3_utimes_async_internal(struct nfs_context *nfs, const char *path,
+                               int no_follow, struct timeval *times,
+                               nfs_cb cb, void *private_data);
+int nfs3_write_async(struct nfs_context *nfs, struct nfsfh *nfsfh,
+                     uint64_t count, const void *buf, nfs_cb cb,
+                     void *private_data);
+  
+        
 #ifdef __cplusplus
 }
 #endif
