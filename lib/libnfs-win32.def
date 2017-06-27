@@ -41,6 +41,8 @@ nfs_lseek
 nfs_lseek_async
 nfs_mkdir
 nfs_mkdir_async
+nfs_mkdir2
+nfs_mkdir2_async
 nfs_mknod
 nfs_mknod_async
 nfs_mount
@@ -63,12 +65,14 @@ nfs_read_async
 nfs_readdir
 nfs_readlink
 nfs_readlink_async
+nfs_readlink2
 nfs_rename
 nfs_rename_async
 nfs_rmdir
 nfs_rmdir_async
 nfs_service
 nfs_set_auth
+nfs_set_autoreconnect
 nfs_set_debug
 nfs_set_dircache
 nfs_set_gid

@@ -222,6 +222,12 @@ int rpc_queue_pdu(struct rpc_context *rpc, struct rpc_pdu *pdu)
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
+	if (rpc->timeout > 0) {
+		pdu->timeout = rpc_current_time() + rpc->timeout / 1000;
+	} else {
+		pdu->timeout = 0;
+	}
+
 	size = zdr_getpos(&pdu->zdr);
 
 	/* for udp we dont queue, we just send it straight away */
@@ -562,11 +568,11 @@ int rpc_process_pdu(struct rpc_context *rpc, char *buf, int size)
 		}
 		return 0;
 	}
-	rpc_set_error(rpc, "No matching pdu found for xid:%d", xid);
+
 	zdr_destroy(&zdr);
 	if (reasbuf != NULL) {
 		free(reasbuf);
 	}
-	return -1;
+	return 0;
 }
 

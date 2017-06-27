@@ -133,7 +133,7 @@ struct rpc_context {
 	/* track the address we connect to so we can auto-reconnect on session failure */
 	struct sockaddr_storage s;
 	int auto_reconnect;
-	int auto_reconnect_retries;
+	int num_retries;
 
 	/* fragment reassembly */
 	struct rpc_fragment *fragments;
@@ -173,6 +173,8 @@ struct rpc_pdu {
 
 #define PDU_DISCARD_AFTER_SENDING 0x00000001
         uint32_t flags;
+
+	time_t timeout;
 };
 
 void rpc_reset_queue(struct rpc_queue *q);
@@ -216,8 +218,7 @@ int rpc_set_udp_destination(struct rpc_context *rpc, char *addr, int port, int i
 struct rpc_context *rpc_init_udp_context(void);
 struct sockaddr *rpc_get_recv_sockaddr(struct rpc_context *rpc);
 
-void rpc_set_autoreconnect(struct rpc_context *rpc);
-void rpc_unset_autoreconnect(struct rpc_context *rpc);
+void rpc_set_autoreconnect(struct rpc_context *rpc, int num_retries);
 
 void rpc_set_interface(struct rpc_context *rpc, const char *ifname);
 
@@ -231,6 +232,7 @@ int rpc_get_timeout(struct rpc_context *rpc);
 int rpc_add_fragment(struct rpc_context *rpc, char *data, uint32_t size);
 void rpc_free_all_fragments(struct rpc_context *rpc);
 int rpc_is_udp_socket(struct rpc_context *rpc);
+int rpc_current_time(void);
 
 const struct nfs_fh3 *nfs_get_rootfh(struct nfs_context *nfs);
 

@@ -183,6 +183,15 @@ EXTERN void nfs_destroy_context(struct nfs_context *nfs);
  *                   : Should libnfs try to traverse across nested mounts
  *                     automatically or not. Default is 1 == enabled.
  * dircache=<0|1>    : Disable/enable directory caching. Enabled by default.
+ * autoreconnect=<-1|0|>=1>
+ *                   : Control the auto-reconnect behaviour to the NFS session.
+ *                    -1 : Try to reconnect forever on session failures.
+ *                         Just like normal NFS clients do.
+ *                     0 : Disable auto-reconnect completely and immediately
+ *                         return a failure to the application.
+ *                   >=1 : Retry to connect back to the server this many
+ *                         times before failing and returing an error back
+ *                         to the application.
  */
 /*
  * Parse a complete NFS URL including, server, path and
@@ -233,17 +242,12 @@ EXTERN void nfs_set_pagecache_ttl(struct nfs_context *nfs, uint32_t v);
 EXTERN void nfs_set_readahead(struct nfs_context *nfs, uint32_t v);
 EXTERN void nfs_set_debug(struct nfs_context *nfs, int level);
 EXTERN void nfs_set_dircache(struct nfs_context *nfs, int enabled);
+EXTERN void nfs_set_autoreconnect(struct nfs_context *nfs, int num_retries);
 
 /*
  *  Invalidate the pagecache
  */
 EXTERN void nfs_pagecache_invalidate(struct nfs_context *nfs, struct nfsfh *nfsfh);
-
-/*
- * Sets timeout in milliseconds. A negative value means infinite timeout.
- */
-EXTERN void nfs_set_timeout(struct nfs_context *nfs, int timeout);
-EXTERN int  nfs_get_timeout(struct nfs_context *nfs);
 
 /*
  * MOUNT THE EXPORT
@@ -456,13 +460,14 @@ EXTERN uint16_t nfs_umask(struct nfs_context *nfs, uint16_t mask);
  * Async open(<filename>)
  *
  * mode is a combination of the flags :
- * O_RDONLY, O_WRONLY, O_RDWR , O_SYNC, O_APPEND, O_TRUNC
+ * O_RDONLY, O_WRONLY, O_RDWR , O_SYNC, O_APPEND, O_TRUNC, O_NOFOLLOW
  *
  * Function returns
  *  0 : The operation was initiated. Once the operation finishes, the callback will be invoked.
  * <0 : An error occured when trying to set up the operation. The callback will not be invoked.
  *
  * Supported flags are
+ * O_NOFOLLOW
  * O_APPEND
  * O_RDONLY
  * O_WRONLY
@@ -755,6 +760,27 @@ EXTERN int nfs_mkdir_async(struct nfs_context *nfs, const char *path, nfs_cb cb,
  */
 EXTERN int nfs_mkdir(struct nfs_context *nfs, const char *path);
 
+/*
+ * Async mkdir2()
+ *
+ * Function returns
+ *  0 : The operation was initiated. Once the operation finishes, the callback will be invoked.
+ * <0 : An error occured when trying to set up the operation. The callback will not be invoked.
+ *
+ * When the callback is invoked, status indicates the result:
+ *      0 : Success.
+ * -errno : An error occured.
+ *          data is the error string.
+ */
+EXTERN int nfs_mkdir2_async(struct nfs_context *nfs, const char *path, int mode, nfs_cb cb, void *private_data);
+/*
+ * Sync mkdir2()
+ * Function returns
+ *      0 : Success
+ * -errno : An error occured.
+ */
+EXTERN int nfs_mkdir2(struct nfs_context *nfs, const char *path, int mode);
+
 
 
 /*
@@ -813,6 +839,7 @@ EXTERN int nfs_creat(struct nfs_context *nfs, const char *path, int mode, struct
  * Async create()
  *
  * Same as nfs_creat_async but allows passing flags:
+ * O_NOFOLLOW
  * O_APPEND
  * O_SYNC
  * O_EXCL
@@ -1091,6 +1118,16 @@ EXTERN int nfs_readlink_async(struct nfs_context *nfs, const char *path, nfs_cb 
  * -errno : The command failed.
  */
 EXTERN int nfs_readlink(struct nfs_context *nfs, const char *path, char *buf, int bufsize);
+
+/*
+ * Sync readlink2(<name>)
+ * Function returns
+ *       0 : The operation was successful.
+ *  -errno : The command failed.
+ * *bufptr : NULL if the command failed, otherwise the contents of the symlink.
+ *           The caller must free the buffer.
+ */
+EXTERN int nfs_readlink2(struct nfs_context *nfs, const char *path, char **bufptr);
 
 
 
@@ -1523,6 +1560,28 @@ struct nfs_server_list {
  */
 struct nfs_server_list *nfs_find_local_servers(void);
 void free_nfs_srvr_list(struct nfs_server_list *srv);
+
+/*
+ * sync nfs_set_timeout()
+ * This function sets the timeout used for nfs rpc calls.
+ *
+ * Function returns nothing.
+ *
+ * int milliseconds : timeout to be applied in milliseconds (-1 no timeout)
+ *                    timeouts must currently be set in whole seconds,
+ *                    i.e. units of 1000
+ */
+EXTERN void nfs_set_timeout(struct nfs_context *nfs, int milliseconds);
+
+/*
+ * sync nfs_get_timeout()
+ * This function gets the timeout used for nfs rpc calls.
+ *
+ * Function returns
+ *    -1 : No timeout applied
+ *   > 0 : Timeout in milliseconds
+ */
+EXTERN int nfs_get_timeout(struct nfs_context *nfs);
 
 #ifdef __cplusplus
 }

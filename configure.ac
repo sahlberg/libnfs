@@ -1,5 +1,5 @@
 AC_PREREQ(2.50)
-AC_INIT([libnfs], [1.11.0], [ronniesahlberg@gmail.com])
+AC_INIT([libnfs], [2.0.0], [ronniesahlberg@gmail.com])
 AC_CONFIG_HEADERS([config.h])
 AM_INIT_AUTOMAKE([-Wall foreign subdir-objects])
 AC_CANONICAL_HOST
@@ -112,6 +112,10 @@ esac
 AM_CONDITIONAL(HAVE_WIN32,   test "${SYS}" = "mingw32")
 AC_SUBST([LIBSOCKET])
 
+# check for sys/sysmacros.h
+dnl Check for sys/sysmacros.h
+AC_CHECK_HEADERS([sys/sysmacros.h])
+
 # check for poll.h
 dnl Check for poll.h
 AC_CHECK_HEADERS([poll.h])
@@ -188,6 +192,20 @@ AC_CHECK_MEMBER([struct sockaddr_storage.ss_family],
 #include <sys/socket.h>
 ])
 
+# check for clock_gettime(CLOCK_MONOTONIC_COARSE)
+AC_MSG_CHECKING(if clock_gettime(CLOCK_MONOTONIC_COARSE) is available)
+AC_TRY_COMPILE([#include <time.h>], [
+        int i = clock_gettime(CLOCK_MONOTONIC_COARSE, NULL);
+], ac_cv_have_clock_gettime=yes, ac_cv_have_clock_gettime=no)
+if test "$ac_cv_have_clock_gettime" = yes ; then
+  AC_MSG_RESULT(yes)
+  AC_DEFINE(HAVE_CLOCK_GETTIME, 1, [Whether we have clock_gettime])
+else
+  AC_MSG_RESULT(no)
+  AC_MSG_NOTICE(clock_gettime(CLOCK_MONOTONIC_COARSE) support is missing.)
+  AC_MSG_NOTICE(Compiling without clock_gettime support..)
+fi
+
 # check for tevent + talloc
 AC_CACHE_CHECK([for talloc and tevent support],libnfs_cv_HAVE_TALLOC_TEVENT,[
 AC_TRY_COMPILE([
@@ -209,6 +227,7 @@ AC_HEADER_MAJOR
 #output
 AC_CONFIG_FILES([Makefile]
                 [doc/Makefile]
+                [examples/Makefile]
                 [include/Makefile]
                 [lib/Makefile]
                 [mount/Makefile]
@@ -218,8 +237,8 @@ AC_CONFIG_FILES([Makefile]
                 [nsm/Makefile]
                 [portmap/Makefile]
                 [rquota/Makefile]
+                [tests/Makefile]
                 [utils/Makefile]
-                [examples/Makefile]
                )
 
 AC_OUTPUT([libnfs.pc])

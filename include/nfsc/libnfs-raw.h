@@ -167,6 +167,7 @@ void rpc_set_fd(struct rpc_context *rpc, int fd);
 #define RPC_STATUS_SUCCESS	   	0
 #define RPC_STATUS_ERROR		1
 #define RPC_STATUS_CANCEL		2
+#define RPC_STATUS_TIMEOUT		3
 
 /*
  * Async connection to the tcp port at server:port.

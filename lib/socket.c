@@ -85,8 +85,6 @@
 #include "win32_errnowrapper.h"
 #endif
 
-#define NR_RECONNECT_RETRIES 10
-
 static int rpc_reconnect_requeue(struct rpc_context *rpc);
 
 static int create_socket(int domain, int type, int protocol)
@@ -344,11 +342,61 @@ maybe_call_connect_cb(struct rpc_context *rpc, int status)
 	tmp_cb(rpc, status, rpc->error_string, rpc->connect_data);
 }
 
+static void
+rpc_timeout_scan(struct rpc_context *rpc)
+{
+	struct rpc_pdu *pdu;
+	struct rpc_pdu *next_pdu;
+	time_t t = rpc_current_time();
+	unsigned int i;
+
+	for (pdu = rpc->outqueue.head; pdu; pdu = next_pdu) {
+		next_pdu = pdu->next;
+
+		if (pdu->timeout == 0) {
+			/* no timeout for this pdu */
+			continue;
+		}
+		if (t < pdu->timeout) {
+			/* not expired yet */
+			continue;
+		}
+		LIBNFS_LIST_REMOVE(&rpc->outqueue.head, pdu);
+		rpc_set_error(rpc, "command timed out");
+		pdu->cb(rpc, RPC_STATUS_TIMEOUT,
+			NULL, pdu->private_data);
+		rpc_free_pdu(rpc, pdu);
+	}
+	for (i = 0; i < HASHES; i++) {
+		struct rpc_queue *q = &rpc->waitpdu[i];
+
+		for (pdu = q->head; pdu; pdu = next_pdu) {
+			next_pdu = pdu->next;
+
+			if (pdu->timeout == 0) {
+				/* no timeout for this pdu */
+				continue;
+			}
+			if (t < pdu->timeout) {
+				/* not expired yet */
+				continue;
+			}
+			LIBNFS_LIST_REMOVE(&q->head, pdu);
+			rpc_set_error(rpc, "command timed out");
+			pdu->cb(rpc, RPC_STATUS_TIMEOUT,
+				NULL, pdu->private_data);
+			rpc_free_pdu(rpc, pdu);
+		}
+	}
+}
+
 int rpc_service(struct rpc_context *rpc, int revents)
 {
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
-	if (revents & (POLLERR|POLLHUP)) {
-		if (revents & POLLERR) {
+
+	if (revents == -1 || revents & (POLLERR|POLLHUP)) {
+		if (revents != -1 && revents & POLLERR) {
+
 #ifdef WIN32
 			char err = 0;
 #else
@@ -369,7 +417,7 @@ int rpc_service(struct rpc_context *rpc, int revents)
 						   "Unknown socket error.");
 			}
 		}
-		if (revents & POLLHUP) {
+		if (revents != -1 && revents & POLLHUP) {
 			rpc_set_error(rpc, "Socket failed with POLLHUP");
 		}
 		if (rpc->auto_reconnect) {
@@ -380,7 +428,7 @@ int rpc_service(struct rpc_context *rpc, int revents)
 
 	}
 
-	if (rpc->is_connected == 0 && rpc->fd != -1 && revents&POLLOUT) {
+	if (rpc->is_connected == 0 && rpc->fd != -1 && (revents & POLLOUT)) {
 		int err = 0;
 		socklen_t err_size = sizeof(err);
 
@@ -422,10 +470,11 @@ int rpc_service(struct rpc_context *rpc, int revents)
 		}
 	}
 
+	rpc_timeout_scan(rpc);
 	return 0;
 }
 
-void rpc_set_autoreconnect(struct rpc_context *rpc)
+void rpc_set_autoreconnect(struct rpc_context *rpc, int num_retries)
 {
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
@@ -434,18 +483,7 @@ void rpc_set_autoreconnect(struct rpc_context *rpc)
                 return;
         }
 
-	rpc->auto_reconnect = 1;
-}
-
-void rpc_unset_autoreconnect(struct rpc_context *rpc)
-{
-	assert(rpc->magic == RPC_CONTEXT_MAGIC);
-
-        if (rpc->is_server_context) {
-                return;
-        }
-
-	rpc->auto_reconnect = 0;
+	rpc->auto_reconnect = num_retries;
 }
 
 void rpc_set_tcp_syncnt(struct rpc_context *rpc, int v)
@@ -539,7 +577,7 @@ static int rpc_connect_sockaddr_async(struct rpc_context *rpc)
 		int startOfs, port, rc;
 
 		if (portOfs == 0) {
-			portOfs = time(NULL) % 400;
+			portOfs = rpc_current_time() % 400;
 		}
 		startOfs = portOfs;
 		do {
@@ -666,7 +704,8 @@ int rpc_disconnect(struct rpc_context *rpc, const char *error)
 	if (!rpc->is_connected) {
 		return 0;
 	}
-	rpc_unset_autoreconnect(rpc);
+	/* Disable autoreconnect */
+	rpc_set_autoreconnect(rpc, 0);
 
 	if (rpc->fd != -1) {
 		close(rpc->fd);
@@ -705,8 +744,15 @@ static int rpc_reconnect_requeue(struct rpc_context *rpc)
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
-	if (rpc->is_connected)
-		rpc->auto_reconnect_retries = NR_RECONNECT_RETRIES;
+	if (rpc->auto_reconnect == 0) {
+		RPC_LOG(rpc, 1, "reconnect is disabled");
+		rpc_error_all_pdus(rpc, "RPC ERROR: Failed to reconnect async");
+		return -1;
+	}
+
+	if (rpc->is_connected) {
+		rpc->num_retries = rpc->auto_reconnect;
+	}
 
 	if (rpc->fd != -1) {
 		rpc->old_fd = rpc->fd;
@@ -733,20 +779,20 @@ static int rpc_reconnect_requeue(struct rpc_context *rpc)
 	}
 	rpc->waitpdu_len = 0;
 
-	if (rpc->auto_reconnect != 0 && rpc->auto_reconnect_retries > 0) {
-		rpc->auto_reconnect_retries--;
+	if (rpc->auto_reconnect < 0 || rpc->num_retries > 0) {
+		rpc->num_retries--;
 		rpc->connect_cb  = reconnect_cb;
 		RPC_LOG(rpc, 1, "reconnect initiated");
 		if (rpc_connect_sockaddr_async(rpc) != 0) {
 			rpc_error_all_pdus(rpc, "RPC ERROR: Failed to reconnect async");
 			return -1;
 		}
-	} else {
-		RPC_LOG(rpc, 1, "reconnect NOT initiated, auto-reconnect is disabled");
-		return -1;
+		return 0;
 	}
 
-	return 0;
+	RPC_LOG(rpc, 1, "reconnect: all attempts failed.");
+	rpc_error_all_pdus(rpc, "RPC ERROR: All attempts to reconnect failed.");
+	return -1;
 }
 
 
