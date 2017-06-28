@@ -22,7 +22,7 @@ echo -n "Unlink the file ... "
 ../examples/nfs-io unlink "${TESTURL}/testfile" >/dev/null || failure
 success
 
-echo -n "Verify the file is gone file ... "
+echo -n "Verify the file is gone ... "
 ./prog_stat "${TESTURL}/testfile" 2>/dev/null && failure
 success
 
