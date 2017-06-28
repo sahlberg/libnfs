@@ -51,6 +51,8 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 
+	nfs_set_timeout(nfs, 1000);
+
 	url = nfs_parse_url_full(nfs, argv[argc - 1]);
 	if (url == NULL) {
 		fprintf(stderr, "%s\n", nfs_get_error(nfs));

@@ -6,6 +6,22 @@ LDADD = ../lib/libnfs.la
 
 noinst_PROGRAMS = prog_fstat prog_stat
 
+EXTRA_PROGRAMS = ld_timeout
+CLEANFILES = ld_timeout.o ld_timeout.so
+
+ld_timeout_SOURCES = ld_timeout.c
+ld_timeout_CFLAGS = $(AM_CFLAGS) -fPIC
+
+bin_SCRIPTS = ld_timeout.so
+
+ld_timeout.o: ld_timeout-ld_timeout.o
+	$(LIBTOOL) --mode=link $(CC) -o $@ $^
+
+ld_timeout.so: ld_timeout.o
+	$(CC) -shared -o ld_timeout.so ld_timeout.o -ldl
+
+
+
 T = `ls test_*.sh`
 
 test: $(noinst_PROGRAMS)
