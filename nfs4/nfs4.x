@@ -1,9 +1,4 @@
-/* -*-  mode:c; tab-width:8; c-basic-offset:8; indent-tabs-mode:nil;  -*- */
-/*
- * The definitions in this file are based on RFC3530.
- */
-
-/* RFC3530 contains the following copyright statement:
+/* This is based on RFC3530 which contains the following copyright statement:
 
 
    Copyright (C) The Internet Society (2003).  All Rights Reserved.
