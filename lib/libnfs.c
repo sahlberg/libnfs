@@ -1482,12 +1482,12 @@ nfs_access2_async(struct nfs_context *nfs, const char *path, nfs_cb cb,
 }
 
 int
-nfs_symlink_async(struct nfs_context *nfs, const char *oldpath,
+nfs_symlink_async(struct nfs_context *nfs, const char *target,
                    const char *newpath, nfs_cb cb, void *private_data)
 {
 	switch (nfs->version) {
         case NFS_V3:
-                return nfs3_symlink_async(nfs, oldpath, newpath,
+                return nfs3_symlink_async(nfs, target, newpath,
                                           cb, private_data);
         default:
                 nfs_set_error(nfs, "%s does not support NFSv4",

@@ -1441,9 +1441,9 @@ nfs3_rename_async(struct nfs_context *nfs, const char *oldpath,
 
 
 struct nfs_symlink_data {
-       char *oldpath;
-       char *newpathparent;
-       char *newpathobject;
+        char *target;
+        char *linkparent;
+        char *linkobject;
 };
 
 static void
@@ -1451,15 +1451,9 @@ free_nfs_symlink_data(void *mem)
 {
 	struct nfs_symlink_data *data = mem;
 
-	if (data->oldpath != NULL) {
-		free(data->oldpath);
-	}
-	if (data->newpathparent != NULL) {
-		free(data->newpathparent);
-	}
-	if (data->newpathobject != NULL) {
-		free(data->newpathobject);
-	}
+        free(data->target);
+        free(data->linkparent);
+        free(data->linkobject);
 	free(data);
 }
 
@@ -1482,9 +1476,9 @@ nfs3_symlink_cb(struct rpc_context *rpc, int status, void *command_data,
 	res = command_data;
 	if (res->status != NFS3_OK) {
 		nfs_set_error(nfs, "NFS: SYMLINK %s/%s -> %s failed with "
-                              "%s(%d)", symlink_data->newpathparent,
-                              symlink_data->newpathobject,
-                              symlink_data->oldpath,
+                              "%s(%d)", symlink_data->linkparent,
+                              symlink_data->linkobject,
+                              symlink_data->target,
                               nfsstat3_to_str(res->status),
                               nfsstat3_to_errno(res->status));
 		data->cb(nfsstat3_to_errno(res->status), nfs,
@@ -1509,10 +1503,10 @@ nfs3_symlink_continue_internal(struct nfs_context *nfs,
 	memset(&args, 0, sizeof(SYMLINK3args));
 	args.where.dir.data.data_len = data->fh.len;
 	args.where.dir.data.data_val = data->fh.val;
-	args.where.name = symlink_data->newpathobject;
+	args.where.name = symlink_data->linkobject;
 	args.symlink.symlink_attributes.mode.set_it = 1;
 	args.symlink.symlink_attributes.mode.set_mode3_u.mode = S_IRUSR|S_IWUSR|S_IXUSR|S_IRGRP|S_IWGRP|S_IXGRP|S_IROTH|S_IWOTH|S_IXOTH;
-	args.symlink.symlink_data = symlink_data->oldpath;
+	args.symlink.symlink_data = symlink_data->target;
 
 	if (rpc_nfs3_symlink_async(nfs->rpc, nfs3_symlink_cb,
                                    &args, data) != 0) {
@@ -1526,8 +1520,8 @@ nfs3_symlink_continue_internal(struct nfs_context *nfs,
 }
 
 int
-nfs3_symlink_async(struct nfs_context *nfs, const char *oldpath,
-                   const char *newpath, nfs_cb cb, void *private_data)
+nfs3_symlink_async(struct nfs_context *nfs, const char *target,
+                   const char *linkname, nfs_cb cb, void *private_data)
 {
 	char *ptr;
 	struct nfs_symlink_data *symlink_data;
@@ -1540,40 +1534,40 @@ nfs3_symlink_async(struct nfs_context *nfs, const char *oldpath,
 	}
 	memset(symlink_data, 0, sizeof(struct nfs_symlink_data));
 
-	symlink_data->oldpath = strdup(oldpath);
-	if (symlink_data->oldpath == NULL) {
+	symlink_data->target = strdup(target);
+	if (symlink_data->target == NULL) {
 		nfs_set_error(nfs, "Out of memory, failed to allocate "
-                              "buffer for oldpath");
+                              "buffer for target");
 		free_nfs_symlink_data(symlink_data);
 		return -1;
 	}
 
-	symlink_data->newpathparent = strdup(newpath);
-	if (symlink_data->newpathparent == NULL) {
+	symlink_data->linkparent = strdup(linkname);
+	if (symlink_data->linkparent == NULL) {
 		nfs_set_error(nfs, "Out of memory, failed to allocate "
                               "mode buffer for new path");
 		free_nfs_symlink_data(symlink_data);
 		return -1;
 	}
 
-	ptr = strrchr(symlink_data->newpathparent, '/');
+	ptr = strrchr(symlink_data->linkparent, '/');
 	if (ptr == NULL) {
-		nfs_set_error(nfs, "Invalid path %s", oldpath);
+		nfs_set_error(nfs, "Invalid path \"%s\"", linkname);
 		free_nfs_symlink_data(symlink_data);
 		return -1;
 	}
 	*ptr = 0;
 	ptr++;
 
-	symlink_data->newpathobject = strdup(ptr);
-	if (symlink_data->newpathobject == NULL) {
+	symlink_data->linkobject = strdup(ptr);
+	if (symlink_data->linkobject == NULL) {
 		nfs_set_error(nfs, "Out of memory, failed to allocate "
                               "mode buffer for new path");
 		free_nfs_symlink_data(symlink_data);
 		return -1;
 	}
 
-	if (nfs3_lookuppath_async(nfs, symlink_data->newpathparent, 0,
+	if (nfs3_lookuppath_async(nfs, symlink_data->linkparent, 0,
                                   cb, private_data,
                                   nfs3_symlink_continue_internal,
                                   symlink_data, free_nfs_symlink_data, 0)
