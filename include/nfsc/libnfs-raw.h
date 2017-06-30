@@ -36,10 +36,10 @@ struct rpc_data {
 };
 
 struct rpc_context;
-struct rpc_context *rpc_init_context(void);
-void rpc_destroy_context(struct rpc_context *rpc);
+EXTERN struct rpc_context *rpc_init_context(void);
+EXTERN void rpc_destroy_context(struct rpc_context *rpc);
 
-void rpc_set_auth(struct rpc_context *rpc, struct AUTH *auth);
+EXTERN void rpc_set_auth(struct rpc_context *rpc, struct AUTH *auth);
 
 /*
  * Used for interfacing the api into an external eventsystem.
@@ -67,29 +67,29 @@ void rpc_set_auth(struct rpc_context *rpc, struct AUTH *auth);
  * The easiest way to do this is to call rpc_service() once every 100ms from
  * your event system and passing revents as 0. 
  */
-int rpc_get_fd(struct rpc_context *rpc);
-int rpc_which_events(struct rpc_context *rpc);
-int rpc_service(struct rpc_context *rpc, int revents);
+EXTERN int rpc_get_fd(struct rpc_context *rpc);
+EXTERN int rpc_which_events(struct rpc_context *rpc);
+EXTERN int rpc_service(struct rpc_context *rpc, int revents);
 
 /*
  * Returns the number of commands in-flight. Can be used by the application
  * to check if there are any more responses we are awaiting from the server
  * or if the connection is completely idle.
  */
-int rpc_queue_length(struct rpc_context *rpc);
+EXTERN int rpc_queue_length(struct rpc_context *rpc);
 
 /*
  * Set which UID/GID to use in the authenticator.
  * By default libnfs will use getuid()/getgid() where available
  * and 65534/65534 where not.
  */
-void rpc_set_uid(struct rpc_context *rpc, int uid);
-void rpc_set_gid(struct rpc_context *rpc, int gid);
+EXTERN void rpc_set_uid(struct rpc_context *rpc, int uid);
+EXTERN void rpc_set_gid(struct rpc_context *rpc, int gid);
 
 /*
  * Create a server context.
  */
-struct rpc_context *rpc_init_server_context(int s);
+EXTERN struct rpc_context *rpc_init_server_context(int s);
 
 /* This is the callback functions for server contexts.
  * These are invoked from the library when a CALL has been received and a
@@ -127,34 +127,35 @@ struct service_proc {
  * Register a service callback table for program/version.
  * Can only be used with contexts created with rpc_init_server_context()
  */
-int rpc_register_service(struct rpc_context *rpc, int program, int version,
-                         struct service_proc *procs, int num_procs);
+EXTERN int rpc_register_service(struct rpc_context *rpc, int program,
+                                int version, struct service_proc *procs,
+                                int num_procs);
 
-int rpc_send_reply(struct rpc_context *rpc, struct rpc_msg *call,
-                   void *reply, zdrproc_t encode_fn,
-                   int alloc_hint);
+EXTERN int rpc_send_reply(struct rpc_context *rpc, struct rpc_msg *call,
+                          void *reply, zdrproc_t encode_fn,
+                          int alloc_hint);
 
 /*
  * When an operation failed, this function can extract a detailed error string.
  */
-char *rpc_get_error(struct rpc_context *rpc);
+EXTERN char *rpc_get_error(struct rpc_context *rpc);
 
 /* Utility function to get an RPC context from a NFS context. Useful for doing
  * low level NFSACL calls on a NFS context.
  */
-struct rpc_context *nfs_get_rpc_context(struct nfs_context *nfs);
+EXTERN struct rpc_context *nfs_get_rpc_context(struct nfs_context *nfs);
 
 /* This function returns the nfs_fh structure from a nfsfh structure.
    This allows to use a file opened with nfs_open() together with low-level
    rpc functions that thake a nfs filehandle
 */
-struct nfs_fh *nfs_get_fh(struct nfsfh *nfsfh);
+EXTERN struct nfs_fh *nfs_get_fh(struct nfsfh *nfsfh);
 
 /* Control what the next XID value to be used on the context will be.
    This can be used when multiple contexts are used to the same server
    to avoid that the two contexts have xid collissions.
  */
-void rpc_set_next_xid(struct rpc_context *rpc, uint32_t xid);
+EXTERN void rpc_set_next_xid(struct rpc_context *rpc, uint32_t xid);
 
 /* This function can be used to set the file descriptor used for
  * the RPC context. It is primarily useful when emulating dup2()
@@ -168,7 +169,7 @@ void rpc_set_next_xid(struct rpc_context *rpc, uint32_t xid);
  * close(oldfd);
  * ...
  */
-void rpc_set_fd(struct rpc_context *rpc, int fd);
+EXTERN void rpc_set_fd(struct rpc_context *rpc, int fd);
 
 #define RPC_STATUS_SUCCESS	   	0
 #define RPC_STATUS_ERROR		1
@@ -192,8 +193,8 @@ void rpc_set_fd(struct rpc_context *rpc, int fd);
  *                      complete.
  *                    : data is NULL.
  */
-int rpc_connect_async(struct rpc_context *rpc, const char *server, int port,
-                      rpc_cb cb, void *private_data);
+EXTERN int rpc_connect_async(struct rpc_context *rpc, const char *server,
+                             int port, rpc_cb cb, void *private_data);
 
 /*
  * Async function to connect to a specific RPC program/version
@@ -212,16 +213,17 @@ int rpc_connect_async(struct rpc_context *rpc, const char *server, int port,
  *                      complete.
  *                    : data is NULL.
  */
-int rpc_connect_program_async(struct rpc_context *rpc, const char *server,
-                              int program, int version, rpc_cb cb,
-                              void *private_data);
+EXTERN int rpc_connect_program_async(struct rpc_context *rpc,
+                                     const char *server,
+                                     int program, int version,
+                                     rpc_cb cb, void *private_data);
 
 /*
  * When disconnecting a connection all commands in flight will be
  * called with a callback status RPC_STATUS_ERROR. Data will be the
  * error string for the disconnection.
  */
-int rpc_disconnect(struct rpc_context *rpc, const char *error);
+EXTERN int rpc_disconnect(struct rpc_context *rpc, const char *error);
 
 
 /*
@@ -245,8 +247,8 @@ int rpc_disconnect(struct rpc_context *rpc, const char *error);
  * RPC_STATUS_CANCEL  : The command was cancelled.
  *                      data is NULL.
  */
-int rpc_pmap2_null_async(struct rpc_context *rpc, rpc_cb cb,
-                         void *private_data);
+EXTERN int rpc_pmap2_null_async(struct rpc_context *rpc,
+                                rpc_cb cb, void *private_data);
 
 
 /*
@@ -266,8 +268,9 @@ int rpc_pmap2_null_async(struct rpc_context *rpc, rpc_cb cb,
  * RPC_STATUS_CANCEL  : The command was cancelled.
  *                      data is NULL.
  */
-int rpc_pmap2_getport_async(struct rpc_context *rpc, int program, int version,
-                            int protocol, rpc_cb cb, void *private_data);
+EXTERN int rpc_pmap2_getport_async(struct rpc_context *rpc, int program,
+                                   int version, int protocol,
+                                   rpc_cb cb, void *private_data);
 
 /*
  * Call PORTMAPPER2/SET
@@ -286,8 +289,9 @@ int rpc_pmap2_getport_async(struct rpc_context *rpc, int program, int version,
  * RPC_STATUS_CANCEL  : The command was cancelled.
  *                      data is NULL.
  */
-int rpc_pmap2_set_async(struct rpc_context *rpc, int program, int version,
-                        int protocol, int port, rpc_cb cb, void *private_data);
+EXTERN int rpc_pmap2_set_async(struct rpc_context *rpc, int program,
+                               int version, int protocol, int port,
+                               rpc_cb cb, void *private_data);
 
 /*
  * Call PORTMAPPER2/UNSET
@@ -306,9 +310,9 @@ int rpc_pmap2_set_async(struct rpc_context *rpc, int program, int version,
  * RPC_STATUS_CANCEL  : The command was cancelled.
  *                      data is NULL.
  */
-int rpc_pmap2_unset_async(struct rpc_context *rpc, int program, int version,
-                          int protocol, int port, rpc_cb cb,
-                          void *private_data);
+EXTERN int rpc_pmap2_unset_async(struct rpc_context *rpc, int program,
+                                 int version, int protocol, int port,
+                                 rpc_cb cb, void *private_data);
 
 /*
  * Call PORTMAPPER2/DUMP.
@@ -327,8 +331,8 @@ int rpc_pmap2_unset_async(struct rpc_context *rpc, int program, int version,
  * RPC_STATUS_CANCEL  : The command was cancelled.
  *                      data is NULL.
  */
-int rpc_pmap2_dump_async(struct rpc_context *rpc, rpc_cb cb,
-                         void *private_data);
+EXTERN int rpc_pmap2_dump_async(struct rpc_context *rpc, rpc_cb cb,
+                                void *private_data);
 
 /*
  * Call PORTMAPPER2/CALLIT.
@@ -347,9 +351,10 @@ int rpc_pmap2_dump_async(struct rpc_context *rpc, rpc_cb cb,
  * RPC_STATUS_CANCEL  : The command was cancelled.
  *                      data is NULL.
  */
-int rpc_pmap2_callit_async(struct rpc_context *rpc, int program, int version,
-                           int procedure, char *data, int datalen, rpc_cb cb,
-                           void *private_data);
+EXTERN int rpc_pmap2_callit_async(struct rpc_context *rpc, int program,
+                                  int version, int procedure,
+                                  char *data, int datalen,
+                                  rpc_cb cb, void *private_data);
 
 /*
  * PORTMAP v3 FUNCTIONS
@@ -372,8 +377,8 @@ int rpc_pmap2_callit_async(struct rpc_context *rpc, int program, int version,
  * RPC_STATUS_CANCEL  : The command was cancelled.
  *                      data is NULL.
  */
-int rpc_pmap3_null_async(struct rpc_context *rpc, rpc_cb cb,
-                         void *private_data);
+EXTERN int rpc_pmap3_null_async(struct rpc_context *rpc,
+                                rpc_cb cb, void *private_data);
 
 /*
  * Call PORTMAPPER3/SET.
@@ -393,8 +398,9 @@ int rpc_pmap3_null_async(struct rpc_context *rpc, rpc_cb cb,
  *                      data is NULL.
  */
 struct pmap3_mapping;
-int rpc_pmap3_set_async(struct rpc_context *rpc, struct pmap3_mapping *map,
-                        rpc_cb cb, void *private_data);
+EXTERN int rpc_pmap3_set_async(struct rpc_context *rpc,
+                               struct pmap3_mapping *map,
+                               rpc_cb cb, void *private_data);
 
 /*
  * Call PORTMAPPER3/UNSET.
@@ -413,8 +419,9 @@ int rpc_pmap3_set_async(struct rpc_context *rpc, struct pmap3_mapping *map,
  * RPC_STATUS_CANCEL  : The command was cancelled.
  *                      data is NULL.
  */
-int rpc_pmap3_unset_async(struct rpc_context *rpc, struct pmap3_mapping *map,
-                          rpc_cb cb, void *private_data);
+EXTERN int rpc_pmap3_unset_async(struct rpc_context *rpc,
+                                 struct pmap3_mapping *map,
+                                 rpc_cb cb, void *private_data);
 
 /*
  * Call PORTMAPPER3/GETADDR.
@@ -433,8 +440,9 @@ int rpc_pmap3_unset_async(struct rpc_context *rpc, struct pmap3_mapping *map,
  * RPC_STATUS_CANCEL  : The command was cancelled.
  *                      data is NULL.
  */
-int rpc_pmap3_getaddr_async(struct rpc_context *rpc, struct pmap3_mapping *map,
-                            rpc_cb cb, void *private_data);
+EXTERN int rpc_pmap3_getaddr_async(struct rpc_context *rpc,
+                                   struct pmap3_mapping *map,
+                                   rpc_cb cb, void *private_data);
 
 /*
  * Call PORTMAPPER3/DUMP.
@@ -453,8 +461,8 @@ int rpc_pmap3_getaddr_async(struct rpc_context *rpc, struct pmap3_mapping *map,
  * RPC_STATUS_CANCEL  : The command was cancelled.
  *                      data is NULL.
  */
-int rpc_pmap3_dump_async(struct rpc_context *rpc, rpc_cb cb,
-                         void *private_data);
+EXTERN int rpc_pmap3_dump_async(struct rpc_context *rpc,
+                                rpc_cb cb, void *private_data);
 
 /*
  * Call PORTMAPPER3/CALLIT.
@@ -473,9 +481,10 @@ int rpc_pmap3_dump_async(struct rpc_context *rpc, rpc_cb cb,
  * RPC_STATUS_CANCEL  : The command was cancelled.
  *                      data is NULL.
  */
-int rpc_pmap3_callit_async(struct rpc_context *rpc, int program, int version,
-                           int procedure, char *data, int datalen, rpc_cb cb,
-                           void *private_data);
+EXTERN int rpc_pmap3_callit_async(struct rpc_context *rpc, int program,
+                                  int version, int procedure,
+                                  char *data, int datalen,
+                                  rpc_cb cb, void *private_data);
 
 /*
  * Call PORTMAPPER3/GETTIME.
@@ -494,8 +503,8 @@ int rpc_pmap3_callit_async(struct rpc_context *rpc, int program, int version,
  * RPC_STATUS_CANCEL  : The command was cancelled.
  *                      data is NULL.
  */
-int rpc_pmap3_gettime_async(struct rpc_context *rpc, rpc_cb cb,
-                            void *private_data);
+EXTERN int rpc_pmap3_gettime_async(struct rpc_context *rpc,
+                                   rpc_cb cb, void *private_data);
 
 /*
  * Call PORTMAPPER3/UADDR2TADDR.
@@ -514,8 +523,8 @@ int rpc_pmap3_gettime_async(struct rpc_context *rpc, rpc_cb cb,
  * RPC_STATUS_CANCEL  : The command was cancelled.
  *                      data is NULL.
  */
-int rpc_pmap3_uaddr2taddr_async(struct rpc_context *rpc, char *uaddr,
-                                rpc_cb cb, void *private_data);
+EXTERN int rpc_pmap3_uaddr2taddr_async(struct rpc_context *rpc, char *uaddr,
+                                       rpc_cb cb, void *private_data);
 
 /*
  * Call PORTMAPPER3/TADDR2UADDR.
@@ -535,15 +544,15 @@ int rpc_pmap3_uaddr2taddr_async(struct rpc_context *rpc, char *uaddr,
  *                      data is NULL.
  */
 struct pmap3_netbuf;
-int rpc_pmap3_taddr2uaddr_async(struct rpc_context *rpc,
-                                struct pmap3_netbuf *netbuf, rpc_cb cb,
-                                void *private_data);
+EXTERN int rpc_pmap3_taddr2uaddr_async(struct rpc_context *rpc,
+                                       struct pmap3_netbuf *netbuf,
+                                       rpc_cb cb, void *private_data);
 
 /*
  * MOUNT v3 FUNCTIONS
  */
-char *mountstat3_to_str(int stat);
-int mountstat3_to_errno(int error);
+EXTERN char *mountstat3_to_str(int stat);
+EXTERN int mountstat3_to_errno(int error);
 
 /*
  * Call MOUNT3/NULL
@@ -562,10 +571,10 @@ int mountstat3_to_errno(int error);
  * RPC_STATUS_CANCEL  : The command was cancelled.
  *                      data is NULL.
  */
-int rpc_mount3_null_async(struct rpc_context *rpc, rpc_cb cb,
-                          void *private_data);
-int rpc_mount_null_async(struct rpc_context *rpc, rpc_cb cb,
-                         void *private_data);
+EXTERN int rpc_mount3_null_async(struct rpc_context *rpc,
+                                 rpc_cb cb, void *private_data);
+EXTERN int rpc_mount_null_async(struct rpc_context *rpc,
+                                rpc_cb cb, void *private_data);
 
 /*
  * Call MOUNT3/MNT
@@ -584,10 +593,10 @@ int rpc_mount_null_async(struct rpc_context *rpc, rpc_cb cb,
  * RPC_STATUS_CANCEL  : The command was cancelled.
  *                      data is NULL.
  */
-int rpc_mount3_mnt_async(struct rpc_context *rpc, rpc_cb cb, char *exportname,
-                         void *private_data);
-int rpc_mount_mnt_async(struct rpc_context *rpc, rpc_cb cb, char *exportname,
-                        void *private_data);
+EXTERN int rpc_mount3_mnt_async(struct rpc_context *rpc, rpc_cb cb,
+                                char *exportname, void *private_data);
+EXTERN int rpc_mount_mnt_async(struct rpc_context *rpc, rpc_cb cb,
+                               char *exportname, void *private_data);
 
 /*
  * Call MOUNT3/DUMP
@@ -606,10 +615,10 @@ int rpc_mount_mnt_async(struct rpc_context *rpc, rpc_cb cb, char *exportname,
  * RPC_STATUS_CANCEL  : The command was cancelled.
  *                      data is NULL.
  */
-int rpc_mount3_dump_async(struct rpc_context *rpc, rpc_cb cb,
-                          void *private_data);
-int rpc_mount_dump_async(struct rpc_context *rpc, rpc_cb cb,
-                         void *private_data);
+EXTERN int rpc_mount3_dump_async(struct rpc_context *rpc,
+                                 rpc_cb cb, void *private_data);
+EXTERN int rpc_mount_dump_async(struct rpc_context *rpc,
+                                rpc_cb cb, void *private_data);
 
 /*
  * Call MOUNT3/UMNT
@@ -628,10 +637,12 @@ int rpc_mount_dump_async(struct rpc_context *rpc, rpc_cb cb,
  * RPC_STATUS_CANCEL  : The command was cancelled.
  *                      data is NULL.
  */
-int rpc_mount3_umnt_async(struct rpc_context *rpc, rpc_cb cb, char *exportname,
-                          void *private_data);
-int rpc_mount_umnt_async(struct rpc_context *rpc, rpc_cb cb, char *exportname,
-                         void *private_data);
+EXTERN int rpc_mount3_umnt_async(struct rpc_context *rpc, rpc_cb cb,
+                                 char *exportname,
+                                 void *private_data);
+EXTERN int rpc_mount_umnt_async(struct rpc_context *rpc, rpc_cb cb,
+                                char *exportname,
+                                void *private_data);
 
 /*
  * Call MOUNT3/UMNTALL
@@ -650,10 +661,10 @@ int rpc_mount_umnt_async(struct rpc_context *rpc, rpc_cb cb, char *exportname,
  * RPC_STATUS_CANCEL  : The command was cancelled.
  *                      data is NULL.
  */
-int rpc_mount3_umntall_async(struct rpc_context *rpc, rpc_cb cb,
-                             void *private_data);
-int rpc_mount_umntall_async(struct rpc_context *rpc, rpc_cb cb,
-                            void *private_data);
+EXTERN int rpc_mount3_umntall_async(struct rpc_context *rpc,
+                                    rpc_cb cb, void *private_data);
+EXTERN int rpc_mount_umntall_async(struct rpc_context *rpc,
+                                   rpc_cb cb, void *private_data);
 
 /*
  * Call MOUNT3/EXPORT
@@ -672,10 +683,10 @@ int rpc_mount_umntall_async(struct rpc_context *rpc, rpc_cb cb,
  * RPC_STATUS_CANCEL  : The command was cancelled.
  *                      data is NULL.
  */
-int rpc_mount3_export_async(struct rpc_context *rpc, rpc_cb cb,
-                            void *private_data);
-int rpc_mount_export_async(struct rpc_context *rpc, rpc_cb cb,
-                           void *private_data);
+EXTERN int rpc_mount3_export_async(struct rpc_context *rpc,
+                                   rpc_cb cb, void *private_data);
+EXTERN int rpc_mount_export_async(struct rpc_context *rpc,
+                                  rpc_cb cb, void *private_data);
 
 /*
  * MOUNT v1 FUNCTIONS (Used with NFSv2)
@@ -697,8 +708,8 @@ int rpc_mount_export_async(struct rpc_context *rpc, rpc_cb cb,
  * RPC_STATUS_CANCEL  : The command was cancelled.
  *                      data is NULL.
  */
-int rpc_mount1_null_async(struct rpc_context *rpc, rpc_cb cb,
-                          void *private_data);
+EXTERN int rpc_mount1_null_async(struct rpc_context *rpc,
+                                 rpc_cb cb, void *private_data);
 
 /*
  * Call MOUNT1/MNT
@@ -717,8 +728,9 @@ int rpc_mount1_null_async(struct rpc_context *rpc, rpc_cb cb,
  * RPC_STATUS_CANCEL  : The command was cancelled.
  *                      data is NULL.
  */
-int rpc_mount1_mnt_async(struct rpc_context *rpc, rpc_cb cb, char *exportname,
-                         void *private_data);
+EXTERN int rpc_mount1_mnt_async(struct rpc_context *rpc, rpc_cb cb,
+                                char *exportname,
+                                void *private_data);
 
 /*
  * Call MOUNT1/DUMP
@@ -737,8 +749,8 @@ int rpc_mount1_mnt_async(struct rpc_context *rpc, rpc_cb cb, char *exportname,
  * RPC_STATUS_CANCEL  : The command was cancelled.
  *                      data is NULL.
  */
-int rpc_mount1_dump_async(struct rpc_context *rpc, rpc_cb cb,
-                          void *private_data);
+EXTERN int rpc_mount1_dump_async(struct rpc_context *rpc,
+                                 rpc_cb cb, void *private_data);
 
 /*
  * Call MOUNT1/UMNT
@@ -757,8 +769,9 @@ int rpc_mount1_dump_async(struct rpc_context *rpc, rpc_cb cb,
  * RPC_STATUS_CANCEL  : The command was cancelled.
  *                      data is NULL.
  */
-int rpc_mount1_umnt_async(struct rpc_context *rpc, rpc_cb cb, char *exportname,
-                          void *private_data);
+EXTERN int rpc_mount1_umnt_async(struct rpc_context *rpc, rpc_cb cb,
+                                 char *exportname,
+                                 void *private_data);
 
 /*
  * Call MOUNT1/UMNTALL
@@ -777,8 +790,8 @@ int rpc_mount1_umnt_async(struct rpc_context *rpc, rpc_cb cb, char *exportname,
  * RPC_STATUS_CANCEL  : The command was cancelled.
  *                      data is NULL.
  */
-int rpc_mount1_umntall_async(struct rpc_context *rpc, rpc_cb cb,
-                             void *private_data);
+EXTERN int rpc_mount1_umntall_async(struct rpc_context *rpc,
+                                    rpc_cb cb, void *private_data);
 
 /*
  * Call MOUNT1/EXPORT
@@ -797,16 +810,16 @@ int rpc_mount1_umntall_async(struct rpc_context *rpc, rpc_cb cb,
  * RPC_STATUS_CANCEL  : The command was cancelled.
  *                      data is NULL.
  */
-int rpc_mount1_export_async(struct rpc_context *rpc, rpc_cb cb,
-                            void *private_data);
+EXTERN int rpc_mount1_export_async(struct rpc_context *rpc,
+                                   rpc_cb cb, void *private_data);
 
 
 /*
  * NFS v3 FUNCTIONS
  */
 struct nfs_fh3;
-char *nfsstat3_to_str(int error);
-int nfsstat3_to_errno(int error);
+EXTERN char *nfsstat3_to_str(int error);
+EXTERN int nfsstat3_to_errno(int error);
 
 /*
  * Call NFS3/NULL
@@ -825,8 +838,10 @@ int nfsstat3_to_errno(int error);
  * RPC_STATUS_CANCEL  : The command was cancelled.
  *                      data is NULL.
  */
-int rpc_nfs3_null_async(struct rpc_context *rpc, rpc_cb cb, void *private_data);
-int rpc_nfs_null_async(struct rpc_context *rpc, rpc_cb cb, void *private_data);
+EXTERN int rpc_nfs3_null_async(struct rpc_context *rpc,
+                               rpc_cb cb, void *private_data);
+EXTERN int rpc_nfs_null_async(struct rpc_context *rpc,
+                              rpc_cb cb, void *private_data);
 
 /*
  * Call NFS3/GETATTR
@@ -846,10 +861,12 @@ int rpc_nfs_null_async(struct rpc_context *rpc, rpc_cb cb, void *private_data);
  *                      data is NULL.
  */
 struct GETATTR3args;
-int rpc_nfs3_getattr_async(struct rpc_context *rpc, rpc_cb cb,
-                           struct GETATTR3args *args, void *private_data);
-int rpc_nfs_getattr_async(struct rpc_context *rpc, rpc_cb cb,
-                          struct nfs_fh3 *fh, void *private_data);
+EXTERN int rpc_nfs3_getattr_async(struct rpc_context *rpc, rpc_cb cb,
+                                  struct GETATTR3args *args,
+                                  void *private_data);
+EXTERN int rpc_nfs_getattr_async(struct rpc_context *rpc, rpc_cb cb,
+                                 struct nfs_fh3 *fh,
+                                 void *private_data);
 
 /*
  * Call NFS3/PATHCONF
@@ -869,10 +886,12 @@ int rpc_nfs_getattr_async(struct rpc_context *rpc, rpc_cb cb,
  *                      data is NULL.
  */
 struct PATHCONF3args;
-int rpc_nfs3_pathconf_async(struct rpc_context *rpc, rpc_cb cb,
-                            struct PATHCONF3args *args, void *private_data);
-int rpc_nfs_pathconf_async(struct rpc_context *rpc, rpc_cb cb,
-                           struct nfs_fh3 *fh, void *private_data);
+EXTERN int rpc_nfs3_pathconf_async(struct rpc_context *rpc, rpc_cb cb,
+                                   struct PATHCONF3args *args,
+                                   void *private_data);
+EXTERN int rpc_nfs_pathconf_async(struct rpc_context *rpc, rpc_cb cb,
+                                  struct nfs_fh3 *fh,
+                                  void *private_data);
 
 /*
  * Call NFS3/LOOKUP
@@ -892,10 +911,12 @@ int rpc_nfs_pathconf_async(struct rpc_context *rpc, rpc_cb cb,
  *                      data is NULL.
  */
 struct LOOKUP3args;
-int rpc_nfs3_lookup_async(struct rpc_context *rpc, rpc_cb cb,
-                          struct LOOKUP3args *args, void *private_data);
-int rpc_nfs_lookup_async(struct rpc_context *rpc, rpc_cb cb,
-                         struct nfs_fh3 *fh, char *name, void *private_data);
+EXTERN int rpc_nfs3_lookup_async(struct rpc_context *rpc, rpc_cb cb,
+                                 struct LOOKUP3args *args,
+                                 void *private_data);
+EXTERN int rpc_nfs_lookup_async(struct rpc_context *rpc, rpc_cb cb,
+                                struct nfs_fh3 *fh, char *name,
+                                void *private_data);
 
 /*
  * Call NFS3/ACCESS
@@ -915,10 +936,12 @@ int rpc_nfs_lookup_async(struct rpc_context *rpc, rpc_cb cb,
  *                      data is NULL.
  */
 struct ACCESS3args;
-int rpc_nfs3_access_async(struct rpc_context *rpc, rpc_cb cb,
-                          struct ACCESS3args *args, void *private_data);
-int rpc_nfs_access_async(struct rpc_context *rpc, rpc_cb cb,
-                         struct nfs_fh3 *fh, int access, void *private_data);
+EXTERN int rpc_nfs3_access_async(struct rpc_context *rpc, rpc_cb cb,
+                                 struct ACCESS3args *args,
+                                 void *private_data);
+EXTERN int rpc_nfs_access_async(struct rpc_context *rpc, rpc_cb cb,
+                                struct nfs_fh3 *fh, int access,
+                                void *private_data);
 
 /*
  * Call NFS3/READ
@@ -938,10 +961,13 @@ int rpc_nfs_access_async(struct rpc_context *rpc, rpc_cb cb,
  *                      data is NULL.
  */
 struct READ3args;
-int rpc_nfs3_read_async(struct rpc_context *rpc, rpc_cb cb,
-                        struct READ3args *args, void *private_data);
-int rpc_nfs_read_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh,
-                       uint64_t offset, uint64_t count, void *private_data);
+EXTERN int rpc_nfs3_read_async(struct rpc_context *rpc, rpc_cb cb,
+                               struct READ3args *args,
+                               void *private_data);
+EXTERN int rpc_nfs_read_async(struct rpc_context *rpc, rpc_cb cb,
+                              struct nfs_fh3 *fh,
+                              uint64_t offset, uint64_t count,
+                              void *private_data);
 
 /*
  * Call NFS3/WRITE
@@ -961,11 +987,14 @@ int rpc_nfs_read_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh,
  *                      data is NULL.
  */
 struct WRITE3args;
-int rpc_nfs3_write_async(struct rpc_context *rpc, rpc_cb cb,
-                         struct WRITE3args *args, void *private_data);
-int rpc_nfs_write_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh,
-                        char *buf, uint64_t offset, uint64_t count,
-                        int stable_how, void *private_data);
+EXTERN int rpc_nfs3_write_async(struct rpc_context *rpc, rpc_cb cb,
+                                struct WRITE3args *args,
+                                void *private_data);
+EXTERN int rpc_nfs_write_async(struct rpc_context *rpc, rpc_cb cb,
+                               struct nfs_fh3 *fh,
+                               char *buf, uint64_t offset, uint64_t count,
+                               int stable_how,
+                               void *private_data);
 
 /*
  * Call NFS3/COMMIT
@@ -985,10 +1014,12 @@ int rpc_nfs_write_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh,
  *                      data is NULL.
  */
 struct COMMIT3args;
-int rpc_nfs3_commit_async(struct rpc_context *rpc, rpc_cb cb,
-                          struct COMMIT3args *args, void *private_data);
-int rpc_nfs_commit_async(struct rpc_context *rpc, rpc_cb cb,
-                         struct nfs_fh3 *fh, void *private_data);
+EXTERN int rpc_nfs3_commit_async(struct rpc_context *rpc, rpc_cb cb,
+                                 struct COMMIT3args *args,
+                                 void *private_data);
+EXTERN int rpc_nfs_commit_async(struct rpc_context *rpc, rpc_cb cb,
+                                struct nfs_fh3 *fh,
+                                void *private_data);
 
 /*
  * Call NFS3/SETATTR
@@ -1008,10 +1039,12 @@ int rpc_nfs_commit_async(struct rpc_context *rpc, rpc_cb cb,
  *                      data is NULL.
  */
 struct SETATTR3args;
-int rpc_nfs3_setattr_async(struct rpc_context *rpc, rpc_cb cb,
-                           struct SETATTR3args *args, void *private_data);
-int rpc_nfs_setattr_async(struct rpc_context *rpc, rpc_cb cb,
-                          struct SETATTR3args *args, void *private_data);
+EXTERN int rpc_nfs3_setattr_async(struct rpc_context *rpc, rpc_cb cb,
+                                  struct SETATTR3args *args,
+                                  void *private_data);
+EXTERN int rpc_nfs_setattr_async(struct rpc_context *rpc, rpc_cb cb,
+                                 struct SETATTR3args *args,
+                                 void *private_data);
 
 /*
  * Call NFS3/MKDIR
@@ -1031,10 +1064,12 @@ int rpc_nfs_setattr_async(struct rpc_context *rpc, rpc_cb cb,
  *                      data is NULL.
  */
 struct MKDIR3args;
-int rpc_nfs3_mkdir_async(struct rpc_context *rpc, rpc_cb cb,
-                         struct MKDIR3args *args, void *private_data);
-int rpc_nfs_mkdir_async(struct rpc_context *rpc, rpc_cb cb,
-                        struct MKDIR3args *args, void *private_data);
+EXTERN int rpc_nfs3_mkdir_async(struct rpc_context *rpc, rpc_cb cb,
+                                struct MKDIR3args *args,
+                                void *private_data);
+EXTERN int rpc_nfs_mkdir_async(struct rpc_context *rpc, rpc_cb cb,
+                               struct MKDIR3args *args,
+                               void *private_data);
 
 /*
  * Call NFS3/RMDIR
@@ -1054,10 +1089,12 @@ int rpc_nfs_mkdir_async(struct rpc_context *rpc, rpc_cb cb,
  *                      data is NULL.
  */
 struct RMDIR3args;
-int rpc_nfs3_rmdir_async(struct rpc_context *rpc, rpc_cb cb,
-                         struct RMDIR3args *args, void *private_data);
-int rpc_nfs_rmdir_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh,
-                        char *dir, void *private_data);
+EXTERN int rpc_nfs3_rmdir_async(struct rpc_context *rpc, rpc_cb cb,
+                                struct RMDIR3args *args,
+                                void *private_data);
+EXTERN int rpc_nfs_rmdir_async(struct rpc_context *rpc, rpc_cb cb,
+                               struct nfs_fh3 *fh, char *dir,
+                               void *private_data);
 
 /*
  * Call NFS3/CREATE
@@ -1077,10 +1114,12 @@ int rpc_nfs_rmdir_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh,
  *                      data is NULL.
  */
 struct CREATE3args;
-int rpc_nfs3_create_async(struct rpc_context *rpc, rpc_cb cb,
-                          struct CREATE3args *args, void *private_data);
-int rpc_nfs_create_async(struct rpc_context *rpc, rpc_cb cb,
-                         struct CREATE3args *args, void *private_data);
+EXTERN int rpc_nfs3_create_async(struct rpc_context *rpc, rpc_cb cb,
+                                 struct CREATE3args *args,
+                                 void *private_data);
+EXTERN int rpc_nfs_create_async(struct rpc_context *rpc, rpc_cb cb,
+                                struct CREATE3args *args,
+                                void *private_data);
 
 /*
  * Call NFS3/MKNOD
@@ -1100,11 +1139,13 @@ int rpc_nfs_create_async(struct rpc_context *rpc, rpc_cb cb,
  *                      data is NULL.
  */
 struct MKNOD3args;
-int rpc_nfs3_mknod_async(struct rpc_context *rpc, rpc_cb cb,
-                         struct MKNOD3args *args, void *private_data);
-int rpc_nfs_mknod_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh,
-                        char *file, int mode, int major, int minor,
-                        void *private_data);
+EXTERN int rpc_nfs3_mknod_async(struct rpc_context *rpc, rpc_cb cb,
+                                struct MKNOD3args *args,
+                                void *private_data);
+EXTERN int rpc_nfs_mknod_async(struct rpc_context *rpc, rpc_cb cb,
+                               struct nfs_fh3 *fh,
+                               char *file, int mode, int major, int minor,
+                               void *private_data);
 
 /*
  * Call NFS3/REMOVE
@@ -1124,10 +1165,12 @@ int rpc_nfs_mknod_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh,
  *                      data is NULL.
  */
 struct REMOVE3args;
-int rpc_nfs3_remove_async(struct rpc_context *rpc, rpc_cb cb,
-                          struct REMOVE3args *args, void *private_data);
-int rpc_nfs_remove_async(struct rpc_context *rpc, rpc_cb cb,
-                         struct nfs_fh3 *fh, char *name, void *private_data);
+EXTERN int rpc_nfs3_remove_async(struct rpc_context *rpc, rpc_cb cb,
+                                 struct REMOVE3args *args,
+                                 void *private_data);
+EXTERN int rpc_nfs_remove_async(struct rpc_context *rpc, rpc_cb cb,
+                                struct nfs_fh3 *fh, char *name,
+                                void *private_data);
 
 /*
  * Call NFS3/READDIR
@@ -1147,11 +1190,13 @@ int rpc_nfs_remove_async(struct rpc_context *rpc, rpc_cb cb,
  *                      data is NULL.
  */
 struct READDIR3args;
-int rpc_nfs3_readdir_async(struct rpc_context *rpc, rpc_cb cb,
-                           struct READDIR3args *args, void *private_data);
-int rpc_nfs_readdir_async(struct rpc_context *rpc, rpc_cb cb,
-                          struct nfs_fh3 *fh, uint64_t cookie,
-                          char *cookieverf, int count, void *private_data);
+EXTERN int rpc_nfs3_readdir_async(struct rpc_context *rpc, rpc_cb cb,
+                                  struct READDIR3args *args,
+                                  void *private_data);
+EXTERN int rpc_nfs_readdir_async(struct rpc_context *rpc, rpc_cb cb,
+                                 struct nfs_fh3 *fh, uint64_t cookie,
+                                 char *cookieverf, int count,
+                                 void *private_data);
 
 /*
  * Call NFS3/READDIRPLUS
@@ -1171,12 +1216,13 @@ int rpc_nfs_readdir_async(struct rpc_context *rpc, rpc_cb cb,
  *                      data is NULL.
  */
 struct READDIRPLUS3args;
-int rpc_nfs3_readdirplus_async(struct rpc_context *rpc, rpc_cb cb,
-                               struct READDIRPLUS3args *args,
-                               void *private_data);
-int rpc_nfs_readdirplus_async(struct rpc_context *rpc, rpc_cb cb,
-                              struct nfs_fh3 *fh, uint64_t cookie,
-                              char *cookieverf, int count, void *private_data);
+EXTERN int rpc_nfs3_readdirplus_async(struct rpc_context *rpc, rpc_cb cb,
+                                      struct READDIRPLUS3args *args,
+                                      void *private_data);
+EXTERN int rpc_nfs_readdirplus_async(struct rpc_context *rpc, rpc_cb cb,
+                                     struct nfs_fh3 *fh, uint64_t cookie,
+                                     char *cookieverf, int count,
+                                     void *private_data);
 
 /*
  * Call NFS3/FSSTAT
@@ -1196,10 +1242,12 @@ int rpc_nfs_readdirplus_async(struct rpc_context *rpc, rpc_cb cb,
  *                      data is NULL.
  */
 struct FSSTAT3args;
-int rpc_nfs3_fsstat_async(struct rpc_context *rpc, rpc_cb cb,
-                          struct FSSTAT3args *args, void *private_data);
-int rpc_nfs_fsstat_async(struct rpc_context *rpc, rpc_cb cb,
-                         struct nfs_fh3 *fh, void *private_data);
+EXTERN int rpc_nfs3_fsstat_async(struct rpc_context *rpc, rpc_cb cb,
+                                 struct FSSTAT3args *args,
+                                 void *private_data);
+EXTERN int rpc_nfs_fsstat_async(struct rpc_context *rpc, rpc_cb cb,
+                                struct nfs_fh3 *fh,
+                                void *private_data);
 
 /*
  * Call NFS3/FSINFO
@@ -1219,10 +1267,12 @@ int rpc_nfs_fsstat_async(struct rpc_context *rpc, rpc_cb cb,
  *                      data is NULL.
  */
 struct FSINFO3args;
-int rpc_nfs3_fsinfo_async(struct rpc_context *rpc, rpc_cb cb,
-                          struct FSINFO3args *args, void *private_data);
-int rpc_nfs_fsinfo_async(struct rpc_context *rpc, rpc_cb cb,
-                         struct nfs_fh3 *fh, void *private_data);
+EXTERN int rpc_nfs3_fsinfo_async(struct rpc_context *rpc, rpc_cb cb,
+                                 struct FSINFO3args *args,
+                                 void *private_data);
+EXTERN int rpc_nfs_fsinfo_async(struct rpc_context *rpc, rpc_cb cb,
+                                struct nfs_fh3 *fh,
+                                void *private_data);
 
 /*
  * Call NFS3/READLINK
@@ -1242,10 +1292,12 @@ int rpc_nfs_fsinfo_async(struct rpc_context *rpc, rpc_cb cb,
  *                      data is NULL.
  */
 struct READLINK3args;
-int rpc_nfs3_readlink_async(struct rpc_context *rpc, rpc_cb cb,
-                            struct READLINK3args *args, void *private_data);
-int rpc_nfs_readlink_async(struct rpc_context *rpc, rpc_cb cb,
-                           struct READLINK3args *args, void *private_data);
+EXTERN int rpc_nfs3_readlink_async(struct rpc_context *rpc, rpc_cb cb,
+                                   struct READLINK3args *args,
+                                   void *private_data);
+EXTERN int rpc_nfs_readlink_async(struct rpc_context *rpc, rpc_cb cb,
+                                  struct READLINK3args *args,
+                                  void *private_data);
 
 /*
  * Call NFS3/SYMLINK
@@ -1265,10 +1317,12 @@ int rpc_nfs_readlink_async(struct rpc_context *rpc, rpc_cb cb,
  *                      data is NULL.
  */
 struct SYMLINK3args;
-int rpc_nfs3_symlink_async(struct rpc_context *rpc, rpc_cb cb,
-                           struct SYMLINK3args *args, void *private_data);
-int rpc_nfs_symlink_async(struct rpc_context *rpc, rpc_cb cb,
-                          struct SYMLINK3args *args, void *private_data);
+EXTERN int rpc_nfs3_symlink_async(struct rpc_context *rpc, rpc_cb cb,
+                                  struct SYMLINK3args *args,
+                                  void *private_data);
+EXTERN int rpc_nfs_symlink_async(struct rpc_context *rpc, rpc_cb cb,
+                                 struct SYMLINK3args *args,
+                                 void *private_data);
 
 /*
  * Call NFS3/RENAME
@@ -1288,12 +1342,13 @@ int rpc_nfs_symlink_async(struct rpc_context *rpc, rpc_cb cb,
  *                      data is NULL.
  */
 struct RENAME3args;
-int rpc_nfs3_rename_async(struct rpc_context *rpc, rpc_cb cb,
-                          struct RENAME3args *args, void *private_data);
-int rpc_nfs_rename_async(struct rpc_context *rpc, rpc_cb cb,
-                         struct nfs_fh3 *olddir, char *oldname,
-                         struct nfs_fh3 *newdir, char *newname,
-                         void *private_data);
+EXTERN int rpc_nfs3_rename_async(struct rpc_context *rpc, rpc_cb cb,
+                                 struct RENAME3args *args,
+                                 void *private_data);
+EXTERN int rpc_nfs_rename_async(struct rpc_context *rpc, rpc_cb cb,
+                                struct nfs_fh3 *olddir, char *oldname,
+                                struct nfs_fh3 *newdir, char *newname,
+                                void *private_data);
 
 /*
  * Call NFS3/LINK
@@ -1313,11 +1368,13 @@ int rpc_nfs_rename_async(struct rpc_context *rpc, rpc_cb cb,
  *                      data is NULL.
  */
 struct LINK3args;
-int rpc_nfs3_link_async(struct rpc_context *rpc, rpc_cb cb,
-                        struct LINK3args *args, void *private_data);
-int rpc_nfs_link_async(struct rpc_context *rpc, rpc_cb cb,
-                       struct nfs_fh3 *file, struct nfs_fh3 *newdir,
-                       char *newname, void *private_data);
+EXTERN int rpc_nfs3_link_async(struct rpc_context *rpc, rpc_cb cb,
+                               struct LINK3args *args,
+                               void *private_data);
+EXTERN int rpc_nfs_link_async(struct rpc_context *rpc, rpc_cb cb,
+                              struct nfs_fh3 *file, struct nfs_fh3 *newdir,
+                              char *newname,
+                              void *private_data);
 
 /*
  * NFS v2 FUNCTIONS
@@ -1340,7 +1397,8 @@ int rpc_nfs_link_async(struct rpc_context *rpc, rpc_cb cb,
  * RPC_STATUS_CANCEL  : The command was cancelled.
  *                      data is NULL.
  */
-int rpc_nfs2_null_async(struct rpc_context *rpc, rpc_cb cb, void *private_data);
+EXTERN int rpc_nfs2_null_async(struct rpc_context *rpc,
+                               rpc_cb cb, void *private_data);
 
 /*
  * Call NFS2/GETATTR
@@ -1360,8 +1418,9 @@ int rpc_nfs2_null_async(struct rpc_context *rpc, rpc_cb cb, void *private_data);
  *                      data is NULL.
  */
 struct GETATTR2args;
-int rpc_nfs2_getattr_async(struct rpc_context *rpc, rpc_cb cb,
-                           struct GETATTR2args *args, void *private_data);
+EXTERN int rpc_nfs2_getattr_async(struct rpc_context *rpc, rpc_cb cb,
+                                  struct GETATTR2args *args,
+                                  void *private_data);
 
 /*
  * Call NFS2/SETATTR
@@ -1381,8 +1440,9 @@ int rpc_nfs2_getattr_async(struct rpc_context *rpc, rpc_cb cb,
  *                      data is NULL.
  */
 struct SETATTR2args;
-int rpc_nfs2_setattr_async(struct rpc_context *rpc, rpc_cb cb,
-                           struct SETATTR2args *args, void *private_data);
+EXTERN int rpc_nfs2_setattr_async(struct rpc_context *rpc, rpc_cb cb,
+                                  struct SETATTR2args *args,
+                                  void *private_data);
 
 /*
  * Call NFS2/LOOKUP
@@ -1402,8 +1462,9 @@ int rpc_nfs2_setattr_async(struct rpc_context *rpc, rpc_cb cb,
  *                      data is NULL.
  */
 struct LOOKUP2args;
-int rpc_nfs2_lookup_async(struct rpc_context *rpc, rpc_cb cb,
-                          struct LOOKUP2args *args, void *private_data);
+EXTERN int rpc_nfs2_lookup_async(struct rpc_context *rpc, rpc_cb cb,
+                                 struct LOOKUP2args *args,
+                                 void *private_data);
 
 /*
  * Call NFS2/READLINK
@@ -1423,8 +1484,9 @@ int rpc_nfs2_lookup_async(struct rpc_context *rpc, rpc_cb cb,
  *                      data is NULL.
  */
 struct READLINK2args;
-int rpc_nfs32_readlink_async(struct rpc_context *rpc, rpc_cb cb,
-                             struct READLINK2args *args, void *private_data);
+EXTERN int rpc_nfs32_readlink_async(struct rpc_context *rpc, rpc_cb cb,
+                                    struct READLINK2args *args,
+                                    void *private_data);
 
 /*
  * Call NFS2/READ
@@ -1444,8 +1506,9 @@ int rpc_nfs32_readlink_async(struct rpc_context *rpc, rpc_cb cb,
  *                      data is NULL.
  */
 struct READ2args;
-int rpc_nfs2_read_async(struct rpc_context *rpc, rpc_cb cb,
-                        struct READ2args *args, void *private_data);
+EXTERN int rpc_nfs2_read_async(struct rpc_context *rpc, rpc_cb cb,
+                               struct READ2args *args,
+                               void *private_data);
 
 /*
  * Call NFS2/WRITE
@@ -1465,8 +1528,9 @@ int rpc_nfs2_read_async(struct rpc_context *rpc, rpc_cb cb,
  *                      data is NULL.
  */
 struct WRITE2args;
-int rpc_nfs2_write_async(struct rpc_context *rpc, rpc_cb cb,
-                         struct WRITE2args *args, void *private_data);
+EXTERN int rpc_nfs2_write_async(struct rpc_context *rpc, rpc_cb cb,
+                                struct WRITE2args *args,
+                                void *private_data);
 
 /*
  * Call NFS2/CREATE
@@ -1486,8 +1550,9 @@ int rpc_nfs2_write_async(struct rpc_context *rpc, rpc_cb cb,
  *                      data is NULL.
  */
 struct CREATE2args;
-int rpc_nfs2_create_async(struct rpc_context *rpc, rpc_cb cb,
-                          struct CREATE2args *args, void *private_data);
+EXTERN int rpc_nfs2_create_async(struct rpc_context *rpc, rpc_cb cb,
+                                 struct CREATE2args *args,
+                                 void *private_data);
 
 /*
  * Call NFS2/REMOVE
@@ -1507,8 +1572,9 @@ int rpc_nfs2_create_async(struct rpc_context *rpc, rpc_cb cb,
  *                      data is NULL.
  */
 struct REMOVE2args;
-int rpc_nfs2_remove_async(struct rpc_context *rpc, rpc_cb cb,
-                          struct REMOVE2args *args, void *private_data);
+EXTERN int rpc_nfs2_remove_async(struct rpc_context *rpc, rpc_cb cb,
+                                 struct REMOVE2args *args,
+                                 void *private_data);
 
 /*
  * Call NFS2/RENAME
@@ -1528,8 +1594,9 @@ int rpc_nfs2_remove_async(struct rpc_context *rpc, rpc_cb cb,
  *                      data is NULL.
  */
 struct RENAME2args;
-int rpc_nfs2_rename_async(struct rpc_context *rpc, rpc_cb cb,
-                          struct RENAME2args *args, void *private_data);
+EXTERN int rpc_nfs2_rename_async(struct rpc_context *rpc, rpc_cb cb,
+                                 struct RENAME2args *args,
+                                 void *private_data);
 
 /*
  * Call NFS2/LINK
@@ -1549,8 +1616,9 @@ int rpc_nfs2_rename_async(struct rpc_context *rpc, rpc_cb cb,
  *                      data is NULL.
  */
 struct LINK2args;
-int rpc_nfs2_link_async(struct rpc_context *rpc, rpc_cb cb,
-                        struct LINK2args *args, void *private_data);
+EXTERN int rpc_nfs2_link_async(struct rpc_context *rpc, rpc_cb cb,
+                               struct LINK2args *args,
+                               void *private_data);
 
 /*
  * Call NFS2/SYMLINK
@@ -1570,8 +1638,9 @@ int rpc_nfs2_link_async(struct rpc_context *rpc, rpc_cb cb,
  *                      data is NULL.
  */
 struct SYMLINK2args;
-int rpc_nfs2_symlink_async(struct rpc_context *rpc, rpc_cb cb,
-                           struct SYMLINK2args *args, void *private_data);
+EXTERN int rpc_nfs2_symlink_async(struct rpc_context *rpc, rpc_cb cb,
+                                  struct SYMLINK2args *args,
+                                  void *private_data);
 
 /*
  * Call NFS2/MKDIR
@@ -1591,8 +1660,9 @@ int rpc_nfs2_symlink_async(struct rpc_context *rpc, rpc_cb cb,
  *                      data is NULL.
  */
 struct MKDIR2args;
-int rpc_nfs2_mkdir_async(struct rpc_context *rpc, rpc_cb cb,
-                         struct MKDIR2args *args, void *private_data);
+EXTERN int rpc_nfs2_mkdir_async(struct rpc_context *rpc, rpc_cb cb,
+                                struct MKDIR2args *args,
+                                void *private_data);
 
 /*
  * Call NFS2/RMDIR
@@ -1612,8 +1682,9 @@ int rpc_nfs2_mkdir_async(struct rpc_context *rpc, rpc_cb cb,
  *                      data is NULL.
  */
 struct RMDIR2args;
-int rpc_nfs2_rmdir_async(struct rpc_context *rpc, rpc_cb cb,
-                         struct RMDIR2args *args, void *private_data);
+EXTERN int rpc_nfs2_rmdir_async(struct rpc_context *rpc, rpc_cb cb,
+                                struct RMDIR2args *args,
+                                void *private_data);
 
 /*
  * Call NFS2/READDIR
@@ -1633,8 +1704,9 @@ int rpc_nfs2_rmdir_async(struct rpc_context *rpc, rpc_cb cb,
  *                      data is NULL.
  */
 struct READDIR2args;
-int rpc_nfs2_readdir_async(struct rpc_context *rpc, rpc_cb cb,
-                           struct READDIR2args *args, void *private_data);
+EXTERN int rpc_nfs2_readdir_async(struct rpc_context *rpc, rpc_cb cb,
+                                  struct READDIR2args *args,
+                                  void *private_data);
 
 /*
  * Call NFS2/STATFS
@@ -1654,14 +1726,15 @@ int rpc_nfs2_readdir_async(struct rpc_context *rpc, rpc_cb cb,
  *                      data is NULL.
  */
 struct STATFS2args;
-int rpc_nfs2_statfs_async(struct rpc_context *rpc, rpc_cb cb,
-                          struct STATFS2args *args, void *private_data);
+EXTERN int rpc_nfs2_statfs_async(struct rpc_context *rpc, rpc_cb cb,
+                                 struct STATFS2args *args,
+                                 void *private_data);
 
 /*
  * RQUOTA FUNCTIONS
  */
-char *rquotastat_to_str(int error);
-int rquotastat_to_errno(int error);
+EXTERN char *rquotastat_to_str(int error);
+EXTERN int rquotastat_to_errno(int error);
 
 /*
  * Call RQUOTA1/NULL
@@ -1680,8 +1753,8 @@ int rquotastat_to_errno(int error);
  * RPC_STATUS_CANCEL  : The command was cancelled.
  *                      data is NULL.
  */
-int rpc_rquota1_null_async(struct rpc_context *rpc, rpc_cb cb,
-                           void *private_data);
+EXTERN int rpc_rquota1_null_async(struct rpc_context *rpc,
+                                  rpc_cb cb, void *private_data);
 
 /*
  * Call RQUOTA1/GETQUOTA
@@ -1700,8 +1773,9 @@ int rpc_rquota1_null_async(struct rpc_context *rpc, rpc_cb cb,
  * RPC_STATUS_CANCEL  : The command was cancelled.
  *                      data is NULL.
  */
-int rpc_rquota1_getquota_async(struct rpc_context *rpc, rpc_cb cb,
-                               char *exportname, int uid, void *private_data);
+EXTERN int rpc_rquota1_getquota_async(struct rpc_context *rpc, rpc_cb cb,
+                                      char *exportname, int uid,
+                                      void *private_data);
 
 /*
  * Call RQUOTA1/GETACTIVEQUOTA
@@ -1720,9 +1794,9 @@ int rpc_rquota1_getquota_async(struct rpc_context *rpc, rpc_cb cb,
  * RPC_STATUS_CANCEL  : The command was cancelled.
  *                      data is NULL.
  */
-int rpc_rquota1_getactivequota_async(struct rpc_context *rpc, rpc_cb cb,
-                                     char *exportname, int uid,
-                                     void *private_data);
+EXTERN int rpc_rquota1_getactivequota_async(struct rpc_context *rpc, rpc_cb cb,
+                                            char *exportname, int uid,
+                                            void *private_data);
 
 
 /*
@@ -1742,8 +1816,8 @@ int rpc_rquota1_getactivequota_async(struct rpc_context *rpc, rpc_cb cb,
  * RPC_STATUS_CANCEL  : The command was cancelled.
  *                      data is NULL.
  */
-int rpc_rquota2_null_async(struct rpc_context *rpc, rpc_cb cb,
-                           void *private_data);
+EXTERN int rpc_rquota2_null_async(struct rpc_context *rpc,
+                                  rpc_cb cb, void *private_data);
 
 /*
  * Call RQUOTA2/GETQUOTA
@@ -1762,9 +1836,9 @@ int rpc_rquota2_null_async(struct rpc_context *rpc, rpc_cb cb,
  * RPC_STATUS_CANCEL  : The command was cancelled.
  *                      data is NULL.
  */
-int rpc_rquota2_getquota_async(struct rpc_context *rpc, rpc_cb cb,
-                               char *exportname, int type, int uid,
-                               void *private_data);
+EXTERN int rpc_rquota2_getquota_async(struct rpc_context *rpc, rpc_cb cb,
+                                      char *exportname, int type, int uid,
+                                      void *private_data);
 
 /*
  * Call RQUOTA2/GETACTIVEQUOTA
@@ -1783,9 +1857,9 @@ int rpc_rquota2_getquota_async(struct rpc_context *rpc, rpc_cb cb,
  * RPC_STATUS_CANCEL  : The command was cancelled.
  *                      data is NULL.
  */
-int rpc_rquota2_getactivequota_async(struct rpc_context *rpc, rpc_cb cb,
-                                     char *exportname, int type, int uid,
-                                     void *private_data);
+EXTERN int rpc_rquota2_getactivequota_async(struct rpc_context *rpc, rpc_cb cb,
+                                            char *exportname, int type, int uid,
+                                            void *private_data);
 
 
 /*
@@ -1809,8 +1883,8 @@ int rpc_rquota2_getactivequota_async(struct rpc_context *rpc, rpc_cb cb,
  * RPC_STATUS_CANCEL  : The command was cancelled.
  *                      data is NULL.
  */
-int rpc_nfsacl_null_async(struct rpc_context *rpc, rpc_cb cb,
-                          void *private_data);
+EXTERN int rpc_nfsacl_null_async(struct rpc_context *rpc, rpc_cb cb,
+                                 void *private_data);
 
 /*
  * Call NFSACL/GETACL
@@ -1830,8 +1904,9 @@ int rpc_nfsacl_null_async(struct rpc_context *rpc, rpc_cb cb,
  *                      data is NULL.
  */
 struct GETACL3args;
-int rpc_nfsacl_getacl_async(struct rpc_context *rpc, rpc_cb cb,
-                            struct GETACL3args *args, void *private_data);
+EXTERN int rpc_nfsacl_getacl_async(struct rpc_context *rpc, rpc_cb cb,
+                                   struct GETACL3args *args,
+                                   void *private_data);
 
 /*
  * Call NFSACL/SETACL
@@ -1851,8 +1926,9 @@ int rpc_nfsacl_getacl_async(struct rpc_context *rpc, rpc_cb cb,
  *                      data is NULL.
  */
 struct SETACL3args;
-int rpc_nfsacl_setacl_async(struct rpc_context *rpc, rpc_cb cb,
-                            struct SETACL3args *args, void *private_data);
+EXTERN int rpc_nfsacl_setacl_async(struct rpc_context *rpc, rpc_cb cb,
+                                   struct SETACL3args *args,
+                                   void *private_data);
 
 
 
@@ -1860,7 +1936,7 @@ int rpc_nfsacl_setacl_async(struct rpc_context *rpc, rpc_cb cb,
 /*
  * NLM functions
  */
-char *nlmstat4_to_str(int stat);
+EXTERN char *nlmstat4_to_str(int stat);
 
 /*
  * Call NLM/NULL
@@ -1879,7 +1955,8 @@ char *nlmstat4_to_str(int stat);
  * RPC_STATUS_CANCEL  : The command was cancelled.
  *                      data is NULL.
  */
-int rpc_nlm4_null_async(struct rpc_context *rpc, rpc_cb cb, void *private_data);
+EXTERN int rpc_nlm4_null_async(struct rpc_context *rpc, rpc_cb cb,
+                               void *private_data);
 
 /*
  * Call NLM/TEST
@@ -1899,8 +1976,9 @@ int rpc_nlm4_null_async(struct rpc_context *rpc, rpc_cb cb, void *private_data);
  *                      data is NULL.
  */
 struct NLM4_TESTargs;
-int rpc_nlm4_test_async(struct rpc_context *rpc, rpc_cb cb,
-                        struct NLM4_TESTargs *args, void *private_data);
+EXTERN int rpc_nlm4_test_async(struct rpc_context *rpc, rpc_cb cb,
+                               struct NLM4_TESTargs *args,
+                               void *private_data);
 
 /*
  * Call NLM/LOCK
@@ -1920,8 +1998,9 @@ int rpc_nlm4_test_async(struct rpc_context *rpc, rpc_cb cb,
  *                      data is NULL.
  */
 struct NLM4_LOCKargs;
-int rpc_nlm4_lock_async(struct rpc_context *rpc, rpc_cb cb,
-                        struct NLM4_LOCKargs *args, void *private_data);
+EXTERN int rpc_nlm4_lock_async(struct rpc_context *rpc, rpc_cb cb,
+                               struct NLM4_LOCKargs *args,
+                               void *private_data);
 
 /*
  * Call NLM/CANCEL
@@ -1941,8 +2020,9 @@ int rpc_nlm4_lock_async(struct rpc_context *rpc, rpc_cb cb,
  *                      data is NULL.
  */
 struct NLM4_CANCargs;
-int rpc_nlm4_cancel_async(struct rpc_context *rpc, rpc_cb cb,
-                          struct NLM4_CANCargs *args, void *private_data);
+EXTERN int rpc_nlm4_cancel_async(struct rpc_context *rpc, rpc_cb cb,
+                                 struct NLM4_CANCargs *args,
+                                 void *private_data);
 
 /*
  * Call NLM/UNLOCK
@@ -1962,13 +2042,14 @@ int rpc_nlm4_cancel_async(struct rpc_context *rpc, rpc_cb cb,
  *                      data is NULL.
  */
 struct NLM4_UNLOCKargs;
-int rpc_nlm4_unlock_async(struct rpc_context *rpc, rpc_cb cb,
-                          struct NLM4_UNLOCKargs *args, void *private_data);
+EXTERN int rpc_nlm4_unlock_async(struct rpc_context *rpc, rpc_cb cb,
+                                 struct NLM4_UNLOCKargs *args,
+                                 void *private_data);
 
 /*
  * NSM functions
  */
-char *nsmstat1_to_str(int stat);
+EXTERN char *nsmstat1_to_str(int stat);
 
 /*
  * Call NSM/NULL
@@ -1987,7 +2068,8 @@ char *nsmstat1_to_str(int stat);
  * RPC_STATUS_CANCEL  : The command was cancelled.
  *                      data is NULL.
  */
-int rpc_nsm1_null_async(struct rpc_context *rpc, rpc_cb cb, void *private_data);
+EXTERN int rpc_nsm1_null_async(struct rpc_context *rpc, rpc_cb cb,
+                               void *private_data);
 
 /*
  * Call NSM/STAT
@@ -2007,8 +2089,9 @@ int rpc_nsm1_null_async(struct rpc_context *rpc, rpc_cb cb, void *private_data);
  *                      data is NULL.
  */
 struct NSM1_STATargs;
-int rpc_nsm1_stat_async(struct rpc_context *rpc, rpc_cb cb,
-                        struct NSM1_STATargs *args, void *private_data);
+EXTERN int rpc_nsm1_stat_async(struct rpc_context *rpc, rpc_cb cb,
+                               struct NSM1_STATargs *args,
+                               void *private_data);
 
 /*
  * Call NSM/MON
@@ -2028,8 +2111,9 @@ int rpc_nsm1_stat_async(struct rpc_context *rpc, rpc_cb cb,
  *                      data is NULL.
  */
 struct NSM1_MONargs;
-int rpc_nsm1_mon_async(struct rpc_context *rpc, rpc_cb cb,
-                       struct NSM1_MONargs *args, void *private_data);
+EXTERN int rpc_nsm1_mon_async(struct rpc_context *rpc, rpc_cb cb,
+                              struct NSM1_MONargs *args,
+                              void *private_data);
 
 /*
  * Call NSM/UNMON
@@ -2049,8 +2133,9 @@ int rpc_nsm1_mon_async(struct rpc_context *rpc, rpc_cb cb,
  *                      data is NULL.
  */
 struct NSM1_UNMONargs;
-int rpc_nsm1_unmon_async(struct rpc_context *rpc, rpc_cb cb,
-                         struct NSM1_UNMONargs *args, void *private_data);
+EXTERN int rpc_nsm1_unmon_async(struct rpc_context *rpc, rpc_cb cb,
+                                struct NSM1_UNMONargs *args,
+                                void *private_data);
 
 /*
  * Call NSM/UNMONALL
@@ -2070,8 +2155,9 @@ int rpc_nsm1_unmon_async(struct rpc_context *rpc, rpc_cb cb,
  *                      data is NULL.
  */
 struct NSM1_UNMONALLargs;
-int rpc_nsm1_unmonall_async(struct rpc_context *rpc, rpc_cb cb,
-                            struct NSM1_UNMONALLargs *args, void *private_data);
+EXTERN int rpc_nsm1_unmonall_async(struct rpc_context *rpc, rpc_cb cb,
+                                   struct NSM1_UNMONALLargs *args,
+                                   void *private_data);
 
 /*
  * Call NSM/SIMUCRASH
@@ -2090,8 +2176,8 @@ int rpc_nsm1_unmonall_async(struct rpc_context *rpc, rpc_cb cb,
  * RPC_STATUS_CANCEL  : The command was cancelled.
  *                      data is NULL.
  */
-int rpc_nsm1_simucrash_async(struct rpc_context *rpc, rpc_cb cb,
-                             void *private_data);
+EXTERN int rpc_nsm1_simucrash_async(struct rpc_context *rpc, rpc_cb cb,
+                                    void *private_data);
 
 /*
  * Call NSM/NOTIFY
@@ -2111,8 +2197,9 @@ int rpc_nsm1_simucrash_async(struct rpc_context *rpc, rpc_cb cb,
  *                      data is NULL.
  */
 struct NSM1_NOTIFYargs;
-int rpc_nsm1_notify_async(struct rpc_context *rpc, rpc_cb cb,
-                          struct NSM1_NOTIFYargs *args, void *private_data);
+EXTERN int rpc_nsm1_notify_async(struct rpc_context *rpc, rpc_cb cb,
+                                 struct NSM1_NOTIFYargs *args,
+                                 void *private_data);
 
 /*
  * Call NFS4/NULL
@@ -2130,7 +2217,8 @@ int rpc_nsm1_notify_async(struct rpc_context *rpc, rpc_cb cb,
  * RPC_STATUS_CANCEL  : The command was cancelled.
  *                      data is NULL.
  */
-int rpc_nfs4_null_async(struct rpc_context *rpc, rpc_cb cb, void *private_data);
+EXTERN int rpc_nfs4_null_async(struct rpc_context *rpc, rpc_cb cb,
+                               void *private_data);
 
 /*
  * Call NFS4/COMPOUND
@@ -2149,8 +2237,9 @@ int rpc_nfs4_null_async(struct rpc_context *rpc, rpc_cb cb, void *private_data);
  *                      data is NULL.
  */
 struct COMPOUND4args;
-int rpc_nfs4_compound_async(struct rpc_context *rpc, rpc_cb cb,
-                            struct COMPOUND4args *args, void *private_data);
+EXTERN int rpc_nfs4_compound_async(struct rpc_context *rpc, rpc_cb cb,
+                                   struct COMPOUND4args *args,
+                                   void *private_data);
 
 /*
  * Call <generic>/NULL
@@ -2168,8 +2257,8 @@ int rpc_nfs4_compound_async(struct rpc_context *rpc, rpc_cb cb,
  * RPC_STATUS_CANCEL  : The command was cancelled.
  *                      data is NULL.
  */
-int rpc_null_async(struct rpc_context *rpc, int program, int version,
-                   rpc_cb cb, void *private_data);
+EXTERN int rpc_null_async(struct rpc_context *rpc, int program, int version,
+                          rpc_cb cb, void *private_data);
 
 
 #ifdef __cplusplus
