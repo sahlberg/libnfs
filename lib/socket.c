@@ -394,6 +394,8 @@ int rpc_service(struct rpc_context *rpc, int revents)
 {
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
+	rpc_timeout_scan(rpc);
+
 	if (revents == -1 || revents & (POLLERR|POLLHUP)) {
 		if (revents != -1 && revents & POLLERR) {
 
@@ -470,7 +472,6 @@ int rpc_service(struct rpc_context *rpc, int revents)
 		}
 	}
 
-	rpc_timeout_scan(rpc);
 	return 0;
 }
 
