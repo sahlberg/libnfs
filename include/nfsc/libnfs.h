@@ -192,6 +192,7 @@ EXTERN void nfs_destroy_context(struct nfs_context *nfs);
  *                   >=1 : Retry to connect back to the server this many
  *                         times before failing and returing an error back
  *                         to the application.
+ * version=<3|4>     : NFS version. Default is 3.
  */
 /*
  * Parse a complete NFS URL including, server, path and
@@ -243,6 +244,13 @@ EXTERN void nfs_set_readahead(struct nfs_context *nfs, uint32_t v);
 EXTERN void nfs_set_debug(struct nfs_context *nfs, int level);
 EXTERN void nfs_set_dircache(struct nfs_context *nfs, int enabled);
 EXTERN void nfs_set_autoreconnect(struct nfs_context *nfs, int num_retries);
+
+/*
+ * Set NFS version. Supported versions are
+ * NFS_V3 (default)
+ * NFS_V4
+ */
+EXTERN int nfs_set_version(struct nfs_context *nfs, int version);
 
 /*
  *  Invalidate the pagecache
@@ -1445,14 +1453,14 @@ EXTERN int nfs_access2(struct nfs_context *nfs, const char *path);
  * -errno : An error occured.
  *          data is the error string.
  */
-EXTERN int nfs_symlink_async(struct nfs_context *nfs, const char *oldpath, const char *newpath, nfs_cb cb, void *private_data);
+EXTERN int nfs_symlink_async(struct nfs_context *nfs, const char *target, const char *linkname, nfs_cb cb, void *private_data);
 /*
  * Sync symlink(<path>)
  * Function returns
  *      0 : The operation was successful.
  * -errno : The command failed.
  */
-EXTERN int nfs_symlink(struct nfs_context *nfs, const char *oldpath, const char *newpath);
+EXTERN int nfs_symlink(struct nfs_context *nfs, const char *target, const char *linkname);
 
 
 /*

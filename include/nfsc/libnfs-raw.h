@@ -144,11 +144,11 @@ char *rpc_get_error(struct rpc_context *rpc);
  */
 struct rpc_context *nfs_get_rpc_context(struct nfs_context *nfs);
 
-/* This function returns the nfs_fh3 structure from a nfsfh structure.
+/* This function returns the nfs_fh structure from a nfsfh structure.
    This allows to use a file opened with nfs_open() together with low-level
-   rpc functions that thake a nfs filehandles.
+   rpc functions that thake a nfs filehandle
 */
-struct nfs_fh3 *nfs_get_fh(struct nfsfh *nfsfh);
+struct nfs_fh *nfs_get_fh(struct nfsfh *nfsfh);
 
 /* Control what the next XID value to be used on the context will be.
    This can be used when multiple contexts are used to the same server

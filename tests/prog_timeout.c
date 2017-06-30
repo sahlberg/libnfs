@@ -1,5 +1,6 @@
+/* -*-  mode:c; tab-width:8; c-basic-offset:8; indent-tabs-mode:nil;  -*- */
 /* 
-   Copyright (C) by Ronnie Sahlberg <ronniesahlberg@gmail.com> 2015
+   Copyright (C) by Ronnie Sahlberg <ronniesahlberg@gmail.com> 2017
    
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by

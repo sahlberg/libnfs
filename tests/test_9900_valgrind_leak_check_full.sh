@@ -52,6 +52,15 @@ echo -n "test nfs_fstat64() for memory leaks ... "
 libtool --mode=execute valgrind --leak-check=full --error-exitcode=1 ./prog_fstat "${TESTURL}/file.99" >/dev/null 2>&1 || failure
 success
 
+echo -n "test nfs_symlink()/nfs_readlink() for memory leaks ... "
+libtool --mode=execute valgrind --leak-check=full --error-exitcode=1 ./prog_symlink "${TESTURL}/" kangabanga /symlink >/dev/null 2>&1 || failure
+success
+
+echo -n "test nfs_symlink()/nfs_readlink() for memory leaks (2) ... "
+mkdir "${TESTDIR}/subdir"
+libtool --mode=execute valgrind --leak-check=full --error-exitcode=1 ./prog_symlink "${TESTURL}/" kangabanga /subdir/symlink >/dev/null 2>&1 || failure
+success
+
 stop_share
 
 exit 0

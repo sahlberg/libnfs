@@ -1,3 +1,4 @@
+/* -*-  mode:c; tab-width:8; c-basic-offset:8; indent-tabs-mode:nil;  -*- */
 /*
    Copyright (C) 2010 by Ronnie Sahlberg <ronniesahlberg@gmail.com>
 
@@ -185,7 +186,8 @@ static void mount_cb(int status, struct nfs_context *nfs, void *data, void *priv
 	cb_data->status = status;
 
 	if (status < 0) {
-		nfs_set_error(nfs, "mount/mnt call failed with \"%s\"", (char *)data);
+		nfs_set_error(nfs, "%s: %s",
+                              __FUNCTION__, nfs_get_error(nfs));
 		return;
 	}
 }
@@ -200,7 +202,8 @@ int nfs_mount(struct nfs_context *nfs, const char *server, const char *export)
 	cb_data.is_finished = 0;
 
 	if (nfs_mount_async(nfs, server, export, mount_cb, &cb_data) != 0) {
-		nfs_set_error(nfs, "nfs_mount_async failed");
+		nfs_set_error(nfs, "nfs_mount_async failed. %s",
+			      nfs_get_error(nfs));
 		return -1;
 	}
 
@@ -1398,7 +1401,8 @@ int nfs_access2(struct nfs_context *nfs, const char *path)
 /*
  * symlink()
  */
-static void symlink_cb(int status, struct nfs_context *nfs, void *data, void *private_data)
+static void
+symlink_cb(int status, struct nfs_context *nfs, void *data, void *private_data)
 {
 	struct sync_cb_data *cb_data = private_data;
 
@@ -1406,19 +1410,23 @@ static void symlink_cb(int status, struct nfs_context *nfs, void *data, void *pr
 	cb_data->status = status;
 
 	if (status < 0) {
-		nfs_set_error(nfs, "symlink call failed with \"%s\"", (char *)data);
+		nfs_set_error(nfs, "symlink call failed with \"%s\"",
+			      (char *)data);
 		return;
 	}
 }
 
-int nfs_symlink(struct nfs_context *nfs, const char *oldpath, const char *newpath)
+int
+nfs_symlink(struct nfs_context *nfs, const char *target, const char *linkname)
 {
 	struct sync_cb_data cb_data;
 
 	cb_data.is_finished = 0;
 
-	if (nfs_symlink_async(nfs, oldpath, newpath, symlink_cb, &cb_data) != 0) {
-		nfs_set_error(nfs, "nfs_symlink_async failed");
+	if (nfs_symlink_async(nfs, target, linkname, symlink_cb,
+			      &cb_data) != 0) {
+	  nfs_set_error(nfs, "nfs_symlink_async failed: %s",
+			nfs_get_error(nfs));
 		return -1;
 	}
 
@@ -1426,7 +1434,6 @@ int nfs_symlink(struct nfs_context *nfs, const char *oldpath, const char *newpat
 
 	return cb_data.status;
 }
-
 
 
 /*
