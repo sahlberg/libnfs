@@ -67,6 +67,8 @@ Arguments supported by libnfs are :
                          to the application.
  if=<interface>    : Interface name (e.g., eth1) to bind; requires `root`
  version=<3|4>     : NFS Version. Default is 3.
+                     This is just a placeholder for now. NFSv4 support is not
+		     yet functional.
 
 Auto_traverse_mounts
 ====================
