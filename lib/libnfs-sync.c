@@ -117,8 +117,9 @@ static void wait_for_reply(struct rpc_context *rpc, struct sync_cb_data *cb_data
 
 	while (!cb_data->is_finished) {
 
-		pfd.fd = rpc_get_fd(rpc);
-		pfd.events = rpc_which_events(rpc);
+		pfd.fd      = rpc_get_fd(rpc);
+		pfd.events  = rpc_which_events(rpc);
+		pfd.revents = 0;
 
 		ret = poll(&pfd, 1, 100);
 		if (ret < 0) {
@@ -152,6 +153,7 @@ static void wait_for_nfs_reply(struct nfs_context *nfs, struct sync_cb_data *cb_
 
 		pfd.fd = nfs_get_fd(nfs);
 		pfd.events = nfs_which_events(nfs);
+		pfd.revents = 0;
 
 		ret = poll(&pfd, 1, 100);
 		if (ret < 0) {
