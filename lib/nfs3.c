@@ -434,6 +434,7 @@ nfs3_lookup_path_getattr_cb(struct rpc_context *rpc, int status,
 	nfs3_lookup_path_async_internal(nfs, &attr, data, &nfs->rootfh);
 }
 
+/* This function will free continue_data on error */
 static int
 nfs3_lookuppath_async(struct nfs_context *nfs, const char *path, int no_follow,
                       nfs_cb cb, void *private_data,
@@ -453,8 +454,9 @@ nfs3_lookuppath_async(struct nfs_context *nfs, const char *path, int no_follow,
 	if (data == NULL) {
 		nfs_set_error(nfs, "Out of memory: failed to allocate "
 			"nfs_cb_data structure");
-		if (free_continue_data)
-			free_continue_data(continue_data);
+                if (continue_data) {
+                        free_continue_data(continue_data);
+                }
 		return -1;
 	}
 	memset(data, 0, sizeof(struct nfs_cb_data));
@@ -1183,6 +1185,7 @@ nfs3_link_continue_1_internal(struct nfs_context *nfs,
                                   link_data, free_nfs_link_data, 0) != 0) {
 		data->cb(-ENOMEM, nfs, nfs_get_error(nfs),
                          data->private_data);
+                data->continue_data = NULL;
 		free_nfs_cb_data(data);
 		return -1;
 	}
@@ -1352,6 +1355,7 @@ nfs3_rename_continue_1_internal(struct nfs_context *nfs,
                                   rename_data, free_nfs_rename_data, 0) != 0) {
 		data->cb(-ENOMEM, nfs, nfs_get_error(nfs),
                          data->private_data);
+                data->continue_data = NULL;
 		free_nfs_cb_data(data);
 		return -1;
 	}
@@ -1423,7 +1427,6 @@ nfs3_rename_async(struct nfs_context *nfs, const char *oldpath,
 		free_nfs_rename_data(rename_data);
 		return -1;
 	}
-
 
 	if (nfs3_lookuppath_async(nfs, rename_data->oldparent, 0,
                                   cb, private_data,

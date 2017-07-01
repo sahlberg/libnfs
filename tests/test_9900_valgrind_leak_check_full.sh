@@ -6,6 +6,9 @@ echo "basic valgrind leak check"
 
 start_share
 
+mkdir "${TESTDIR}/subdir"
+mkdir "${TESTDIR}/subdir2"
+
 echo -n "Create 100 1M files ... "
 for IDX in `seq 1 100`; do
     dd if=/dev/zero of="${TESTDIR}/file.$IDX" bs=1M count=10 2>/dev/null || failure
@@ -57,8 +60,66 @@ libtool --mode=execute valgrind --leak-check=full --error-exitcode=1 ./prog_syml
 success
 
 echo -n "test nfs_symlink()/nfs_readlink() for memory leaks (2) ... "
-mkdir "${TESTDIR}/subdir"
 libtool --mode=execute valgrind --leak-check=full --error-exitcode=1 ./prog_symlink "${TESTURL}/" "." kangabanga /subdir/symlink >/dev/null 2>&1 || failure
+success
+
+echo -n "test nfs_rename() for memory leaks (1) ... "
+echo "kangabanga" > "${TESTDIR}/testfile"
+libtool --mode=execute valgrind --leak-check=full --error-exitcode=1 ./prog_rename "${TESTURL}/" "." /testfile /renamed1 >/dev/null 2>&1 || failure
+success
+
+echo -n "test nfs_rename() for memory leaks (2) ... "
+echo "kangabanga" > "${TESTDIR}/testfile"
+libtool --mode=execute valgrind --leak-check=full --error-exitcode=1 ./prog_rename "${TESTURL}/" "." testfile /renamed2 >/dev/null 2>&1 || failure
+success
+
+echo -n "test nfs_rename() for memory leaks (3) ... "
+echo "kangabanga" > "${TESTDIR}/testfile"
+libtool --mode=execute valgrind --leak-check=full --error-exitcode=1 ./prog_rename "${TESTURL}/" "." testfile renamed3 >/dev/null 2>&1 || failure
+success
+
+echo -n "test nfs_rename() for memory leaks (4) ... "
+echo "kangabanga" > "${TESTDIR}/testfile"
+libtool --mode=execute valgrind --leak-check=full --error-exitcode=1 ./prog_rename "${TESTURL}/" "." /testfile renamed4 >/dev/null 2>&1 || failure
+success
+
+echo -n "test nfs_rename() for memory leaks (5) ... "
+echo "kangabanga" > "${TESTDIR}/subdir/testfile"
+libtool --mode=execute valgrind --leak-check=full --error-exitcode=1 ./prog_rename "${TESTURL}/" "." /subdir/testfile /subdir/renamed5 >/dev/null 2>&1 || failure
+success
+
+echo -n "test nfs_rename() for memory leaks (6) ... "
+echo "kangabanga" > "${TESTDIR}/subdir/testfile"
+libtool --mode=execute valgrind --leak-check=full --error-exitcode=1 ./prog_rename "${TESTURL}/" "." subdir/testfile /subdir/renamed6 >/dev/null 2>&1 || failure
+success
+
+echo -n "test nfs_rename() for memory leaks (7) ... "
+echo "kangabanga" > "${TESTDIR}/subdir/testfile"
+libtool --mode=execute valgrind --leak-check=full --error-exitcode=1 ./prog_rename "${TESTURL}/" "." subdir/testfile subdir/renamed7 >/dev/null 2>&1 || failure
+success
+
+echo -n "test nfs_rename() for memory leaks (8) ... "
+echo "kangabanga" > "${TESTDIR}/subdir/testfile"
+libtool --mode=execute valgrind --leak-check=full --error-exitcode=1 ./prog_rename "${TESTURL}/" "." /subdir/testfile subdir/renamed8 >/dev/null 2>&1 || failure
+success
+
+echo -n "test nfs_rename() for memory leaks (9) ... "
+echo "kangabanga" > "${TESTDIR}/subdir/testfile"
+libtool --mode=execute valgrind --leak-check=full --error-exitcode=1 ./prog_rename "${TESTURL}/" "." /subdir/testfile subdir2/renamed9 >/dev/null 2>&1 || failure
+success
+
+echo -n "test nfs_rename() for memory leaks (10) ... "
+echo "kangabanga" > "${TESTDIR}/subdir/testfile"
+libtool --mode=execute valgrind --leak-check=full --error-exitcode=1 ./prog_rename "${TESTURL}/" "subdir" ./testfile ../subdir2/renamed10 >/dev/null 2>&1 || failure
+success
+
+echo -n "test nfs_rename() for memory leaks (11) ... "
+libtool --mode=execute valgrind --leak-check=full --error-exitcode=99 ./prog_rename "${TESTURL}/" "subdir" ../../testfile ../subdir2/renamed11 >/dev/null 2>&1 || expr $? != 99 >/dev/null || failure
+success
+
+echo -n "test nfs_rename() for memory leaks (12) ... "
+echo "kangabanga" > "${TESTDIR}/subdir/testfile"
+libtool --mode=execute valgrind --leak-check=full --error-exitcode=99 ./prog_rename "${TESTURL}/" "subdir" ./testfile ../../subdir2/renamed12 >/dev/null 2>&1 || expr $? != 99 >/dev/null || failure
 success
 
 stop_share

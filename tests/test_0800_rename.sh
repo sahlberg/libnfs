@@ -101,6 +101,11 @@ echo -n "Rename from outside share ... "
 ./prog_rename "${TESTURL}/" "subdir" ../../testfile ../subdir2/renamed11 2>/dev/null && failure
 success
 
+echo -n "Rename to outside share ... "
+echo "kangabanga" > "${TESTDIR}/subdir/testfile"
+./prog_rename "${TESTURL}/" "subdir" ./testfile ../../subdir2/renamed12 2>/dev/null && failure
+success
+
 
 stop_share
 
