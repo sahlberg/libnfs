@@ -699,7 +699,8 @@ int nfs_mkdir(struct nfs_context *nfs, const char *path)
 	cb_data.is_finished = 0;
 
 	if (nfs_mkdir_async(nfs, path, mkdir_cb, &cb_data) != 0) {
-		nfs_set_error(nfs, "nfs_mkdir_async failed");
+		nfs_set_error(nfs, "nfs_mkdir_async failed. %s",
+                              nfs_get_error(nfs));
 		return -1;
 	}
 
@@ -749,7 +750,8 @@ int nfs_rmdir(struct nfs_context *nfs, const char *path)
 	cb_data.is_finished = 0;
 
 	if (nfs_rmdir_async(nfs, path, rmdir_cb, &cb_data) != 0) {
-		nfs_set_error(nfs, "nfs_rmdir_async failed");
+		nfs_set_error(nfs, "nfs_rmdir_async failed. %s",
+                              nfs_get_error(nfs));
 		return -1;
 	}
 
