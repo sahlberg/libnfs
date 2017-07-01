@@ -27,12 +27,13 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <unistd.h>
 
 #include "libnfs.h"
 
 void usage(void)
 {
-	fprintf(stderr, "Usage: prog-symlink <url> <target> <link>\n");
+	fprintf(stderr, "Usage: prog-symlink <url> <cwd> <target> <link>\n");
 	exit(1);
 }
 
@@ -43,7 +44,7 @@ int main(int argc, char *argv[])
 	int ret = 0;
 	char buf[1024];
 
-	if (argc != 4) {
+	if (argc != 5) {
 		usage();
 	}
 
@@ -66,7 +67,14 @@ int main(int argc, char *argv[])
 		goto finished;
 	}
 
-	if (nfs_symlink(nfs, argv[2], argv[3])) {
+	if (nfs_chdir(nfs, argv[2]) != 0) {
+ 		fprintf(stderr, "Failed to chdir to \"%s\" : %s\n",
+			argv[2], nfs_get_error(nfs));
+		ret = 1;
+		goto finished;
+	}
+        
+	if (nfs_symlink(nfs, argv[3], argv[4])) {
  		fprintf(stderr, "Failed to create symlink: %s\n",
 			nfs_get_error(nfs));
 		ret = 1;
@@ -75,17 +83,17 @@ int main(int argc, char *argv[])
 
         memset(buf, 0, sizeof(buf));
         
-	if (nfs_readlink(nfs, argv[3], buf, sizeof(buf))) {
+	if (nfs_readlink(nfs, argv[4], buf, sizeof(buf))) {
                 fprintf(stderr, "Failed to read symlink: %s\n",
                         nfs_get_error(nfs));
                 ret = 1;
                 goto finished;
 	}
 
-        if (strcmp(argv[2], buf)) {
+        if (strcmp(argv[3], buf)) {
                 fprintf(stderr, "Symlink target did not read back correctly."
                         "Expected \"%s\" Got \"%s\"\n",
-                        buf, argv[2]);
+                        buf, argv[3]);
                 ret = 1;
                 goto finished;
         }                

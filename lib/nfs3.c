@@ -1542,7 +1542,20 @@ nfs3_symlink_async(struct nfs_context *nfs, const char *target,
 		return -1;
 	}
 
-	symlink_data->linkparent = strdup(linkname);
+        symlink_data->linkobject = strdup(linkname);
+        /* Do we have a path ? */
+	ptr = strrchr(symlink_data->linkobject, '/');
+	if (ptr == NULL) {
+                /* pass this as NULL ? */
+                symlink_data->linkparent = strdup("");
+        } else {
+                *ptr = 0;
+                symlink_data->linkparent = symlink_data->linkobject;
+
+                ptr++;
+                symlink_data->linkobject = strdup(ptr);
+        }
+
 	if (symlink_data->linkparent == NULL) {
 		nfs_set_error(nfs, "Out of memory, failed to allocate "
                               "mode buffer for new path");
@@ -1550,16 +1563,6 @@ nfs3_symlink_async(struct nfs_context *nfs, const char *target,
 		return -1;
 	}
 
-	ptr = strrchr(symlink_data->linkparent, '/');
-	if (ptr == NULL) {
-		nfs_set_error(nfs, "Invalid path \"%s\"", linkname);
-		free_nfs_symlink_data(symlink_data);
-		return -1;
-	}
-	*ptr = 0;
-	ptr++;
-
-	symlink_data->linkobject = strdup(ptr);
 	if (symlink_data->linkobject == NULL) {
 		nfs_set_error(nfs, "Out of memory, failed to allocate "
                               "mode buffer for new path");
