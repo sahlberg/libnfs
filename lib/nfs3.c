@@ -445,7 +445,7 @@ nfs3_lookuppath_async(struct nfs_context *nfs, const char *path, int no_follow,
 	struct GETATTR3args args;
 	struct nfs_fh *fh;
 
-	if (path[0] == '\0') {
+	if (path == NULL || path[0] == '\0') {
 		path = ".";
 	}
 
@@ -1244,10 +1244,10 @@ nfs3_link_async(struct nfs_context *nfs, const char *oldpath,
 }
 
 struct nfs_rename_data {
-       char *oldpath;
+       char *oldparent;
        char *oldobject;
        struct nfs_fh olddir;
-       char *newpath;
+       char *newparent;
        char *newobject;
        struct nfs_fh newdir;
 };
@@ -1257,18 +1257,12 @@ free_nfs_rename_data(void *mem)
 {
 	struct nfs_rename_data *data = mem;
 
-	if (data->oldpath != NULL) {
-		free(data->oldpath);
-	}
-	if (data->olddir.val != NULL) {
-		free(data->olddir.val);
-	}
-	if (data->newpath != NULL) {
-		free(data->newpath);
-	}
-	if (data->newdir.val != NULL) {
-		free(data->newdir.val);
-	}
+        free(data->oldparent);
+        free(data->oldobject);
+        free(data->olddir.val);
+        free(data->newparent);
+        free(data->newobject);
+        free(data->newdir.val);
 	free(data);
 }
 
@@ -1291,8 +1285,8 @@ nfs3_rename_cb(struct rpc_context *rpc, int status, void *command_data,
 	res = command_data;
 	if (res->status != NFS3_OK) {
 		nfs_set_error(nfs, "NFS: RENAME %s/%s -> %s/%s failed "
-                              "with %s(%d)", rename_data->oldpath,
-                              rename_data->oldobject, rename_data->newpath,
+                              "with %s(%d)", rename_data->oldparent,
+                              rename_data->oldobject, rename_data->newparent,
                               rename_data->newobject,
                               nfsstat3_to_str(res->status),
                               nfsstat3_to_errno(res->status));
@@ -1344,15 +1338,6 @@ nfs3_rename_continue_1_internal(struct nfs_context *nfs,
                                 struct nfs_cb_data *data)
 {
 	struct nfs_rename_data *rename_data = data->continue_data;
-	char* newpath = strdup(rename_data->newpath);
-	if (!newpath) {
-		nfs_set_error(nfs, "Out of memory. Could not allocate "
-                              "memory to store target path for rename");
-		data->cb(-ENOMEM, nfs, nfs_get_error(nfs),
-                         data->private_data);
-		free_nfs_cb_data(data);
-		return -1;
-	}
 
 	/* Drop the source directory from the cache */
 	nfs_dircache_drop(nfs, &data->fh);
@@ -1361,19 +1346,17 @@ nfs3_rename_continue_1_internal(struct nfs_context *nfs,
 	rename_data->olddir = data->fh;
 	data->fh.val = NULL;
 
-	if (nfs3_lookuppath_async(nfs, rename_data->newpath, 0,
+	if (nfs3_lookuppath_async(nfs, rename_data->newparent, 0,
                                   data->cb, data->private_data,
                                   nfs3_rename_continue_2_internal,
                                   rename_data, free_nfs_rename_data, 0) != 0) {
 		data->cb(-ENOMEM, nfs, nfs_get_error(nfs),
                          data->private_data);
 		free_nfs_cb_data(data);
-		free(newpath);
 		return -1;
 	}
 	data->continue_data = NULL;
 	free_nfs_cb_data(data);
-	free(newpath);
 
 	return 0;
 }
@@ -1393,43 +1376,56 @@ nfs3_rename_async(struct nfs_context *nfs, const char *oldpath,
 	}
 	memset(rename_data, 0, sizeof(struct nfs_rename_data));
 
-	rename_data->oldpath = strdup(oldpath);
-	if (rename_data->oldpath == NULL) {
-		nfs_set_error(nfs, "Out of memory, failed to allocate "
-                              "buffer for oldpath");
+	rename_data->oldobject = strdup(oldpath);
+	if (rename_data->oldobject == NULL) {
+		nfs_set_error(nfs, "Out of memory, failed to strdup "
+                              "oldpath");
 		free_nfs_rename_data(rename_data);
 		return -1;
 	}
-	ptr = strrchr(rename_data->oldpath, '/');
+	ptr = strrchr(rename_data->oldobject, '/');
 	if (ptr == NULL) {
-		nfs_set_error(nfs, "Invalid path %s", oldpath);
-		free_nfs_rename_data(rename_data);
-		return -1;
-	}
-	*ptr = 0;
-	ptr++;
-	rename_data->oldobject = ptr;
+                rename_data->oldparent = NULL;
+        } else {
+                *ptr = 0;
+                rename_data->oldparent = rename_data->oldobject;
 
-
-	rename_data->newpath = strdup(newpath);
-	if (rename_data->newpath == NULL) {
+                ptr++;
+                rename_data->oldobject = strdup(ptr);
+        }
+	if (rename_data->oldobject == NULL) {
 		nfs_set_error(nfs, "Out of memory, failed to allocate "
-                              "buffer for newpath");
+                              "buffer for oldobject");
 		free_nfs_rename_data(rename_data);
 		return -1;
 	}
-	ptr = strrchr(rename_data->newpath, '/');
+
+	rename_data->newobject = strdup(newpath);
+	if (rename_data->newobject == NULL) {
+		nfs_set_error(nfs, "Out of memory, failed to strdup "
+                              "newpath");
+		free_nfs_rename_data(rename_data);
+		return -1;
+	}
+	ptr = strrchr(rename_data->newobject, '/');
 	if (ptr == NULL) {
-		nfs_set_error(nfs, "Invalid path %s", newpath);
+                rename_data->newparent = NULL;
+        } else {
+                *ptr = 0;
+                rename_data->newparent = rename_data->newobject;
+
+                ptr++;
+                rename_data->newobject = strdup(ptr);
+        }
+	if (rename_data->newobject == NULL) {
+		nfs_set_error(nfs, "Out of memory, failed to allocate "
+                              "buffer for newobject");
 		free_nfs_rename_data(rename_data);
 		return -1;
 	}
-	*ptr = 0;
-	ptr++;
-	rename_data->newobject = ptr;
 
 
-	if (nfs3_lookuppath_async(nfs, rename_data->oldpath, 0,
+	if (nfs3_lookuppath_async(nfs, rename_data->oldparent, 0,
                                   cb, private_data,
                                   nfs3_rename_continue_1_internal,
                                   rename_data, free_nfs_rename_data, 0) != 0) {
@@ -1543,11 +1539,15 @@ nfs3_symlink_async(struct nfs_context *nfs, const char *target,
 	}
 
         symlink_data->linkobject = strdup(linkname);
-        /* Do we have a path ? */
+	if (symlink_data->linkobject == NULL) {
+		nfs_set_error(nfs, "Out of memory, failed to strdup "
+                              "linkname");
+		free_nfs_symlink_data(symlink_data);
+		return -1;
+	}
 	ptr = strrchr(symlink_data->linkobject, '/');
 	if (ptr == NULL) {
-                /* pass this as NULL ? */
-                symlink_data->linkparent = strdup("");
+                symlink_data->linkparent = NULL;
         } else {
                 *ptr = 0;
                 symlink_data->linkparent = symlink_data->linkobject;
@@ -1555,13 +1555,6 @@ nfs3_symlink_async(struct nfs_context *nfs, const char *target,
                 ptr++;
                 symlink_data->linkobject = strdup(ptr);
         }
-
-	if (symlink_data->linkparent == NULL) {
-		nfs_set_error(nfs, "Out of memory, failed to allocate "
-                              "mode buffer for new path");
-		free_nfs_symlink_data(symlink_data);
-		return -1;
-	}
 
 	if (symlink_data->linkobject == NULL) {
 		nfs_set_error(nfs, "Out of memory, failed to allocate "

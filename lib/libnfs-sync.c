@@ -1459,7 +1459,8 @@ int nfs_rename(struct nfs_context *nfs, const char *oldpath, const char *newpath
 	cb_data.is_finished = 0;
 
 	if (nfs_rename_async(nfs, oldpath, newpath, rename_cb, &cb_data) != 0) {
-		nfs_set_error(nfs, "nfs_rename_async failed");
+		nfs_set_error(nfs, "nfs_rename_async failed: %s",
+                              nfs_get_error(nfs));
 		return -1;
 	}
 
