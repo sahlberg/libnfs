@@ -861,7 +861,8 @@ int nfs_unlink(struct nfs_context *nfs, const char *path)
 	cb_data.is_finished = 0;
 
 	if (nfs_unlink_async(nfs, path, unlink_cb, &cb_data) != 0) {
-		nfs_set_error(nfs, "nfs_unlink_async failed");
+		nfs_set_error(nfs, "nfs_unlink_async failed. %s",
+                              nfs_get_error(nfs));
 		return -1;
 	}
 

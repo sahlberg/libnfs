@@ -3118,20 +3118,25 @@ nfs3_unlink_async(struct nfs_context *nfs, const char *path, nfs_cb cb,
 	char *new_path;
 	char *ptr;
 
-	new_path = strdup(path);
-	if (new_path == NULL) {
-		nfs_set_error(nfs, "Out of memory, failed to allocate "
-                              "mode buffer for path");
-		return -1;
-	}
-
-	ptr = strrchr(new_path, '/');
-	if (ptr == NULL) {
-		free(new_path);
-		nfs_set_error(nfs, "Invalid path %s", path);
-		return -1;
-	}
-	*ptr = 0;
+        ptr = strrchr(path, '/');
+        if (ptr) {
+                new_path = strdup(path);
+                if (new_path == NULL) {
+                        nfs_set_error(nfs, "Out of memory, failed to allocate "
+                                      "buffer for unlink path");
+                        return -1;
+                }
+                ptr = strrchr(new_path, '/');
+                *ptr = 0;
+        } else {
+                new_path = malloc(strlen(path) + 2);
+                if (new_path == NULL) {
+                        nfs_set_error(nfs, "Out of memory, failed to allocate "
+                                      "buffer for unlink path");
+                        return -1;
+                }
+                sprintf(new_path, "%c%s", '\0', path);
+        }
 
 	/* new_path now points to the parent directory,  and beyond the
          * nul terminateor is the new directory to create */
@@ -3486,7 +3491,7 @@ nfs3_rmdir_async(struct nfs_context *nfs, const char *path, nfs_cb cb,
                 ptr = strrchr(new_path, '/');
                 *ptr = 0;
         } else {
-                new_path = malloc(strlen(path + 2));
+                new_path = malloc(strlen(path) + 2);
                 if (new_path == NULL) {
                         nfs_set_error(nfs, "Out of memory, failed to allocate "
                                       "buffer for rmdir path");
@@ -3588,7 +3593,7 @@ nfs3_mkdir2_async(struct nfs_context *nfs, const char *path, int mode,
                 ptr = strrchr(new_path, '/');
                 *ptr = 0;
         } else {
-                new_path = malloc(strlen(path + 2));
+                new_path = malloc(strlen(path) + 2);
                 if (new_path == NULL) {
                         nfs_set_error(nfs, "Out of memory, failed to allocate "
                                       "buffer for mkdir path");

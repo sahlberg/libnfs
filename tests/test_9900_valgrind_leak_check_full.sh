@@ -9,6 +9,7 @@ start_share
 mkdir "${TESTDIR}/subdir"
 mkdir "${TESTDIR}/subdir2"
 
+
 echo -n "Create 100 1M files ... "
 for IDX in `seq 1 100`; do
     dd if=/dev/zero of="${TESTDIR}/file.$IDX" bs=1M count=10 2>/dev/null || failure
@@ -121,6 +122,36 @@ echo -n "test nfs_rename() for memory leaks (12) ... "
 echo "kangabanga" > "${TESTDIR}/subdir/testfile"
 libtool --mode=execute valgrind --leak-check=full --error-exitcode=99 ./prog_rename "${TESTURL}/" "subdir" ./testfile ../../subdir2/renamed12 >/dev/null 2>&1 || expr $? != 99 >/dev/null || failure
 success
+
+echo -n "Testing nfs_unlink for memory leaks (1) ... "
+touch "${TESTDIR}/unlink"
+libtool --mode=execute valgrind --leak-check=full --error-exitcode=99 ./prog_unlink "${TESTURL}/" "."  /unlink 2>/dev/null || failure
+success
+
+echo -n "Testing nfs_unlink for memory leaks (2) ... "
+touch "${TESTDIR}/unlink"
+libtool --mode=execute valgrind --leak-check=full --error-exitcode=99 ./prog_unlink "${TESTURL}/" "."  unlink 2>/dev/null || failure
+success
+
+echo -n "Testing nfs_unlink for memory leaks (3) ... "
+touch "${TESTDIR}/subdir/unlink"
+libtool --mode=execute valgrind --leak-check=full --error-exitcode=99 ./prog_unlink "${TESTURL}/" "."  /subdir/unlink 2>/dev/null || failure
+success
+
+echo -n "Testing nfs_unlink for memory leaks (4) ... "
+touch "${TESTDIR}/subdir/unlink"
+libtool --mode=execute valgrind --leak-check=full --error-exitcode=99 ./prog_unlink "${TESTURL}/" "."  subdir/unlink 2>/dev/null || failure
+success
+
+echo -n "Testing nfs_unlink for memory leaks (5) ... "
+touch "${TESTDIR}/subdir2/unlink"
+libtool --mode=execute valgrind --leak-check=full --error-exitcode=99 ./prog_unlink "${TESTURL}/" "subdir"  ../subdir2/unlink 2>/dev/null || failure
+success
+
+echo -n "Testing nfs_unlink for memory leaks (6) ... "
+libtool --mode=execute valgrind --leak-check=full --error-exitcode=99 ./prog_unlink "${TESTURL}/" "subdir"  ../../subdir2/unlink 2>/dev/null || expr $? != 99 >/dev/null || failure
+success
+
 
 stop_share
 
