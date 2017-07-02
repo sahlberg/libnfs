@@ -3390,21 +3390,25 @@ nfs3_create_async(struct nfs_context *nfs, const char *path, int flags,
 		return -1;
 	}
 
-	cb_data->path = strdup(path);
-	if (cb_data->path == NULL) {
-		nfs_set_error(nfs, "Out of memory, failed to allocate "
-                              "mode buffer for path");
-		free(cb_data);
-		return -1;
-	}
-
-	ptr = strrchr(cb_data->path, '/');
-	if (ptr == NULL) {
-		nfs_set_error(nfs, "Invalid path %s", path);
-		free_create_cb_data(cb_data);
-		return -1;
-	}
-	*ptr = 0;
+        ptr = strrchr(path, '/');
+        if (ptr) {
+                cb_data->path = strdup(path);
+                if (cb_data->path == NULL) {
+                        nfs_set_error(nfs, "Out of memory, failed to allocate "
+                                      "buffer for creat path");
+                        return -1;
+                }
+                ptr = strrchr(cb_data->path, '/');
+                *ptr = 0;
+        } else {
+                cb_data->path = malloc(strlen(path) + 2);
+                if (cb_data->path == NULL) {
+                        nfs_set_error(nfs, "Out of memory, failed to allocate "
+                                      "buffer for unlink path");
+                        return -1;
+                }
+                sprintf(cb_data->path, "%c%s", '\0', path);
+        }
 
 	cb_data->flags = flags;
 	cb_data->mode = mode;

@@ -783,7 +783,9 @@ static void creat_cb(int status, struct nfs_context *nfs, void *data, void *priv
 	*nfsfh = fh;
 }
 
-int nfs_create(struct nfs_context *nfs, const char *path, int flags, int mode, struct nfsfh **nfsfh)
+int
+nfs_create(struct nfs_context *nfs, const char *path, int flags, int mode,
+           struct nfsfh **nfsfh)
 {
 	struct sync_cb_data cb_data;
 
@@ -791,7 +793,8 @@ int nfs_create(struct nfs_context *nfs, const char *path, int flags, int mode, s
 	cb_data.return_data = nfsfh;
 
 	if (nfs_create_async(nfs, path, flags, mode, creat_cb, &cb_data) != 0) {
-		nfs_set_error(nfs, "nfs_create_async failed");
+		nfs_set_error(nfs, "nfs_create_async failed. %s",
+                              nfs_get_error(nfs));
 		return -1;
 	}
 
@@ -800,7 +803,9 @@ int nfs_create(struct nfs_context *nfs, const char *path, int flags, int mode, s
 	return cb_data.status;
 }
 
-int nfs_creat(struct nfs_context *nfs, const char *path, int mode, struct nfsfh **nfsfh)
+int
+nfs_creat(struct nfs_context *nfs, const char *path, int mode,
+          struct nfsfh **nfsfh)
 {
 	return nfs_create(nfs, path, 0, mode, nfsfh);
 }
