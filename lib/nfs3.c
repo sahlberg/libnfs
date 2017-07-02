@@ -1081,7 +1081,7 @@ nfs3_mount_async(struct nfs_context *nfs, const char *server,
 struct nfs_link_data {
        char *oldpath;
        struct nfs_fh oldfh;
-       char *newpath;
+       char *newparent;
        char *newobject;
        struct nfs_fh newdir;
 };
@@ -1091,18 +1091,11 @@ free_nfs_link_data(void *mem)
 {
 	struct nfs_link_data *data = mem;
 
-	if (data->oldpath != NULL) {
-		free(data->oldpath);
-	}
-	if (data->oldfh.val != NULL) {
-		free(data->oldfh.val);
-	}
-	if (data->newpath != NULL) {
-		free(data->newpath);
-	}
-	if (data->newdir.val != NULL) {
-		free(data->newdir.val);
-	}
+        free(data->oldpath);
+        free(data->oldfh.val);
+        free(data->newparent);
+        free(data->newobject);
+        free(data->newdir.val);
 	free(data);
 }
 
@@ -1125,7 +1118,8 @@ nfs3_link_cb(struct rpc_context *rpc, int status, void *command_data,
 	res = command_data;
 	if (res->status != NFS3_OK) {
 		nfs_set_error(nfs, "NFS: LINK %s -> %s/%s failed with "
-                              "%s(%d)", link_data->oldpath, link_data->newpath,
+                              "%s(%d)", link_data->oldpath,
+                              link_data->newparent,
                               link_data->newobject,
                               nfsstat3_to_str(res->status),
                               nfsstat3_to_errno(res->status));
@@ -1179,7 +1173,7 @@ nfs3_link_continue_1_internal(struct nfs_context *nfs,
 	link_data->oldfh = data->fh;
 	data->fh.val = NULL;
 
-	if (nfs3_lookuppath_async(nfs, link_data->newpath, 0,
+	if (nfs3_lookuppath_async(nfs, link_data->newparent, 0,
                                   data->cb, data->private_data,
                                   nfs3_link_continue_2_internal,
                                   link_data, free_nfs_link_data, 0) != 0) {
@@ -1218,23 +1212,29 @@ nfs3_link_async(struct nfs_context *nfs, const char *oldpath,
 		return -1;
 	}
 
-	link_data->newpath = strdup(newpath);
-	if (link_data->newpath == NULL) {
-		nfs_set_error(nfs, "Out of memory, failed to allocate "
-                              "buffer for newpath");
+	link_data->newobject = strdup(newpath);
+	if (link_data->newobject == NULL) {
+		nfs_set_error(nfs, "Out of memory, failed to strdup "
+                              "newpath");
 		free_nfs_link_data(link_data);
 		return -1;
 	}
-	ptr = strrchr(link_data->newpath, '/');
+	ptr = strrchr(link_data->newobject, '/');
 	if (ptr == NULL) {
-		nfs_set_error(nfs, "Invalid path %s", newpath);
+                link_data->newparent = NULL;
+        } else {
+                *ptr = 0;
+                link_data->newparent = link_data->newobject;
+
+                ptr++;
+                link_data->newobject = strdup(ptr);
+        }
+	if (link_data->newobject == NULL) {
+		nfs_set_error(nfs, "Out of memory, failed to allocate "
+                              "buffer for newobject");
 		free_nfs_link_data(link_data);
 		return -1;
 	}
-	*ptr = 0;
-	ptr++;
-	link_data->newobject = ptr;
-
 
 	if (nfs3_lookuppath_async(nfs, link_data->oldpath, 0,
                                   cb, private_data,

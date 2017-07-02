@@ -152,6 +152,51 @@ echo -n "Testing nfs_unlink for memory leaks (6) ... "
 libtool --mode=execute valgrind --leak-check=full --error-exitcode=99 ./prog_unlink "${TESTURL}/" "subdir"  ../../subdir2/unlink 2>/dev/null || expr $? != 99 >/dev/null || failure
 success
 
+echo "kangabanga" > "${TESTDIR}/testfile"
+echo -n "test nfs_link() for memory leaks (1) ... "
+libtool --mode=execute valgrind --leak-check=full --error-exitcode=99 ./prog_link "${TESTURL}/" "." /testfile /link1 >/dev/null 2>&1 || failure
+success
+
+echo -n "test nfs_link() for memory leaks (2) ... "
+libtool --mode=execute valgrind --leak-check=full --error-exitcode=99 ./prog_link "${TESTURL}/" "." /testfile link2 >/dev/null 2>&1 || failure
+success
+
+echo -n "test nfs_link() for memory leaks (3) ... "
+libtool --mode=execute valgrind --leak-check=full --error-exitcode=99 ./prog_link "${TESTURL}/" "." testfile /link3 >/dev/null 2>&1 || failure
+success
+
+echo -n "test nfs_link() for memory leaks (4) ... "
+libtool --mode=execute valgrind --leak-check=full --error-exitcode=99 ./prog_link "${TESTURL}/" "." testfile link4 >/dev/null 2>&1 || failure
+success
+
+echo -n "test nfs_link() for memory leaks (5) ... "
+libtool --mode=execute valgrind --leak-check=full --error-exitcode=99 ./prog_link "${TESTURL}/" "." /testfile /subdir/link5 >/dev/null 2>&1 || failure
+success
+
+echo -n "test nfs_link() for memory leaks (6) ... "
+libtool --mode=execute valgrind --leak-check=full --error-exitcode=99 ./prog_link "${TESTURL}/" "." /subdir/link5 subdir2/link6 >/dev/null 2>&1 || failure
+success
+
+echo -n "test nfs_link() for memory leaks (7) ... "
+libtool --mode=execute valgrind --leak-check=full --error-exitcode=99 ./prog_link "${TESTURL}/" "." subdir/link5 /subdir2/link7 >/dev/null 2>&1 || failure
+success
+
+echo -n "test nfs_link() for memory leaks (8) ... "
+libtool --mode=execute valgrind --leak-check=full --error-exitcode=99 ./prog_link "${TESTURL}/" "." subdir2/link7 /subdir/link8 >/dev/null 2>&1 || failure
+success
+
+echo -n "test nfs_link() for memory leaks (9) ... "
+libtool --mode=execute valgrind --leak-check=full --error-exitcode=99 ./prog_link "${TESTURL}/" "subdir2" link7 ../subdir/link9 >/dev/null 2>&1 || failure
+success
+
+echo -n "test nfs_link() for memory leaks (10) ... "
+libtool --mode=execute valgrind --leak-check=full --error-exitcode=99 ./prog_link "${TESTURL}/" "subdir2" ../../link7 ../subdir/link10 2>/dev/null || expr $? != 99 >/dev/null || failure
+success
+
+echo -n "test nfs_link() for memory leaks (11) ... "
+libtool --mode=execute valgrind --leak-check=full --error-exitcode=99 ./prog_link "${TESTURL}/" "subdir2" link7 ../../subdir/link11 2>/dev/null || expr $? != 99 >/dev/null || failure
+success
+
 
 stop_share
 
