@@ -808,7 +808,8 @@ int nfs_creat(struct nfs_context *nfs, const char *path, int mode, struct nfsfh 
 /*
  * mknod()
  */
-static void mknod_cb(int status, struct nfs_context *nfs, void *data, void *private_data)
+static void
+mknod_cb(int status, struct nfs_context *nfs, void *data, void *private_data)
 {
 	struct sync_cb_data *cb_data = private_data;
 
@@ -816,19 +817,22 @@ static void mknod_cb(int status, struct nfs_context *nfs, void *data, void *priv
 	cb_data->status = status;
 
 	if (status < 0) {
-		nfs_set_error(nfs, "mknod call failed with \"%s\"", (char *)data);
+		nfs_set_error(nfs, "mknod call failed with \"%s\"",
+                              (char *)data);
 		return;
 	}
 }
 
-int nfs_mknod(struct nfs_context *nfs, const char *path, int mode, int dev)
+int
+nfs_mknod(struct nfs_context *nfs, const char *path, int mode, int dev)
 {
 	struct sync_cb_data cb_data;
 
 	cb_data.is_finished = 0;
 
 	if (nfs_mknod_async(nfs, path, mode, dev, mknod_cb, &cb_data) != 0) {
-		nfs_set_error(nfs, "nfs_creat_async failed");
+		nfs_set_error(nfs, "nfs_creat_async failed. %s",
+                              nfs_get_error(nfs));
 		return -1;
 	}
 

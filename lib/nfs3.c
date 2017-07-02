@@ -2960,6 +2960,8 @@ nfs3_mknod_continue_internal(struct nfs_context *nfs,
 	char *str = cb_data->path;
 	MKNOD3args args;
 
+        memset(&args, 0, sizeof(args));
+
 	str = &str[strlen(str) + 1];
 
 	args.where.dir.data.data_len = data->fh.len;
@@ -3021,21 +3023,25 @@ nfs3_mknod_async(struct nfs_context *nfs, const char *path, int mode, int dev,
 		return -1;
 	}
 
-	cb_data->path = strdup(path);
-	if (cb_data->path == NULL) {
-		nfs_set_error(nfs, "Out of memory, failed to allocate"
-                              "mode buffer for path");
-		free(cb_data);
-		return -1;
-	}
-
-	ptr = strrchr(cb_data->path, '/');
-	if (ptr == NULL) {
-		nfs_set_error(nfs, "Invalid path %s", path);
-		free_mknod_cb_data(cb_data);
-		return -1;
-	}
-	*ptr = 0;
+        ptr = strrchr(path, '/');
+        if (ptr) {
+                cb_data->path = strdup(path);
+                if (cb_data->path == NULL) {
+                        nfs_set_error(nfs, "Out of memory, failed to allocate "
+                                      "buffer for mknod path");
+                        return -1;
+                }
+                ptr = strrchr(cb_data->path, '/');
+                *ptr = 0;
+        } else {
+                cb_data->path = malloc(strlen(path) + 2);
+                if (cb_data->path == NULL) {
+                        nfs_set_error(nfs, "Out of memory, failed to allocate "
+                                      "buffer for mknod path");
+                        return -1;
+                }
+                sprintf(cb_data->path, "%c%s", '\0', path);
+        }
 
 	cb_data->mode = mode;
 	cb_data->major = major(dev);
