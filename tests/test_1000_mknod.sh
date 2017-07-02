@@ -13,11 +13,12 @@ mkdir "${TESTDIR}/subdir"
 mkdir "${TESTDIR}/subdir2"
 
 echo -n "Create a chrdev in the root (abs) (1)... "
-./prog_mknod "${TESTURL}/?uid=0" "." /mknod1 020775 0x1234 || failure
+./prog_mknod "${TESTURL}/?uid=0" "." /mknod1 020755 0x1234 || failure
 success
 
 echo -n "Stat the node ... "
 ./prog_stat "${TESTURL}/mknod1" > "${TESTDIR}/output" || failure
+success
 
 echo -n "Testing nfs_mode and verify it is a CHRDEV ... "
 grep "nfs_mode:20755" "${TESTDIR}/output" >/dev/null || failure
