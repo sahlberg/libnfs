@@ -3047,8 +3047,8 @@ nfs3_mknod_async(struct nfs_context *nfs, const char *path, int mode, int dev,
 	cb_data->major = major(dev);
 	cb_data->minor = minor(dev);
 
-	/* data->path now points to the parent directory,  and beyond the
-         * nul terminateor is the new directory to create */
+	/* data->path now points to the parent directory and beyond the
+         * null terminator is the new node to create */
 	if (nfs3_lookuppath_async(nfs, cb_data->path, 0, cb, private_data,
                                   nfs3_mknod_continue_internal,
                                   cb_data, free_mknod_cb_data, 0) != 0) {
@@ -3144,8 +3144,8 @@ nfs3_unlink_async(struct nfs_context *nfs, const char *path, nfs_cb cb,
                 sprintf(new_path, "%c%s", '\0', path);
         }
 
-	/* new_path now points to the parent directory,  and beyond the
-         * nul terminateor is the new directory to create */
+	/* new_path now points to the parent directory and beyond the
+         * null terminator is the object to unlink */
 	if (nfs3_lookuppath_async(nfs, new_path, 0, cb, private_data,
                                   nfs3_unlink_continue_internal,
                                   new_path, free, 0) != 0) {
@@ -3404,7 +3404,7 @@ nfs3_create_async(struct nfs_context *nfs, const char *path, int flags,
                 cb_data->path = malloc(strlen(path) + 2);
                 if (cb_data->path == NULL) {
                         nfs_set_error(nfs, "Out of memory, failed to allocate "
-                                      "buffer for unlink path");
+                                      "buffer for creat path");
                         return -1;
                 }
                 sprintf(cb_data->path, "%c%s", '\0', path);
@@ -3413,8 +3413,8 @@ nfs3_create_async(struct nfs_context *nfs, const char *path, int flags,
 	cb_data->flags = flags;
 	cb_data->mode = mode;
 
-	/* new_path now points to the parent directory,  and beyond the
-         * nul terminator is the new directory to create */
+	/* new_path now points to the parent directory and beyond the
+         * null terminator is the new object to create */
 	if (nfs3_lookuppath_async(nfs, cb_data->path, 0, cb, private_data,
                                   nfs3_create_continue_internal, cb_data,
                                   free_create_cb_data, 0) != 0) {
@@ -3510,8 +3510,8 @@ nfs3_rmdir_async(struct nfs_context *nfs, const char *path, nfs_cb cb,
                 sprintf(new_path, "%c%s", '\0', path);
         }
 
-	/* new_path now points to the parent directory,  and beyond the
-         * nul terminateor is the new directory to create */
+	/* new_path now points to the parent directory and beyond the
+         * null terminator is the directory to remove */
 	if (nfs3_lookuppath_async(nfs, new_path, 0, cb, private_data,
                                   nfs3_rmdir_continue_internal,
                                   new_path, free, 0) != 0) {
@@ -3612,8 +3612,8 @@ nfs3_mkdir2_async(struct nfs_context *nfs, const char *path, int mode,
                 sprintf(new_path, "%c%s", '\0', path);
         }
 
-	/* new_path now points to the parent directory, and beyond the 
-         * nul terminator is the new directory to create */
+	/* new_path now points to the parent directory and beyond the 
+         * null terminator is the new directory to create */
 	if (nfs3_lookuppath_async(nfs, new_path, 0, cb, private_data,
                                   nfs3_mkdir_continue_internal,
                                   new_path, free, mode) != 0) {
