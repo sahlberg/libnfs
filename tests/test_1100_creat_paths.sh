@@ -14,7 +14,7 @@ echo -n "Create a file in root (abs) (1) ... "
 success
 
 echo -n "Stat the new file ... "
-./prog_stat "${TESTURL}/creat1" > "${TESTDIR}/output" || failure
+./prog_stat "${TESTURL}/" "." creat1 > "${TESTDIR}/output" || failure
 success
 
 echo -n "Verifying it is a regular file ... "

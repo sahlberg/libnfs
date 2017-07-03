@@ -17,7 +17,7 @@ echo -n "Create a chrdev in the root (abs) (1)... "
 success
 
 echo -n "Stat the node ... "
-./prog_stat "${TESTURL}/mknod1" > "${TESTDIR}/output" || failure
+./prog_stat "${TESTURL}/" "." mknod1 > "${TESTDIR}/output" || failure
 success
 
 echo -n "Testing nfs_mode and verify it is a CHRDEV ... "

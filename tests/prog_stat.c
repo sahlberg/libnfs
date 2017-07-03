@@ -32,7 +32,7 @@
 
 void usage(void)
 {
-	fprintf(stderr, "Usage: prog-stat <file>\n");
+	fprintf(stderr, "Usage: prog-stat <url> <cwd> <path>\n");
 	exit(1);
 }
 
@@ -43,7 +43,7 @@ int main(int argc, char *argv[])
 	struct nfs_stat_64 st;
 	int ret = 0;
 
-	if (argc != 2) {
+	if (argc != 4) {
 		usage();
 	}
 
@@ -55,7 +55,7 @@ int main(int argc, char *argv[])
 
 	nfs_set_timeout(nfs, 1000);
 
-	url = nfs_parse_url_full(nfs, argv[argc - 1]);
+	url = nfs_parse_url_full(nfs, argv[1]);
 	if (url == NULL) {
 		fprintf(stderr, "%s\n", nfs_get_error(nfs));
 		exit(1);
@@ -68,7 +68,14 @@ int main(int argc, char *argv[])
 		goto finished;
 	}
 
-	if (nfs_stat64(nfs, url->file, &st)) {
+	if (nfs_chdir(nfs, argv[2]) != 0) {
+ 		fprintf(stderr, "Failed to chdir to \"%s\" : %s\n",
+			argv[2], nfs_get_error(nfs));
+		ret = 1;
+		goto finished;
+	}
+
+	if (nfs_stat64(nfs, argv[3], &st)) {
  		fprintf(stderr, "Failed to stat file : %s\n",
 			nfs_get_error(nfs));
 		ret = 1;

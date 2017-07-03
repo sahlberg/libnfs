@@ -29,7 +29,7 @@ echo -n "test nfs_creat() for memory leaks (5) ... "
 libtool --mode=execute valgrind --leak-check=full --error-exitcode=99 ./prog_create "${TESTURL}/" "subdir" ../subdir2/creat5 0750 >/dev/null 2>&1 || failure
 success
 
-echo -n "test nfs_link() for memory leaks (6) ... "
+echo -n "test nfs_creat() for memory leaks (6) ... "
 libtool --mode=execute valgrind --leak-check=full --error-exitcode=99 ./prog_create "${TESTURL}/" "subdir" ../../subdir2/creat6 0750 2>/dev/null || expr $? != 99 >/dev/null || failure
 success
 

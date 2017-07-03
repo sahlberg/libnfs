@@ -14,7 +14,7 @@ echo -n "Create a root directory (abs) (1) ... "
 success
 
 echo -n "Stat the new directory ... "
-./prog_stat "${TESTURL}/testdir" > "${TESTDIR}/output" || failure
+./prog_stat "${TESTURL}/" "." testdir > "${TESTDIR}/output" || failure
 success
 
 echo -n "Verifying it is a directory ... "

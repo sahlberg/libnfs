@@ -2,7 +2,7 @@
 
 . ./functions.sh
 
-echo "basic creat/unlink test"
+echo "basic nfs_unlink() test"
 
 start_share
 
@@ -15,7 +15,7 @@ touch "${TESTDIR}/unlink"
 success
 
 echo -n "Verify the file is gone ... "
-./prog_stat "${TESTURL}/unlink" 2>/dev/null && failure
+./prog_stat "${TESTURL}/" "." unlink 2>/dev/null && failure
 success
 
 echo -n "Unlink a file from the root (rel) (2)... "

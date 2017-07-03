@@ -49,7 +49,7 @@ libtool --mode=execute valgrind --leak-check=full --error-exitcode=1 ../examples
 success
 
 echo -n "test nfs_stat64() for memory leaks ... "
-libtool --mode=execute valgrind --leak-check=full --error-exitcode=1 ./prog_stat "${TESTURL}/file.99" >/dev/null 2>&1 || failure
+libtool --mode=execute valgrind --leak-check=full --error-exitcode=1 ./prog_stat "${TESTURL}/" "." file.99 >/dev/null 2>&1 || failure
 success
 
 echo -n "test nfs_fstat64() for memory leaks ... "
