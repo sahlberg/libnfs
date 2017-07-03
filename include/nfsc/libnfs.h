@@ -16,7 +16,8 @@
    along with this program; if not, see <http://www.gnu.org/licenses/>.
 */
 /*
- * This is the highlevel interface to access NFS resources using a posix-like interface
+ * This is the high-level interface to access NFS resources using posix-like
+ * functions.
  */
 
 #ifndef _LIBNFS_H_
@@ -103,6 +104,14 @@ struct utimbuf {
  * When this happens the application should destroy the now errored context
  * re-create a new context and reconnect.
  *
+ *
+ * If using the async interface and nfs timeouts, i.e. nfs_set_timeout(),
+ * you will need to ensure to call nfs_service() on a regular basis as
+ * the timeout handling is done as part of that function.
+ * For example calling nfs_service() with revents == 0 once every 100ms
+ * or so from your event loop.
+ * You only need this for the async interface. The sync interface already
+ * do this in their built-in event loops.
  */
 EXTERN int nfs_get_fd(struct nfs_context *nfs);
 EXTERN int nfs_which_events(struct nfs_context *nfs);
@@ -136,12 +145,14 @@ EXTERN char *nfs_get_error(struct nfs_context *nfs);
 /*
  * Callback for all ASYNC nfs functions
  */
-typedef void (*nfs_cb)(int err, struct nfs_context *nfs, void *data, void *private_data);
+typedef void (*nfs_cb)(int err, struct nfs_context *nfs, void *data,
+                       void *private_data);
 
 /*
  * Callback for all ASYNC rpc functions
  */
-typedef void (*rpc_cb)(struct rpc_context *rpc, int status, void *data, void *private_data);
+typedef void (*rpc_cb)(struct rpc_context *rpc, int status, void *data,
+                       void *private_data);
 
 
 
@@ -194,24 +205,28 @@ EXTERN void nfs_destroy_context(struct nfs_context *nfs);
  *                         times before failing and returing an error back
  *                         to the application.
  * version=<3|4>     : NFS version. Default is 3.
+ *                     Version 4 is not yet functional. Do not use.
  */
 /*
  * Parse a complete NFS URL including, server, path and
  * filename. Fail if any component is missing.
  */
-EXTERN struct nfs_url *nfs_parse_url_full(struct nfs_context *nfs, const char *url);
+EXTERN struct nfs_url *nfs_parse_url_full(struct nfs_context *nfs,
+                                          const char *url);
 
 /*
  * Parse an NFS URL, but do not split path and file. File
  * in the resulting struct remains NULL.
  */
-EXTERN struct nfs_url *nfs_parse_url_dir(struct nfs_context *nfs, const char *url);
+EXTERN struct nfs_url *nfs_parse_url_dir(struct nfs_context *nfs,
+                                         const char *url);
 
 /*
  * Parse an NFS URL, but do not fail if file, path or even server is missing.
  * Check elements of the resulting struct for NULL.
  */
-EXTERN struct nfs_url *nfs_parse_url_incomplete(struct nfs_context *nfs, const char *url);
+EXTERN struct nfs_url *nfs_parse_url_incomplete(struct nfs_context *nfs,
+                                                const char *url);
 
 
 /*
@@ -256,7 +271,8 @@ EXTERN int nfs_set_version(struct nfs_context *nfs, int version);
 /*
  *  Invalidate the pagecache
  */
-EXTERN void nfs_pagecache_invalidate(struct nfs_context *nfs, struct nfsfh *nfsfh);
+EXTERN void nfs_pagecache_invalidate(struct nfs_context *nfs,
+                                     struct nfsfh *nfsfh);
 
 /*
  * MOUNT THE EXPORT
@@ -264,8 +280,10 @@ EXTERN void nfs_pagecache_invalidate(struct nfs_context *nfs, struct nfsfh *nfsf
 /*
  * Async nfs mount.
  * Function returns
- *  0 : The operation was initiated. Once the operation finishes, the callback will be invoked.
- * <0 : An error occured when trying to set up the operation. The callback will not be invoked.
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
  *      0 : Success.
@@ -273,14 +291,17 @@ EXTERN void nfs_pagecache_invalidate(struct nfs_context *nfs, struct nfsfh *nfsf
  * -errno : An error occured.
  *          data is the error string.
  */
-EXTERN int nfs_mount_async(struct nfs_context *nfs, const char *server, const char *exportname, nfs_cb cb, void *private_data);
+EXTERN int nfs_mount_async(struct nfs_context *nfs, const char *server,
+                           const char *exportname, nfs_cb cb,
+                           void *private_data);
 /*
  * Sync nfs mount.
  * Function returns
  *      0 : The operation was successful.
  * -errno : The command failed.
  */
-EXTERN int nfs_mount(struct nfs_context *nfs, const char *server, const char *exportname);
+EXTERN int nfs_mount(struct nfs_context *nfs, const char *server,
+                     const char *exportname);
 
 
 
@@ -291,8 +312,10 @@ EXTERN int nfs_mount(struct nfs_context *nfs, const char *server, const char *ex
 /*
  * Async stat(<filename>)
  * Function returns
- *  0 : The operation was initiated. Once the operation finishes, the callback will be invoked.
- * <0 : An error occured when trying to set up the operation. The callback will not be invoked.
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
  *      0 : Success.
@@ -302,7 +325,8 @@ EXTERN int nfs_mount(struct nfs_context *nfs, const char *server, const char *ex
  */
 /* This function is deprecated. Use nfs_stat64_async() instead */
 struct stat;
-EXTERN int nfs_stat_async(struct nfs_context *nfs, const char *path, nfs_cb cb, void *private_data);
+EXTERN int nfs_stat_async(struct nfs_context *nfs, const char *path, nfs_cb cb,
+                          void *private_data);
 /*
  * Sync stat(<filename>)
  * Function returns
@@ -311,7 +335,8 @@ EXTERN int nfs_stat_async(struct nfs_context *nfs, const char *path, nfs_cb cb, 
  */
 /* This function is deprecated. Use nfs_stat64() instead */
 #ifdef WIN32
-EXTERN int nfs_stat(struct nfs_context *nfs, const char *path, struct __stat64 *st);
+EXTERN int nfs_stat(struct nfs_context *nfs, const char *path,
+                    struct __stat64 *st);
 #else
 EXTERN int nfs_stat(struct nfs_context *nfs, const char *path, struct stat *st);
 #endif
@@ -348,8 +373,10 @@ struct nfs_stat_64 {
 /*
  * Async stat(<filename>)
  * Function returns
- *  0 : The operation was initiated. Once the operation finishes, the callback will be invoked.
- * <0 : An error occured when trying to set up the operation. The callback will not be invoked.
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
  *      0 : Success.
@@ -357,14 +384,16 @@ struct nfs_stat_64 {
  * -errno : An error occured.
  *          data is the error string.
  */
-EXTERN int nfs_stat64_async(struct nfs_context *nfs, const char *path, nfs_cb cb, void *private_data);
+EXTERN int nfs_stat64_async(struct nfs_context *nfs, const char *path,
+                            nfs_cb cb, void *private_data);
 /*
  * Sync stat(<filename>)
  * Function returns
  *      0 : The operation was successful.
  * -errno : The command failed.
  */
-EXTERN int nfs_stat64(struct nfs_context *nfs, const char *path, struct nfs_stat_64 *st);
+EXTERN int nfs_stat64(struct nfs_context *nfs, const char *path,
+                      struct nfs_stat_64 *st);
 
 /*
  * Async stat(<filename>)
@@ -373,8 +402,10 @@ EXTERN int nfs_stat64(struct nfs_context *nfs, const char *path, struct nfs_stat
  * symbolic link itself.
  *
  * Function returns
- *  0 : The operation was initiated. Once the operation finishes, the callback will be invoked.
- * <0 : An error occured when trying to set up the operation. The callback will not be invoked.
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
  *      0 : Success.
@@ -382,7 +413,8 @@ EXTERN int nfs_stat64(struct nfs_context *nfs, const char *path, struct nfs_stat
  * -errno : An error occured.
  *          data is the error string.
  */
-EXTERN int nfs_lstat64_async(struct nfs_context *nfs, const char *path, nfs_cb cb, void *private_data);
+EXTERN int nfs_lstat64_async(struct nfs_context *nfs, const char *path,
+                             nfs_cb cb, void *private_data);
 /*
  * Sync stat(<filename>)
  *
@@ -393,7 +425,8 @@ EXTERN int nfs_lstat64_async(struct nfs_context *nfs, const char *path, nfs_cb c
  *      0 : The operation was successful.
  * -errno : The command failed.
  */
-EXTERN int nfs_lstat64(struct nfs_context *nfs, const char *path, struct nfs_stat_64 *st);
+EXTERN int nfs_lstat64(struct nfs_context *nfs, const char *path,
+                       struct nfs_stat_64 *st);
 
 /*
  * FSTAT()
@@ -401,8 +434,10 @@ EXTERN int nfs_lstat64(struct nfs_context *nfs, const char *path, struct nfs_sta
 /*
  * Async fstat(nfsfh *)
  * Function returns
- *  0 : The operation was initiated. Once the operation finishes, the callback will be invoked.
- * <0 : An error occured when trying to set up the operation. The callback will not be invoked.
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
  *      0 : Success.
@@ -411,7 +446,8 @@ EXTERN int nfs_lstat64(struct nfs_context *nfs, const char *path, struct nfs_sta
  *          data is the error string.
  */
 /* This function is deprecated. Use nfs_fstat64_async() instead */
-EXTERN int nfs_fstat_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_cb cb, void *private_data);
+EXTERN int nfs_fstat_async(struct nfs_context *nfs, struct nfsfh *nfsfh,
+                           nfs_cb cb, void *private_data);
 /*
  * Sync fstat(nfsfh *)
  * Function returns
@@ -419,9 +455,11 @@ EXTERN int nfs_fstat_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_cb 
  * -errno : The command failed.
  */
 #ifdef WIN32
-EXTERN int nfs_fstat(struct nfs_context *nfs, struct nfsfh *nfsfh, struct __stat64 *st);
+EXTERN int nfs_fstat(struct nfs_context *nfs, struct nfsfh *nfsfh,
+                     struct __stat64 *st);
 #else
-EXTERN int nfs_fstat(struct nfs_context *nfs, struct nfsfh *nfsfh, struct stat *st);
+EXTERN int nfs_fstat(struct nfs_context *nfs, struct nfsfh *nfsfh,
+                     struct stat *st);
 #endif
 
 /* nfs_fstat64
@@ -435,8 +473,10 @@ EXTERN int nfs_fstat(struct nfs_context *nfs, struct nfsfh *nfsfh, struct stat *
 /*
  * Async fstat(nfsfh *)
  * Function returns
- *  0 : The operation was initiated. Once the operation finishes, the callback will be invoked.
- * <0 : An error occured when trying to set up the operation. The callback will not be invoked.
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
  *      0 : Success.
@@ -444,14 +484,16 @@ EXTERN int nfs_fstat(struct nfs_context *nfs, struct nfsfh *nfsfh, struct stat *
  * -errno : An error occured.
  *          data is the error string.
  */
-EXTERN int nfs_fstat64_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_cb cb, void *private_data);
+EXTERN int nfs_fstat64_async(struct nfs_context *nfs, struct nfsfh *nfsfh,
+                             nfs_cb cb, void *private_data);
 /*
  * Sync fstat(nfsfh *)
  * Function returns
  *      0 : The operation was successful.
  * -errno : The command failed.
  */
-EXTERN int nfs_fstat64(struct nfs_context *nfs, struct nfsfh *nfsfh, struct nfs_stat_64 *st);
+EXTERN int nfs_fstat64(struct nfs_context *nfs, struct nfsfh *nfsfh,
+                       struct nfs_stat_64 *st);
 
 /*
  * UMASK() never blocks, so no special aync/async versions are available
@@ -472,8 +514,10 @@ EXTERN uint16_t nfs_umask(struct nfs_context *nfs, uint16_t mask);
  * O_RDONLY, O_WRONLY, O_RDWR , O_SYNC, O_APPEND, O_TRUNC, O_NOFOLLOW
  *
  * Function returns
- *  0 : The operation was initiated. Once the operation finishes, the callback will be invoked.
- * <0 : An error occured when trying to set up the operation. The callback will not be invoked.
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
  *
  * Supported flags are
  * O_NOFOLLOW
@@ -491,14 +535,16 @@ EXTERN uint16_t nfs_umask(struct nfs_context *nfs, uint16_t mask);
  * -errno : An error occured.
  *          data is the error string.
  */
-EXTERN int nfs_open_async(struct nfs_context *nfs, const char *path, int flags, nfs_cb cb, void *private_data);
+EXTERN int nfs_open_async(struct nfs_context *nfs, const char *path, int flags,
+                          nfs_cb cb, void *private_data);
 /*
  * Sync open(<filename>)
  * Function returns
  *      0 : The operation was successful. *nfsfh is filled in.
  * -errno : The command failed.
  */
-EXTERN int nfs_open(struct nfs_context *nfs, const char *path, int flags, struct nfsfh **nfsfh);
+EXTERN int nfs_open(struct nfs_context *nfs, const char *path, int flags,
+                    struct nfsfh **nfsfh);
 
 
 
@@ -510,8 +556,10 @@ EXTERN int nfs_open(struct nfs_context *nfs, const char *path, int flags, struct
  * Async close(nfsfh)
  *
  * Function returns
- *  0 : The operation was initiated. Once the operation finishes, the callback will be invoked.
- * <0 : An error occured when trying to set up the operation. The callback will not be invoked.
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
  *      0 : Success.
@@ -519,7 +567,8 @@ EXTERN int nfs_open(struct nfs_context *nfs, const char *path, int flags, struct
  * -errno : An error occured.
  *          data is the error string.
  */
-EXTERN int nfs_close_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_cb cb, void *private_data);
+EXTERN int nfs_close_async(struct nfs_context *nfs, struct nfsfh *nfsfh,
+                           nfs_cb cb, void *private_data);
 /*
  * Sync close(nfsfh)
  * Function returns
@@ -536,8 +585,10 @@ EXTERN int nfs_close(struct nfs_context *nfs, struct nfsfh *nfsfh);
  * Async pread()
  *
  * Function returns
- *  0 : The operation was initiated. Once the operation finishes, the callback will be invoked.
- * <0 : An error occured when trying to set up the operation. The callback will not be invoked.
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
  *    >=0 : Success.
@@ -546,14 +597,17 @@ EXTERN int nfs_close(struct nfs_context *nfs, struct nfsfh *nfsfh);
  * -errno : An error occured.
  *          data is the error string.
  */
-EXTERN int nfs_pread_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t offset, uint64_t count, nfs_cb cb, void *private_data);
+EXTERN int nfs_pread_async(struct nfs_context *nfs, struct nfsfh *nfsfh,
+                           uint64_t offset, uint64_t count, nfs_cb cb,
+                           void *private_data);
 /*
  * Sync pread()
  * Function returns
  *    >=0 : numer of bytes read.
  * -errno : An error occured.
  */
-EXTERN int nfs_pread(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t offset, uint64_t count, void *buf);
+EXTERN int nfs_pread(struct nfs_context *nfs, struct nfsfh *nfsfh,
+                     uint64_t offset, uint64_t count, void *buf);
 
 
 
@@ -564,8 +618,10 @@ EXTERN int nfs_pread(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t offs
  * Async read()
  *
  * Function returns
- *  0 : The operation was initiated. Once the operation finishes, the callback will be invoked.
- * <0 : An error occured when trying to set up the operation. The callback will not be invoked.
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
  *    >=0 : Success.
@@ -574,14 +630,16 @@ EXTERN int nfs_pread(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t offs
  * -errno : An error occured.
  *          data is the error string.
  */
-EXTERN int nfs_read_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t count, nfs_cb cb, void *private_data);
+EXTERN int nfs_read_async(struct nfs_context *nfs, struct nfsfh *nfsfh,
+                          uint64_t count, nfs_cb cb, void *private_data);
 /*
  * Sync read()
  * Function returns
  *    >=0 : numer of bytes read.
  * -errno : An error occured.
  */
-EXTERN int nfs_read(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t count, void *buf);
+EXTERN int nfs_read(struct nfs_context *nfs, struct nfsfh *nfsfh,
+                    uint64_t count, void *buf);
 
 
 
@@ -593,8 +651,10 @@ EXTERN int nfs_read(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t count
  * Async pwrite()
  *
  * Function returns
- *  0 : The operation was initiated. Once the operation finishes, the callback will be invoked.
- * <0 : An error occured when trying to set up the operation. The callback will not be invoked.
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
  *    >=0 : Success.
@@ -602,14 +662,17 @@ EXTERN int nfs_read(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t count
  * -errno : An error occured.
  *          data is the error string.
  */
-EXTERN int nfs_pwrite_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t offset, uint64_t count, const void *buf, nfs_cb cb, void *private_data);
+EXTERN int nfs_pwrite_async(struct nfs_context *nfs, struct nfsfh *nfsfh,
+                            uint64_t offset, uint64_t count, const void *buf,
+                            nfs_cb cb, void *private_data);
 /*
  * Sync pwrite()
  * Function returns
  *    >=0 : numer of bytes written.
  * -errno : An error occured.
  */
-EXTERN int nfs_pwrite(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t offset, uint64_t count, const void *buf);
+EXTERN int nfs_pwrite(struct nfs_context *nfs, struct nfsfh *nfsfh,
+                      uint64_t offset, uint64_t count, const void *buf);
 
 
 /*
@@ -619,8 +682,10 @@ EXTERN int nfs_pwrite(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t off
  * Async write()
  *
  * Function returns
- *  0 : The operation was initiated. Once the operation finishes, the callback will be invoked.
- * <0 : An error occured when trying to set up the operation. The callback will not be invoked.
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
  *    >=0 : Success.
@@ -628,14 +693,17 @@ EXTERN int nfs_pwrite(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t off
  * -errno : An error occured.
  *          data is the error string.
  */
-EXTERN int nfs_write_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t count, const void *buf, nfs_cb cb, void *private_data);
+EXTERN int nfs_write_async(struct nfs_context *nfs, struct nfsfh *nfsfh,
+                           uint64_t count, const void *buf, nfs_cb cb,
+                           void *private_data);
 /*
  * Sync write()
  * Function returns
  *    >=0 : numer of bytes written.
  * -errno : An error occured.
  */
-EXTERN int nfs_write(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t count, const void *buf);
+EXTERN int nfs_write(struct nfs_context *nfs, struct nfsfh *nfsfh,
+                     uint64_t count, const void *buf);
 
 
 /*
@@ -645,8 +713,10 @@ EXTERN int nfs_write(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t coun
  * Async lseek()
  *
  * Function returns
- *  0 : The operation was initiated. Once the operation finishes, the callback will be invoked.
- * <0 : An error occured when trying to set up the operation. The callback will not be invoked.
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
  *    >=0 : Success.
@@ -654,14 +724,17 @@ EXTERN int nfs_write(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t coun
  * -errno : An error occured.
  *          data is the error string.
  */
-EXTERN int nfs_lseek_async(struct nfs_context *nfs, struct nfsfh *nfsfh, int64_t offset, int whence, nfs_cb cb, void *private_data);
+EXTERN int nfs_lseek_async(struct nfs_context *nfs, struct nfsfh *nfsfh,
+                           int64_t offset, int whence, nfs_cb cb,
+                           void *private_data);
 /*
  * Sync lseek()
  * Function returns
  *    >=0 : numer of bytes read.
  * -errno : An error occured.
  */
-EXTERN int nfs_lseek(struct nfs_context *nfs, struct nfsfh *nfsfh, int64_t offset, int whence, uint64_t *current_offset);
+EXTERN int nfs_lseek(struct nfs_context *nfs, struct nfsfh *nfsfh,
+                     int64_t offset, int whence, uint64_t *current_offset);
 
 
 /*
@@ -671,15 +744,18 @@ EXTERN int nfs_lseek(struct nfs_context *nfs, struct nfsfh *nfsfh, int64_t offse
  * Async fsync()
  *
  * Function returns
- *  0 : The operation was initiated. Once the operation finishes, the callback will be invoked.
- * <0 : An error occured when trying to set up the operation. The callback will not be invoked.
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
  *      0 : Success.
  * -errno : An error occured.
  *          data is the error string.
  */
-EXTERN int nfs_fsync_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_cb cb, void *private_data);
+EXTERN int nfs_fsync_async(struct nfs_context *nfs, struct nfsfh *nfsfh,
+                           nfs_cb cb, void *private_data);
 /*
  * Sync fsync()
  * Function returns
@@ -697,22 +773,26 @@ EXTERN int nfs_fsync(struct nfs_context *nfs, struct nfsfh *nfsfh);
  * Async truncate()
  *
  * Function returns
- *  0 : The operation was initiated. Once the operation finishes, the callback will be invoked.
- * <0 : An error occured when trying to set up the operation. The callback will not be invoked.
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
  *      0 : Success.
  * -errno : An error occured.
  *          data is the error string.
  */
-EXTERN int nfs_truncate_async(struct nfs_context *nfs, const char *path, uint64_t length, nfs_cb cb, void *private_data);
+EXTERN int nfs_truncate_async(struct nfs_context *nfs, const char *path,
+                              uint64_t length, nfs_cb cb, void *private_data);
 /*
  * Sync truncate()
  * Function returns
  *      0 : Success
  * -errno : An error occured.
  */
-EXTERN int nfs_truncate(struct nfs_context *nfs, const char *path, uint64_t length);
+EXTERN int nfs_truncate(struct nfs_context *nfs, const char *path,
+                        uint64_t length);
 
 
 
@@ -723,22 +803,26 @@ EXTERN int nfs_truncate(struct nfs_context *nfs, const char *path, uint64_t leng
  * Async ftruncate()
  *
  * Function returns
- *  0 : The operation was initiated. Once the operation finishes, the callback will be invoked.
- * <0 : An error occured when trying to set up the operation. The callback will not be invoked.
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
  *      0 : Success.
  * -errno : An error occured.
  *          data is the error string.
  */
-EXTERN int nfs_ftruncate_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t length, nfs_cb cb, void *private_data);
+EXTERN int nfs_ftruncate_async(struct nfs_context *nfs, struct nfsfh *nfsfh,
+                               uint64_t length, nfs_cb cb, void *private_data);
 /*
  * Sync ftruncate()
  * Function returns
  *      0 : Success
  * -errno : An error occured.
  */
-EXTERN int nfs_ftruncate(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t length);
+EXTERN int nfs_ftruncate(struct nfs_context *nfs, struct nfsfh *nfsfh,
+                         uint64_t length);
 
 
 
@@ -752,15 +836,18 @@ EXTERN int nfs_ftruncate(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t 
  * Async mkdir()
  *
  * Function returns
- *  0 : The operation was initiated. Once the operation finishes, the callback will be invoked.
- * <0 : An error occured when trying to set up the operation. The callback will not be invoked.
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
  *      0 : Success.
  * -errno : An error occured.
  *          data is the error string.
  */
-EXTERN int nfs_mkdir_async(struct nfs_context *nfs, const char *path, nfs_cb cb, void *private_data);
+EXTERN int nfs_mkdir_async(struct nfs_context *nfs, const char *path,
+                           nfs_cb cb, void *private_data);
 /*
  * Sync mkdir()
  * Function returns
@@ -773,15 +860,18 @@ EXTERN int nfs_mkdir(struct nfs_context *nfs, const char *path);
  * Async mkdir2()
  *
  * Function returns
- *  0 : The operation was initiated. Once the operation finishes, the callback will be invoked.
- * <0 : An error occured when trying to set up the operation. The callback will not be invoked.
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
  *      0 : Success.
  * -errno : An error occured.
  *          data is the error string.
  */
-EXTERN int nfs_mkdir2_async(struct nfs_context *nfs, const char *path, int mode, nfs_cb cb, void *private_data);
+EXTERN int nfs_mkdir2_async(struct nfs_context *nfs, const char *path,
+                            int mode, nfs_cb cb, void *private_data);
 /*
  * Sync mkdir2()
  * Function returns
@@ -799,15 +889,18 @@ EXTERN int nfs_mkdir2(struct nfs_context *nfs, const char *path, int mode);
  * Async rmdir()
  *
  * Function returns
- *  0 : The operation was initiated. Once the operation finishes, the callback will be invoked.
- * <0 : An error occured when trying to set up the operation. The callback will not be invoked.
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
  *      0 : Success.
  * -errno : An error occured.
  *          data is the error string.
  */
-EXTERN int nfs_rmdir_async(struct nfs_context *nfs, const char *path, nfs_cb cb, void *private_data);
+EXTERN int nfs_rmdir_async(struct nfs_context *nfs, const char *path,
+                           nfs_cb cb, void *private_data);
 /*
  * Sync rmdir()
  * Function returns
@@ -826,8 +919,10 @@ EXTERN int nfs_rmdir(struct nfs_context *nfs, const char *path);
  * Async creat()
  *
  * Function returns
- *  0 : The operation was initiated. Once the operation finishes, the callback will be invoked.
- * <0 : An error occured when trying to set up the operation. The callback will not be invoked.
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
  *      0 : Success.
@@ -835,14 +930,16 @@ EXTERN int nfs_rmdir(struct nfs_context *nfs, const char *path);
  * -errno : An error occured.
  *          data is the error string.
  */
-EXTERN int nfs_creat_async(struct nfs_context *nfs, const char *path, int mode, nfs_cb cb, void *private_data);
+EXTERN int nfs_creat_async(struct nfs_context *nfs, const char *path, int mode,
+                           nfs_cb cb, void *private_data);
 /*
  * Sync creat()
  * Function returns
  *      0 : Success
  * -errno : An error occured.
  */
-EXTERN int nfs_creat(struct nfs_context *nfs, const char *path, int mode, struct nfsfh **nfsfh);
+EXTERN int nfs_creat(struct nfs_context *nfs, const char *path, int mode,
+                     struct nfsfh **nfsfh);
 
 /*
  * Async create()
@@ -855,8 +952,10 @@ EXTERN int nfs_creat(struct nfs_context *nfs, const char *path, int mode, struct
  * O_TRUNC
  *
  * Function returns
- *  0 : The operation was initiated. Once the operation finishes, the callback will be invoked.
- * <0 : An error occured when trying to set up the operation. The callback will not be invoked.
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
  *      0 : Success.
@@ -864,14 +963,16 @@ EXTERN int nfs_creat(struct nfs_context *nfs, const char *path, int mode, struct
  * -errno : An error occured.
  *          data is the error string.
  */
-EXTERN int nfs_create_async(struct nfs_context *nfs, const char *path, int flags, int mode, nfs_cb cb, void *private_data);
+EXTERN int nfs_create_async(struct nfs_context *nfs, const char *path,
+                            int flags, int mode, nfs_cb cb, void *private_data);
 /*
  * Sync create()
  * Function returns
  *      0 : Success
  * -errno : An error occured.
  */
-EXTERN int nfs_create(struct nfs_context *nfs, const char *path, int flags, int mode, struct nfsfh **nfsfh);
+EXTERN int nfs_create(struct nfs_context *nfs, const char *path, int flags,
+                      int mode, struct nfsfh **nfsfh);
 
 
 /*
@@ -881,22 +982,26 @@ EXTERN int nfs_create(struct nfs_context *nfs, const char *path, int flags, int 
  * Async mknod()
  *
  * Function returns
- *  0 : The operation was initiated. Once the operation finishes, the callback will be invoked.
- * <0 : An error occured when trying to set up the operation. The callback will not be invoked.
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
  *      0 : Success.
  * -errno : An error occured.
  *          data is the error string.
  */
-EXTERN int nfs_mknod_async(struct nfs_context *nfs, const char *path, int mode, int dev, nfs_cb cb, void *private_data);
+EXTERN int nfs_mknod_async(struct nfs_context *nfs, const char *path, int mode,
+                           int dev, nfs_cb cb, void *private_data);
 /*
  * Sync mknod()
  * Function returns
  *      0 : Success
  * -errno : An error occured.
  */
-EXTERN int nfs_mknod(struct nfs_context *nfs, const char *path, int mode, int dev);
+EXTERN int nfs_mknod(struct nfs_context *nfs, const char *path, int mode,
+                     int dev);
 
 
 
@@ -907,8 +1012,10 @@ EXTERN int nfs_mknod(struct nfs_context *nfs, const char *path, int mode, int de
  * Async unlink()
  *
  * Function returns
- *  0 : The operation was initiated. Once the operation finishes, the callback will be invoked.
- * <0 : An error occured when trying to set up the operation. The callback will not be invoked.
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
  *      0 : Success.
@@ -916,7 +1023,8 @@ EXTERN int nfs_mknod(struct nfs_context *nfs, const char *path, int mode, int de
  * -errno : An error occured.
  *          data is the error string.
  */
-EXTERN int nfs_unlink_async(struct nfs_context *nfs, const char *path, nfs_cb cb, void *private_data);
+EXTERN int nfs_unlink_async(struct nfs_context *nfs, const char *path,
+                            nfs_cb cb, void *private_data);
 /*
  * Sync unlink()
  * Function returns
@@ -936,8 +1044,10 @@ struct nfsdir;
  * Async opendir()
  *
  * Function returns
- *  0 : The operation was initiated. Once the operation finishes, the callback will be invoked.
- * <0 : An error occured when trying to set up the operation. The callback will not be invoked.
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
  *
  * When struct nfsdir * is returned, this resource is closed/freed by calling nfs_closedir()
  *
@@ -947,14 +1057,16 @@ struct nfsdir;
  * -errno : An error occured.
  *          data is the error string.
  */
-EXTERN int nfs_opendir_async(struct nfs_context *nfs, const char *path, nfs_cb cb, void *private_data);
+EXTERN int nfs_opendir_async(struct nfs_context *nfs, const char *path,
+                             nfs_cb cb, void *private_data);
 /*
  * Sync opendir()
  * Function returns
  *      0 : Success
  * -errno : An error occured.
  */
-EXTERN int nfs_opendir(struct nfs_context *nfs, const char *path, struct nfsdir **nfsdir);
+EXTERN int nfs_opendir(struct nfs_context *nfs, const char *path,
+                       struct nfsdir **nfsdir);
 
 
 
@@ -989,7 +1101,8 @@ struct nfsdirent  {
 /*
  * nfs_readdir() never blocks, so no special sync/async versions are available
  */
-EXTERN struct nfsdirent *nfs_readdir(struct nfs_context *nfs, struct nfsdir *nfsdir);
+EXTERN struct nfsdirent *nfs_readdir(struct nfs_context *nfs,
+                                     struct nfsdir *nfsdir);
 
 
 /*
@@ -1039,8 +1152,10 @@ EXTERN void nfs_closedir(struct nfs_context *nfs, struct nfsdir *nfsdir);
  * Async chdir(<path>)
  *
  * Function returns
- *  0 : The operation was initiated. Once the operation finishes, the callback will be invoked.
- * <0 : An error occured when trying to set up the operation. The callback will not be invoked.
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
  *      0 : Success.
@@ -1048,7 +1163,8 @@ EXTERN void nfs_closedir(struct nfs_context *nfs, struct nfsdir *nfsdir);
  * -errno : An error occured.
  *          data is the error string.
  */
-EXTERN int nfs_chdir_async(struct nfs_context *nfs, const char *path, nfs_cb cb, void *private_data);
+EXTERN int nfs_chdir_async(struct nfs_context *nfs, const char *path,
+                           nfs_cb cb, void *private_data);
 /*
  * Sync chdir(<path>)
  * Function returns
@@ -1082,8 +1198,10 @@ EXTERN void nfs_getcwd(struct nfs_context *nfs, const char **cwd);
 /*
  * Async statvfs(<dirname>)
  * Function returns
- *  0 : The operation was initiated. Once the operation finishes, the callback will be invoked.
- * <0 : An error occured when trying to set up the operation. The callback will not be invoked.
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
  *      0 : Success.
@@ -1092,14 +1210,16 @@ EXTERN void nfs_getcwd(struct nfs_context *nfs, const char **cwd);
  *          data is the error string.
  */
 struct statvfs;
-EXTERN int nfs_statvfs_async(struct nfs_context *nfs, const char *path, nfs_cb cb, void *private_data);
+EXTERN int nfs_statvfs_async(struct nfs_context *nfs, const char *path,
+                             nfs_cb cb, void *private_data);
 /*
  * Sync statvfs(<dirname>)
  * Function returns
  *      0 : The operation was successful.
  * -errno : The command failed.
  */
-EXTERN int nfs_statvfs(struct nfs_context *nfs, const char *path, struct statvfs *svfs);
+EXTERN int nfs_statvfs(struct nfs_context *nfs, const char *path,
+                       struct statvfs *svfs);
 
 
 /*
@@ -1108,25 +1228,30 @@ EXTERN int nfs_statvfs(struct nfs_context *nfs, const char *path, struct statvfs
 /*
  * Async readlink(<name>)
  * Function returns
- *  0 : The operation was initiated. Once the operation finishes, the callback will be invoked.
- * <0 : An error occured when trying to set up the operation. The callback will not be invoked.
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
  *      0 : Success.
  *          data is a char *
- *          data is only valid during the callback and is automatically freed when the callback returns.
+ *          data is only valid during the callback and is automatically freed
+ *          when the callback returns.
  * -errno : An error occured.
  *          data is the error string.
  */
 struct statvfs;
-EXTERN int nfs_readlink_async(struct nfs_context *nfs, const char *path, nfs_cb cb, void *private_data);
+EXTERN int nfs_readlink_async(struct nfs_context *nfs, const char *path,
+                              nfs_cb cb, void *private_data);
 /*
  * Sync readlink(<name>)
  * Function returns
  *      0 : The operation was successful.
  * -errno : The command failed.
  */
-EXTERN int nfs_readlink(struct nfs_context *nfs, const char *path, char *buf, int bufsize);
+EXTERN int nfs_readlink(struct nfs_context *nfs, const char *path, char *buf,
+                        int bufsize);
 
 /*
  * Sync readlink2(<name>)
@@ -1136,7 +1261,8 @@ EXTERN int nfs_readlink(struct nfs_context *nfs, const char *path, char *buf, in
  * *bufptr : NULL if the command failed, otherwise the contents of the symlink.
  *           The caller must free the buffer.
  */
-EXTERN int nfs_readlink2(struct nfs_context *nfs, const char *path, char **bufptr);
+EXTERN int nfs_readlink2(struct nfs_context *nfs, const char *path,
+                         char **bufptr);
 
 
 
@@ -1146,8 +1272,10 @@ EXTERN int nfs_readlink2(struct nfs_context *nfs, const char *path, char **bufpt
 /*
  * Async chmod(<name>)
  * Function returns
- *  0 : The operation was initiated. Once the operation finishes, the callback will be invoked.
- * <0 : An error occured when trying to set up the operation. The callback will not be invoked.
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
  *      0 : Success.
@@ -1155,7 +1283,8 @@ EXTERN int nfs_readlink2(struct nfs_context *nfs, const char *path, char **bufpt
  * -errno : An error occured.
  *          data is the error string.
  */
-EXTERN int nfs_chmod_async(struct nfs_context *nfs, const char *path, int mode, nfs_cb cb, void *private_data);
+EXTERN int nfs_chmod_async(struct nfs_context *nfs, const char *path, int mode,
+                           nfs_cb cb, void *private_data);
 /*
  * Sync chmod(<name>)
  * Function returns
@@ -1170,8 +1299,10 @@ EXTERN int nfs_chmod(struct nfs_context *nfs, const char *path, int mode);
  * symbolic link itself.
  *
  * Function returns
- *  0 : The operation was initiated. Once the operation finishes, the callback will be invoked.
- * <0 : An error occured when trying to set up the operation. The callback will not be invoked.
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
  *      0 : Success.
@@ -1179,7 +1310,8 @@ EXTERN int nfs_chmod(struct nfs_context *nfs, const char *path, int mode);
  * -errno : An error occured.
  *          data is the error string.
  */
-EXTERN int nfs_lchmod_async(struct nfs_context *nfs, const char *path, int mode, nfs_cb cb, void *private_data);
+EXTERN int nfs_lchmod_async(struct nfs_context *nfs, const char *path,
+                            int mode, nfs_cb cb, void *private_data);
 /*
  * Sync chmod(<name>)
  *
@@ -1200,8 +1332,10 @@ EXTERN int nfs_lchmod(struct nfs_context *nfs, const char *path, int mode);
 /*
  * Async fchmod(<handle>)
  * Function returns
- *  0 : The operation was initiated. Once the operation finishes, the callback will be invoked.
- * <0 : An error occured when trying to set up the operation. The callback will not be invoked.
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
  *      0 : Success.
@@ -1209,7 +1343,8 @@ EXTERN int nfs_lchmod(struct nfs_context *nfs, const char *path, int mode);
  * -errno : An error occured.
  *          data is the error string.
  */
-EXTERN int nfs_fchmod_async(struct nfs_context *nfs, struct nfsfh *nfsfh, int mode, nfs_cb cb, void *private_data);
+EXTERN int nfs_fchmod_async(struct nfs_context *nfs, struct nfsfh *nfsfh,
+                            int mode, nfs_cb cb, void *private_data);
 /*
  * Sync fchmod(<handle>)
  * Function returns
@@ -1226,8 +1361,10 @@ EXTERN int nfs_fchmod(struct nfs_context *nfs, struct nfsfh *nfsfh, int mode);
 /*
  * Async chown(<name>)
  * Function returns
- *  0 : The operation was initiated. Once the operation finishes, the callback will be invoked.
- * <0 : An error occured when trying to set up the operation. The callback will not be invoked.
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
  *      0 : Success.
@@ -1235,14 +1372,16 @@ EXTERN int nfs_fchmod(struct nfs_context *nfs, struct nfsfh *nfsfh, int mode);
  * -errno : An error occured.
  *          data is the error string.
  */
-EXTERN int nfs_chown_async(struct nfs_context *nfs, const char *path, int uid, int gid, nfs_cb cb, void *private_data);
+EXTERN int nfs_chown_async(struct nfs_context *nfs, const char *path, int uid,
+                           int gid, nfs_cb cb, void *private_data);
 /*
  * Sync chown(<name>)
  * Function returns
  *      0 : The operation was successful.
  * -errno : The command failed.
  */
-EXTERN int nfs_chown(struct nfs_context *nfs, const char *path, int uid, int gid);
+EXTERN int nfs_chown(struct nfs_context *nfs, const char *path, int uid,
+                     int gid);
 /*
  * Async chown(<name>)
  *
@@ -1250,8 +1389,10 @@ EXTERN int nfs_chown(struct nfs_context *nfs, const char *path, int uid, int gid
  * symbolic link itself.
  *
  * Function returns
- *  0 : The operation was initiated. Once the operation finishes, the callback will be invoked.
- * <0 : An error occured when trying to set up the operation. The callback will not be invoked.
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
  *      0 : Success.
@@ -1259,7 +1400,8 @@ EXTERN int nfs_chown(struct nfs_context *nfs, const char *path, int uid, int gid
  * -errno : An error occured.
  *          data is the error string.
  */
-EXTERN int nfs_lchown_async(struct nfs_context *nfs, const char *path, int uid, int gid, nfs_cb cb, void *private_data);
+EXTERN int nfs_lchown_async(struct nfs_context *nfs, const char *path, int uid,
+                            int gid, nfs_cb cb, void *private_data);
 /*
  * Sync chown(<name>)
  *
@@ -1270,7 +1412,8 @@ EXTERN int nfs_lchown_async(struct nfs_context *nfs, const char *path, int uid, 
  *      0 : The operation was successful.
  * -errno : The command failed.
  */
-EXTERN int nfs_lchown(struct nfs_context *nfs, const char *path, int uid, int gid);
+EXTERN int nfs_lchown(struct nfs_context *nfs, const char *path, int uid,
+                      int gid);
 
 
 
@@ -1280,8 +1423,10 @@ EXTERN int nfs_lchown(struct nfs_context *nfs, const char *path, int uid, int gi
 /*
  * Async fchown(<handle>)
  * Function returns
- *  0 : The operation was initiated. Once the operation finishes, the callback will be invoked.
- * <0 : An error occured when trying to set up the operation. The callback will not be invoked.
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
  *      0 : Success.
@@ -1289,14 +1434,16 @@ EXTERN int nfs_lchown(struct nfs_context *nfs, const char *path, int uid, int gi
  * -errno : An error occured.
  *          data is the error string.
  */
-EXTERN int nfs_fchown_async(struct nfs_context *nfs, struct nfsfh *nfsfh, int uid, int gid, nfs_cb cb, void *private_data);
+EXTERN int nfs_fchown_async(struct nfs_context *nfs, struct nfsfh *nfsfh,
+                            int uid, int gid, nfs_cb cb, void *private_data);
 /*
  * Sync fchown(<handle>)
  * Function returns
  *      0 : The operation was successful.
  * -errno : The command failed.
  */
-EXTERN int nfs_fchown(struct nfs_context *nfs, struct nfsfh *nfsfh, int uid, int gid);
+EXTERN int nfs_fchown(struct nfs_context *nfs, struct nfsfh *nfsfh, int uid,
+                      int gid);
 
 
 
@@ -1307,8 +1454,10 @@ EXTERN int nfs_fchown(struct nfs_context *nfs, struct nfsfh *nfsfh, int uid, int
 /*
  * Async utimes(<path>)
  * Function returns
- *  0 : The operation was initiated. Once the operation finishes, the callback will be invoked.
- * <0 : An error occured when trying to set up the operation. The callback will not be invoked.
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
  *      0 : Success.
@@ -1316,14 +1465,17 @@ EXTERN int nfs_fchown(struct nfs_context *nfs, struct nfsfh *nfsfh, int uid, int
  * -errno : An error occured.
  *          data is the error string.
  */
-EXTERN int nfs_utimes_async(struct nfs_context *nfs, const char *path, struct timeval *times, nfs_cb cb, void *private_data);
+EXTERN int nfs_utimes_async(struct nfs_context *nfs, const char *path,
+                            struct timeval *times, nfs_cb cb,
+                            void *private_data);
 /*
  * Sync utimes(<path>)
  * Function returns
  *      0 : The operation was successful.
  * -errno : The command failed.
  */
-EXTERN int nfs_utimes(struct nfs_context *nfs, const char *path, struct timeval *times);
+EXTERN int nfs_utimes(struct nfs_context *nfs, const char *path,
+                      struct timeval *times);
 /*
  * Async utimes(<path>)
  *
@@ -1331,8 +1483,10 @@ EXTERN int nfs_utimes(struct nfs_context *nfs, const char *path, struct timeval 
  * symbolic link itself.
  *
  * Function returns
- *  0 : The operation was initiated. Once the operation finishes, the callback will be invoked.
- * <0 : An error occured when trying to set up the operation. The callback will not be invoked.
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
  *      0 : Success.
@@ -1340,7 +1494,9 @@ EXTERN int nfs_utimes(struct nfs_context *nfs, const char *path, struct timeval 
  * -errno : An error occured.
  *          data is the error string.
  */
-EXTERN int nfs_lutimes_async(struct nfs_context *nfs, const char *path, struct timeval *times, nfs_cb cb, void *private_data);
+EXTERN int nfs_lutimes_async(struct nfs_context *nfs, const char *path,
+                             struct timeval *times, nfs_cb cb,
+                             void *private_data);
 /*
  * Sync utimes(<path>)
  *
@@ -1351,7 +1507,8 @@ EXTERN int nfs_lutimes_async(struct nfs_context *nfs, const char *path, struct t
  *      0 : The operation was successful.
  * -errno : The command failed.
  */
-EXTERN int nfs_lutimes(struct nfs_context *nfs, const char *path, struct timeval *times);
+EXTERN int nfs_lutimes(struct nfs_context *nfs, const char *path,
+                       struct timeval *times);
 
 
 /*
@@ -1360,8 +1517,10 @@ EXTERN int nfs_lutimes(struct nfs_context *nfs, const char *path, struct timeval
 /*
  * Async utime(<path>)
  * Function returns
- *  0 : The operation was initiated. Once the operation finishes, the callback will be invoked.
- * <0 : An error occured when trying to set up the operation. The callback will not be invoked.
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
  *      0 : Success.
@@ -1370,14 +1529,17 @@ EXTERN int nfs_lutimes(struct nfs_context *nfs, const char *path, struct timeval
  *          data is the error string.
  */
 struct utimbuf;
-EXTERN int nfs_utime_async(struct nfs_context *nfs, const char *path, struct utimbuf *times, nfs_cb cb, void *private_data);
+EXTERN int nfs_utime_async(struct nfs_context *nfs, const char *path,
+                           struct utimbuf *times, nfs_cb cb,
+                           void *private_data);
 /*
  * Sync utime(<path>)
  * Function returns
  *      0 : The operation was successful.
  * -errno : The command failed.
  */
-EXTERN int nfs_utime(struct nfs_context *nfs, const char *path, struct utimbuf *times);
+EXTERN int nfs_utime(struct nfs_context *nfs, const char *path,
+                     struct utimbuf *times);
 
 
 
@@ -1388,8 +1550,10 @@ EXTERN int nfs_utime(struct nfs_context *nfs, const char *path, struct utimbuf *
 /*
  * Async access(<path>)
  * Function returns
- *  0 : The operation was initiated. Once the operation finishes, the callback will be invoked.
- * <0 : An error occured when trying to set up the operation. The callback will not be invoked.
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
  *      0 : Success.
@@ -1397,7 +1561,8 @@ EXTERN int nfs_utime(struct nfs_context *nfs, const char *path, struct utimbuf *
  * -errno : An error occured.
  *          data is the error string.
  */
-EXTERN int nfs_access_async(struct nfs_context *nfs, const char *path, int mode, nfs_cb cb, void *private_data);
+EXTERN int nfs_access_async(struct nfs_context *nfs, const char *path,
+                            int mode, nfs_cb cb, void *private_data);
 /*
  * Sync access(<path>)
  * Function returns
@@ -1416,8 +1581,10 @@ EXTERN int nfs_access(struct nfs_context *nfs, const char *path, int mode);
 /*
  * Async access2(<path>)
  * Function returns
- *  0 : The operation was initiated. Once the operation finishes, the callback will be invoked.
- * <0 : An error occured when trying to set up the operation. The callback will not be invoked.
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
  *      >= 0 : A mask of R_OK, W_OK and X_OK indicating which permissions are
@@ -1426,7 +1593,8 @@ EXTERN int nfs_access(struct nfs_context *nfs, const char *path, int mode);
  * -errno : An error occured.
  *          data is the error string.
  */
-EXTERN int nfs_access2_async(struct nfs_context *nfs, const char *path, nfs_cb cb, void *private_data);
+EXTERN int nfs_access2_async(struct nfs_context *nfs, const char *path,
+                             nfs_cb cb, void *private_data);
 /*
  * Sync access(<path>)
  * Function returns
@@ -1445,8 +1613,10 @@ EXTERN int nfs_access2(struct nfs_context *nfs, const char *path);
 /*
  * Async symlink(<path>)
  * Function returns
- *  0 : The operation was initiated. Once the operation finishes, the callback will be invoked.
- * <0 : An error occured when trying to set up the operation. The callback will not be invoked.
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
  *      0 : Success.
@@ -1454,14 +1624,17 @@ EXTERN int nfs_access2(struct nfs_context *nfs, const char *path);
  * -errno : An error occured.
  *          data is the error string.
  */
-EXTERN int nfs_symlink_async(struct nfs_context *nfs, const char *target, const char *linkname, nfs_cb cb, void *private_data);
+EXTERN int nfs_symlink_async(struct nfs_context *nfs, const char *target,
+                             const char *linkname, nfs_cb cb,
+                             void *private_data);
 /*
  * Sync symlink(<path>)
  * Function returns
  *      0 : The operation was successful.
  * -errno : The command failed.
  */
-EXTERN int nfs_symlink(struct nfs_context *nfs, const char *target, const char *linkname);
+EXTERN int nfs_symlink(struct nfs_context *nfs, const char *target,
+                       const char *linkname);
 
 
 /*
@@ -1470,8 +1643,10 @@ EXTERN int nfs_symlink(struct nfs_context *nfs, const char *target, const char *
 /*
  * Async rename(<oldpath>, <newpath>)
  * Function returns
- *  0 : The operation was initiated. Once the operation finishes, the callback will be invoked.
- * <0 : An error occured when trying to set up the operation. The callback will not be invoked.
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
  *      0 : Success.
@@ -1479,14 +1654,16 @@ EXTERN int nfs_symlink(struct nfs_context *nfs, const char *target, const char *
  * -errno : An error occured.
  *          data is the error string.
  */
-EXTERN int nfs_rename_async(struct nfs_context *nfs, const char *oldpath, const char *newpath, nfs_cb cb, void *private_data);
+EXTERN int nfs_rename_async(struct nfs_context *nfs, const char *oldpath,
+                            const char *newpath, nfs_cb cb, void *private_data);
 /*
  * Sync rename(<oldpath>, <newpath>)
  * Function returns
  *      0 : The operation was successful.
  * -errno : The command failed.
  */
-EXTERN int nfs_rename(struct nfs_context *nfs, const char *oldpath, const char *newpath);
+EXTERN int nfs_rename(struct nfs_context *nfs, const char *oldpath,
+                      const char *newpath);
 
 
 
@@ -1496,8 +1673,10 @@ EXTERN int nfs_rename(struct nfs_context *nfs, const char *oldpath, const char *
 /*
  * Async link(<oldpath>, <newpath>)
  * Function returns
- *  0 : The operation was initiated. Once the operation finishes, the callback will be invoked.
- * <0 : An error occured when trying to set up the operation. The callback will not be invoked.
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
  *      0 : Success.
@@ -1505,14 +1684,16 @@ EXTERN int nfs_rename(struct nfs_context *nfs, const char *oldpath, const char *
  * -errno : An error occured.
  *          data is the error string.
  */
-EXTERN int nfs_link_async(struct nfs_context *nfs, const char *oldpath, const char *newpath, nfs_cb cb, void *private_data);
+EXTERN int nfs_link_async(struct nfs_context *nfs, const char *oldpath,
+                          const char *newpath, nfs_cb cb, void *private_data);
 /*
  * Sync link(<oldpath>, <newpath>)
  * Function returns
  *      0 : The operation was successful.
  * -errno : The command failed.
  */
-EXTERN int nfs_link(struct nfs_context *nfs, const char *oldpath, const char *newpath);
+EXTERN int nfs_link(struct nfs_context *nfs, const char *oldpath,
+                    const char *newpath);
 
 
 /*
@@ -1526,8 +1707,10 @@ EXTERN int nfs_link(struct nfs_context *nfs, const char *oldpath, const char *ne
  * This function will return the list of exports from an NFS server.
  *
  * Function returns
- *  0 : The operation was initiated. Once the operation finishes, the callback will be invoked.
- * <0 : An error occured when trying to set up the operation. The callback will not be invoked.
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
  *      0 : Success.
@@ -1536,7 +1719,8 @@ EXTERN int nfs_link(struct nfs_context *nfs, const char *oldpath, const char *ne
  * -errno : An error occured.
  *          data is the error string.
  */
-EXTERN int mount_getexports_async(struct rpc_context *rpc, const char *server, rpc_cb cb, void *private_data);
+EXTERN int mount_getexports_async(struct rpc_context *rpc, const char *server,
+                                  rpc_cb cb, void *private_data);
 /*
  * Sync getexports(<server>)
  * Function returns
@@ -1557,8 +1741,9 @@ struct nfs_server_list {
 
 /*
  * Sync find_local_servers(<server>)
- * This function will probe all local networks for NFS server. This function will
- * block for one second while awaiting for all nfs servers to respond.
+ * This function will probe all local networks for NFS server.
+ * This function will block for one second while awaiting for all nfs servers
+ * to respond.
  *
  * Function returns
  * NULL : something failed
