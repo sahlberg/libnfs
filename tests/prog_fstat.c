@@ -32,7 +32,7 @@
 
 void usage(void)
 {
-	fprintf(stderr, "Usage: prog-fstat <url> <cwd> <path>\n");
+	fprintf(stderr, "Usage: prog_fstat <url> <cwd> <path>\n");
 	exit(1);
 }
 

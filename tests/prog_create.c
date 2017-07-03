@@ -33,7 +33,7 @@
 
 void usage(void)
 {
-	fprintf(stderr, "Usage: prog-create <url> <cwd> <path> <mode(octal)>"
+	fprintf(stderr, "Usage: prog_create <url> <cwd> <path> <mode(octal)>"
                 "\n");
 	exit(1);
 }

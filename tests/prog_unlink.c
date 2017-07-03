@@ -33,7 +33,7 @@
 
 void usage(void)
 {
-	fprintf(stderr, "Usage: prog-unlink <url> <cwd> <path>\n");
+	fprintf(stderr, "Usage: prog_unlink <url> <cwd> <path>\n");
 	exit(1);
 }
 

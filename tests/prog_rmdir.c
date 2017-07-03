@@ -33,7 +33,7 @@
 
 void usage(void)
 {
-	fprintf(stderr, "Usage: prog-rmdir <url> <cwd> <path>\n");
+	fprintf(stderr, "Usage: prog_rmdir <url> <cwd> <path>\n");
 	exit(1);
 }
 

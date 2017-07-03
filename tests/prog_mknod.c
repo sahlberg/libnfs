@@ -33,7 +33,7 @@
 
 void usage(void)
 {
-	fprintf(stderr, "Usage: prog-mknod <url> <cwd> <path> <mode(octal)>"
+	fprintf(stderr, "Usage: prog_mknod <url> <cwd> <path> <mode(octal)>"
                 "<dev(hex)>\n");
 	exit(1);
 }

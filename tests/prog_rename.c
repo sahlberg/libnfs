@@ -33,7 +33,7 @@
 
 void usage(void)
 {
-	fprintf(stderr, "Usage: prog-rename <url> <cwd> <oldpath> <newpath>\n");
+	fprintf(stderr, "Usage: prog_rename <url> <cwd> <oldpath> <newpath>\n");
 	exit(1);
 }
 

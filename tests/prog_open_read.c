@@ -33,7 +33,8 @@
 
 void usage(void)
 {
-	fprintf(stderr, "Usage: prog_symlink <url> <cwd> <target> <link>\n");
+	fprintf(stderr, "Usage: prog_open_read <url> <cwd> <path> <flags>"
+                "\n");
 	exit(1);
 }
 
@@ -42,11 +43,32 @@ int main(int argc, char *argv[])
 	struct nfs_context *nfs = NULL;
 	struct nfs_url *url = NULL;
 	int ret = 0;
-	char buf[1024];
+        int flags = 0, count;
+        struct nfsfh *fh;
+        char buf[1024];
 
 	if (argc != 5) {
 		usage();
 	}
+
+        if (strstr(argv[4], "O_RDONLY")) {
+                flags |= O_RDONLY;
+        }
+        if (strstr(argv[4], "O_RDWR")) {
+                flags |= O_RDWR;
+        }
+        if (strstr(argv[4], "O_WRONLY")) {
+                flags |= O_WRONLY;
+        }
+        if (strstr(argv[4], "O_NOFOLLOW")) {
+                flags |= O_NOFOLLOW;
+        }
+        if (strstr(argv[4], "O_APPEND")) {
+                flags |= O_APPEND;
+        }
+        if (strstr(argv[4], "O_TRUNC")) {
+                flags |= O_TRUNC;
+        }
 
 	nfs = nfs_init_context();
 	if (nfs == NULL) {
@@ -73,30 +95,30 @@ int main(int argc, char *argv[])
 		ret = 1;
 		goto finished;
 	}
-        
-	if (nfs_symlink(nfs, argv[3], argv[4])) {
- 		fprintf(stderr, "Failed to create symlink: %s\n",
+
+	if (nfs_open(nfs, argv[3],flags, &fh)) {
+ 		fprintf(stderr, "Failed to open(): %s\n",
 			nfs_get_error(nfs));
 		ret = 1;
 		goto finished;
 	}
 
-        memset(buf, 0, sizeof(buf));
-        
-	if (nfs_readlink(nfs, argv[4], buf, sizeof(buf))) {
-                fprintf(stderr, "Failed to read symlink: %s\n",
-                        nfs_get_error(nfs));
-                ret = 1;
-                goto finished;
+	count = nfs_read(nfs, fh, sizeof(buf), buf);
+	if (count < 0) {
+ 		fprintf(stderr, "Failed to read(): %s\n",
+			nfs_get_error(nfs));
+		ret = 1;
+		goto finished;
 	}
 
-        if (strcmp(argv[3], buf)) {
-                fprintf(stderr, "Symlink target did not read back correctly."
-                        "Expected \"%s\" Got \"%s\"\n",
-                        buf, argv[3]);
-                ret = 1;
-                goto finished;
-        }                
+        write(1, buf, count);
+
+	if (nfs_close(nfs, fh)) {
+ 		fprintf(stderr, "Failed to close(): %s\n",
+			nfs_get_error(nfs));
+		ret = 1;
+		goto finished;
+	}
         
 finished:
 	nfs_destroy_url(url);

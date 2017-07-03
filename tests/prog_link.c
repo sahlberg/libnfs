@@ -33,7 +33,7 @@
 
 void usage(void)
 {
-	fprintf(stderr, "Usage: prog-link <url> <cwd> <oldpath> <newpath>\n");
+	fprintf(stderr, "Usage: prog_link <url> <cwd> <oldpath> <newpath>\n");
 	exit(1);
 }
 

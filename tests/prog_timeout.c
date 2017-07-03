@@ -32,7 +32,7 @@
 
 void usage(void)
 {
-	fprintf(stderr, "Usage: prog-stat <file>\n");
+	fprintf(stderr, "Usage: prog_timeout <file>\n");
 	exit(1);
 }
 
