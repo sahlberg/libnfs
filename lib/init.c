@@ -50,15 +50,15 @@
 #include "libnfs-raw.h"
 #include "libnfs-private.h"
 
-int rpc_current_time(void)
+long rpc_current_time(void)
 {
 #ifdef HAVE_CLOCK_GETTIME
 	struct timespec tp;
 
 	clock_gettime(CLOCK_MONOTONIC_COARSE, &tp);
-	return tp.tv_sec;
+	return tp.tv_sec * 1000 + tp.tv_nsec / 1000000;
 #else
-	return time(NULL);
+	return (long) time(NULL) * 1000;
 #endif
 }
 
