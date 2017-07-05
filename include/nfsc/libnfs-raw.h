@@ -17,8 +17,8 @@
 */
 /*
  * This is the lowlevel interface to access NFS resources.
- * Through this interface you have access to the full gamut of nfs and nfs related
- * protocol as well as the XDR encoded/decoded structures.
+ * Through this interface you have access to the full gamut of nfs and nfs
+ * related protocol as well as the XDR encoded/decoded structures.
  */
 #ifndef _LIBNFS_RAW_H_
 #define _LIBNFS_RAW_H_
@@ -36,53 +36,60 @@ struct rpc_data {
 };
 
 struct rpc_context;
-struct rpc_context *rpc_init_context(void);
-void rpc_destroy_context(struct rpc_context *rpc);
+EXTERN struct rpc_context *rpc_init_context(void);
+EXTERN void rpc_destroy_context(struct rpc_context *rpc);
 
-void rpc_set_auth(struct rpc_context *rpc, struct AUTH *auth);
+EXTERN void rpc_set_auth(struct rpc_context *rpc, struct AUTH *auth);
 
 /*
  * Used for interfacing the api into an external eventsystem.
  *
- * rpc_get_fd() returns the file descriptor for the context we need to
- * listen for events from.
+ * rpc_get_fd() returns the file descriptor to poll.
  *
  * rpc_which_events() returns which events that we need to poll for.
  * This is a combination of the POLLIN and POLLOUT flags.
  *
- * rpc_service() This function should be called once there are events triggered
- * for the filedescriptor. This function takes POLLIN/POLLOUT/POLLHUP/POLLERR
- * as arguments.
+ * rpc_service() is called everytime there are events that needs to be
+ * processed.
+ * revents is a combination of POLLIN/POLLOUT/POLLHUP/POLLERR
+ *
  * This function returns 0 on success or -1 on error. If it returns -1 it
  * means that the socket is in an unrecoverable error state (disconnected?)
  * and that no further commands can be used.
  * When this happens the application should destroy the now errored context
  * re-create a new context and reconnect.
  *
+ *
+ * rpc_service() will both process the events indicated by revents and also
+ * check for and terminate any RPCs that have timed out.
+ * Thus, if using rpc timeouts, you will need to ensure that rpc_service()
+ * is invoked on a regular basis so that the timeout processing can take place.
+ * The easiest way to do this is to call rpc_service() once every 100ms from
+ * your event system and passing revents as 0. 
  */
-int rpc_get_fd(struct rpc_context *rpc);
-int rpc_which_events(struct rpc_context *rpc);
-int rpc_service(struct rpc_context *rpc, int revents);
+EXTERN int rpc_get_fd(struct rpc_context *rpc);
+EXTERN int rpc_which_events(struct rpc_context *rpc);
+EXTERN int rpc_service(struct rpc_context *rpc, int revents);
 
 /*
  * Returns the number of commands in-flight. Can be used by the application
- * to check if there are any more responses we are awaiting for the server
+ * to check if there are any more responses we are awaiting from the server
  * or if the connection is completely idle.
  */
-int rpc_queue_length(struct rpc_context *rpc);
+EXTERN int rpc_queue_length(struct rpc_context *rpc);
 
 /*
  * Set which UID/GID to use in the authenticator.
  * By default libnfs will use getuid()/getgid() where available
  * and 65534/65534 where not.
  */
-void rpc_set_uid(struct rpc_context *rpc, int uid);
-void rpc_set_gid(struct rpc_context *rpc, int gid);
+EXTERN void rpc_set_uid(struct rpc_context *rpc, int uid);
+EXTERN void rpc_set_gid(struct rpc_context *rpc, int gid);
 
 /*
  * Create a server context.
  */
-struct rpc_context *rpc_init_server_context(int s);
+EXTERN struct rpc_context *rpc_init_server_context(int s);
 
 /* This is the callback functions for server contexts.
  * These are invoked from the library when a CALL has been received and a
@@ -105,8 +112,7 @@ struct rpc_context *rpc_init_server_context(int s);
  * The return value is:
  *  0:  Procedure was completed normally.
  * !0:  An abnormal error has occured. It is unrecoverable and the only
- *      meaningful cause of action is to tear down the connection from
- *      the client.
+ *      meaningful action is to tear down the connection to the server.
  */
 typedef int (*service_fn)(struct rpc_context *rpc, struct rpc_msg *call);
 
@@ -121,34 +127,35 @@ struct service_proc {
  * Register a service callback table for program/version.
  * Can only be used with contexts created with rpc_init_server_context()
  */
-int rpc_register_service(struct rpc_context *rpc, int program, int version,
-                         struct service_proc *procs, int num_procs);
+EXTERN int rpc_register_service(struct rpc_context *rpc, int program,
+                                int version, struct service_proc *procs,
+                                int num_procs);
 
-int rpc_send_reply(struct rpc_context *rpc, struct rpc_msg *call,
-                   void *reply, zdrproc_t encode_fn,
-                   int alloc_hint);
+EXTERN int rpc_send_reply(struct rpc_context *rpc, struct rpc_msg *call,
+                          void *reply, zdrproc_t encode_fn,
+                          int alloc_hint);
 
 /*
  * When an operation failed, this function can extract a detailed error string.
  */
-char *rpc_get_error(struct rpc_context *rpc);
+EXTERN char *rpc_get_error(struct rpc_context *rpc);
 
-  /* Utility function to get an RPC context from a NFS context. Useful for doing low level NFSACL
- * calls on a NFS context.
+/* Utility function to get an RPC context from a NFS context. Useful for doing
+ * low level NFSACL calls on a NFS context.
  */
-struct rpc_context *nfs_get_rpc_context(struct nfs_context *nfs);
+EXTERN struct rpc_context *nfs_get_rpc_context(struct nfs_context *nfs);
 
-/* This function returns the nfs_fh3 structure from a nfsfh structure.
-   This allows to use a file onened with nfs_open() together with low-level
+/* This function returns the nfs_fh structure from a nfsfh structure.
+   This allows to use a file opened with nfs_open() together with low-level
    rpc functions that thake a nfs filehandle
 */
-struct nfs_fh3 *nfs_get_fh(struct nfsfh *nfsfh);
+EXTERN struct nfs_fh *nfs_get_fh(struct nfsfh *nfsfh);
 
 /* Control what the next XID value to be used on the context will be.
    This can be used when multiple contexts are used to the same server
    to avoid that the two contexts have xid collissions.
  */
-void rpc_set_next_xid(struct rpc_context *rpc, uint32_t xid);
+EXTERN void rpc_set_next_xid(struct rpc_context *rpc, uint32_t xid);
 
 /* This function can be used to set the file descriptor used for
  * the RPC context. It is primarily useful when emulating dup2()
@@ -162,7 +169,7 @@ void rpc_set_next_xid(struct rpc_context *rpc, uint32_t xid);
  * close(oldfd);
  * ...
  */
-void rpc_set_fd(struct rpc_context *rpc, int fd);
+EXTERN void rpc_set_fd(struct rpc_context *rpc, int fd);
 
 #define RPC_STATUS_SUCCESS	   	0
 #define RPC_STATUS_ERROR		1
@@ -172,38 +179,51 @@ void rpc_set_fd(struct rpc_context *rpc, int fd);
 /*
  * Async connection to the tcp port at server:port.
  * Function returns
- *  0 : The connection was initiated. Once the connection establish finishes, the callback will be invoked.
- * <0 : An error occured when trying to set up the connection. The callback will not be invoked.
+ *  0 : The connection was initiated. The callback will be invoked once the
+ *      connection establish finishes.
+ * <0 : An error occured when trying to set up the connection.
+ *      The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
  * RPC_STATUS_SUCCESS : The tcp connection was successfully established.
  *                      data is NULL.
  * RPC_STATUS_ERROR   : The connection failed to establish.
- *                      data is the erro string.
- * RPC_STATUS_CANCEL  : The connection attempt was aborted before it could complete.
+ *                      data is the error string.
+ * RPC_STATUS_CANCEL  : The connection attempt was aborted before it could
+ *                      complete.
  *                    : data is NULL.
  */
-int rpc_connect_async(struct rpc_context *rpc, const char *server, int port, rpc_cb cb, void *private_data);
+EXTERN int rpc_connect_async(struct rpc_context *rpc, const char *server,
+                             int port, rpc_cb cb, void *private_data);
+
 /*
  * Async function to connect to a specific RPC program/version
  * Function returns
- *  0 : The connection was initiated. Once the connection establish finishes, the callback will be invoked.
- * <0 : An error occured when trying to set up the connection. The callback will not be invoked.
+ *  0 : The connection was initiated. The callback will be invoked once the
+ *      connection establish finishes.
+ * <0 : An error occured when trying to set up the connection.
+ *      The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
  * RPC_STATUS_SUCCESS : The tcp connection was successfully established.
  *                      data is NULL.
  * RPC_STATUS_ERROR   : The connection failed to establish.
- *                      data is the erro string.
- * RPC_STATUS_CANCEL  : The connection attempt was aborted before it could complete.
+ *                      data is the error string.
+ * RPC_STATUS_CANCEL  : The connection attempt was aborted before it could
+ *                      complete.
  *                    : data is NULL.
  */
-int rpc_connect_program_async(struct rpc_context *rpc, const char *server, int program, int version, rpc_cb cb, void *private_data);
+EXTERN int rpc_connect_program_async(struct rpc_context *rpc,
+                                     const char *server,
+                                     int program, int version,
+                                     rpc_cb cb, void *private_data);
+
 /*
- * When disconnecting a connection in flight. All commands in flight will be called with the callback
- * and status RPC_STATUS_ERROR. Data will be the error string for the disconnection.
+ * When disconnecting a connection all commands in flight will be
+ * called with a callback status RPC_STATUS_ERROR. Data will be the
+ * error string for the disconnection.
  */
-int rpc_disconnect(struct rpc_context *rpc, const char *error);
+EXTERN int rpc_disconnect(struct rpc_context *rpc, const char *error);
 
 
 /*
@@ -212,100 +232,129 @@ int rpc_disconnect(struct rpc_context *rpc, const char *error);
 
 /*
  * Call PORTMAPPER2/NULL
+ *
  * Function returns
- *  0 : The connection was initiated. Once the connection establish finishes, the callback will be invoked.
- * <0 : An error occured when trying to set up the connection. The callback will not be invoked.
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
- * RPC_STATUS_SUCCESS : We got a successful response from the portmapper daemon.
+ * RPC_STATUS_SUCCESS : We got a successful response from the server.
  *                      data is NULL.
- * RPC_STATUS_ERROR   : An error occured when trying to contact the portmapper.
+ * RPC_STATUS_ERROR   : The command failed with an error.
  *                      data is the error string.
- * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
- *                     data is NULL.
+ * RPC_STATUS_CANCEL  : The command was cancelled.
+ *                      data is NULL.
  */
-EXTERN int rpc_pmap2_null_async(struct rpc_context *rpc, rpc_cb cb, void *private_data);
+EXTERN int rpc_pmap2_null_async(struct rpc_context *rpc,
+                                rpc_cb cb, void *private_data);
 
 
 /*
  * Call PORTMAPPER2/GETPORT.
+ *
  * Function returns
- *  0 : The connection was initiated. Once the connection establish finishes, the callback will be invoked.
- * <0 : An error occured when trying to set up the connection. The callback will not be invoked.
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
- * RPC_STATUS_SUCCESS : We got a successful response from the portmapper daemon.
+ * RPC_STATUS_SUCCESS : We got a successful response from the server.
  *                      data is a (uint32_t *), containing the port returned.
- * RPC_STATUS_ERROR   : An error occured when trying to contact the portmapper.
+ * RPC_STATUS_ERROR   : The command failed with an error.
  *                      data is the error string.
- * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
- *                     data is NULL.
+ * RPC_STATUS_CANCEL  : The command was cancelled.
+ *                      data is NULL.
  */
-EXTERN int rpc_pmap2_getport_async(struct rpc_context *rpc, int program, int version, int protocol, rpc_cb cb, void *private_data);
+EXTERN int rpc_pmap2_getport_async(struct rpc_context *rpc, int program,
+                                   int version, int protocol,
+                                   rpc_cb cb, void *private_data);
 
 /*
  * Call PORTMAPPER2/SET
+ *
  * Function returns
- *  0 : The connection was initiated. Once the connection establish finishes, the callback will be invoked.
- * <0 : An error occured when trying to set up the connection. The callback will not be invoked.
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
- * RPC_STATUS_SUCCESS : We got a successful response from the portmapper daemon.
+ * RPC_STATUS_SUCCESS : We got a successful response from the server.
  *                      data is a (uint32_t *), containing status
- * RPC_STATUS_ERROR   : An error occured when trying to contact the portmapper.
+ * RPC_STATUS_ERROR   : The command failed with an error.
  *                      data is the error string.
- * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
- *                     data is NULL.
+ * RPC_STATUS_CANCEL  : The command was cancelled.
+ *                      data is NULL.
  */
-EXTERN int rpc_pmap2_set_async(struct rpc_context *rpc, int program, int version, int protocol, int port, rpc_cb cb, void *private_data);
+EXTERN int rpc_pmap2_set_async(struct rpc_context *rpc, int program,
+                               int version, int protocol, int port,
+                               rpc_cb cb, void *private_data);
 
 /*
  * Call PORTMAPPER2/UNSET
+ *
  * Function returns
- *  0 : The connection was initiated. Once the connection establish finishes, the callback will be invoked.
- * <0 : An error occured when trying to set up the connection. The callback will not be invoked.
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
- * RPC_STATUS_SUCCESS : We got a successful response from the portmapper daemon.
+ * RPC_STATUS_SUCCESS : We got a successful response from the server.
  *                      data is a (uint32_t *), containing status
- * RPC_STATUS_ERROR   : An error occured when trying to contact the portmapper.
+ * RPC_STATUS_ERROR   : The command failed with an error.
  *                      data is the error string.
- * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
- *                     data is NULL.
+ * RPC_STATUS_CANCEL  : The command was cancelled.
+ *                      data is NULL.
  */
-EXTERN int rpc_pmap2_unset_async(struct rpc_context *rpc, int program, int version, int protocol, int port, rpc_cb cb, void *private_data);
+EXTERN int rpc_pmap2_unset_async(struct rpc_context *rpc, int program,
+                                 int version, int protocol, int port,
+                                 rpc_cb cb, void *private_data);
 
 /*
  * Call PORTMAPPER2/DUMP.
+ *
  * Function returns
- *  0 : The connection was initiated. Once the connection establish finishes, the callback will be invoked.
- * <0 : An error occured when trying to set up the connection. The callback will not be invoked.
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
- * RPC_STATUS_SUCCESS : We got a successful response from the portmapper daemon.
+ * RPC_STATUS_SUCCESS : We got a successful response from the server.
  *                      data is struct pmap2_dump_result.
- * RPC_STATUS_ERROR   : An error occured when trying to contact the portmapper.
+ * RPC_STATUS_ERROR   : The command failed with an error.
  *                      data is the error string.
- * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
- *                     data is NULL.
+ * RPC_STATUS_CANCEL  : The command was cancelled.
+ *                      data is NULL.
  */
-EXTERN int rpc_pmap2_dump_async(struct rpc_context *rpc, rpc_cb cb, void *private_data);
+EXTERN int rpc_pmap2_dump_async(struct rpc_context *rpc, rpc_cb cb,
+                                void *private_data);
 
 /*
  * Call PORTMAPPER2/CALLIT.
+ *
  * Function returns
- *  0 : The connection was initiated. Once the connection establish finishes, the callback will be invoked.
- * <0 : An error occured when trying to set up the connection. The callback will not be invoked.
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
- * RPC_STATUS_SUCCESS : We got a successful response from the portmapper daemon
+ * RPC_STATUS_SUCCESS : We got a successful response from the server.
  *                      data is a 'pmap2_call_result' pointer.
- * RPC_STATUS_ERROR   : An error occured when trying to contact the portmapper.
+ * RPC_STATUS_ERROR   : The command failed with an error.
  *                      data is the error string.
- * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
- *                     data is NULL.
+ * RPC_STATUS_CANCEL  : The command was cancelled.
+ *                      data is NULL.
  */
-EXTERN int rpc_pmap2_callit_async(struct rpc_context *rpc, int program, int version, int procedure, char *data, int datalen, rpc_cb cb, void *private_data);
+EXTERN int rpc_pmap2_callit_async(struct rpc_context *rpc, int program,
+                                  int version, int procedure,
+                                  char *data, int datalen,
+                                  rpc_cb cb, void *private_data);
 
 /*
  * PORTMAP v3 FUNCTIONS
@@ -313,767 +362,1019 @@ EXTERN int rpc_pmap2_callit_async(struct rpc_context *rpc, int program, int vers
 
 /*
  * Call PORTMAPPER3/NULL
+ *
  * Function returns
- *  0 : The connection was initiated. Once the connection establish finishes, the callback will be invoked.
- * <0 : An error occured when trying to set up the connection. The callback will not be invoked.
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
- * RPC_STATUS_SUCCESS : We got a successful response from the portmapper daemon.
+ * RPC_STATUS_SUCCESS : We got a successful response from the server.
  *                      data is NULL.
- * RPC_STATUS_ERROR   : An error occured when trying to contact the portmapper.
+ * RPC_STATUS_ERROR   : The command failed with an error.
  *                      data is the error string.
- * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
- *                     data is NULL.
+ * RPC_STATUS_CANCEL  : The command was cancelled.
+ *                      data is NULL.
  */
-EXTERN int rpc_pmap3_null_async(struct rpc_context *rpc, rpc_cb cb, void *private_data);
+EXTERN int rpc_pmap3_null_async(struct rpc_context *rpc,
+                                rpc_cb cb, void *private_data);
 
 /*
  * Call PORTMAPPER3/SET.
+ *
  * Function returns
- *  0 : The connection was initiated. Once the connection establish finishes, the callback will be invoked.
- * <0 : An error occured when trying to set up the connection. The callback will not be invoked.
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
- * RPC_STATUS_SUCCESS : We got a successful response from the portmapper daemon.
- *                      data is uint32_t *
- * RPC_STATUS_ERROR   : An error occured when trying to contact the portmapper.
+ * RPC_STATUS_SUCCESS : We got a successful response from the server.
+ *                      data is uint32_t * containing status.
+ * RPC_STATUS_ERROR   : The command failed with an error.
  *                      data is the error string.
- * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
- *                     data is NULL.
+ * RPC_STATUS_CANCEL  : The command was cancelled.
+ *                      data is NULL.
  */
 struct pmap3_mapping;
-EXTERN int rpc_pmap3_set_async(struct rpc_context *rpc, struct pmap3_mapping *map, rpc_cb cb, void *private_data);
+EXTERN int rpc_pmap3_set_async(struct rpc_context *rpc,
+                               struct pmap3_mapping *map,
+                               rpc_cb cb, void *private_data);
 
 /*
  * Call PORTMAPPER3/UNSET.
+ *
  * Function returns
- *  0 : The connection was initiated. Once the connection establish finishes, the callback will be invoked.
- * <0 : An error occured when trying to set up the connection. The callback will not be invoked.
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
- * RPC_STATUS_SUCCESS : We got a successful response from the portmapper daemon.
- *                      data is uint32_t *
- * RPC_STATUS_ERROR   : An error occured when trying to contact the portmapper.
+ * RPC_STATUS_SUCCESS : We got a successful response from the server.
+ *                      data is uint32_t * containing status.
+ * RPC_STATUS_ERROR   : The command failed with an error.
  *                      data is the error string.
- * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
- *                     data is NULL.
+ * RPC_STATUS_CANCEL  : The command was cancelled.
+ *                      data is NULL.
  */
-EXTERN int rpc_pmap3_unset_async(struct rpc_context *rpc, struct pmap3_mapping *map, rpc_cb cb, void *private_data);
+EXTERN int rpc_pmap3_unset_async(struct rpc_context *rpc,
+                                 struct pmap3_mapping *map,
+                                 rpc_cb cb, void *private_data);
 
 /*
  * Call PORTMAPPER3/GETADDR.
+ *
  * Function returns
- *  0 : The connection was initiated. Once the connection establish finishes, the callback will be invoked.
- * <0 : An error occured when trying to set up the connection. The callback will not be invoked.
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
- * RPC_STATUS_SUCCESS : We got a successful response from the portmapper daemon.
+ * RPC_STATUS_SUCCESS : We got a successful response from the server.
  *                      data is struct pmap3_string_result.
- * RPC_STATUS_ERROR   : An error occured when trying to contact the portmapper.
+ * RPC_STATUS_ERROR   : The command failed with an error.
  *                      data is the error string.
- * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
- *                     data is NULL.
+ * RPC_STATUS_CANCEL  : The command was cancelled.
+ *                      data is NULL.
  */
-EXTERN int rpc_pmap3_getaddr_async(struct rpc_context *rpc, struct pmap3_mapping *map, rpc_cb cb, void *private_data);
+EXTERN int rpc_pmap3_getaddr_async(struct rpc_context *rpc,
+                                   struct pmap3_mapping *map,
+                                   rpc_cb cb, void *private_data);
 
 /*
  * Call PORTMAPPER3/DUMP.
+ *
  * Function returns
- *  0 : The connection was initiated. Once the connection establish finishes, the callback will be invoked.
- * <0 : An error occured when trying to set up the connection. The callback will not be invoked.
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
- * RPC_STATUS_SUCCESS : We got a successful response from the portmapper daemon.
+ * RPC_STATUS_SUCCESS : We got a successful response from the server.
  *                      data is struct pmap3_dump_result.
- * RPC_STATUS_ERROR   : An error occured when trying to contact the portmapper.
+ * RPC_STATUS_ERROR   : The command failed with an error.
  *                      data is the error string.
- * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
- *                     data is NULL.
+ * RPC_STATUS_CANCEL  : The command was cancelled.
+ *                      data is NULL.
  */
-EXTERN int rpc_pmap3_dump_async(struct rpc_context *rpc, rpc_cb cb, void *private_data);
+EXTERN int rpc_pmap3_dump_async(struct rpc_context *rpc,
+                                rpc_cb cb, void *private_data);
 
 /*
  * Call PORTMAPPER3/CALLIT.
+ *
  * Function returns
- *  0 : The connection was initiated. Once the connection establish finishes, the callback will be invoked.
- * <0 : An error occured when trying to set up the connection. The callback will not be invoked.
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
- * RPC_STATUS_SUCCESS : We got a successful response from the portmapper daemon
+ * RPC_STATUS_SUCCESS : We got a successful response from the server.
  *                      data is a 'pmap3_call_result' pointer.
- * RPC_STATUS_ERROR   : An error occured when trying to contact the portmapper.
+ * RPC_STATUS_ERROR   : The command failed with an error.
  *                      data is the error string.
- * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
- *                     data is NULL.
+ * RPC_STATUS_CANCEL  : The command was cancelled.
+ *                      data is NULL.
  */
-EXTERN int rpc_pmap3_callit_async(struct rpc_context *rpc, int program, int version, int procedure, char *data, int datalen, rpc_cb cb, void *private_data);
+EXTERN int rpc_pmap3_callit_async(struct rpc_context *rpc, int program,
+                                  int version, int procedure,
+                                  char *data, int datalen,
+                                  rpc_cb cb, void *private_data);
 
 /*
  * Call PORTMAPPER3/GETTIME.
+ *
  * Function returns
- *  0 : The connection was initiated. Once the connection establish finishes, the callback will be invoked.
- * <0 : An error occured when trying to set up the connection. The callback will not be invoked.
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
- * RPC_STATUS_SUCCESS : We got a successful response from the portmapper daemon.
- *                      data is a uint32_t *.
- * RPC_STATUS_ERROR   : An error occured when trying to contact the portmapper.
+ * RPC_STATUS_SUCCESS : We got a successful response from the server.
+ *                      data is a uint32_t * containing status.
+ * RPC_STATUS_ERROR   : The command failed with an error.
  *                      data is the error string.
- * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
- *                     data is NULL.
+ * RPC_STATUS_CANCEL  : The command was cancelled.
+ *                      data is NULL.
  */
-EXTERN int rpc_pmap3_gettime_async(struct rpc_context *rpc, rpc_cb cb, void *private_data);
+EXTERN int rpc_pmap3_gettime_async(struct rpc_context *rpc,
+                                   rpc_cb cb, void *private_data);
 
 /*
  * Call PORTMAPPER3/UADDR2TADDR.
+ *
  * Function returns
- *  0 : The connection was initiated. Once the connection establish finishes, the callback will be invoked.
- * <0 : An error occured when trying to set up the connection. The callback will not be invoked.
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
- * RPC_STATUS_SUCCESS : We got a successful response from the portmapper daemon.
+ * RPC_STATUS_SUCCESS : We got a successful response from the server.
  *                      data is a struct pmap3_netbuf *.
- * RPC_STATUS_ERROR   : An error occured when trying to contact the portmapper.
+ * RPC_STATUS_ERROR   : The command failed with an error.
  *                      data is the error string.
- * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
- *                     data is NULL.
+ * RPC_STATUS_CANCEL  : The command was cancelled.
+ *                      data is NULL.
  */
-EXTERN int rpc_pmap3_uaddr2taddr_async(struct rpc_context *rpc, char *uaddr, rpc_cb cb, void *private_data);
+EXTERN int rpc_pmap3_uaddr2taddr_async(struct rpc_context *rpc, char *uaddr,
+                                       rpc_cb cb, void *private_data);
 
 /*
  * Call PORTMAPPER3/TADDR2UADDR.
+ *
  * Function returns
- *  0 : The connection was initiated. Once the connection establish finishes, the callback will be invoked.
- * <0 : An error occured when trying to set up the connection. The callback will not be invoked.
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
- * RPC_STATUS_SUCCESS : We got a successful response from the portmapper daemon.
+ * RPC_STATUS_SUCCESS : We got a successful response from the server.
  *                      data is a struct pmap3_string_result *.
- * RPC_STATUS_ERROR   : An error occured when trying to contact the portmapper.
+ * RPC_STATUS_ERROR   : The command failed with an error.
  *                      data is the error string.
- * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
- *                     data is NULL.
+ * RPC_STATUS_CANCEL  : The command was cancelled.
+ *                      data is NULL.
  */
 struct pmap3_netbuf;
-EXTERN int rpc_pmap3_taddr2uaddr_async(struct rpc_context *rpc, struct pmap3_netbuf *netbuf, rpc_cb cb, void *private_data);
+EXTERN int rpc_pmap3_taddr2uaddr_async(struct rpc_context *rpc,
+                                       struct pmap3_netbuf *netbuf,
+                                       rpc_cb cb, void *private_data);
 
 /*
  * MOUNT v3 FUNCTIONS
  */
-char *mountstat3_to_str(int stat);
-int mountstat3_to_errno(int error);
+EXTERN char *mountstat3_to_str(int stat);
+EXTERN int mountstat3_to_errno(int error);
 
 /*
  * Call MOUNT3/NULL
+ *
  * Function returns
- *  0 : The call was initiated. The callback will be invoked when the call completes.
- * <0 : An error occured when trying to set up the call. The callback will not be invoked.
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
- * RPC_STATUS_SUCCESS : We got a successful response from the mount daemon.
+ * RPC_STATUS_SUCCESS : We got a successful response from the server.
  *                      data is NULL.
- * RPC_STATUS_ERROR   : An error occured when trying to contact the mount daemon.
+ * RPC_STATUS_ERROR   : The command failed with an error.
  *                      data is the error string.
- * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
- *                     data is NULL.
+ * RPC_STATUS_CANCEL  : The command was cancelled.
+ *                      data is NULL.
  */
-EXTERN int rpc_mount3_null_async(struct rpc_context *rpc, rpc_cb cb, void *private_data);
-EXTERN int rpc_mount_null_async(struct rpc_context *rpc, rpc_cb cb, void *private_data);
+EXTERN int rpc_mount3_null_async(struct rpc_context *rpc,
+                                 rpc_cb cb, void *private_data);
+EXTERN int rpc_mount_null_async(struct rpc_context *rpc,
+                                rpc_cb cb, void *private_data);
 
 /*
  * Call MOUNT3/MNT
+ *
  * Function returns
- *  0 : The call was initiated. The callback will be invoked when the call completes.
- * <0 : An error occured when trying to set up the call. The callback will not be invoked.
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
- * RPC_STATUS_SUCCESS : We got a successful response from the mount daemon.
+ * RPC_STATUS_SUCCESS : We got a successful response from the server.
  *                      data is union mountres3.
- * RPC_STATUS_ERROR   : An error occured when trying to contact the mount daemon.
+ * RPC_STATUS_ERROR   : The command failed with an error.
  *                      data is the error string.
- * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
- *                     data is NULL.
+ * RPC_STATUS_CANCEL  : The command was cancelled.
+ *                      data is NULL.
  */
-EXTERN int rpc_mount3_mnt_async(struct rpc_context *rpc, rpc_cb cb, char *exportname, void *private_data);
-EXTERN int rpc_mount_mnt_async(struct rpc_context *rpc, rpc_cb cb, char *exportname, void *private_data);
+EXTERN int rpc_mount3_mnt_async(struct rpc_context *rpc, rpc_cb cb,
+                                char *exportname, void *private_data);
+EXTERN int rpc_mount_mnt_async(struct rpc_context *rpc, rpc_cb cb,
+                               char *exportname, void *private_data);
 
 /*
  * Call MOUNT3/DUMP
+ *
  * Function returns
- *  0 : The call was initiated. The callback will be invoked when the call completes.
- * <0 : An error occured when trying to set up the call. The callback will not be invoked.
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
- * RPC_STATUS_SUCCESS : We got a successful response from the mount daemon.
+ * RPC_STATUS_SUCCESS : We got a successful response from the server.
  *                      data is a mountlist.
- * RPC_STATUS_ERROR   : An error occured when trying to contact the mount daemon.
+ * RPC_STATUS_ERROR   : The command failed with an error.
  *                      data is the error string.
- * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
- *                     data is NULL.
+ * RPC_STATUS_CANCEL  : The command was cancelled.
+ *                      data is NULL.
  */
-EXTERN int rpc_mount3_dump_async(struct rpc_context *rpc, rpc_cb cb, void *private_data);
-EXTERN int rpc_mount_dump_async(struct rpc_context *rpc, rpc_cb cb, void *private_data);
+EXTERN int rpc_mount3_dump_async(struct rpc_context *rpc,
+                                 rpc_cb cb, void *private_data);
+EXTERN int rpc_mount_dump_async(struct rpc_context *rpc,
+                                rpc_cb cb, void *private_data);
 
 /*
  * Call MOUNT3/UMNT
+ *
  * Function returns
- *  0 : The call was initiated. The callback will be invoked when the call completes.
- * <0 : An error occured when trying to set up the call. The callback will not be invoked.
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
- * RPC_STATUS_SUCCESS : We got a successful response from the mount daemon.
+ * RPC_STATUS_SUCCESS : We got a successful response from the server.
  *                      data NULL.
- * RPC_STATUS_ERROR   : An error occured when trying to contact the mount daemon.
+ * RPC_STATUS_ERROR   : The command failed with an error.
  *                      data is the error string.
- * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
- *                     data is NULL.
+ * RPC_STATUS_CANCEL  : The command was cancelled.
+ *                      data is NULL.
  */
-EXTERN int rpc_mount3_umnt_async(struct rpc_context *rpc, rpc_cb cb, char *exportname, void *private_data);
-EXTERN int rpc_mount_umnt_async(struct rpc_context *rpc, rpc_cb cb, char *exportname, void *private_data);
+EXTERN int rpc_mount3_umnt_async(struct rpc_context *rpc, rpc_cb cb,
+                                 char *exportname,
+                                 void *private_data);
+EXTERN int rpc_mount_umnt_async(struct rpc_context *rpc, rpc_cb cb,
+                                char *exportname,
+                                void *private_data);
 
 /*
  * Call MOUNT3/UMNTALL
+ *
  * Function returns
- *  0 : The call was initiated. The callback will be invoked when the call completes.
- * <0 : An error occured when trying to set up the call. The callback will not be invoked.
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
- * RPC_STATUS_SUCCESS : We got a successful response from the mount daemon.
+ * RPC_STATUS_SUCCESS : We got a successful response from the server.
  *                      data NULL.
- * RPC_STATUS_ERROR   : An error occured when trying to contact the mount daemon.
+ * RPC_STATUS_ERROR   : The command failed with an error.
  *                      data is the error string.
- * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
- *                     data is NULL.
+ * RPC_STATUS_CANCEL  : The command was cancelled.
+ *                      data is NULL.
  */
-EXTERN int rpc_mount3_umntall_async(struct rpc_context *rpc, rpc_cb cb, void *private_data);
-EXTERN int rpc_mount_umntall_async(struct rpc_context *rpc, rpc_cb cb, void *private_data);
+EXTERN int rpc_mount3_umntall_async(struct rpc_context *rpc,
+                                    rpc_cb cb, void *private_data);
+EXTERN int rpc_mount_umntall_async(struct rpc_context *rpc,
+                                   rpc_cb cb, void *private_data);
 
 /*
  * Call MOUNT3/EXPORT
- * NOTE: You must include 'libnfs-raw-mount.h' to get the definitions of the
- * returned structures.
  *
  * Function returns
- *  0 : The call was initiated. The callback will be invoked when the call completes.
- * <0 : An error occured when trying to set up the call. The callback will not be invoked.
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
- * RPC_STATUS_SUCCESS : We got a successful response from the mount daemon.
- *                      data is a pointer to an exports pointer:
- *                      exports export = *(exports *)data;
- * RPC_STATUS_ERROR   : An error occured when trying to contact the mount daemon.
+ * RPC_STATUS_SUCCESS : We got a successful response from the server.
+ *                      data is exports *:
+ * RPC_STATUS_ERROR   : The command failed with an error.
  *                      data is the error string.
- * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
- *                     data is NULL.
+ * RPC_STATUS_CANCEL  : The command was cancelled.
+ *                      data is NULL.
  */
-EXTERN int rpc_mount3_export_async(struct rpc_context *rpc, rpc_cb cb, void *private_data);
-EXTERN int rpc_mount_export_async(struct rpc_context *rpc, rpc_cb cb, void *private_data);
+EXTERN int rpc_mount3_export_async(struct rpc_context *rpc,
+                                   rpc_cb cb, void *private_data);
+EXTERN int rpc_mount_export_async(struct rpc_context *rpc,
+                                  rpc_cb cb, void *private_data);
 
 /*
  * MOUNT v1 FUNCTIONS (Used with NFSv2)
  */
 /*
  * Call MOUNT1/NULL
+ *
  * Function returns
- *  0 : The call was initiated. The callback will be invoked when the call completes.
- * <0 : An error occured when trying to set up the call. The callback will not be invoked.
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
- * RPC_STATUS_SUCCESS : We got a successful response from the mount daemon.
+ * RPC_STATUS_SUCCESS : We got a successful response from the server.
  *                      data is NULL.
- * RPC_STATUS_ERROR   : An error occured when trying to contact the mount daemon.
+ * RPC_STATUS_ERROR   : The command failed with an error.
  *                      data is the error string.
- * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
- *                     data is NULL.
+ * RPC_STATUS_CANCEL  : The command was cancelled.
+ *                      data is NULL.
  */
-EXTERN int rpc_mount1_null_async(struct rpc_context *rpc, rpc_cb cb, void *private_data);
+EXTERN int rpc_mount1_null_async(struct rpc_context *rpc,
+                                 rpc_cb cb, void *private_data);
 
 /*
  * Call MOUNT1/MNT
+ *
  * Function returns
- *  0 : The call was initiated. The callback will be invoked when the call completes.
- * <0 : An error occured when trying to set up the call. The callback will not be invoked.
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
- * RPC_STATUS_SUCCESS : We got a successful response from the mount daemon.
+ * RPC_STATUS_SUCCESS : We got a successful response from the server.
  *                      data is union mountres1.
- * RPC_STATUS_ERROR   : An error occured when trying to contact the mount daemon.
+ * RPC_STATUS_ERROR   : The command failed with an error.
  *                      data is the error string.
- * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
- *                     data is NULL.
+ * RPC_STATUS_CANCEL  : The command was cancelled.
+ *                      data is NULL.
  */
-EXTERN int rpc_mount1_mnt_async(struct rpc_context *rpc, rpc_cb cb, char *exportname, void *private_data);
+EXTERN int rpc_mount1_mnt_async(struct rpc_context *rpc, rpc_cb cb,
+                                char *exportname,
+                                void *private_data);
 
 /*
  * Call MOUNT1/DUMP
+ *
  * Function returns
- *  0 : The call was initiated. The callback will be invoked when the call completes.
- * <0 : An error occured when trying to set up the call. The callback will not be invoked.
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
- * RPC_STATUS_SUCCESS : We got a successful response from the mount daemon.
+ * RPC_STATUS_SUCCESS : We got a successful response from the server.
  *                      data is a mountlist.
- * RPC_STATUS_ERROR   : An error occured when trying to contact the mount daemon.
+ * RPC_STATUS_ERROR   : The command failed with an error.
  *                      data is the error string.
- * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
- *                     data is NULL.
+ * RPC_STATUS_CANCEL  : The command was cancelled.
+ *                      data is NULL.
  */
-EXTERN int rpc_mount1_dump_async(struct rpc_context *rpc, rpc_cb cb, void *private_data);
+EXTERN int rpc_mount1_dump_async(struct rpc_context *rpc,
+                                 rpc_cb cb, void *private_data);
 
 /*
  * Call MOUNT1/UMNT
+ *
  * Function returns
- *  0 : The call was initiated. The callback will be invoked when the call completes.
- * <0 : An error occured when trying to set up the call. The callback will not be invoked.
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
- * RPC_STATUS_SUCCESS : We got a successful response from the mount daemon.
+ * RPC_STATUS_SUCCESS : We got a successful response from the server.
  *                      data NULL.
- * RPC_STATUS_ERROR   : An error occured when trying to contact the mount daemon.
+ * RPC_STATUS_ERROR   : The command failed with an error.
  *                      data is the error string.
- * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
- *                     data is NULL.
+ * RPC_STATUS_CANCEL  : The command was cancelled.
+ *                      data is NULL.
  */
-EXTERN int rpc_mount1_umnt_async(struct rpc_context *rpc, rpc_cb cb, char *exportname, void *private_data);
+EXTERN int rpc_mount1_umnt_async(struct rpc_context *rpc, rpc_cb cb,
+                                 char *exportname,
+                                 void *private_data);
 
 /*
  * Call MOUNT1/UMNTALL
+ *
  * Function returns
- *  0 : The call was initiated. The callback will be invoked when the call completes.
- * <0 : An error occured when trying to set up the call. The callback will not be invoked.
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
- * RPC_STATUS_SUCCESS : We got a successful response from the mount daemon.
+ * RPC_STATUS_SUCCESS : We got a successful response from the server.
  *                      data NULL.
- * RPC_STATUS_ERROR   : An error occured when trying to contact the mount daemon.
+ * RPC_STATUS_ERROR   : The command failed with an error.
  *                      data is the error string.
- * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
- *                     data is NULL.
+ * RPC_STATUS_CANCEL  : The command was cancelled.
+ *                      data is NULL.
  */
-EXTERN int rpc_mount1_umntall_async(struct rpc_context *rpc, rpc_cb cb, void *private_data);
+EXTERN int rpc_mount1_umntall_async(struct rpc_context *rpc,
+                                    rpc_cb cb, void *private_data);
 
 /*
  * Call MOUNT1/EXPORT
- * NOTE: You must include 'libnfs-raw-mount.h' to get the definitions of the
- * returned structures.
  *
  * Function returns
- *  0 : The call was initiated. The callback will be invoked when the call completes.
- * <0 : An error occured when trying to set up the call. The callback will not be invoked.
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
- * RPC_STATUS_SUCCESS : We got a successful response from the mount daemon.
- *                      data is a pointer to an exports pointer:
- *                      exports export = *(exports *)data;
- * RPC_STATUS_ERROR   : An error occured when trying to contact the mount daemon.
+ * RPC_STATUS_SUCCESS : We got a successful response from the server.
+ *                      data is exports *:
+ * RPC_STATUS_ERROR   : The command failed with an error.
  *                      data is the error string.
- * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
- *                     data is NULL.
+ * RPC_STATUS_CANCEL  : The command was cancelled.
+ *                      data is NULL.
  */
-EXTERN int rpc_mount1_export_async(struct rpc_context *rpc, rpc_cb cb, void *private_data);
+EXTERN int rpc_mount1_export_async(struct rpc_context *rpc,
+                                   rpc_cb cb, void *private_data);
 
 
 /*
  * NFS v3 FUNCTIONS
  */
 struct nfs_fh3;
-char *nfsstat3_to_str(int error);
-int nfsstat3_to_errno(int error);
+EXTERN char *nfsstat3_to_str(int error);
+EXTERN int nfsstat3_to_errno(int error);
 
 /*
  * Call NFS3/NULL
+ *
  * Function returns
- *  0 : The call was initiated. The callback will be invoked when the call completes.
- * <0 : An error occured when trying to set up the call. The callback will not be invoked.
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
- * RPC_STATUS_SUCCESS : We got a successful response from the nfs daemon.
+ * RPC_STATUS_SUCCESS : We got a successful response from the server.
  *                      data is NULL.
- * RPC_STATUS_ERROR   : An error occured when trying to contact the nfs daemon.
+ * RPC_STATUS_ERROR   : The command failed with an error.
  *                      data is the error string.
- * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
- *                     data is NULL.
+ * RPC_STATUS_CANCEL  : The command was cancelled.
+ *                      data is NULL.
  */
-EXTERN int rpc_nfs3_null_async(struct rpc_context *rpc, rpc_cb cb, void *private_data);
-EXTERN int rpc_nfs_null_async(struct rpc_context *rpc, rpc_cb cb, void *private_data);
+EXTERN int rpc_nfs3_null_async(struct rpc_context *rpc,
+                               rpc_cb cb, void *private_data);
+EXTERN int rpc_nfs_null_async(struct rpc_context *rpc,
+                              rpc_cb cb, void *private_data);
 
 /*
  * Call NFS3/GETATTR
+ *
  * Function returns
- *  0 : The call was initiated. The callback will be invoked when the call completes.
- * <0 : An error occured when trying to set up the call. The callback will not be invoked.
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
- * RPC_STATUS_SUCCESS : We got a successful response from the nfs daemon.
- *                      data is GETATTR3res
- * RPC_STATUS_ERROR   : An error occured when trying to contact the nfs daemon.
+ * RPC_STATUS_SUCCESS : We got a successful response from the server.
+ *                      data is GETATTR3res *.
+ * RPC_STATUS_ERROR   : The command failed with an error.
  *                      data is the error string.
- * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
- *                     data is NULL.
+ * RPC_STATUS_CANCEL  : The command was cancelled.
+ *                      data is NULL.
  */
 struct GETATTR3args;
-EXTERN int rpc_nfs3_getattr_async(struct rpc_context *rpc, rpc_cb cb, struct GETATTR3args *args, void *private_data);
-EXTERN int rpc_nfs_getattr_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh, void *private_data);
+EXTERN int rpc_nfs3_getattr_async(struct rpc_context *rpc, rpc_cb cb,
+                                  struct GETATTR3args *args,
+                                  void *private_data);
+EXTERN int rpc_nfs_getattr_async(struct rpc_context *rpc, rpc_cb cb,
+                                 struct nfs_fh3 *fh,
+                                 void *private_data);
 
 /*
  * Call NFS3/PATHCONF
+ *
  * Function returns
- *  0 : The call was initiated. The callback will be invoked when the call completes.
- * <0 : An error occured when trying to set up the call. The callback will not be invoked.
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
- * RPC_STATUS_SUCCESS : We got a successful response from the nfs daemon.
- *                      data is PATHCONF3res
- * RPC_STATUS_ERROR   : An error occured when trying to contact the nfs daemon.
+ * RPC_STATUS_SUCCESS : We got a successful response from the server.
+ *                      data is PATHCONF3res *.
+ * RPC_STATUS_ERROR   : The command failed with an error.
  *                      data is the error string.
- * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
- *                     data is NULL.
+ * RPC_STATUS_CANCEL  : The command was cancelled.
+ *                      data is NULL.
  */
 struct PATHCONF3args;
-EXTERN int rpc_nfs3_pathconf_async(struct rpc_context *rpc, rpc_cb cb, struct PATHCONF3args *args, void *private_data);
-EXTERN int rpc_nfs_pathconf_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh, void *private_data);
+EXTERN int rpc_nfs3_pathconf_async(struct rpc_context *rpc, rpc_cb cb,
+                                   struct PATHCONF3args *args,
+                                   void *private_data);
+EXTERN int rpc_nfs_pathconf_async(struct rpc_context *rpc, rpc_cb cb,
+                                  struct nfs_fh3 *fh,
+                                  void *private_data);
 
 /*
  * Call NFS3/LOOKUP
+ *
  * Function returns
- *  0 : The call was initiated. The callback will be invoked when the call completes.
- * <0 : An error occured when trying to set up the call. The callback will not be invoked.
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
- * RPC_STATUS_SUCCESS : We got a successful response from the nfs daemon.
- *                      data is LOOKUP3res
- * RPC_STATUS_ERROR   : An error occured when trying to contact the nfs daemon.
+ * RPC_STATUS_SUCCESS : We got a successful response from the server.
+ *                      data is LOOKUP3res *.
+ * RPC_STATUS_ERROR   : The command failed with an error.
  *                      data is the error string.
- * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
- *                     data is NULL.
+ * RPC_STATUS_CANCEL  : The command was cancelled.
+ *                      data is NULL.
  */
 struct LOOKUP3args;
-EXTERN int rpc_nfs3_lookup_async(struct rpc_context *rpc, rpc_cb cb, struct LOOKUP3args *args, void *private_data);
-EXTERN int rpc_nfs_lookup_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh, char *name, void *private_data);
+EXTERN int rpc_nfs3_lookup_async(struct rpc_context *rpc, rpc_cb cb,
+                                 struct LOOKUP3args *args,
+                                 void *private_data);
+EXTERN int rpc_nfs_lookup_async(struct rpc_context *rpc, rpc_cb cb,
+                                struct nfs_fh3 *fh, char *name,
+                                void *private_data);
 
 /*
  * Call NFS3/ACCESS
+ *
  * Function returns
- *  0 : The call was initiated. The callback will be invoked when the call completes.
- * <0 : An error occured when trying to set up the call. The callback will not be invoked.
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
- * RPC_STATUS_SUCCESS : We got a successful response from the nfs daemon.
- *                      data is ACCESS3res
- * RPC_STATUS_ERROR   : An error occured when trying to contact the nfs daemon.
+ * RPC_STATUS_SUCCESS : We got a successful response from the server.
+ *                      data is ACCESS3res *.
+ * RPC_STATUS_ERROR   : The command failed with an error.
  *                      data is the error string.
- * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
- *                     data is NULL.
+ * RPC_STATUS_CANCEL  : The command was cancelled.
+ *                      data is NULL.
  */
 struct ACCESS3args;
-EXTERN int rpc_nfs3_access_async(struct rpc_context *rpc, rpc_cb cb, struct ACCESS3args *args, void *private_data);
-EXTERN int rpc_nfs_access_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh, int access, void *private_data);
+EXTERN int rpc_nfs3_access_async(struct rpc_context *rpc, rpc_cb cb,
+                                 struct ACCESS3args *args,
+                                 void *private_data);
+EXTERN int rpc_nfs_access_async(struct rpc_context *rpc, rpc_cb cb,
+                                struct nfs_fh3 *fh, int access,
+                                void *private_data);
 
 /*
  * Call NFS3/READ
+ *
  * Function returns
- *  0 : The call was initiated. The callback will be invoked when the call completes.
- * <0 : An error occured when trying to set up the call. The callback will not be invoked.
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
- * RPC_STATUS_SUCCESS : We got a successful response from the nfs daemon.
- *                      data is READ3res
- * RPC_STATUS_ERROR   : An error occured when trying to contact the nfs daemon.
+ * RPC_STATUS_SUCCESS : We got a successful response from the server.
+ *                      data is READ3res *.
+ * RPC_STATUS_ERROR   : The command failed with an error.
  *                      data is the error string.
- * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
- *                     data is NULL.
+ * RPC_STATUS_CANCEL  : The command was cancelled.
+ *                      data is NULL.
  */
 struct READ3args;
-EXTERN int rpc_nfs3_read_async(struct rpc_context *rpc, rpc_cb cb, struct READ3args *args, void *private_data);
-EXTERN int rpc_nfs_read_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh, uint64_t offset, uint64_t count, void *private_data);
+EXTERN int rpc_nfs3_read_async(struct rpc_context *rpc, rpc_cb cb,
+                               struct READ3args *args,
+                               void *private_data);
+EXTERN int rpc_nfs_read_async(struct rpc_context *rpc, rpc_cb cb,
+                              struct nfs_fh3 *fh,
+                              uint64_t offset, uint64_t count,
+                              void *private_data);
 
 /*
  * Call NFS3/WRITE
+ *
  * Function returns
- *  0 : The call was initiated. The callback will be invoked when the call completes.
- * <0 : An error occured when trying to set up the call. The callback will not be invoked.
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
- * RPC_STATUS_SUCCESS : We got a successful response from the nfs daemon.
- *                      data is WRITE3res *
- * RPC_STATUS_ERROR   : An error occured when trying to contact the nfs daemon.
+ * RPC_STATUS_SUCCESS : We got a successful response from the server.
+ *                      data is WRITE3res *.
+ * RPC_STATUS_ERROR   : The command failed with an error.
  *                      data is the error string.
- * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
- *                     data is NULL.
+ * RPC_STATUS_CANCEL  : The command was cancelled.
+ *                      data is NULL.
  */
 struct WRITE3args;
-EXTERN int rpc_nfs3_write_async(struct rpc_context *rpc, rpc_cb cb, struct WRITE3args *args, void *private_data);
-EXTERN int rpc_nfs_write_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh, char *buf, uint64_t offset, uint64_t count, int stable_how, void *private_data);
+EXTERN int rpc_nfs3_write_async(struct rpc_context *rpc, rpc_cb cb,
+                                struct WRITE3args *args,
+                                void *private_data);
+EXTERN int rpc_nfs_write_async(struct rpc_context *rpc, rpc_cb cb,
+                               struct nfs_fh3 *fh,
+                               char *buf, uint64_t offset, uint64_t count,
+                               int stable_how,
+                               void *private_data);
 
 /*
  * Call NFS3/COMMIT
+ *
  * Function returns
- *  0 : The call was initiated. The callback will be invoked when the call completes.
- * <0 : An error occured when trying to set up the call. The callback will not be invoked.
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
- * RPC_STATUS_SUCCESS : We got a successful response from the nfs daemon.
- *                      data is COMMIT3res *
- * RPC_STATUS_ERROR   : An error occured when trying to contact the nfs daemon.
+ * RPC_STATUS_SUCCESS : We got a successful response from the server.
+ *                      data is COMMIT3res *.
+ * RPC_STATUS_ERROR   : The command failed with an error.
  *                      data is the error string.
- * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
- *                     data is NULL.
+ * RPC_STATUS_CANCEL  : The command was cancelled.
+ *                      data is NULL.
  */
 struct COMMIT3args;
-EXTERN int rpc_nfs3_commit_async(struct rpc_context *rpc, rpc_cb cb, struct COMMIT3args *args, void *private_data);
-EXTERN int rpc_nfs_commit_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh, void *private_data);
+EXTERN int rpc_nfs3_commit_async(struct rpc_context *rpc, rpc_cb cb,
+                                 struct COMMIT3args *args,
+                                 void *private_data);
+EXTERN int rpc_nfs_commit_async(struct rpc_context *rpc, rpc_cb cb,
+                                struct nfs_fh3 *fh,
+                                void *private_data);
 
 /*
  * Call NFS3/SETATTR
+ *
  * Function returns
- *  0 : The call was initiated. The callback will be invoked when the call completes.
- * <0 : An error occured when trying to set up the call. The callback will not be invoked.
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
- * RPC_STATUS_SUCCESS : We got a successful response from the nfs daemon.
- *                      data is SETATTR3res *
- * RPC_STATUS_ERROR   : An error occured when trying to contact the nfs daemon.
+ * RPC_STATUS_SUCCESS : We got a successful response from the server.
+ *                      data is SETATTR3res *.
+ * RPC_STATUS_ERROR   : The command failed with an error.
  *                      data is the error string.
- * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
- *                     data is NULL.
+ * RPC_STATUS_CANCEL  : The command was cancelled.
+ *                      data is NULL.
  */
 struct SETATTR3args;
-EXTERN int rpc_nfs3_setattr_async(struct rpc_context *rpc, rpc_cb cb, struct SETATTR3args *args, void *private_data);
-EXTERN int rpc_nfs_setattr_async(struct rpc_context *rpc, rpc_cb cb, struct SETATTR3args *args, void *private_data);
+EXTERN int rpc_nfs3_setattr_async(struct rpc_context *rpc, rpc_cb cb,
+                                  struct SETATTR3args *args,
+                                  void *private_data);
+EXTERN int rpc_nfs_setattr_async(struct rpc_context *rpc, rpc_cb cb,
+                                 struct SETATTR3args *args,
+                                 void *private_data);
 
 /*
  * Call NFS3/MKDIR
+ *
  * Function returns
- *  0 : The call was initiated. The callback will be invoked when the call completes.
- * <0 : An error occured when trying to set up the call. The callback will not be invoked.
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
- * RPC_STATUS_SUCCESS : We got a successful response from the nfs daemon.
- *                      data is MKDIR3res *
- * RPC_STATUS_ERROR   : An error occured when trying to contact the nfs daemon.
+ * RPC_STATUS_SUCCESS : We got a successful response from the server.
+ *                      data is MKDIR3res *.
+ * RPC_STATUS_ERROR   : The command failed with an error.
  *                      data is the error string.
- * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
- *                     data is NULL.
+ * RPC_STATUS_CANCEL  : The command was cancelled.
+ *                      data is NULL.
  */
 struct MKDIR3args;
-EXTERN int rpc_nfs3_mkdir_async(struct rpc_context *rpc, rpc_cb cb, struct MKDIR3args *args, void *private_data);
-EXTERN int rpc_nfs_mkdir_async(struct rpc_context *rpc, rpc_cb cb, struct MKDIR3args *args, void *private_data);
+EXTERN int rpc_nfs3_mkdir_async(struct rpc_context *rpc, rpc_cb cb,
+                                struct MKDIR3args *args,
+                                void *private_data);
+EXTERN int rpc_nfs_mkdir_async(struct rpc_context *rpc, rpc_cb cb,
+                               struct MKDIR3args *args,
+                               void *private_data);
 
 /*
  * Call NFS3/RMDIR
+ *
  * Function returns
- *  0 : The call was initiated. The callback will be invoked when the call completes.
- * <0 : An error occured when trying to set up the call. The callback will not be invoked.
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
- * RPC_STATUS_SUCCESS : We got a successful response from the nfs daemon.
- *                      data is RMDIR3res *
- * RPC_STATUS_ERROR   : An error occured when trying to contact the nfs daemon.
+ * RPC_STATUS_SUCCESS : We got a successful response from the server.
+ *                      data is RMDIR3res *.
+ * RPC_STATUS_ERROR   : The command failed with an error.
  *                      data is the error string.
- * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
- *                     data is NULL.
+ * RPC_STATUS_CANCEL  : The command was cancelled.
+ *                      data is NULL.
  */
 struct RMDIR3args;
-EXTERN int rpc_nfs3_rmdir_async(struct rpc_context *rpc, rpc_cb cb, struct RMDIR3args *args, void *private_data);
-EXTERN int rpc_nfs_rmdir_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh, char *dir, void *private_data);
+EXTERN int rpc_nfs3_rmdir_async(struct rpc_context *rpc, rpc_cb cb,
+                                struct RMDIR3args *args,
+                                void *private_data);
+EXTERN int rpc_nfs_rmdir_async(struct rpc_context *rpc, rpc_cb cb,
+                               struct nfs_fh3 *fh, char *dir,
+                               void *private_data);
 
 /*
  * Call NFS3/CREATE
+ *
  * Function returns
- *  0 : The call was initiated. The callback will be invoked when the call completes.
- * <0 : An error occured when trying to set up the call. The callback will not be invoked.
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
- * RPC_STATUS_SUCCESS : We got a successful response from the nfs daemon.
- *                      data is CREATE3res *
- * RPC_STATUS_ERROR   : An error occured when trying to contact the nfs daemon.
+ * RPC_STATUS_SUCCESS : We got a successful response from the server.
+ *                      data is CREATE3res *.
+ * RPC_STATUS_ERROR   : The command failed with an error.
  *                      data is the error string.
- * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
- *                     data is NULL.
+ * RPC_STATUS_CANCEL  : The command was cancelled.
+ *                      data is NULL.
  */
 struct CREATE3args;
-EXTERN int rpc_nfs3_create_async(struct rpc_context *rpc, rpc_cb cb, struct CREATE3args *args, void *private_data);
-EXTERN int rpc_nfs_create_async(struct rpc_context *rpc, rpc_cb cb, struct CREATE3args *args, void *private_data);
+EXTERN int rpc_nfs3_create_async(struct rpc_context *rpc, rpc_cb cb,
+                                 struct CREATE3args *args,
+                                 void *private_data);
+EXTERN int rpc_nfs_create_async(struct rpc_context *rpc, rpc_cb cb,
+                                struct CREATE3args *args,
+                                void *private_data);
 
 /*
  * Call NFS3/MKNOD
+ *
  * Function returns
- *  0 : The call was initiated. The callback will be invoked when the call completes.
- * <0 : An error occured when trying to set up the call. The callback will not be invoked.
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
- * RPC_STATUS_SUCCESS : We got a successful response from the nfs daemon.
- *                      data is MKNOD3res *
- * RPC_STATUS_ERROR   : An error occured when trying to contact the nfs daemon.
+ * RPC_STATUS_SUCCESS : We got a successful response from the server.
+ *                      data is MKNOD3res *.
+ * RPC_STATUS_ERROR   : The command failed with an error.
  *                      data is the error string.
- * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
- *                     data is NULL.
+ * RPC_STATUS_CANCEL  : The command was cancelled.
+ *                      data is NULL.
  */
 struct MKNOD3args;
-EXTERN int rpc_nfs3_mknod_async(struct rpc_context *rpc, rpc_cb cb, struct MKNOD3args *args, void *private_data);
-EXTERN int rpc_nfs_mknod_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh, char *file, int mode, int major, int minor, void *private_data);
+EXTERN int rpc_nfs3_mknod_async(struct rpc_context *rpc, rpc_cb cb,
+                                struct MKNOD3args *args,
+                                void *private_data);
+EXTERN int rpc_nfs_mknod_async(struct rpc_context *rpc, rpc_cb cb,
+                               struct nfs_fh3 *fh,
+                               char *file, int mode, int major, int minor,
+                               void *private_data);
 
 /*
  * Call NFS3/REMOVE
+ *
  * Function returns
- *  0 : The call was initiated. The callback will be invoked when the call completes.
- * <0 : An error occured when trying to set up the call. The callback will not be invoked.
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
- * RPC_STATUS_SUCCESS : We got a successful response from the nfs daemon.
- *                      data is REMOVE3res *
- * RPC_STATUS_ERROR   : An error occured when trying to contact the nfs daemon.
+ * RPC_STATUS_SUCCESS : We got a successful response from the server.
+ *                      data is REMOVE3res *.
+ * RPC_STATUS_ERROR   : The command failed with an error.
  *                      data is the error string.
- * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
- *                     data is NULL.
+ * RPC_STATUS_CANCEL  : The command was cancelled.
+ *                      data is NULL.
  */
 struct REMOVE3args;
-EXTERN int rpc_nfs3_remove_async(struct rpc_context *rpc, rpc_cb cb, struct REMOVE3args *args, void *private_data);
-EXTERN int rpc_nfs_remove_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh, char *name, void *private_data);
+EXTERN int rpc_nfs3_remove_async(struct rpc_context *rpc, rpc_cb cb,
+                                 struct REMOVE3args *args,
+                                 void *private_data);
+EXTERN int rpc_nfs_remove_async(struct rpc_context *rpc, rpc_cb cb,
+                                struct nfs_fh3 *fh, char *name,
+                                void *private_data);
 
 /*
  * Call NFS3/READDIR
+ *
  * Function returns
- *  0 : The call was initiated. The callback will be invoked when the call completes.
- * <0 : An error occured when trying to set up the call. The callback will not be invoked.
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
- * RPC_STATUS_SUCCESS : We got a successful response from the nfs daemon.
- *                      data is READDIR3res *
- * RPC_STATUS_ERROR   : An error occured when trying to contact the nfs daemon.
+ * RPC_STATUS_SUCCESS : We got a successful response from the server.
+ *                      data is READDIR3res *.
+ * RPC_STATUS_ERROR   : The command failed with an error.
  *                      data is the error string.
- * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
- *                     data is NULL.
+ * RPC_STATUS_CANCEL  : The command was cancelled.
+ *                      data is NULL.
  */
 struct READDIR3args;
-EXTERN int rpc_nfs3_readdir_async(struct rpc_context *rpc, rpc_cb cb, struct READDIR3args *args, void *private_data);
-EXTERN int rpc_nfs_readdir_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh, uint64_t cookie, char *cookieverf, int count, void *private_data);
+EXTERN int rpc_nfs3_readdir_async(struct rpc_context *rpc, rpc_cb cb,
+                                  struct READDIR3args *args,
+                                  void *private_data);
+EXTERN int rpc_nfs_readdir_async(struct rpc_context *rpc, rpc_cb cb,
+                                 struct nfs_fh3 *fh, uint64_t cookie,
+                                 char *cookieverf, int count,
+                                 void *private_data);
 
 /*
  * Call NFS3/READDIRPLUS
+ *
  * Function returns
- *  0 : The call was initiated. The callback will be invoked when the call completes.
- * <0 : An error occured when trying to set up the call. The callback will not be invoked.
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
- * RPC_STATUS_SUCCESS : We got a successful response from the nfs daemon.
- *                      data is READDIRPLUS3res *
- * RPC_STATUS_ERROR   : An error occured when trying to contact the nfs daemon.
+ * RPC_STATUS_SUCCESS : We got a successful response from the server.
+ *                      data is READDIRPLUS3res *.
+ * RPC_STATUS_ERROR   : The command failed with an error.
  *                      data is the error string.
- * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
- *                     data is NULL.
+ * RPC_STATUS_CANCEL  : The command was cancelled.
+ *                      data is NULL.
  */
 struct READDIRPLUS3args;
-EXTERN int rpc_nfs3_readdirplus_async(struct rpc_context *rpc, rpc_cb cb, struct READDIRPLUS3args *args, void *private_data);
-EXTERN int rpc_nfs_readdirplus_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh, uint64_t cookie, char *cookieverf, int count, void *private_data);
+EXTERN int rpc_nfs3_readdirplus_async(struct rpc_context *rpc, rpc_cb cb,
+                                      struct READDIRPLUS3args *args,
+                                      void *private_data);
+EXTERN int rpc_nfs_readdirplus_async(struct rpc_context *rpc, rpc_cb cb,
+                                     struct nfs_fh3 *fh, uint64_t cookie,
+                                     char *cookieverf, int count,
+                                     void *private_data);
 
 /*
  * Call NFS3/FSSTAT
+ *
  * Function returns
- *  0 : The call was initiated. The callback will be invoked when the call completes.
- * <0 : An error occured when trying to set up the call. The callback will not be invoked.
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
- * RPC_STATUS_SUCCESS : We got a successful response from the nfs daemon.
- *                      data is FSSTAT3res
- * RPC_STATUS_ERROR   : An error occured when trying to contact the nfs daemon.
+ * RPC_STATUS_SUCCESS : We got a successful response from the server.
+ *                      data is FSSTAT3res *.
+ * RPC_STATUS_ERROR   : The command failed with an error.
  *                      data is the error string.
- * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
- *                     data is NULL.
+ * RPC_STATUS_CANCEL  : The command was cancelled.
+ *                      data is NULL.
  */
 struct FSSTAT3args;
-EXTERN int rpc_nfs3_fsstat_async(struct rpc_context *rpc, rpc_cb cb, struct FSSTAT3args *args, void *private_data);
-EXTERN int rpc_nfs_fsstat_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh, void *private_data);
+EXTERN int rpc_nfs3_fsstat_async(struct rpc_context *rpc, rpc_cb cb,
+                                 struct FSSTAT3args *args,
+                                 void *private_data);
+EXTERN int rpc_nfs_fsstat_async(struct rpc_context *rpc, rpc_cb cb,
+                                struct nfs_fh3 *fh,
+                                void *private_data);
 
 /*
  * Call NFS3/FSINFO
+ *
  * Function returns
- *  0 : The call was initiated. The callback will be invoked when the call completes.
- * <0 : An error occured when trying to set up the call. The callback will not be invoked.
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
- * RPC_STATUS_SUCCESS : We got a successful response from the nfs daemon.
- *                      data is FSINFO3res
- * RPC_STATUS_ERROR   : An error occured when trying to contact the nfs daemon.
+ * RPC_STATUS_SUCCESS : We got a successful response from the server.
+ *                      data is FSINFO3res *.
+ * RPC_STATUS_ERROR   : The command failed with an error.
  *                      data is the error string.
- * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
- *                     data is NULL.
+ * RPC_STATUS_CANCEL  : The command was cancelled.
+ *                      data is NULL.
  */
 struct FSINFO3args;
-EXTERN int rpc_nfs3_fsinfo_async(struct rpc_context *rpc, rpc_cb cb, struct FSINFO3args *args, void *private_data);
-EXTERN int rpc_nfs_fsinfo_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh, void *private_data);
+EXTERN int rpc_nfs3_fsinfo_async(struct rpc_context *rpc, rpc_cb cb,
+                                 struct FSINFO3args *args,
+                                 void *private_data);
+EXTERN int rpc_nfs_fsinfo_async(struct rpc_context *rpc, rpc_cb cb,
+                                struct nfs_fh3 *fh,
+                                void *private_data);
 
 /*
  * Call NFS3/READLINK
+ *
  * Function returns
- *  0 : The call was initiated. The callback will be invoked when the call completes.
- * <0 : An error occured when trying to set up the call. The callback will not be invoked.
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
- * RPC_STATUS_SUCCESS : We got a successful response from the nfs daemon.
- *                      data is READLINK3res *
- * RPC_STATUS_ERROR   : An error occured when trying to contact the nfs daemon.
+ * RPC_STATUS_SUCCESS : We got a successful response from the server.
+ *                      data is READLINK3res *.
+ * RPC_STATUS_ERROR   : The command failed with an error.
  *                      data is the error string.
- * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
- *                     data is NULL.
+ * RPC_STATUS_CANCEL  : The command was cancelled.
+ *                      data is NULL.
  */
 struct READLINK3args;
-EXTERN int rpc_nfs3_readlink_async(struct rpc_context *rpc, rpc_cb cb, struct READLINK3args *args, void *private_data);
-EXTERN int rpc_nfs_readlink_async(struct rpc_context *rpc, rpc_cb cb, struct READLINK3args *args, void *private_data);
+EXTERN int rpc_nfs3_readlink_async(struct rpc_context *rpc, rpc_cb cb,
+                                   struct READLINK3args *args,
+                                   void *private_data);
+EXTERN int rpc_nfs_readlink_async(struct rpc_context *rpc, rpc_cb cb,
+                                  struct READLINK3args *args,
+                                  void *private_data);
 
 /*
  * Call NFS3/SYMLINK
+ *
  * Function returns
- *  0 : The call was initiated. The callback will be invoked when the call completes.
- * <0 : An error occured when trying to set up the call. The callback will not be invoked.
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
- * RPC_STATUS_SUCCESS : We got a successful response from the nfs daemon.
- *                      data is SYMLINK3res *
- * RPC_STATUS_ERROR   : An error occured when trying to contact the nfs daemon.
+ * RPC_STATUS_SUCCESS : We got a successful response from the server.
+ *                      data is SYMLINK3res *.
+ * RPC_STATUS_ERROR   : The command failed with an error.
  *                      data is the error string.
- * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
- *                     data is NULL.
+ * RPC_STATUS_CANCEL  : The command was cancelled.
+ *                      data is NULL.
  */
 struct SYMLINK3args;
-EXTERN int rpc_nfs3_symlink_async(struct rpc_context *rpc, rpc_cb cb, struct SYMLINK3args *args, void *private_data);
-EXTERN int rpc_nfs_symlink_async(struct rpc_context *rpc, rpc_cb cb, struct SYMLINK3args *args, void *private_data);
+EXTERN int rpc_nfs3_symlink_async(struct rpc_context *rpc, rpc_cb cb,
+                                  struct SYMLINK3args *args,
+                                  void *private_data);
+EXTERN int rpc_nfs_symlink_async(struct rpc_context *rpc, rpc_cb cb,
+                                 struct SYMLINK3args *args,
+                                 void *private_data);
 
 /*
  * Call NFS3/RENAME
+ *
  * Function returns
- *  0 : The call was initiated. The callback will be invoked when the call completes.
- * <0 : An error occured when trying to set up the call. The callback will not be invoked.
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
- * RPC_STATUS_SUCCESS : We got a successful response from the nfs daemon.
- *                      data is RENAME3res *
- * RPC_STATUS_ERROR   : An error occured when trying to contact the nfs daemon.
+ * RPC_STATUS_SUCCESS : We got a successful response from the server.
+ *                      data is RENAME3res *.
+ * RPC_STATUS_ERROR   : The command failed with an error.
  *                      data is the error string.
- * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
- *                     data is NULL.
+ * RPC_STATUS_CANCEL  : The command was cancelled.
+ *                      data is NULL.
  */
 struct RENAME3args;
-EXTERN int rpc_nfs3_rename_async(struct rpc_context *rpc, rpc_cb cb, struct RENAME3args *args, void *private_data);
-EXTERN int rpc_nfs_rename_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *olddir, char *oldname, struct nfs_fh3 *newdir, char *newname, void *private_data);
+EXTERN int rpc_nfs3_rename_async(struct rpc_context *rpc, rpc_cb cb,
+                                 struct RENAME3args *args,
+                                 void *private_data);
+EXTERN int rpc_nfs_rename_async(struct rpc_context *rpc, rpc_cb cb,
+                                struct nfs_fh3 *olddir, char *oldname,
+                                struct nfs_fh3 *newdir, char *newname,
+                                void *private_data);
 
 /*
  * Call NFS3/LINK
+ *
  * Function returns
- *  0 : The call was initiated. The callback will be invoked when the call completes.
- * <0 : An error occured when trying to set up the call. The callback will not be invoked.
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
- * RPC_STATUS_SUCCESS : We got a successful response from the nfs daemon.
- *                      data is LINK3res *
- * RPC_STATUS_ERROR   : An error occured when trying to contact the nfs daemon.
+ * RPC_STATUS_SUCCESS : We got a successful response from the server.
+ *                      data is LINK3res *.
+ * RPC_STATUS_ERROR   : The command failed with an error.
  *                      data is the error string.
- * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
- *                     data is NULL.
+ * RPC_STATUS_CANCEL  : The command was cancelled.
+ *                      data is NULL.
  */
 struct LINK3args;
-EXTERN int rpc_nfs3_link_async(struct rpc_context *rpc, rpc_cb cb, struct LINK3args *args, void *private_data);
-EXTERN int rpc_nfs_link_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *file, struct nfs_fh3 *newdir, char *newname, void *private_data);
+EXTERN int rpc_nfs3_link_async(struct rpc_context *rpc, rpc_cb cb,
+                               struct LINK3args *args,
+                               void *private_data);
+EXTERN int rpc_nfs_link_async(struct rpc_context *rpc, rpc_cb cb,
+                              struct nfs_fh3 *file, struct nfs_fh3 *newdir,
+                              char *newname,
+                              void *private_data);
 
 /*
  * NFS v2 FUNCTIONS
@@ -1081,383 +1382,484 @@ EXTERN int rpc_nfs_link_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3
 
 /*
  * Call NFS2/NULL
+ *
  * Function returns
- *  0 : The call was initiated. The callback will be invoked when the call completes.
- * <0 : An error occured when trying to set up the call. The callback will not be invoked.
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
- * RPC_STATUS_SUCCESS : We got a successful response from the nfs daemon.
+ * RPC_STATUS_SUCCESS : We got a successful response from the server.
  *                      data is NULL.
- * RPC_STATUS_ERROR   : An error occured when trying to contact the nfs daemon.
+ * RPC_STATUS_ERROR   : The command failed with an error.
  *                      data is the error string.
- * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
- *                     data is NULL.
+ * RPC_STATUS_CANCEL  : The command was cancelled.
+ *                      data is NULL.
  */
-EXTERN int rpc_nfs2_null_async(struct rpc_context *rpc, rpc_cb cb, void *private_data);
+EXTERN int rpc_nfs2_null_async(struct rpc_context *rpc,
+                               rpc_cb cb, void *private_data);
 
 /*
  * Call NFS2/GETATTR
+ *
  * Function returns
- *  0 : The call was initiated. The callback will be invoked when the call completes.
- * <0 : An error occured when trying to set up the call. The callback will not be invoked.
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
- * RPC_STATUS_SUCCESS : We got a successful response from the nfs daemon.
- *                      data is GETATTR2res
- * RPC_STATUS_ERROR   : An error occured when trying to contact the nfs daemon.
+ * RPC_STATUS_SUCCESS : We got a successful response from the server.
+ *                      data is GETATTR2res *.
+ * RPC_STATUS_ERROR   : The command failed with an error.
  *                      data is the error string.
- * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
- *                     data is NULL.
+ * RPC_STATUS_CANCEL  : The command was cancelled.
+ *                      data is NULL.
  */
 struct GETATTR2args;
-EXTERN int rpc_nfs2_getattr_async(struct rpc_context *rpc, rpc_cb cb, struct GETATTR2args *args, void *private_data);
+EXTERN int rpc_nfs2_getattr_async(struct rpc_context *rpc, rpc_cb cb,
+                                  struct GETATTR2args *args,
+                                  void *private_data);
 
 /*
  * Call NFS2/SETATTR
+ *
  * Function returns
- *  0 : The call was initiated. The callback will be invoked when the call completes.
- * <0 : An error occured when trying to set up the call. The callback will not be invoked.
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
- * RPC_STATUS_SUCCESS : We got a successful response from the nfs daemon.
- *                      data is SETATTR2res *
- * RPC_STATUS_ERROR   : An error occured when trying to contact the nfs daemon.
+ * RPC_STATUS_SUCCESS : We got a successful response from the server.
+ *                      data is SETATTR2res *.
+ * RPC_STATUS_ERROR   : The command failed with an error.
  *                      data is the error string.
- * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
- *                     data is NULL.
+ * RPC_STATUS_CANCEL  : The command was cancelled.
+ *                      data is NULL.
  */
 struct SETATTR2args;
-EXTERN int rpc_nfs2_setattr_async(struct rpc_context *rpc, rpc_cb cb, struct SETATTR2args *args, void *private_data);
+EXTERN int rpc_nfs2_setattr_async(struct rpc_context *rpc, rpc_cb cb,
+                                  struct SETATTR2args *args,
+                                  void *private_data);
 
 /*
  * Call NFS2/LOOKUP
+ *
  * Function returns
- *  0 : The call was initiated. The callback will be invoked when the call completes.
- * <0 : An error occured when trying to set up the call. The callback will not be invoked.
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
- * RPC_STATUS_SUCCESS : We got a successful response from the nfs daemon.
- *                      data is LOOKUP2res
- * RPC_STATUS_ERROR   : An error occured when trying to contact the nfs daemon.
+ * RPC_STATUS_SUCCESS : We got a successful response from the server.
+ *                      data is LOOKUP2res *.
+ * RPC_STATUS_ERROR   : The command failed with an error.
  *                      data is the error string.
- * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
- *                     data is NULL.
+ * RPC_STATUS_CANCEL  : The command was cancelled.
+ *                      data is NULL.
  */
 struct LOOKUP2args;
-EXTERN int rpc_nfs2_lookup_async(struct rpc_context *rpc, rpc_cb cb, struct LOOKUP2args *args, void *private_data);
+EXTERN int rpc_nfs2_lookup_async(struct rpc_context *rpc, rpc_cb cb,
+                                 struct LOOKUP2args *args,
+                                 void *private_data);
 
 /*
  * Call NFS2/READLINK
+ *
  * Function returns
- *  0 : The call was initiated. The callback will be invoked when the call completes.
- * <0 : An error occured when trying to set up the call. The callback will not be invoked.
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
- * RPC_STATUS_SUCCESS : We got a successful response from the nfs daemon.
- *                      data is READLINK2res *
- * RPC_STATUS_ERROR   : An error occured when trying to contact the nfs daemon.
+ * RPC_STATUS_SUCCESS : We got a successful response from the server.
+ *                      data is READLINK2res *.
+ * RPC_STATUS_ERROR   : The command failed with an error.
  *                      data is the error string.
- * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
- *                     data is NULL.
+ * RPC_STATUS_CANCEL  : The command was cancelled.
+ *                      data is NULL.
  */
 struct READLINK2args;
-EXTERN int rpc_nfs32_readlink_async(struct rpc_context *rpc, rpc_cb cb, struct READLINK2args *args, void *private_data);
+EXTERN int rpc_nfs32_readlink_async(struct rpc_context *rpc, rpc_cb cb,
+                                    struct READLINK2args *args,
+                                    void *private_data);
 
 /*
  * Call NFS2/READ
+ *
  * Function returns
- *  0 : The call was initiated. The callback will be invoked when the call completes.
- * <0 : An error occured when trying to set up the call. The callback will not be invoked.
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
- * RPC_STATUS_SUCCESS : We got a successful response from the nfs daemon.
- *                      data is READ2res
- * RPC_STATUS_ERROR   : An error occured when trying to contact the nfs daemon.
+ * RPC_STATUS_SUCCESS : We got a successful response from the server.
+ *                      data is READ2res *.
+ * RPC_STATUS_ERROR   : The command failed with an error.
  *                      data is the error string.
- * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
- *                     data is NULL.
+ * RPC_STATUS_CANCEL  : The command was cancelled.
+ *                      data is NULL.
  */
 struct READ2args;
-EXTERN int rpc_nfs2_read_async(struct rpc_context *rpc, rpc_cb cb, struct READ2args *args, void *private_data);
+EXTERN int rpc_nfs2_read_async(struct rpc_context *rpc, rpc_cb cb,
+                               struct READ2args *args,
+                               void *private_data);
 
 /*
  * Call NFS2/WRITE
+ *
  * Function returns
- *  0 : The call was initiated. The callback will be invoked when the call completes.
- * <0 : An error occured when trying to set up the call. The callback will not be invoked.
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
- * RPC_STATUS_SUCCESS : We got a successful response from the nfs daemon.
- *                      data is WRITE2res *
- * RPC_STATUS_ERROR   : An error occured when trying to contact the nfs daemon.
+ * RPC_STATUS_SUCCESS : We got a successful response from the server.
+ *                      data is WRITE2res *.
+ * RPC_STATUS_ERROR   : The command failed with an error.
  *                      data is the error string.
- * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
- *                     data is NULL.
+ * RPC_STATUS_CANCEL  : The command was cancelled.
+ *                      data is NULL.
  */
 struct WRITE2args;
-EXTERN int rpc_nfs2_write_async(struct rpc_context *rpc, rpc_cb cb, struct WRITE2args *args, void *private_data);
+EXTERN int rpc_nfs2_write_async(struct rpc_context *rpc, rpc_cb cb,
+                                struct WRITE2args *args,
+                                void *private_data);
 
 /*
  * Call NFS2/CREATE
+ *
  * Function returns
- *  0 : The call was initiated. The callback will be invoked when the call completes.
- * <0 : An error occured when trying to set up the call. The callback will not be invoked.
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
- * RPC_STATUS_SUCCESS : We got a successful response from the nfs daemon.
- *                      data is CREATE2res *
- * RPC_STATUS_ERROR   : An error occured when trying to contact the nfs daemon.
+ * RPC_STATUS_SUCCESS : We got a successful response from the server.
+ *                      data is CREATE2res *.
+ * RPC_STATUS_ERROR   : The command failed with an error.
  *                      data is the error string.
- * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
- *                     data is NULL.
+ * RPC_STATUS_CANCEL  : The command was cancelled.
+ *                      data is NULL.
  */
 struct CREATE2args;
-EXTERN int rpc_nfs2_create_async(struct rpc_context *rpc, rpc_cb cb, struct CREATE2args *args, void *private_data);
+EXTERN int rpc_nfs2_create_async(struct rpc_context *rpc, rpc_cb cb,
+                                 struct CREATE2args *args,
+                                 void *private_data);
 
 /*
  * Call NFS2/REMOVE
+ *
  * Function returns
- *  0 : The call was initiated. The callback will be invoked when the call completes.
- * <0 : An error occured when trying to set up the call. The callback will not be invoked.
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
- * RPC_STATUS_SUCCESS : We got a successful response from the nfs daemon.
- *                      data is REMOVE2res *
- * RPC_STATUS_ERROR   : An error occured when trying to contact the nfs daemon.
+ * RPC_STATUS_SUCCESS : We got a successful response from the server.
+ *                      data is REMOVE2res *.
+ * RPC_STATUS_ERROR   : The command failed with an error.
  *                      data is the error string.
- * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
- *                     data is NULL.
+ * RPC_STATUS_CANCEL  : The command was cancelled.
+ *                      data is NULL.
  */
 struct REMOVE2args;
-EXTERN int rpc_nfs2_remove_async(struct rpc_context *rpc, rpc_cb cb, struct REMOVE2args *args, void *private_data);
+EXTERN int rpc_nfs2_remove_async(struct rpc_context *rpc, rpc_cb cb,
+                                 struct REMOVE2args *args,
+                                 void *private_data);
 
 /*
  * Call NFS2/RENAME
+ *
  * Function returns
- *  0 : The call was initiated. The callback will be invoked when the call completes.
- * <0 : An error occured when trying to set up the call. The callback will not be invoked.
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
- * RPC_STATUS_SUCCESS : We got a successful response from the nfs daemon.
- *                      data is RENAME2res *
- * RPC_STATUS_ERROR   : An error occured when trying to contact the nfs daemon.
+ * RPC_STATUS_SUCCESS : We got a successful response from the server.
+ *                      data is RENAME2res *.
+ * RPC_STATUS_ERROR   : The command failed with an error.
  *                      data is the error string.
- * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
- *                     data is NULL.
+ * RPC_STATUS_CANCEL  : The command was cancelled.
+ *                      data is NULL.
  */
 struct RENAME2args;
-EXTERN int rpc_nfs2_rename_async(struct rpc_context *rpc, rpc_cb cb, struct RENAME2args *args, void *private_data);
+EXTERN int rpc_nfs2_rename_async(struct rpc_context *rpc, rpc_cb cb,
+                                 struct RENAME2args *args,
+                                 void *private_data);
 
 /*
  * Call NFS2/LINK
+ *
  * Function returns
- *  0 : The call was initiated. The callback will be invoked when the call completes.
- * <0 : An error occured when trying to set up the call. The callback will not be invoked.
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
- * RPC_STATUS_SUCCESS : We got a successful response from the nfs daemon.
- *                      data is LINK2res *
- * RPC_STATUS_ERROR   : An error occured when trying to contact the nfs daemon.
+ * RPC_STATUS_SUCCESS : We got a successful response from the server.
+ *                      data is LINK2res *.
+ * RPC_STATUS_ERROR   : The command failed with an error.
  *                      data is the error string.
- * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
- *                     data is NULL.
+ * RPC_STATUS_CANCEL  : The command was cancelled.
+ *                      data is NULL.
  */
 struct LINK2args;
-EXTERN int rpc_nfs2_link_async(struct rpc_context *rpc, rpc_cb cb, struct LINK2args *args, void *private_data);
+EXTERN int rpc_nfs2_link_async(struct rpc_context *rpc, rpc_cb cb,
+                               struct LINK2args *args,
+                               void *private_data);
 
 /*
  * Call NFS2/SYMLINK
+ *
  * Function returns
- *  0 : The call was initiated. The callback will be invoked when the call completes.
- * <0 : An error occured when trying to set up the call. The callback will not be invoked.
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
- * RPC_STATUS_SUCCESS : We got a successful response from the nfs daemon.
- *                      data is SYMLINK2res *
- * RPC_STATUS_ERROR   : An error occured when trying to contact the nfs daemon.
+ * RPC_STATUS_SUCCESS : We got a successful response from the server.
+ *                      data is SYMLINK2res *.
+ * RPC_STATUS_ERROR   : The command failed with an error.
  *                      data is the error string.
- * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
- *                     data is NULL.
+ * RPC_STATUS_CANCEL  : The command was cancelled.
+ *                      data is NULL.
  */
 struct SYMLINK2args;
-EXTERN int rpc_nfs2_symlink_async(struct rpc_context *rpc, rpc_cb cb, struct SYMLINK2args *args, void *private_data);
+EXTERN int rpc_nfs2_symlink_async(struct rpc_context *rpc, rpc_cb cb,
+                                  struct SYMLINK2args *args,
+                                  void *private_data);
 
 /*
  * Call NFS2/MKDIR
+ *
  * Function returns
- *  0 : The call was initiated. The callback will be invoked when the call completes.
- * <0 : An error occured when trying to set up the call. The callback will not be invoked.
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
- * RPC_STATUS_SUCCESS : We got a successful response from the nfs daemon.
- *                      data is MKDIR2res *
- * RPC_STATUS_ERROR   : An error occured when trying to contact the nfs daemon.
+ * RPC_STATUS_SUCCESS : We got a successful response from the server.
+ *                      data is MKDIR2res *.
+ * RPC_STATUS_ERROR   : The command failed with an error.
  *                      data is the error string.
- * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
- *                     data is NULL.
+ * RPC_STATUS_CANCEL  : The command was cancelled.
+ *                      data is NULL.
  */
 struct MKDIR2args;
-EXTERN int rpc_nfs2_mkdir_async(struct rpc_context *rpc, rpc_cb cb, struct MKDIR2args *args, void *private_data);
+EXTERN int rpc_nfs2_mkdir_async(struct rpc_context *rpc, rpc_cb cb,
+                                struct MKDIR2args *args,
+                                void *private_data);
 
 /*
  * Call NFS2/RMDIR
+ *
  * Function returns
- *  0 : The call was initiated. The callback will be invoked when the call completes.
- * <0 : An error occured when trying to set up the call. The callback will not be invoked.
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
- * RPC_STATUS_SUCCESS : We got a successful response from the nfs daemon.
- *                      data is RMDIR2res *
- * RPC_STATUS_ERROR   : An error occured when trying to contact the nfs daemon.
+ * RPC_STATUS_SUCCESS : We got a successful response from the server.
+ *                      data is RMDIR2res *.
+ * RPC_STATUS_ERROR   : The command failed with an error.
  *                      data is the error string.
- * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
- *                     data is NULL.
+ * RPC_STATUS_CANCEL  : The command was cancelled.
+ *                      data is NULL.
  */
 struct RMDIR2args;
-EXTERN int rpc_nfs2_rmdir_async(struct rpc_context *rpc, rpc_cb cb, struct RMDIR2args *args, void *private_data);
+EXTERN int rpc_nfs2_rmdir_async(struct rpc_context *rpc, rpc_cb cb,
+                                struct RMDIR2args *args,
+                                void *private_data);
 
 /*
  * Call NFS2/READDIR
+ *
  * Function returns
- *  0 : The call was initiated. The callback will be invoked when the call completes.
- * <0 : An error occured when trying to set up the call. The callback will not be invoked.
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
- * RPC_STATUS_SUCCESS : We got a successful response from the nfs daemon.
- *                      data is READDIR2res *
- * RPC_STATUS_ERROR   : An error occured when trying to contact the nfs daemon.
+ * RPC_STATUS_SUCCESS : We got a successful response from the server.
+ *                      data is READDIR2res *.
+ * RPC_STATUS_ERROR   : The command failed with an error.
  *                      data is the error string.
- * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
- *                     data is NULL.
+ * RPC_STATUS_CANCEL  : The command was cancelled.
+ *                      data is NULL.
  */
 struct READDIR2args;
-EXTERN int rpc_nfs2_readdir_async(struct rpc_context *rpc, rpc_cb cb, struct READDIR2args *args, void *private_data);
+EXTERN int rpc_nfs2_readdir_async(struct rpc_context *rpc, rpc_cb cb,
+                                  struct READDIR2args *args,
+                                  void *private_data);
 
 /*
  * Call NFS2/STATFS
+ *
  * Function returns
- *  0 : The call was initiated. The callback will be invoked when the call completes.
- * <0 : An error occured when trying to set up the call. The callback will not be invoked.
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
- * RPC_STATUS_SUCCESS : We got a successful response from the nfs daemon.
- *                      data is STATFS2res *
- * RPC_STATUS_ERROR   : An error occured when trying to contact the nfs daemon.
+ * RPC_STATUS_SUCCESS : We got a successful response from the server.
+ *                      data is STATFS2res *.
+ * RPC_STATUS_ERROR   : The command failed with an error.
  *                      data is the error string.
- * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
- *                     data is NULL.
+ * RPC_STATUS_CANCEL  : The command was cancelled.
+ *                      data is NULL.
  */
 struct STATFS2args;
-EXTERN int rpc_nfs2_statfs_async(struct rpc_context *rpc, rpc_cb cb, struct STATFS2args *args, void *private_data);
+EXTERN int rpc_nfs2_statfs_async(struct rpc_context *rpc, rpc_cb cb,
+                                 struct STATFS2args *args,
+                                 void *private_data);
 
 /*
  * RQUOTA FUNCTIONS
  */
-char *rquotastat_to_str(int error);
-int rquotastat_to_errno(int error);
+EXTERN char *rquotastat_to_str(int error);
+EXTERN int rquotastat_to_errno(int error);
 
 /*
  * Call RQUOTA1/NULL
+ *
  * Function returns
- *  0 : The call was initiated. The callback will be invoked when the call completes.
- * <0 : An error occured when trying to set up the call. The callback will not be invoked.
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
- * RPC_STATUS_SUCCESS : We got a successful response from the rquota daemon.
+ * RPC_STATUS_SUCCESS : We got a successful response from the server.
  *                      data is NULL.
- * RPC_STATUS_ERROR   : An error occured when trying to contact the rquota daemon.
+ * RPC_STATUS_ERROR   : The command failed with an error.
  *                      data is the error string.
- * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
- *                     data is NULL.
+ * RPC_STATUS_CANCEL  : The command was cancelled.
+ *                      data is NULL.
  */
-EXTERN int rpc_rquota1_null_async(struct rpc_context *rpc, rpc_cb cb, void *private_data);
+EXTERN int rpc_rquota1_null_async(struct rpc_context *rpc,
+                                  rpc_cb cb, void *private_data);
 
 /*
  * Call RQUOTA1/GETQUOTA
+ *
  * Function returns
- *  0 : The call was initiated. The callback will be invoked when the call completes.
- * <0 : An error occured when trying to set up the call. The callback will not be invoked.
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
- * RPC_STATUS_SUCCESS : We got a successful response from the rquota daemon.
- *                      data is a RQUOTA1res structure.
- * RPC_STATUS_ERROR   : An error occured when trying to contact the rquota daemon.
+ * RPC_STATUS_SUCCESS : We got a successful response from the server.
+ *                      data is GETQUOTA1res *.
+ * RPC_STATUS_ERROR   : The command failed with an error.
  *                      data is the error string.
- * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
- *                     data is NULL.
+ * RPC_STATUS_CANCEL  : The command was cancelled.
+ *                      data is NULL.
  */
-EXTERN int rpc_rquota1_getquota_async(struct rpc_context *rpc, rpc_cb cb, char *exportname, int uid, void *private_data);
+EXTERN int rpc_rquota1_getquota_async(struct rpc_context *rpc, rpc_cb cb,
+                                      char *exportname, int uid,
+                                      void *private_data);
 
 /*
  * Call RQUOTA1/GETACTIVEQUOTA
+ *
  * Function returns
- *  0 : The call was initiated. The callback will be invoked when the call completes.
- * <0 : An error occured when trying to set up the call. The callback will not be invoked.
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
- * RPC_STATUS_SUCCESS : We got a successful response from the rquota daemon.
- *                      data is a RQUOTA1res structure.
- * RPC_STATUS_ERROR   : An error occured when trying to contact the rquota daemon.
+ * RPC_STATUS_SUCCESS : We got a successful response from the server.
+ *                      data is GETQUOTA1res *.
+ * RPC_STATUS_ERROR   : The command failed with an error.
  *                      data is the error string.
- * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
- *                     data is NULL.
+ * RPC_STATUS_CANCEL  : The command was cancelled.
+ *                      data is NULL.
  */
-EXTERN int rpc_rquota1_getactivequota_async(struct rpc_context *rpc, rpc_cb cb, char *exportname, int uid, void *private_data);
-
-
+EXTERN int rpc_rquota1_getactivequota_async(struct rpc_context *rpc, rpc_cb cb,
+                                            char *exportname, int uid,
+                                            void *private_data);
 
 
 /*
  * Call RQUOTA2/NULL
+ *
  * Function returns
- *  0 : The call was initiated. The callback will be invoked when the call completes.
- * <0 : An error occured when trying to set up the call. The callback will not be invoked.
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
- * RPC_STATUS_SUCCESS : We got a successful response from the rquota daemon.
+ * RPC_STATUS_SUCCESS : We got a successful response from the server.
  *                      data is NULL.
- * RPC_STATUS_ERROR   : An error occured when trying to contact the rquota daemon.
+ * RPC_STATUS_ERROR   : The command failed with an error.
  *                      data is the error string.
- * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
- *                     data is NULL.
+ * RPC_STATUS_CANCEL  : The command was cancelled.
+ *                      data is NULL.
  */
-int rpc_rquota2_null_async(struct rpc_context *rpc, rpc_cb cb, void *private_data);
+EXTERN int rpc_rquota2_null_async(struct rpc_context *rpc,
+                                  rpc_cb cb, void *private_data);
 
 /*
  * Call RQUOTA2/GETQUOTA
+ *
  * Function returns
- *  0 : The call was initiated. The callback will be invoked when the call completes.
- * <0 : An error occured when trying to set up the call. The callback will not be invoked.
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
- * RPC_STATUS_SUCCESS : We got a successful response from the rquota daemon.
- *                      data is a RQUOTA1res structure.
- * RPC_STATUS_ERROR   : An error occured when trying to contact the rquota daemon.
+ * RPC_STATUS_SUCCESS : We got a successful response from the server.
+ *                      data is GETQUOTA1res *.
+ * RPC_STATUS_ERROR   : The command failed with an error.
  *                      data is the error string.
- * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
- *                     data is NULL.
+ * RPC_STATUS_CANCEL  : The command was cancelled.
+ *                      data is NULL.
  */
-int rpc_rquota2_getquota_async(struct rpc_context *rpc, rpc_cb cb, char *exportname, int type, int uid, void *private_data);
+EXTERN int rpc_rquota2_getquota_async(struct rpc_context *rpc, rpc_cb cb,
+                                      char *exportname, int type, int uid,
+                                      void *private_data);
 
 /*
  * Call RQUOTA2/GETACTIVEQUOTA
+ *
  * Function returns
- *  0 : The call was initiated. The callback will be invoked when the call completes.
- * <0 : An error occured when trying to set up the call. The callback will not be invoked.
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
- * RPC_STATUS_SUCCESS : We got a successful response from the rquota daemon.
- *                      data is a RQUOTA1res structure.
- * RPC_STATUS_ERROR   : An error occured when trying to contact the rquota daemon.
+ * RPC_STATUS_SUCCESS : We got a successful response from the server.
+ *                      data is GETQUOTA1res *.
+ * RPC_STATUS_ERROR   : The command failed with an error.
  *                      data is the error string.
- * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
- *                     data is NULL.
+ * RPC_STATUS_CANCEL  : The command was cancelled.
+ *                      data is NULL.
  */
-int rpc_rquota2_getactivequota_async(struct rpc_context *rpc, rpc_cb cb, char *exportname, int type, int uid, void *private_data);
-
-
-
-
+EXTERN int rpc_rquota2_getactivequota_async(struct rpc_context *rpc, rpc_cb cb,
+                                            char *exportname, int type, int uid,
+                                            void *private_data);
 
 
 /*
@@ -1466,59 +1868,67 @@ int rpc_rquota2_getactivequota_async(struct rpc_context *rpc, rpc_cb cb, char *e
 
 /*
  * Call NFSACL/NULL
- * Call the NULL procedure for the NFSACL
  *
  * Function returns
- *  0 : The call was initiated. The callback will be invoked when the call completes.
- * <0 : An error occured when trying to set up the call. The callback will not be invoked.
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
- * RPC_STATUS_SUCCESS : We got a successful response from the rquota daemon.
- *                      data is NULL
- * RPC_STATUS_ERROR   : An error occured when trying to contact the rquota daemon.
+ * RPC_STATUS_SUCCESS : We got a successful response from the server.
+ *                      data is NULL.
+ * RPC_STATUS_ERROR   : The command failed with an error.
  *                      data is the error string.
- * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
- *                     data is NULL.
+ * RPC_STATUS_CANCEL  : The command was cancelled.
+ *                      data is NULL.
  */
-EXTERN int rpc_nfsacl_null_async(struct rpc_context *rpc, rpc_cb cb, void *private_data);
+EXTERN int rpc_nfsacl_null_async(struct rpc_context *rpc, rpc_cb cb,
+                                 void *private_data);
 
 /*
  * Call NFSACL/GETACL
  *
  * Function returns
- *  0 : The call was initiated. The callback will be invoked when the call completes.
- * <0 : An error occured when trying to set up the call. The callback will not be invoked.
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
- * RPC_STATUS_SUCCESS : We got a successful response from the nfs daemon.
- *                      data is a GETACL3res pointer
- * RPC_STATUS_ERROR   : An error occured when trying to contact the nfs daemon.
+ * RPC_STATUS_SUCCESS : We got a successful response from the server.
+ *                      data is GETACL3res *.
+ * RPC_STATUS_ERROR   : The command failed with an error.
  *                      data is the error string.
- * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
- *                     data is NULL.
+ * RPC_STATUS_CANCEL  : The command was cancelled.
+ *                      data is NULL.
  */
 struct GETACL3args;
-EXTERN int rpc_nfsacl_getacl_async(struct rpc_context *rpc, rpc_cb cb, struct GETACL3args *args, void *private_data);
-
-
+EXTERN int rpc_nfsacl_getacl_async(struct rpc_context *rpc, rpc_cb cb,
+                                   struct GETACL3args *args,
+                                   void *private_data);
 
 /*
  * Call NFSACL/SETACL
  *
  * Function returns
- *  0 : The call was initiated. The callback will be invoked when the call completes.
- * <0 : An error occured when trying to set up the call. The callback will not be invoked.
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
- * RPC_STATUS_SUCCESS : We got a successful response from the nfs daemon.
- *                      data is a SETACL3res pointer
- * RPC_STATUS_ERROR   : An error occured when trying to contact the nfs daemon.
+ * RPC_STATUS_SUCCESS : We got a successful response from the server.
+ *                      data is SETACL3res *.
+ * RPC_STATUS_ERROR   : The command failed with an error.
  *                      data is the error string.
- * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
- *                     data is NULL.
+ * RPC_STATUS_CANCEL  : The command was cancelled.
+ *                      data is NULL.
  */
 struct SETACL3args;
-EXTERN int rpc_nfsacl_setacl_async(struct rpc_context *rpc, rpc_cb cb, struct SETACL3args *args, void *private_data);
+EXTERN int rpc_nfsacl_setacl_async(struct rpc_context *rpc, rpc_cb cb,
+                                   struct SETACL3args *args,
+                                   void *private_data);
 
 
 
@@ -1526,287 +1936,330 @@ EXTERN int rpc_nfsacl_setacl_async(struct rpc_context *rpc, rpc_cb cb, struct SE
 /*
  * NLM functions
  */
-char *nlmstat4_to_str(int stat);
+EXTERN char *nlmstat4_to_str(int stat);
 
 /*
  * Call NLM/NULL
- * Call the NULL procedure for the NLM protocol
  *
  * Function returns
- *  0 : The call was initiated. The callback will be invoked when the call completes.
- * <0 : An error occured when trying to set up the call. The callback will not be invoked.
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
- * RPC_STATUS_SUCCESS : We got a successful response from the nlm daemon.
- *                      data is NULL
- * RPC_STATUS_ERROR   : An error occured when trying to contact the nlm daemon.
+ * RPC_STATUS_SUCCESS : We got a successful response from the server.
+ *                      data is NULL.
+ * RPC_STATUS_ERROR   : The command failed with an error.
  *                      data is the error string.
- * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
- *                     data is NULL.
+ * RPC_STATUS_CANCEL  : The command was cancelled.
+ *                      data is NULL.
  */
-EXTERN int rpc_nlm4_null_async(struct rpc_context *rpc, rpc_cb cb, void *private_data);
+EXTERN int rpc_nlm4_null_async(struct rpc_context *rpc, rpc_cb cb,
+                               void *private_data);
 
 /*
  * Call NLM/TEST
- * Call the TEST procedure for the NLM protocol
  *
  * Function returns
- *  0 : The call was initiated. The callback will be invoked when the call completes.
- * <0 : An error occured when trying to set up the call. The callback will not be invoked.
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
- * RPC_STATUS_SUCCESS : We got a successful response from the nlm daemon.
- *                      data is NLM4_TESTres
- * RPC_STATUS_ERROR   : An error occured when trying to contact the nlm daemon.
+ * RPC_STATUS_SUCCESS : We got a successful response from the server.
+ *                      data is NLM4_TESTres *.
+ * RPC_STATUS_ERROR   : The command failed with an error.
  *                      data is the error string.
- * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
- *                     data is NULL.
+ * RPC_STATUS_CANCEL  : The command was cancelled.
+ *                      data is NULL.
  */
 struct NLM4_TESTargs;
-EXTERN int rpc_nlm4_test_async(struct rpc_context *rpc, rpc_cb cb, struct NLM4_TESTargs *args, void *private_data);
+EXTERN int rpc_nlm4_test_async(struct rpc_context *rpc, rpc_cb cb,
+                               struct NLM4_TESTargs *args,
+                               void *private_data);
 
 /*
  * Call NLM/LOCK
- * Call the LOCK procedure for the NLM protocol
  *
  * Function returns
- *  0 : The call was initiated. The callback will be invoked when the call completes.
- * <0 : An error occured when trying to set up the call. The callback will not be invoked.
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
- * RPC_STATUS_SUCCESS : We got a successful response from the nlm daemon.
- *                      data is NLM4_LOCKres
- * RPC_STATUS_ERROR   : An error occured when trying to contact the nlm daemon.
+ * RPC_STATUS_SUCCESS : We got a successful response from the server.
+ *                      data is NLM4_LOCKres *.
+ * RPC_STATUS_ERROR   : The command failed with an error.
  *                      data is the error string.
- * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
- *                     data is NULL.
+ * RPC_STATUS_CANCEL  : The command was cancelled.
+ *                      data is NULL.
  */
 struct NLM4_LOCKargs;
-EXTERN int rpc_nlm4_lock_async(struct rpc_context *rpc, rpc_cb cb, struct NLM4_LOCKargs *args, void *private_data);
+EXTERN int rpc_nlm4_lock_async(struct rpc_context *rpc, rpc_cb cb,
+                               struct NLM4_LOCKargs *args,
+                               void *private_data);
 
 /*
  * Call NLM/CANCEL
- * Call the CANCEL procedure for the NLM protocol
  *
  * Function returns
- *  0 : The call was initiated. The callback will be invoked when the call completes.
- * <0 : An error occured when trying to set up the call. The callback will not be invoked.
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
- * RPC_STATUS_SUCCESS : We got a successful response from the nlm daemon.
- *                      data is NLM4_CANCres
- * RPC_STATUS_ERROR   : An error occured when trying to contact the nlm daemon.
+ * RPC_STATUS_SUCCESS : We got a successful response from the server.
+ *                      data is NLM4_CANCres *.
+ * RPC_STATUS_ERROR   : The command failed with an error.
  *                      data is the error string.
- * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
- *                     data is NULL.
+ * RPC_STATUS_CANCEL  : The command was cancelled.
+ *                      data is NULL.
  */
 struct NLM4_CANCargs;
-EXTERN int rpc_nlm4_cancel_async(struct rpc_context *rpc, rpc_cb cb, struct NLM4_CANCargs *args, void *private_data);
+EXTERN int rpc_nlm4_cancel_async(struct rpc_context *rpc, rpc_cb cb,
+                                 struct NLM4_CANCargs *args,
+                                 void *private_data);
 
 /*
  * Call NLM/UNLOCK
- * Call the UNLOCK procedure for the NLM protocol
  *
  * Function returns
- *  0 : The call was initiated. The callback will be invoked when the call completes.
- * <0 : An error occured when trying to set up the call. The callback will not be invoked.
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
- * RPC_STATUS_SUCCESS : We got a successful response from the nlm daemon.
- *                      data is NLM4_UNLOCKres
- * RPC_STATUS_ERROR   : An error occured when trying to contact the nlm daemon.
+ * RPC_STATUS_SUCCESS : We got a successful response from the server.
+ *                      data is NLM4_UNLOCKres *.
+ * RPC_STATUS_ERROR   : The command failed with an error.
  *                      data is the error string.
- * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
- *                     data is NULL.
+ * RPC_STATUS_CANCEL  : The command was cancelled.
+ *                      data is NULL.
  */
 struct NLM4_UNLOCKargs;
-EXTERN int rpc_nlm4_unlock_async(struct rpc_context *rpc, rpc_cb cb, struct NLM4_UNLOCKargs *args, void *private_data);
+EXTERN int rpc_nlm4_unlock_async(struct rpc_context *rpc, rpc_cb cb,
+                                 struct NLM4_UNLOCKargs *args,
+                                 void *private_data);
 
 /*
  * NSM functions
  */
-char *nsmstat1_to_str(int stat);
+EXTERN char *nsmstat1_to_str(int stat);
 
 /*
  * Call NSM/NULL
- * Call the NULL procedure for the NSM protocol
  *
  * Function returns
- *  0 : The call was initiated. The callback will be invoked when the call completes.
- * <0 : An error occured when trying to set up the call. The callback will not be invoked.
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
- * RPC_STATUS_SUCCESS : We got a successful response from the nsm daemon.
+ * RPC_STATUS_SUCCESS : We got a successful response from the server.
  *                      data is NULL
- * RPC_STATUS_ERROR   : An error occured when trying to contact the nsm daemon.
+ * RPC_STATUS_ERROR   : The command failed with an error.
  *                      data is the error string.
- * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
- *                     data is NULL.
+ * RPC_STATUS_CANCEL  : The command was cancelled.
+ *                      data is NULL.
  */
-EXTERN int rpc_nsm1_null_async(struct rpc_context *rpc, rpc_cb cb, void *private_data);
+EXTERN int rpc_nsm1_null_async(struct rpc_context *rpc, rpc_cb cb,
+                               void *private_data);
 
 /*
  * Call NSM/STAT
- * Call the STAT procedure for the NSM protocol
  *
  * Function returns
- *  0 : The call was initiated. The callback will be invoked when the call completes.
- * <0 : An error occured when trying to set up the call. The callback will not be invoked.
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
- * RPC_STATUS_SUCCESS : We got a successful response from the nsm daemon.
- *                      data is NSM1_STATres
- * RPC_STATUS_ERROR   : An error occured when trying to contact the nsm daemon.
+ * RPC_STATUS_SUCCESS : We got a successful response from the server.
+ *                      data is NSM1_STATres *.
+ * RPC_STATUS_ERROR   : The command failed with an error.
  *                      data is the error string.
- * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
- *                     data is NULL.
+ * RPC_STATUS_CANCEL  : The command was cancelled.
+ *                      data is NULL.
  */
 struct NSM1_STATargs;
-EXTERN int rpc_nsm1_stat_async(struct rpc_context *rpc, rpc_cb cb, struct NSM1_STATargs *args, void *private_data);
+EXTERN int rpc_nsm1_stat_async(struct rpc_context *rpc, rpc_cb cb,
+                               struct NSM1_STATargs *args,
+                               void *private_data);
 
 /*
  * Call NSM/MON
- * Call the MON procedure for the NSM protocol
  *
  * Function returns
- *  0 : The call was initiated. The callback will be invoked when the call completes.
- * <0 : An error occured when trying to set up the call. The callback will not be invoked.
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
- * RPC_STATUS_SUCCESS : We got a successful response from the nsm daemon.
- *                      data is NSM1_MONres
- * RPC_STATUS_ERROR   : An error occured when trying to contact the nsm daemon.
+ * RPC_STATUS_SUCCESS : We got a successful response from the server.
+ *                      data is NSM1_MONres *.
+ * RPC_STATUS_ERROR   : The command failed with an error.
  *                      data is the error string.
- * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
- *                     data is NULL.
+ * RPC_STATUS_CANCEL  : The command was cancelled.
+ *                      data is NULL.
  */
 struct NSM1_MONargs;
-EXTERN int rpc_nsm1_mon_async(struct rpc_context *rpc, rpc_cb cb, struct NSM1_MONargs *args, void *private_data);
+EXTERN int rpc_nsm1_mon_async(struct rpc_context *rpc, rpc_cb cb,
+                              struct NSM1_MONargs *args,
+                              void *private_data);
 
 /*
  * Call NSM/UNMON
- * Call the UNMON procedure for the NSM protocol
  *
  * Function returns
- *  0 : The call was initiated. The callback will be invoked when the call completes.
- * <0 : An error occured when trying to set up the call. The callback will not be invoked.
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
- * RPC_STATUS_SUCCESS : We got a successful response from the nsm daemon.
- *                      data is NSM1_UNMONres
- * RPC_STATUS_ERROR   : An error occured when trying to contact the nsm daemon.
+ * RPC_STATUS_SUCCESS : We got a successful response from the server.
+ *                      data is NSM1_UNMONres *.
+ * RPC_STATUS_ERROR   : The command failed with an error.
  *                      data is the error string.
- * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
- *                     data is NULL.
+ * RPC_STATUS_CANCEL  : The command was cancelled.
+ *                      data is NULL.
  */
 struct NSM1_UNMONargs;
-EXTERN int rpc_nsm1_unmon_async(struct rpc_context *rpc, rpc_cb cb, struct NSM1_UNMONargs *args, void *private_data);
+EXTERN int rpc_nsm1_unmon_async(struct rpc_context *rpc, rpc_cb cb,
+                                struct NSM1_UNMONargs *args,
+                                void *private_data);
 
 /*
  * Call NSM/UNMONALL
- * Call the UNMONALL procedure for the NSM protocol
  *
  * Function returns
- *  0 : The call was initiated. The callback will be invoked when the call completes.
- * <0 : An error occured when trying to set up the call. The callback will not be invoked.
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
- * RPC_STATUS_SUCCESS : We got a successful response from the nsm daemon.
- *                      data is NSM1_UNMONALLres
- * RPC_STATUS_ERROR   : An error occured when trying to contact the nsm daemon.
+ * RPC_STATUS_SUCCESS : We got a successful response from the server.
+ *                      data is NSM1_UNMONALLres *.
+ * RPC_STATUS_ERROR   : The command failed with an error.
  *                      data is the error string.
- * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
- *                     data is NULL.
+ * RPC_STATUS_CANCEL  : The command was cancelled.
+ *                      data is NULL.
  */
 struct NSM1_UNMONALLargs;
-EXTERN int rpc_nsm1_unmonall_async(struct rpc_context *rpc, rpc_cb cb, struct NSM1_UNMONALLargs *args, void *private_data);
+EXTERN int rpc_nsm1_unmonall_async(struct rpc_context *rpc, rpc_cb cb,
+                                   struct NSM1_UNMONALLargs *args,
+                                   void *private_data);
 
 /*
  * Call NSM/SIMUCRASH
- * Call the SIMUCRASH procedure for the NSM protocol
  *
  * Function returns
- *  0 : The call was initiated. The callback will be invoked when the call completes.
- * <0 : An error occured when trying to set up the call. The callback will not be invoked.
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
- * RPC_STATUS_SUCCESS : We got a successful response from the nsm daemon.
- *                      data is NULL
- * RPC_STATUS_ERROR   : An error occured when trying to contact the nsm daemon.
+ * RPC_STATUS_SUCCESS : We got a successful response from the server.
+ *                      data is NULL.
+ * RPC_STATUS_ERROR   : The command failed with an error.
  *                      data is the error string.
- * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
- *                     data is NULL.
+ * RPC_STATUS_CANCEL  : The command was cancelled.
+ *                      data is NULL.
  */
-EXTERN int rpc_nsm1_simucrash_async(struct rpc_context *rpc, rpc_cb cb, void *private_data);
+EXTERN int rpc_nsm1_simucrash_async(struct rpc_context *rpc, rpc_cb cb,
+                                    void *private_data);
 
 /*
  * Call NSM/NOTIFY
- * Call the NOTIFY procedure for the NSM protocol
  *
  * Function returns
- *  0 : The call was initiated. The callback will be invoked when the call completes.
- * <0 : An error occured when trying to set up the call. The callback will not be invoked.
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
- * RPC_STATUS_SUCCESS : We got a successful response from the nsm daemon.
- *                      data is NULL
- * RPC_STATUS_ERROR   : An error occured when trying to contact the nsm daemon.
+ * RPC_STATUS_SUCCESS : We got a successful response from the server.
+ *                      data is NULL.
+ * RPC_STATUS_ERROR   : The command failed with an error.
  *                      data is the error string.
- * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
- *                     data is NULL.
+ * RPC_STATUS_CANCEL  : The command was cancelled.
+ *                      data is NULL.
  */
 struct NSM1_NOTIFYargs;
-EXTERN int rpc_nsm1_notify_async(struct rpc_context *rpc, rpc_cb cb, struct NSM1_NOTIFYargs *args, void *private_data);
+EXTERN int rpc_nsm1_notify_async(struct rpc_context *rpc, rpc_cb cb,
+                                 struct NSM1_NOTIFYargs *args,
+                                 void *private_data);
 
 /*
  * Call NFS4/NULL
  * Function returns
- *  0 : The call was initiated. The callback will be invoked when the call completes.
- * <0 : An error occured when trying to set up the call. The callback will not be invoked.
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
- * RPC_STATUS_SUCCESS : We got a successful response from the nfs daemon.
+ * RPC_STATUS_SUCCESS : We got a successful response from the server.
  *                      data is NULL.
- * RPC_STATUS_ERROR   : An error occured when trying to contact the nfs daemon.
+ * RPC_STATUS_ERROR   : The command failed with an error.
  *                      data is the error string.
- * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
- *                     data is NULL.
+ * RPC_STATUS_CANCEL  : The command was cancelled.
+ *                      data is NULL.
  */
-EXTERN int rpc_nfs4_null_async(struct rpc_context *rpc, rpc_cb cb, void *private_data);
+EXTERN int rpc_nfs4_null_async(struct rpc_context *rpc, rpc_cb cb,
+                               void *private_data);
 
 /*
  * Call NFS4/COMPOUND
  * Function returns
- *  0 : The call was initiated. The callback will be invoked when the call completes.
- * <0 : An error occured when trying to set up the call. The callback will not be invoked.
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
- * RPC_STATUS_SUCCESS : We got a successful response from the nfs daemon.
- *                      data is COMPOUND4res
- * RPC_STATUS_ERROR   : An error occured when trying to contact the nfs daemon.
+ * RPC_STATUS_SUCCESS : We got a successful response from the server.
+ *                      data is COMPOUND4res *.
+ * RPC_STATUS_ERROR   : The command failed with an error.
  *                      data is the error string.
- * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
- *                     data is NULL.
+ * RPC_STATUS_CANCEL  : The command was cancelled.
+ *                      data is NULL.
  */
 struct COMPOUND4args;
-EXTERN int rpc_nfs4_compound_async(struct rpc_context *rpc, rpc_cb cb, struct COMPOUND4args *args, void *private_data);
+EXTERN int rpc_nfs4_compound_async(struct rpc_context *rpc, rpc_cb cb,
+                                   struct COMPOUND4args *args,
+                                   void *private_data);
 
 /*
  * Call <generic>/NULL
  * Function returns
- *  0 : The connection was initiated. Once the connection establish finishes, the callback will be invoked.
- * <0 : An error occured when trying to set up the connection. The callback will not be invoked.
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
- * RPC_STATUS_SUCCESS : We got a successful response from the portmapper daemon.
+ * RPC_STATUS_SUCCESS : We got a successful response from the server.
  *                      data is NULL.
- * RPC_STATUS_ERROR   : An error occured when trying to contact the portmapper.
+ * RPC_STATUS_ERROR   : The command failed with an error.
  *                      data is the error string.
- * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
- *                     data is NULL.
+ * RPC_STATUS_CANCEL  : The command was cancelled.
+ *                      data is NULL.
  */
-EXTERN int
-rpc_null_async(struct rpc_context *rpc, int program, int version, rpc_cb cb, void *private_data);
+EXTERN int rpc_null_async(struct rpc_context *rpc, int program, int version,
+                          rpc_cb cb, void *private_data);
+
 
 #ifdef __cplusplus
 }

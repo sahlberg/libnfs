@@ -1,3 +1,4 @@
+/* -*-  mode:c; tab-width:8; c-basic-offset:8; indent-tabs-mode:nil;  -*- */
 /*
    Copyright (C) 2010 by Ronnie Sahlberg <ronniesahlberg@gmail.com>
 
@@ -117,8 +118,9 @@ static void wait_for_reply(struct rpc_context *rpc, struct sync_cb_data *cb_data
 
 	while (!cb_data->is_finished) {
 
-		pfd.fd = rpc_get_fd(rpc);
-		pfd.events = rpc_which_events(rpc);
+		pfd.fd      = rpc_get_fd(rpc);
+		pfd.events  = rpc_which_events(rpc);
+		pfd.revents = 0;
 
 		ret = poll(&pfd, 1, 100);
 		if (ret < 0) {
@@ -146,12 +148,13 @@ static void wait_for_nfs_reply(struct nfs_context *nfs, struct sync_cb_data *cb_
 {
 	struct pollfd pfd;
 	int revents;
-	int ret = -1;
+	int ret;
 
 	while (!cb_data->is_finished) {
 
 		pfd.fd = nfs_get_fd(nfs);
 		pfd.events = nfs_which_events(nfs);
+		pfd.revents = 0;
 
 		ret = poll(&pfd, 1, 100);
 		if (ret < 0) {
@@ -183,7 +186,8 @@ static void mount_cb(int status, struct nfs_context *nfs, void *data, void *priv
 	cb_data->status = status;
 
 	if (status < 0) {
-		nfs_set_error(nfs, "mount/mnt call failed with \"%s\"", (char *)data);
+		nfs_set_error(nfs, "%s: %s",
+                              __FUNCTION__, nfs_get_error(nfs));
 		return;
 	}
 }
@@ -198,7 +202,8 @@ int nfs_mount(struct nfs_context *nfs, const char *server, const char *export)
 	cb_data.is_finished = 0;
 
 	if (nfs_mount_async(nfs, server, export, mount_cb, &cb_data) != 0) {
-		nfs_set_error(nfs, "nfs_mount_async failed");
+		nfs_set_error(nfs, "nfs_mount_async failed. %s",
+			      nfs_get_error(nfs));
 		return -1;
 	}
 
@@ -694,7 +699,8 @@ int nfs_mkdir(struct nfs_context *nfs, const char *path)
 	cb_data.is_finished = 0;
 
 	if (nfs_mkdir_async(nfs, path, mkdir_cb, &cb_data) != 0) {
-		nfs_set_error(nfs, "nfs_mkdir_async failed");
+		nfs_set_error(nfs, "nfs_mkdir_async failed. %s",
+                              nfs_get_error(nfs));
 		return -1;
 	}
 
@@ -744,7 +750,8 @@ int nfs_rmdir(struct nfs_context *nfs, const char *path)
 	cb_data.is_finished = 0;
 
 	if (nfs_rmdir_async(nfs, path, rmdir_cb, &cb_data) != 0) {
-		nfs_set_error(nfs, "nfs_rmdir_async failed");
+		nfs_set_error(nfs, "nfs_rmdir_async failed. %s",
+                              nfs_get_error(nfs));
 		return -1;
 	}
 
@@ -776,7 +783,9 @@ static void creat_cb(int status, struct nfs_context *nfs, void *data, void *priv
 	*nfsfh = fh;
 }
 
-int nfs_create(struct nfs_context *nfs, const char *path, int flags, int mode, struct nfsfh **nfsfh)
+int
+nfs_create(struct nfs_context *nfs, const char *path, int flags, int mode,
+           struct nfsfh **nfsfh)
 {
 	struct sync_cb_data cb_data;
 
@@ -784,7 +793,8 @@ int nfs_create(struct nfs_context *nfs, const char *path, int flags, int mode, s
 	cb_data.return_data = nfsfh;
 
 	if (nfs_create_async(nfs, path, flags, mode, creat_cb, &cb_data) != 0) {
-		nfs_set_error(nfs, "nfs_create_async failed");
+		nfs_set_error(nfs, "nfs_create_async failed. %s",
+                              nfs_get_error(nfs));
 		return -1;
 	}
 
@@ -793,7 +803,9 @@ int nfs_create(struct nfs_context *nfs, const char *path, int flags, int mode, s
 	return cb_data.status;
 }
 
-int nfs_creat(struct nfs_context *nfs, const char *path, int mode, struct nfsfh **nfsfh)
+int
+nfs_creat(struct nfs_context *nfs, const char *path, int mode,
+          struct nfsfh **nfsfh)
 {
 	return nfs_create(nfs, path, 0, mode, nfsfh);
 }
@@ -801,7 +813,8 @@ int nfs_creat(struct nfs_context *nfs, const char *path, int mode, struct nfsfh 
 /*
  * mknod()
  */
-static void mknod_cb(int status, struct nfs_context *nfs, void *data, void *private_data)
+static void
+mknod_cb(int status, struct nfs_context *nfs, void *data, void *private_data)
 {
 	struct sync_cb_data *cb_data = private_data;
 
@@ -809,19 +822,22 @@ static void mknod_cb(int status, struct nfs_context *nfs, void *data, void *priv
 	cb_data->status = status;
 
 	if (status < 0) {
-		nfs_set_error(nfs, "mknod call failed with \"%s\"", (char *)data);
+		nfs_set_error(nfs, "mknod call failed with \"%s\"",
+                              (char *)data);
 		return;
 	}
 }
 
-int nfs_mknod(struct nfs_context *nfs, const char *path, int mode, int dev)
+int
+nfs_mknod(struct nfs_context *nfs, const char *path, int mode, int dev)
 {
 	struct sync_cb_data cb_data;
 
 	cb_data.is_finished = 0;
 
 	if (nfs_mknod_async(nfs, path, mode, dev, mknod_cb, &cb_data) != 0) {
-		nfs_set_error(nfs, "nfs_creat_async failed");
+		nfs_set_error(nfs, "nfs_creat_async failed. %s",
+                              nfs_get_error(nfs));
 		return -1;
 	}
 
@@ -854,7 +870,8 @@ int nfs_unlink(struct nfs_context *nfs, const char *path)
 	cb_data.is_finished = 0;
 
 	if (nfs_unlink_async(nfs, path, unlink_cb, &cb_data) != 0) {
-		nfs_set_error(nfs, "nfs_unlink_async failed");
+		nfs_set_error(nfs, "nfs_unlink_async failed. %s",
+                              nfs_get_error(nfs));
 		return -1;
 	}
 
@@ -1396,7 +1413,8 @@ int nfs_access2(struct nfs_context *nfs, const char *path)
 /*
  * symlink()
  */
-static void symlink_cb(int status, struct nfs_context *nfs, void *data, void *private_data)
+static void
+symlink_cb(int status, struct nfs_context *nfs, void *data, void *private_data)
 {
 	struct sync_cb_data *cb_data = private_data;
 
@@ -1404,19 +1422,23 @@ static void symlink_cb(int status, struct nfs_context *nfs, void *data, void *pr
 	cb_data->status = status;
 
 	if (status < 0) {
-		nfs_set_error(nfs, "symlink call failed with \"%s\"", (char *)data);
+		nfs_set_error(nfs, "symlink call failed with \"%s\"",
+			      (char *)data);
 		return;
 	}
 }
 
-int nfs_symlink(struct nfs_context *nfs, const char *oldpath, const char *newpath)
+int
+nfs_symlink(struct nfs_context *nfs, const char *target, const char *linkname)
 {
 	struct sync_cb_data cb_data;
 
 	cb_data.is_finished = 0;
 
-	if (nfs_symlink_async(nfs, oldpath, newpath, symlink_cb, &cb_data) != 0) {
-		nfs_set_error(nfs, "nfs_symlink_async failed");
+	if (nfs_symlink_async(nfs, target, linkname, symlink_cb,
+			      &cb_data) != 0) {
+	  nfs_set_error(nfs, "nfs_symlink_async failed: %s",
+			nfs_get_error(nfs));
 		return -1;
 	}
 
@@ -1424,7 +1446,6 @@ int nfs_symlink(struct nfs_context *nfs, const char *oldpath, const char *newpat
 
 	return cb_data.status;
 }
-
 
 
 /*
@@ -1450,7 +1471,8 @@ int nfs_rename(struct nfs_context *nfs, const char *oldpath, const char *newpath
 	cb_data.is_finished = 0;
 
 	if (nfs_rename_async(nfs, oldpath, newpath, rename_cb, &cb_data) != 0) {
-		nfs_set_error(nfs, "nfs_rename_async failed");
+		nfs_set_error(nfs, "nfs_rename_async failed: %s",
+                              nfs_get_error(nfs));
 		return -1;
 	}
 

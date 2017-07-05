@@ -1,5 +1,6 @@
+/* -*-  mode:c; tab-width:8; c-basic-offset:8; indent-tabs-mode:nil;  -*- */
 /* 
-   Copyright (C) by Ronnie Sahlberg <ronniesahlberg@gmail.com> 2015
+   Copyright (C) by Ronnie Sahlberg <ronniesahlberg@gmail.com> 2017
    
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -40,6 +41,7 @@ int main(int argc, char *argv[])
 	struct nfs_context *nfs = NULL;
 	struct nfs_url *url = NULL;
 	struct nfs_stat_64 st;
+	int ret = 0;
 
 	if (argc != 2) {
 		usage();
@@ -51,6 +53,8 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 
+	nfs_set_timeout(nfs, 1000);
+
 	url = nfs_parse_url_full(nfs, argv[argc - 1]);
 	if (url == NULL) {
 		fprintf(stderr, "%s\n", nfs_get_error(nfs));
@@ -60,13 +64,15 @@ int main(int argc, char *argv[])
 	if (nfs_mount(nfs, url->server, url->path) != 0) {
  		fprintf(stderr, "Failed to mount nfs share : %s\n",
 			nfs_get_error(nfs));
-		exit(1);
+		ret = 1;
+		goto finished;
 	}
 
 	if (nfs_stat64(nfs, url->file, &st)) {
  		fprintf(stderr, "Failed to stat file : %s\n",
 			nfs_get_error(nfs));
-		exit(1);
+		ret = 1;
+		goto finished;
 	}
 
 	printf("nfs_ino:%" PRIu64 "\n", st.nfs_ino);
@@ -79,8 +85,9 @@ int main(int argc, char *argv[])
 	printf("nfs_mtime:%" PRIu64 "\n", st.nfs_mtime);
 	printf("nfs_ctime:%" PRIu64 "\n", st.nfs_ctime);
 
+finished:
 	nfs_destroy_url(url);
 	nfs_destroy_context(nfs);
 
-	return 0;
+	return ret;
 }

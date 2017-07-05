@@ -27,23 +27,23 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <unistd.h>
 
 #include "libnfs.h"
 
 void usage(void)
 {
-	fprintf(stderr, "Usage: prog-fstat <file>\n");
+	fprintf(stderr, "Usage: prog-rename <url> <cwd> <oldpath> <newpath>\n");
 	exit(1);
 }
 
 int main(int argc, char *argv[])
 {
-	struct nfs_context *nfs;
-	struct nfsfh *nfsfh;
-	struct nfs_url *url;
-	struct nfs_stat_64 st;
+	struct nfs_context *nfs = NULL;
+	struct nfs_url *url = NULL;
+	int ret = 0;
 
-	if (argc != 2) {
+	if (argc != 5) {
 		usage();
 	}
 
@@ -53,7 +53,7 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 
-	url = nfs_parse_url_full(nfs, argv[argc - 1]);
+	url = nfs_parse_url_full(nfs, argv[1]);
 	if (url == NULL) {
 		fprintf(stderr, "%s\n", nfs_get_error(nfs));
 		exit(1);
@@ -62,34 +62,27 @@ int main(int argc, char *argv[])
 	if (nfs_mount(nfs, url->server, url->path) != 0) {
  		fprintf(stderr, "Failed to mount nfs share : %s\n",
 			nfs_get_error(nfs));
-		exit(1);
+		ret = 1;
+		goto finished;
 	}
 
-	if (nfs_open(nfs, url->file, O_RDONLY, &nfsfh)) {
- 		fprintf(stderr, "Failed to open file : %s\n",
+	if (nfs_chdir(nfs, argv[2]) != 0) {
+ 		fprintf(stderr, "Failed to chdir to \"%s\" : %s\n",
+			argv[2], nfs_get_error(nfs));
+		ret = 1;
+		goto finished;
+	}
+        
+	if (nfs_rename(nfs, argv[3], argv[4])) {
+ 		fprintf(stderr, "Failed to rename: %s\n",
 			nfs_get_error(nfs));
-		exit(1);
+		ret = 1;
+		goto finished;
 	}
-
-	if (nfs_fstat64(nfs, nfsfh, &st)) {
- 		fprintf(stderr, "Failed to stat file : %s\n",
-			nfs_get_error(nfs));
-		exit(1);
-	}
-
-	printf("nfs_ino:%" PRIu64 "\n", st.nfs_ino);
-	printf("nfs_mode:%" PRIo64 "\n", st.nfs_mode);
-	printf("nfs_nlink:%" PRIu64 "\n", st.nfs_nlink);
-	printf("nfs_uid:%" PRIu64 "\n", st.nfs_uid);
-	printf("nfs_gid:%" PRIu64 "\n", st.nfs_gid);
-	printf("nfs_size:%" PRIu64 "\n", st.nfs_size);
-	printf("nfs_atime:%" PRIu64 "\n", st.nfs_atime);
-	printf("nfs_mtime:%" PRIu64 "\n", st.nfs_mtime);
-	printf("nfs_ctime:%" PRIu64 "\n", st.nfs_ctime);
-
+        
+finished:
 	nfs_destroy_url(url);
-	nfs_close(nfs, nfsfh);
 	nfs_destroy_context(nfs);
 
-	return 0;
+	return ret;
 }

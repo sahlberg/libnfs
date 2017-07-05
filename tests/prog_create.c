@@ -27,33 +27,38 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <unistd.h>
 
 #include "libnfs.h"
 
 void usage(void)
 {
-	fprintf(stderr, "Usage: prog-fstat <file>\n");
+	fprintf(stderr, "Usage: prog-create <url> <cwd> <path> <mode(octal)>"
+                "\n");
 	exit(1);
 }
 
 int main(int argc, char *argv[])
 {
-	struct nfs_context *nfs;
-	struct nfsfh *nfsfh;
-	struct nfs_url *url;
-	struct nfs_stat_64 st;
+	struct nfs_context *nfs = NULL;
+	struct nfs_url *url = NULL;
+	int ret = 0;
+        int mode;
+        struct nfsfh *fh;
 
-	if (argc != 2) {
+	if (argc != 5) {
 		usage();
 	}
 
+        mode = strtol(argv[4], NULL, 8);
+        
 	nfs = nfs_init_context();
 	if (nfs == NULL) {
 		printf("failed to init context\n");
 		exit(1);
 	}
 
-	url = nfs_parse_url_full(nfs, argv[argc - 1]);
+	url = nfs_parse_url_full(nfs, argv[1]);
 	if (url == NULL) {
 		fprintf(stderr, "%s\n", nfs_get_error(nfs));
 		exit(1);
@@ -62,34 +67,34 @@ int main(int argc, char *argv[])
 	if (nfs_mount(nfs, url->server, url->path) != 0) {
  		fprintf(stderr, "Failed to mount nfs share : %s\n",
 			nfs_get_error(nfs));
-		exit(1);
+		ret = 1;
+		goto finished;
 	}
 
-	if (nfs_open(nfs, url->file, O_RDONLY, &nfsfh)) {
- 		fprintf(stderr, "Failed to open file : %s\n",
+	if (nfs_chdir(nfs, argv[2]) != 0) {
+ 		fprintf(stderr, "Failed to chdir to \"%s\" : %s\n",
+			argv[2], nfs_get_error(nfs));
+		ret = 1;
+		goto finished;
+	}
+
+	if (nfs_creat(nfs, argv[3], mode, &fh)) {
+ 		fprintf(stderr, "Failed to creat(): %s\n",
 			nfs_get_error(nfs));
-		exit(1);
+		ret = 1;
+		goto finished;
 	}
 
-	if (nfs_fstat64(nfs, nfsfh, &st)) {
- 		fprintf(stderr, "Failed to stat file : %s\n",
+	if (nfs_close(nfs, fh)) {
+ 		fprintf(stderr, "Failed to close(): %s\n",
 			nfs_get_error(nfs));
-		exit(1);
+		ret = 1;
+		goto finished;
 	}
-
-	printf("nfs_ino:%" PRIu64 "\n", st.nfs_ino);
-	printf("nfs_mode:%" PRIo64 "\n", st.nfs_mode);
-	printf("nfs_nlink:%" PRIu64 "\n", st.nfs_nlink);
-	printf("nfs_uid:%" PRIu64 "\n", st.nfs_uid);
-	printf("nfs_gid:%" PRIu64 "\n", st.nfs_gid);
-	printf("nfs_size:%" PRIu64 "\n", st.nfs_size);
-	printf("nfs_atime:%" PRIu64 "\n", st.nfs_atime);
-	printf("nfs_mtime:%" PRIu64 "\n", st.nfs_mtime);
-	printf("nfs_ctime:%" PRIu64 "\n", st.nfs_ctime);
-
+        
+finished:
 	nfs_destroy_url(url);
-	nfs_close(nfs, nfsfh);
 	nfs_destroy_context(nfs);
 
-	return 0;
+	return ret;
 }

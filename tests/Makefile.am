@@ -4,7 +4,24 @@ AM_CPPFLAGS = -I${srcdir}/../include -I${srcdir}/../include/nfsc \
 AM_CFLAGS = $(WARN_CFLAGS)
 LDADD = ../lib/libnfs.la
 
-noinst_PROGRAMS = prog_fstat prog_stat
+noinst_PROGRAMS = prog_create prog_fstat prog_link prog_mkdir prog_mknod \
+	prog_rename prog_rmdir prog_stat prog_symlink prog_timeout prog_unlink
+
+EXTRA_PROGRAMS = ld_timeout
+CLEANFILES = ld_timeout.o ld_timeout.so
+
+ld_timeout_SOURCES = ld_timeout.c
+ld_timeout_CFLAGS = $(AM_CFLAGS) -fPIC
+
+bin_SCRIPTS = ld_timeout.so
+
+ld_timeout.o: ld_timeout-ld_timeout.o
+	$(LIBTOOL) --mode=link $(CC) -o $@ $^
+
+ld_timeout.so: ld_timeout.o
+	$(CC) -shared -o ld_timeout.so ld_timeout.o -ldl
+
+
 
 T = `ls test_*.sh`
 

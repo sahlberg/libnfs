@@ -32,15 +32,14 @@
 
 void usage(void)
 {
-	fprintf(stderr, "Usage: prog-fstat <file>\n");
+	fprintf(stderr, "Usage: prog-stat <file>\n");
 	exit(1);
 }
 
 int main(int argc, char *argv[])
 {
-	struct nfs_context *nfs;
-	struct nfsfh *nfsfh;
-	struct nfs_url *url;
+	struct nfs_context *nfs = NULL;
+	struct nfs_url *url = NULL;
 	struct nfs_stat_64 st;
 
 	if (argc != 2) {
@@ -53,6 +52,8 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 
+	nfs_set_timeout(nfs, 1000);
+
 	url = nfs_parse_url_full(nfs, argv[argc - 1]);
 	if (url == NULL) {
 		fprintf(stderr, "%s\n", nfs_get_error(nfs));
@@ -62,19 +63,13 @@ int main(int argc, char *argv[])
 	if (nfs_mount(nfs, url->server, url->path) != 0) {
  		fprintf(stderr, "Failed to mount nfs share : %s\n",
 			nfs_get_error(nfs));
-		exit(1);
+		goto finished;
 	}
 
-	if (nfs_open(nfs, url->file, O_RDONLY, &nfsfh)) {
- 		fprintf(stderr, "Failed to open file : %s\n",
-			nfs_get_error(nfs));
-		exit(1);
-	}
-
-	if (nfs_fstat64(nfs, nfsfh, &st)) {
+	if (nfs_stat64(nfs, url->file, &st)) {
  		fprintf(stderr, "Failed to stat file : %s\n",
 			nfs_get_error(nfs));
-		exit(1);
+		goto finished;
 	}
 
 	printf("nfs_ino:%" PRIu64 "\n", st.nfs_ino);
@@ -87,9 +82,12 @@ int main(int argc, char *argv[])
 	printf("nfs_mtime:%" PRIu64 "\n", st.nfs_mtime);
 	printf("nfs_ctime:%" PRIu64 "\n", st.nfs_ctime);
 
+finished:
 	nfs_destroy_url(url);
-	nfs_close(nfs, nfsfh);
 	nfs_destroy_context(nfs);
 
+	/* Always return 0 as we want to catch valgrind
+	 * overriding this with return code 1 upon memory leaks.
+	 */
 	return 0;
 }
