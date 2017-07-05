@@ -19,7 +19,8 @@ libnfs_la_SOURCES = \
 	libnfs.c \
 	libnfs-sync.c \
 	libnfs-zdr.c \
-	nfs3.c \
+	nfs_v3.c \
+	nfs_v4.c \
 	pdu.c \
 	socket.c \
 	../win32/win32_compat.c

@@ -91,7 +91,6 @@
 #include "libnfs.h"
 #include "libnfs-raw.h"
 #include "libnfs-raw-mount.h"
-#include "libnfs-raw-nfs.h"
 #include "libnfs-private.h"
 
 static dev_t
@@ -120,6 +119,28 @@ struct nfs_mcb_data {
        size_t count;
 };
 
+static int
+check_nfs3_error(struct nfs_context *nfs, int status,
+                 struct nfs_cb_data *data, void *command_data)
+{
+	if (status == RPC_STATUS_ERROR) {
+		data->cb(-EFAULT, nfs, command_data, data->private_data);
+		return 1;
+	}
+	if (status == RPC_STATUS_CANCEL) {
+		data->cb(-EINTR, nfs, "Command was cancelled",
+			 data->private_data);
+		return 1;
+	}
+	if (status == RPC_STATUS_TIMEOUT) {
+		data->cb(-EINTR, nfs, "Command timed out",
+			 data->private_data);
+		return 1;
+	}
+
+	return 0;
+}
+
 static int nfs3_lookup_path_async_internal(struct nfs_context *nfs,
                                            struct nfs_attr *attr,
                                            struct nfs_cb_data *data,
@@ -141,7 +162,7 @@ nfs3_lookup_path_2_cb(struct rpc_context *rpc, int status, void *command_data,
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
-	if (check_nfs_error(nfs, status, data, command_data)) {
+	if (check_nfs3_error(nfs, status, data, command_data)) {
 		free_nfs_cb_data(data);
 		return;
 	}
@@ -261,8 +282,7 @@ nfs3_lookup_path_1_cb(struct rpc_context *rpc, int status, void *command_data,
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
-	if (check_nfs_error(nfs, status, data, command_data)) {
-		data->cb(-EFAULT, nfs, command_data, data->private_data);
+	if (check_nfs3_error(nfs, status, data, command_data)) {
 		free_nfs_cb_data(data);
 		return;
 	}
@@ -410,7 +430,7 @@ nfs3_lookup_path_getattr_cb(struct rpc_context *rpc, int status,
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
-	if (check_nfs_error(nfs, status, data, command_data)) {
+	if (check_nfs3_error(nfs, status, data, command_data)) {
 		free_nfs_cb_data(data);
 		return;
 	}
@@ -588,7 +608,7 @@ nfs3_mount_7_cb(struct rpc_context *rpc, int status, void *command_data,
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
-	if (check_nfs_error(nfs, status, data, command_data)) {
+	if (check_nfs3_error(nfs, status, data, command_data)) {
 		free_nfs_cb_data(data);
 		return;
 	}
@@ -651,7 +671,7 @@ nfs3_mount_6_cb(struct rpc_context *rpc, int status, void *command_data,
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
-	if (check_nfs_error(nfs, status, data, command_data)) {
+	if (check_nfs3_error(nfs, status, data, command_data)) {
 		free_nfs_cb_data(data);
 		return;
 	}
@@ -714,7 +734,7 @@ nfs3_mount_5_cb(struct rpc_context *rpc, int status, void *command_data,
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
-	if (check_nfs_error(nfs, status, data, command_data)) {
+	if (check_nfs3_error(nfs, status, data, command_data)) {
 		free_nfs_cb_data(data);
 		return;
 	}
@@ -857,7 +877,7 @@ nfs3_mount_3_cb(struct rpc_context *rpc, int status, void *command_data,
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
-	if (check_nfs_error(nfs, status, data, command_data)) {
+	if (check_nfs3_error(nfs, status, data, command_data)) {
 		free_nfs_cb_data(data);
 		return;
 	}
@@ -960,7 +980,7 @@ nfs3_mount_2_cb(struct rpc_context *rpc, int status, void *command_data,
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
-	if (check_nfs_error(nfs, status, data, command_data)) {
+	if (check_nfs3_error(nfs, status, data, command_data)) {
 		free_nfs_cb_data(data);
 		return;
 	}
@@ -1024,7 +1044,7 @@ nfs3_mount_1_cb(struct rpc_context *rpc, int status, void *command_data,
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
-	if (check_nfs_error(nfs, status, data, command_data)) {
+	if (check_nfs3_error(nfs, status, data, command_data)) {
 		free_nfs_cb_data(data);
 		return;
 	}
@@ -1110,7 +1130,7 @@ nfs3_link_cb(struct rpc_context *rpc, int status, void *command_data,
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
-	if (check_nfs_error(nfs, status, data, command_data)) {
+	if (check_nfs3_error(nfs, status, data, command_data)) {
 		free_nfs_cb_data(data);
 		return;
 	}
@@ -1280,7 +1300,7 @@ nfs3_rename_cb(struct rpc_context *rpc, int status, void *command_data,
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
-	if (check_nfs_error(nfs, status, data, command_data)) {
+	if (check_nfs3_error(nfs, status, data, command_data)) {
 		free_nfs_cb_data(data);
 		return;
 	}
@@ -1467,7 +1487,7 @@ nfs3_symlink_cb(struct rpc_context *rpc, int status, void *command_data,
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
-	if (check_nfs_error(nfs, status, data, command_data)) {
+	if (check_nfs3_error(nfs, status, data, command_data)) {
 		free_nfs_cb_data(data);
 		return;
 	}
@@ -1589,7 +1609,7 @@ nfs3_access2_cb(struct rpc_context *rpc, int status, void *command_data,
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
-	if (check_nfs_error(nfs, status, data, command_data)) {
+	if (check_nfs3_error(nfs, status, data, command_data)) {
 		free_nfs_cb_data(data);
 		return;
 	}
@@ -1667,7 +1687,7 @@ nfs3_access_cb(struct rpc_context *rpc, int status, void *command_data,
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
-	if (check_nfs_error(nfs, status, data, command_data)) {
+	if (check_nfs3_error(nfs, status, data, command_data)) {
 		free_nfs_cb_data(data);
 		return;
 	}
@@ -1769,7 +1789,7 @@ nfs3_utimes_cb(struct rpc_context *rpc, int status, void *command_data,
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
-	if (check_nfs_error(nfs, status, data, command_data)) {
+	if (check_nfs3_error(nfs, status, data, command_data)) {
 		free_nfs_cb_data(data);
 		return;
 	}
@@ -1892,7 +1912,7 @@ nfs3_chown_cb(struct rpc_context *rpc, int status, void *command_data,
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
-	if (check_nfs_error(nfs, status, data, command_data)) {
+	if (check_nfs3_error(nfs, status, data, command_data)) {
 		free_nfs_cb_data(data);
 		return;
 	}
@@ -2030,7 +2050,7 @@ nfs3_chmod_cb(struct rpc_context *rpc, int status, void *command_data,
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
-	if (check_nfs_error(nfs, status, data, command_data)) {
+	if (check_nfs3_error(nfs, status, data, command_data)) {
 		free_nfs_cb_data(data);
 		return;
 	}
@@ -2133,7 +2153,7 @@ nfs3_readlink_1_cb(struct rpc_context *rpc, int status, void *command_data,
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
-	if (check_nfs_error(nfs, status, data, command_data)) {
+	if (check_nfs3_error(nfs, status, data, command_data)) {
 		free_nfs_cb_data(data);
 		return;
 	}
@@ -2200,7 +2220,7 @@ nfs3_statvfs_1_cb(struct rpc_context *rpc, int status, void *command_data,
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
-	if (check_nfs_error(nfs, status, data, command_data)) {
+	if (check_nfs3_error(nfs, status, data, command_data)) {
 		free_nfs_cb_data(data);
 		return;
 	}
@@ -2280,7 +2300,7 @@ nfs3_lseek_1_cb(struct rpc_context *rpc, int status, void *command_data,
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
-	if (check_nfs_error(nfs, status, data, command_data)) {
+	if (check_nfs3_error(nfs, status, data, command_data)) {
 		free_nfs_cb_data(data);
 		return;
 	}
@@ -2536,7 +2556,7 @@ nfs3_opendir_2_cb(struct rpc_context *rpc, int status, void *command_data,
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
-	if (check_nfs_error(nfs, status, data, command_data)) {
+	if (check_nfs3_error(nfs, status, data, command_data)) {
 		nfs_free_nfsdir(nfsdir);
 		data->continue_data = NULL;
 		free_nfs_cb_data(data);
@@ -2929,7 +2949,7 @@ nfs3_mknod_cb(struct rpc_context *rpc, int status, void *command_data,
 
 	str = &str[strlen(str) + 1];
 
-	if (check_nfs_error(nfs, status, data, command_data)) {
+	if (check_nfs3_error(nfs, status, data, command_data)) {
 		free_nfs_cb_data(data);
 		return;
 	}
@@ -3071,7 +3091,7 @@ nfs3_unlink_cb(struct rpc_context *rpc, int status, void *command_data,
 
 	str = &str[strlen(str) + 1];
 
-	if (check_nfs_error(nfs, status, data, command_data)) {
+	if (check_nfs3_error(nfs, status, data, command_data)) {
 		free_nfs_cb_data(data);
 		return;
 	}
@@ -3181,7 +3201,7 @@ nfs3_create_trunc_cb(struct rpc_context *rpc, int status, void *command_data,
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
-	if (check_nfs_error(nfs, status, data, command_data)) {
+	if (check_nfs3_error(nfs, status, data, command_data)) {
 		free_nfs_cb_data(data);
 		nfs_free_nfsfh(nfsfh);
 		return;
@@ -3217,7 +3237,7 @@ nfs3_create_2_cb(struct rpc_context *rpc, int status, void *command_data,
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
-	if (check_nfs_error(nfs, status, data, command_data)) {
+	if (check_nfs3_error(nfs, status, data, command_data)) {
 		free_nfs_cb_data(data);
 		return;
 	}
@@ -3310,7 +3330,7 @@ nfs3_create_1_cb(struct rpc_context *rpc, int status, void *command_data,
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
-	if (check_nfs_error(nfs, status, data, command_data)) {
+	if (check_nfs3_error(nfs, status, data, command_data)) {
 		free_nfs_cb_data(data);
 		return;
 	}
@@ -3437,7 +3457,7 @@ nfs3_rmdir_cb(struct rpc_context *rpc, int status, void *command_data,
 
 	str = &str[strlen(str) + 1];
 
-	if (check_nfs_error(nfs, status, data, command_data)) {
+	if (check_nfs3_error(nfs, status, data, command_data)) {
 		free_nfs_cb_data(data);
 		return;
 	}
@@ -3534,7 +3554,7 @@ nfs3_mkdir_cb(struct rpc_context *rpc, int status, void *command_data,
 
 	str = &str[strlen(str) + 1];
 
-	if (check_nfs_error(nfs, status, data, command_data)) {
+	if (check_nfs3_error(nfs, status, data, command_data)) {
 		free_nfs_cb_data(data);
 		return;
 	}
@@ -3674,7 +3694,7 @@ nfs3_ftruncate_cb(struct rpc_context *rpc, int status, void *command_data,
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
-	if (check_nfs_error(nfs, status, data, command_data)) {
+	if (check_nfs3_error(nfs, status, data, command_data)) {
 		free_nfs_cb_data(data);
 		return;
 	}
@@ -3742,7 +3762,7 @@ nfs3_fsync_cb(struct rpc_context *rpc, int status, void *command_data,
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
-	if (check_nfs_error(nfs, status, data, command_data)) {
+	if (check_nfs3_error(nfs, status, data, command_data)) {
 		free_nfs_cb_data(data);
 		return;
 	}
@@ -3810,7 +3830,7 @@ nfs3_stat_1_cb(struct rpc_context *rpc, int status, void *command_data,
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
-	if (check_nfs_error(nfs, status, data, command_data)) {
+	if (check_nfs3_error(nfs, status, data, command_data)) {
 		free_nfs_cb_data(data);
 		return;
 	}
@@ -3918,7 +3938,7 @@ nfs3_stat64_1_cb(struct rpc_context *rpc, int status, void *command_data,
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
-	if (check_nfs_error(nfs, status, data, command_data)) {
+	if (check_nfs3_error(nfs, status, data, command_data)) {
 		free_nfs_cb_data(data);
 		return;
 	}
@@ -4120,7 +4140,7 @@ nfs3_write_append_cb(struct rpc_context *rpc, int status, void *command_data,
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
-	if (check_nfs_error(nfs, status, data, command_data)) {
+	if (check_nfs3_error(nfs, status, data, command_data)) {
 		free_nfs_cb_data(data);
 		return;
 	}
@@ -4706,7 +4726,7 @@ nfs3_open_trunc_cb(struct rpc_context *rpc, int status, void *command_data,
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
-	if (check_nfs_error(nfs, status, data, command_data)) {
+	if (check_nfs3_error(nfs, status, data, command_data)) {
 		free_nfs_cb_data(data);
 		return;
 	}
@@ -4760,7 +4780,7 @@ nfs3_open_cb(struct rpc_context *rpc, int status, void *command_data,
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
-	if (check_nfs_error(nfs, status, data, command_data)) {
+	if (check_nfs3_error(nfs, status, data, command_data)) {
 		free_nfs_cb_data(data);
 		return;
 	}

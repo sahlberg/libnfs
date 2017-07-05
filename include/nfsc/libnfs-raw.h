@@ -2202,6 +2202,12 @@ EXTERN int rpc_nsm1_notify_async(struct rpc_context *rpc, rpc_cb cb,
                                  void *private_data);
 
 /*
+ * NFS v4 FUNCTIONS
+ */
+EXTERN char *nfsstat4_to_str(int error);
+EXTERN int nfsstat4_to_errno(int error);
+
+/*
  * Call NFS4/NULL
  * Function returns
  *  0 : The command was queued successfully. The callback will be invoked once

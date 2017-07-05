@@ -102,6 +102,12 @@ nfs_utimes_async
 nfs_which_events
 nfs_write
 nfs_write_async
+nfsstat3_to_errno
+nfsstat3_to_str
+nfsstat4_to_errno
+nfsstat4_to_str
+nfs4_set_client_name
+nfs4_set_verifier
 win32_poll
 rpc_connect_async
 rpc_destroy_context

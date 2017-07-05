@@ -74,8 +74,6 @@
 #include "libnfs.h"
 #include "libnfs-raw.h"
 #include "libnfs-raw-mount.h"
-#include "libnfs-raw-nfs.h"
-#include "libnfs-raw-nfs4.h"
 #include "libnfs-raw-portmap.h"
 #include "libnfs-private.h"
 
@@ -427,10 +425,17 @@ nfs_destroy_url(struct nfs_url *url)
 	free(url);
 }
 
+#define MAX_CLIENT_NAME 64
+
 struct nfs_context *
 nfs_init_context(void)
 {
 	struct nfs_context *nfs;
+        int i;
+        verifier4 verifier;
+        char client_name[MAX_CLIENT_NAME];
+
+        srandom(time(NULL));
 
 	nfs = malloc(sizeof(struct nfs_context));
 	if (nfs == NULL) {
@@ -452,7 +457,29 @@ nfs_init_context(void)
 	nfs->auto_reconnect = -1;
 	nfs->version = NFS_V3;
 
+        /* NFSv4 parameters */
+        for (i = 0; i < NFS4_VERIFIER_SIZE; i++) {
+                verifier[i] = random() & 0xff;
+        }
+        nfs4_set_verifier(nfs, verifier);
+        
+        snprintf(client_name, MAX_CLIENT_NAME, "Libnfs pid:%d %d", getpid(),
+                 (int)time(NULL));
+        nfs4_set_client_name(nfs, client_name);
+
 	return nfs;
+}
+
+void
+nfs4_set_client_name(struct nfs_context *nfs, const char *client_name)
+{
+        nfs->client_name = strdup(client_name);
+}
+
+void
+nfs4_set_verifier(struct nfs_context *nfs, const char *verifier)
+{
+        memcpy(nfs->verifier, verifier, NFS4_VERIFIER_SIZE);
 }
 
 void
@@ -470,26 +497,21 @@ nfs_destroy_context(struct nfs_context *nfs)
 	rpc_destroy_context(nfs->rpc);
 	nfs->rpc = NULL;
 
-	if (nfs->server) {
-		free(nfs->server);
-		nfs->server = NULL;
-	}
+        free(nfs->server);
+        nfs->server = NULL;
 
-	if (nfs->export) {
-		free(nfs->export);
-		nfs->export = NULL;
-	}
+        free(nfs->export);
+        nfs->export = NULL;
 
-	if (nfs->cwd) {
-		free(nfs->cwd);
-		nfs->cwd = NULL;
-	}
+        free(nfs->cwd);
+        nfs->cwd = NULL;
 
-	if (nfs->rootfh.val != NULL) {
-		free(nfs->rootfh.val);
-		nfs->rootfh.len = 0;
-		nfs->rootfh.val = NULL;
-	}
+        free(nfs->rootfh.val);
+        nfs->rootfh.len = 0;
+        nfs->rootfh.val = NULL;
+
+        free(nfs->client_name);
+        nfs->client_name = NULL;
 
 	while (nfs->dircache) {
 		struct nfsdir *nfsdir = nfs->dircache;
@@ -745,28 +767,6 @@ free_nfs_cb_data(struct nfs_cb_data *data)
 	free(data);
 }
 
-int
-check_nfs_error(struct nfs_context *nfs, int status,
-		struct nfs_cb_data *data, void *command_data)
-{
-	if (status == RPC_STATUS_ERROR) {
-		data->cb(-EFAULT, nfs, command_data, data->private_data);
-		return 1;
-	}
-	if (status == RPC_STATUS_CANCEL) {
-		data->cb(-EINTR, nfs, "Command was cancelled",
-			 data->private_data);
-		return 1;
-	}
-	if (status == RPC_STATUS_TIMEOUT) {
-		data->cb(-EINTR, nfs, "Command timed out",
-			 data->private_data);
-		return 1;
-	}
-
-	return 0;
-}
-
 void
 nfs_free_nfsfh(struct nfsfh *nfsfh)
 {
@@ -789,9 +789,11 @@ nfs_mount_async(struct nfs_context *nfs, const char *server,
 	switch (nfs->version) {
         case NFS_V3:
                 return nfs3_mount_async(nfs, server, export, cb, private_data);
+        case NFS_V4:
+                return nfs4_mount_async(nfs, server, export, cb, private_data);
         default:
-                nfs_set_error(nfs, "%s does not support NFSv4",
-                              __FUNCTION__);
+                nfs_set_error(nfs, "%s does not support NFSv%d",
+                              __FUNCTION__, nfs->version);
                 return -1;
         }
 }
