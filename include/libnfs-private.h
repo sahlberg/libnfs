@@ -36,6 +36,8 @@
 #endif
 
 #include "libnfs-zdr.h"
+#include "nfs/libnfs-raw-nfs.h"
+#include "nfs4/libnfs-raw-nfs4.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -241,9 +243,6 @@ void *zdr_malloc(ZDR *zdrs, uint32_t size);
 struct nfs_cb_data;
 void free_nfs_cb_data(struct nfs_cb_data *data);
 
-int check_nfs_error(struct nfs_context *nfs, int status,
-		    struct nfs_cb_data *data, void *command_data);
-
 struct nfs_specdata {
         uint32_t specdata1;
         uint32_t specdata2;
@@ -289,6 +288,12 @@ struct nfs_context {
        struct nested_mounts *nested_mounts;
 
        int version;
+
+        /* NFSv4 specific fields */
+        verifier4 verifier;
+        char *client_name;
+        uint64_t clientid;
+        verifier4 setclientid_confirm;
 };
 
 typedef int (*continue_func)(struct nfs_context *nfs, struct nfs_attr *attr,
@@ -438,8 +443,8 @@ int nfs3_rmdir_async(struct nfs_context *nfs, const char *path, nfs_cb cb,
                      void *private_data);
 int nfs3_stat_async(struct nfs_context *nfs, const char *path,
                     nfs_cb cb, void *private_data);
-int nfs3_stat64_async_internal(struct nfs_context *nfs, const char *path,
-                               int no_follow, nfs_cb cb, void *private_data);
+int nfs3_stat64_async(struct nfs_context *nfs, const char *path,
+                      int no_follow, nfs_cb cb, void *private_data);
 int nfs3_statvfs_async(struct nfs_context *nfs, const char *path, nfs_cb cb,
                        void *private_data);
 int nfs3_symlink_async(struct nfs_context *nfs, const char *oldpath,
@@ -456,8 +461,12 @@ int nfs3_utimes_async_internal(struct nfs_context *nfs, const char *path,
 int nfs3_write_async(struct nfs_context *nfs, struct nfsfh *nfsfh,
                      uint64_t count, const void *buf, nfs_cb cb,
                      void *private_data);
-  
-        
+   
+int nfs4_mount_async(struct nfs_context *nfs, const char *server,
+		     const char *export, nfs_cb cb, void *private_data);
+int nfs4_stat64_async(struct nfs_context *nfs, const char *path,
+                      int no_follow, nfs_cb cb, void *private_data);
+
 #ifdef __cplusplus
 }
 #endif

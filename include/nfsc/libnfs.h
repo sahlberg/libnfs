@@ -1777,6 +1777,17 @@ EXTERN void nfs_set_timeout(struct nfs_context *nfs, int milliseconds);
  */
 EXTERN int nfs_get_timeout(struct nfs_context *nfs);
 
+/*
+ * Set the client name for NFSv4.
+ */
+EXTERN void nfs4_set_client_name(struct nfs_context *nfs, const char *id);
+
+/*
+ * Set the client verifier for NFSv4.
+ * This an 8 byte array of random data.
+ */
+EXTERN void nfs4_set_verifier(struct nfs_context *nfs, const char *verifier);
+
 #ifdef __cplusplus
 }
 #endif

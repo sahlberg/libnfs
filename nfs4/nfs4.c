@@ -31,7 +31,8 @@
 #include "libnfs-private.h"
 #include "libnfs-raw-nfs4.h"
 
-char *nfsstat4_to_str(int error)
+char *
+nfsstat4_to_str(int error)
 {
 	switch (error) {
         case NFS4_OK: return "NFS4_OK"; break;
@@ -72,7 +73,8 @@ char *nfsstat4_to_str(int error)
         case NFS4ERR_RESOURCE: return "NFS4ERR_RESOURCE"; break;
         case NFS4ERR_MOVED: return "NFS4ERR_MOVED"; break;
         case NFS4ERR_NOFILEHANDLE: return "NFS4ERR_NOFILEHANDLE"; break;
-        case NFS4ERR_MINOR_VERS_MISMATCH: return "NFS4ERR_MINOR_VERS_MISMATCH"; break;
+        case NFS4ERR_MINOR_VERS_MISMATCH:
+                return "NFS4ERR_MINOR_VERS_MISMATCH"; break;
         case NFS4ERR_STALE_CLIENTID: return "NFS4ERR_STALE_CLIENTID"; break;
         case NFS4ERR_STALE_STATEID: return "NFS4ERR_STALE_STATEID"; break;
         case NFS4ERR_OLD_STATEID: return "NFS4ERR_OLD_STATEID"; break;
@@ -104,7 +106,8 @@ char *nfsstat4_to_str(int error)
 	return "unknown nfsv4 error";
 }
 
-int nfsstat4_to_errno(int error)
+int
+nfsstat4_to_errno(int error)
 {
 	switch (error) {
         case NFS4_OK: return 0;
@@ -176,31 +179,40 @@ int nfsstat4_to_errno(int error)
 	return -ERANGE;
 }
 
-int rpc_nfs4_null_async(struct rpc_context *rpc, rpc_cb cb, void *private_data)
+int
+rpc_nfs4_null_async(struct rpc_context *rpc, rpc_cb cb, void *private_data)
 {
 	struct rpc_pdu *pdu;
 
-	pdu = rpc_allocate_pdu(rpc, NFS4_PROGRAM, NFS_V4, NFSPROC4_NULL, cb, private_data, (zdrproc_t)zdr_void, 0);
+	pdu = rpc_allocate_pdu(rpc, NFS4_PROGRAM, NFS_V4, NFSPROC4_NULL, cb,
+                               private_data, (zdrproc_t)zdr_void, 0);
 	if (pdu == NULL) {
-		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu for NFS4/NULL call");
+		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu "
+                              "for NFS4/NULL call");
 		return -1;
 	}
 
 	if (rpc_queue_pdu(rpc, pdu) != 0) {
-		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for NFS4/NULL call");
-		return -2;
+		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for "
+                              "NFS4/NULL call");
+		return -1;
 	}
 
 	return 0;
 }
 
-int rpc_nfs4_compound_async(struct rpc_context *rpc, rpc_cb cb, struct COMPOUND4args *args, void *private_data)
+int
+rpc_nfs4_compound_async(struct rpc_context *rpc, rpc_cb cb,
+                        struct COMPOUND4args *args, void *private_data)
 {
 	struct rpc_pdu *pdu;
 
-	pdu = rpc_allocate_pdu(rpc, NFS4_PROGRAM, NFS_V4, NFSPROC4_COMPOUND, cb, private_data, (zdrproc_t)zdr_COMPOUND4res, sizeof(COMPOUND4res));
+	pdu = rpc_allocate_pdu(rpc, NFS4_PROGRAM, NFS_V4, NFSPROC4_COMPOUND,
+                               cb, private_data, (zdrproc_t)zdr_COMPOUND4res,
+                               sizeof(COMPOUND4res));
 	if (pdu == NULL) {
-		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu for NFS4/COMPOUND call");
+		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu for "
+                              "NFS4/COMPOUND call");
 		return -1;
 	}
 
@@ -211,7 +223,8 @@ int rpc_nfs4_compound_async(struct rpc_context *rpc, rpc_cb cb, struct COMPOUND4
 	}
 
 	if (rpc_queue_pdu(rpc, pdu) != 0) {
-		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for NFS4/COMPOUND4 call");
+		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for "
+                              "NFS4/COMPOUND4 call");
 		return -3;
 	}
 
