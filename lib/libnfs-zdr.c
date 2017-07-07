@@ -1,3 +1,4 @@
+/* -*-  mode:c; tab-width:8; c-basic-offset:8; indent-tabs-mode:nil;  -*- */
 /*
    Copyright (C) 2012 by Ronnie Sahlberg <ronniesahlberg@gmail.com>
 
@@ -160,6 +161,9 @@ bool_t libnfs_zdr_int64_t(ZDR *zdrs, int64_t *i)
 
 bool_t libnfs_zdr_bytes(ZDR *zdrs, char **bufp, uint32_t *size, uint32_t maxsize)
 {
+        uint32_t zero = 0;
+        int pad;
+
 	if (!libnfs_zdr_u_int(zdrs, size)) {
 		return FALSE;
 	}
@@ -172,7 +176,13 @@ bool_t libnfs_zdr_bytes(ZDR *zdrs, char **bufp, uint32_t *size, uint32_t maxsize
 	case ZDR_ENCODE:
 		memcpy(&zdrs->buf[zdrs->pos], *bufp, *size);
 		zdrs->pos += *size;
-		zdrs->pos = (zdrs->pos + 3) & ~3;
+
+                pad = (4 - (zdrs->pos & 0x03)) & 0x03;
+                if (pad) {
+                        /* Make valgrind happy again */
+                        memcpy(&zdrs->buf[zdrs->pos], &zero, pad);
+                        zdrs->pos += pad;
+                }
 		return TRUE;
 	case ZDR_DECODE:
 		if (*bufp != NULL) {
