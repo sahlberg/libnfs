@@ -175,7 +175,7 @@ struct rpc_pdu {
 #define PDU_DISCARD_AFTER_SENDING 0x00000001
         uint32_t flags;
 
-	time_t timeout;
+	long timeout;
 };
 
 void rpc_reset_queue(struct rpc_queue *q);
@@ -233,7 +233,7 @@ int rpc_get_timeout(struct rpc_context *rpc);
 int rpc_add_fragment(struct rpc_context *rpc, char *data, uint32_t size);
 void rpc_free_all_fragments(struct rpc_context *rpc);
 int rpc_is_udp_socket(struct rpc_context *rpc);
-int rpc_current_time(void);
+long rpc_current_time(void);
 
 void *zdr_malloc(ZDR *zdrs, uint32_t size);
 
