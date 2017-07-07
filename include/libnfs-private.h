@@ -443,8 +443,8 @@ int nfs3_rmdir_async(struct nfs_context *nfs, const char *path, nfs_cb cb,
                      void *private_data);
 int nfs3_stat_async(struct nfs_context *nfs, const char *path,
                     nfs_cb cb, void *private_data);
-int nfs3_stat64_async_internal(struct nfs_context *nfs, const char *path,
-                               int no_follow, nfs_cb cb, void *private_data);
+int nfs3_stat64_async(struct nfs_context *nfs, const char *path,
+                      int no_follow, nfs_cb cb, void *private_data);
 int nfs3_statvfs_async(struct nfs_context *nfs, const char *path, nfs_cb cb,
                        void *private_data);
 int nfs3_symlink_async(struct nfs_context *nfs, const char *oldpath,
@@ -464,7 +464,9 @@ int nfs3_write_async(struct nfs_context *nfs, struct nfsfh *nfsfh,
    
 int nfs4_mount_async(struct nfs_context *nfs, const char *server,
 		     const char *export, nfs_cb cb, void *private_data);
-       
+int nfs4_stat64_async(struct nfs_context *nfs, const char *path,
+                      int no_follow, nfs_cb cb, void *private_data);
+
 #ifdef __cplusplus
 }
 #endif

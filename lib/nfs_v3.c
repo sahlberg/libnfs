@@ -4022,8 +4022,8 @@ nfs3_stat64_continue_internal(struct nfs_context *nfs,
 }
 
 int
-nfs3_stat64_async_internal(struct nfs_context *nfs, const char *path,
-                           int no_follow, nfs_cb cb, void *private_data)
+nfs3_stat64_async(struct nfs_context *nfs, const char *path,
+                  int no_follow, nfs_cb cb, void *private_data)
 {
 	if (nfs3_lookuppath_async(nfs, path, no_follow, cb, private_data,
                                   nfs3_stat64_continue_internal,

@@ -919,11 +919,14 @@ nfs_stat64_async(struct nfs_context *nfs, const char *path,
 {
 	switch (nfs->version) {
         case NFS_V3:
-                return nfs3_stat64_async_internal(nfs, path, 0,
-                                                  cb, private_data);
+                return nfs3_stat64_async(nfs, path, 0,
+                                         cb, private_data);
+        case NFS_V4:
+                return nfs4_stat64_async(nfs, path, 0,
+                                         cb, private_data);
         default:
-                nfs_set_error(nfs, "%s does not support NFSv4",
-                              __FUNCTION__);
+                nfs_set_error(nfs, "%s does not support NFSv%d",
+                              __FUNCTION__, nfs->version);
                 return -1;
         }
 }
@@ -934,8 +937,8 @@ nfs_lstat64_async(struct nfs_context *nfs, const char *path,
 {
 	switch (nfs->version) {
         case NFS_V3:
-                return nfs3_stat64_async_internal(nfs, path, 1,
-                                                  cb, private_data);
+                return nfs3_stat64_async(nfs, path, 1,
+                                         cb, private_data);
         default:
                 nfs_set_error(nfs, "%s does not support NFSv4",
                               __FUNCTION__);
