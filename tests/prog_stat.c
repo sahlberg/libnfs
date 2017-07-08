@@ -53,7 +53,7 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 
-	nfs_set_timeout(nfs, 1000);
+	nfs_set_timeout(nfs, 300);
 
 	url = nfs_parse_url_full(nfs, argv[1]);
 	if (url == NULL) {

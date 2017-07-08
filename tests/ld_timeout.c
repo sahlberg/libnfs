@@ -54,8 +54,8 @@ int rpc_service(struct rpc_context *rpc, int revents)
 
         call_idx++;
         if (call_idx >= timeout_start) {
-                PRINTF("sleep for 2 seconds causing a timeout");
-                sleep(2);
+                PRINTF("sleep for 1 seconds causing a timeout");
+                sleep(1);
                 /* Strip off all the POLLINs so that we will not try
                  * to process them in rpc_service and instead fall-through
                  * to the rpc_timeout_scan() and handle the PDUs there
