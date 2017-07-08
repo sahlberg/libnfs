@@ -432,10 +432,9 @@ nfs_init_context(void)
 {
 	struct nfs_context *nfs;
         int i;
+        uint64_t v;
         verifier4 verifier;
         char client_name[MAX_CLIENT_NAME];
-
-        srandom(time(NULL));
 
 	nfs = malloc(sizeof(struct nfs_context));
 	if (nfs == NULL) {
@@ -458,8 +457,11 @@ nfs_init_context(void)
 	nfs->version = NFS_V3;
 
         /* NFSv4 parameters */
+        /* We need a "random" initial verifier */
+        v = rpc_current_time() << 32 | getpid();
         for (i = 0; i < NFS4_VERIFIER_SIZE; i++) {
-                verifier[i] = random() & 0xff;
+                verifier[i] = v & 0xff;
+                v >>= 8;
         }
         nfs4_set_verifier(nfs, verifier);
         
