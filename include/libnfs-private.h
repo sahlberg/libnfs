@@ -149,7 +149,7 @@ struct rpc_context {
 	uint32_t pagecache;
 	uint32_t pagecache_ttl;
 	int debug;
-	int timeout;
+	uint64_t timeout;
 	char ifname[IFNAMSIZ];
 
         /* Is a server context ? */
@@ -235,7 +235,7 @@ int rpc_get_timeout(struct rpc_context *rpc);
 int rpc_add_fragment(struct rpc_context *rpc, char *data, uint32_t size);
 void rpc_free_all_fragments(struct rpc_context *rpc);
 int rpc_is_udp_socket(struct rpc_context *rpc);
-long rpc_current_time(void);
+uint64_t rpc_current_time(void);
 
 void *zdr_malloc(ZDR *zdrs, uint32_t size);
 

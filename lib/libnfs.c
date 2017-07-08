@@ -154,7 +154,7 @@ void
 nfs_pagecache_put(struct nfs_pagecache *pagecache, uint64_t offset,
                   const char *buf, size_t len)
 {
-	time_t ts = pagecache->ttl ? rpc_current_time() : 1;
+	time_t ts = pagecache->ttl ? (time_t)(rpc_current_time() / 1000) : 1;
 	if (!pagecache->num_entries) return;
 	while (len > 0) {
 		uint64_t page_offset = offset & ~(NFS_BLKSIZE - 1);
@@ -192,7 +192,7 @@ nfs_pagecache_get(struct nfs_pagecache *pagecache, uint64_t offset)
 	if (!e->ts) {
 		return NULL;
 	}
-	if (pagecache->ttl && rpc_current_time() - e->ts > pagecache->ttl) {
+	if (pagecache->ttl && (time_t)(rpc_current_time() / 1000) - e->ts > pagecache->ttl) {
 		return NULL;
 	}
 

@@ -50,15 +50,15 @@
 #include "libnfs-raw.h"
 #include "libnfs-private.h"
 
-long rpc_current_time(void)
+uint64_t rpc_current_time(void)
 {
 #ifdef HAVE_CLOCK_GETTIME
 	struct timespec tp;
 
 	clock_gettime(CLOCK_MONOTONIC_COARSE, &tp);
-	return tp.tv_sec * 1000 + tp.tv_nsec / 1000000;
+	return (uint64_t)tp.tv_sec * 1000 + tp.tv_nsec / 1000000;
 #else
-	return (long) time(NULL) * 1000;
+	return (uint64_t)time(NULL) * 1000;
 #endif
 }
 
@@ -81,7 +81,7 @@ struct rpc_context *rpc_init_context(void)
 		free(rpc);
 		return NULL;
 	}
-	rpc->xid = salt + rpc_current_time() + (getpid() << 16);
+	rpc->xid = salt + (uint32_t)rpc_current_time() + (getpid() << 16);
 	salt += 0x01000000;
 	rpc->fd = -1;
 	rpc->tcp_syncnt = RPC_PARAM_UNDEFINED;

@@ -381,7 +381,7 @@ rpc_timeout_scan(struct rpc_context *rpc)
 {
 	struct rpc_pdu *pdu;
 	struct rpc_pdu *next_pdu;
-	time_t t = rpc_current_time();
+	uint64_t t = rpc_current_time();
 	unsigned int i;
 
 	for (pdu = rpc->outqueue.head; pdu; pdu = next_pdu) {

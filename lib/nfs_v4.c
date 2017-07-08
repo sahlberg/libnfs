@@ -99,9 +99,9 @@ nfs_pntoh64(const uint32_t *buf)
 {
         uint64_t val;
 
-        val   = ntohl(*(uint32_t *)buf++);
+        val   = ntohl(*(uint32_t *)(void *)buf++);
         val <<= 32;
-        val  |= ntohl(*(uint32_t *)buf);
+        val  |= ntohl(*(uint32_t *)(void *)buf);
 
         return val;
 }
@@ -544,22 +544,22 @@ nfs4_xstat64_cb(struct rpc_context *rpc, int status, void *command_data,
 
         /* Type */
         CHECK_GETATTR_BUF_SPACE(len, 4);
-        type = ntohl(*(uint32_t *)buf);
+        type = ntohl(*(uint32_t *)(void *)buf);
         buf += 4;
         len -= 4;
         /* Size */
         CHECK_GETATTR_BUF_SPACE(len, 8);
-        st.nfs_size = nfs_pntoh64((uint32_t *)buf);
+        st.nfs_size = nfs_pntoh64((uint32_t *)(void *)buf);
         buf += 8;
         len -= 8;
         /* Inode */
         CHECK_GETATTR_BUF_SPACE(len, 8);
-        st.nfs_ino = nfs_pntoh64((uint32_t *)buf);
+        st.nfs_ino = nfs_pntoh64((uint32_t *)(void *)buf);
         buf += 8;
         len -= 8;
         /* Mode */
         CHECK_GETATTR_BUF_SPACE(len, 4);
-        st.nfs_mode = ntohl(*(uint32_t *)buf);
+        st.nfs_mode = ntohl(*(uint32_t *)(void *)buf);
         buf += 4;
         len -= 4;
         switch (type) {
@@ -589,12 +589,12 @@ nfs4_xstat64_cb(struct rpc_context *rpc, int status, void *command_data,
         }
         /* Num Links */
         CHECK_GETATTR_BUF_SPACE(len, 4);
-        st.nfs_nlink = ntohl(*(uint32_t *)buf);
+        st.nfs_nlink = ntohl(*(uint32_t *)(void *)buf);
         buf += 4;
         len -= 4;
         /* Owner */
         CHECK_GETATTR_BUF_SPACE(len, 4);
-        slen = ntohl(*(uint32_t *)buf);
+        slen = ntohl(*(uint32_t *)(void *)buf);
         buf += 4;
         len -= 4;
         pad = (4 - (slen & 0x03)) & 0x03;
@@ -618,7 +618,7 @@ nfs4_xstat64_cb(struct rpc_context *rpc, int status, void *command_data,
         len -= pad;
         /* Group */
         CHECK_GETATTR_BUF_SPACE(len, 4);
-        slen = ntohl(*(uint32_t *)buf);
+        slen = ntohl(*(uint32_t *)(void *)buf);
         buf += 4;
         len -= 4;
         pad = (4 - (slen & 0x03)) & 0x03;
@@ -642,31 +642,31 @@ nfs4_xstat64_cb(struct rpc_context *rpc, int status, void *command_data,
         len -= pad;
         /* Space Used */
         CHECK_GETATTR_BUF_SPACE(len, 8);
-        st.nfs_used = nfs_pntoh64((uint32_t *)buf);
+        st.nfs_used = nfs_pntoh64((uint32_t *)(void *)buf);
         buf += 8;
         len -= 8;
         /* ATime */
         CHECK_GETATTR_BUF_SPACE(len, 12);
-        st.nfs_atime = nfs_pntoh64((uint32_t *)buf);
+        st.nfs_atime = nfs_pntoh64((uint32_t *)(void *)buf);
         buf += 8;
         len -= 8;
-        st.nfs_atime_nsec = ntohl(*(uint32_t *)buf);
+        st.nfs_atime_nsec = ntohl(*(uint32_t *)(void *)buf);
         buf += 4;
         len -= 4;
         /* CTime */
         CHECK_GETATTR_BUF_SPACE(len, 12);
-        st.nfs_ctime = nfs_pntoh64((uint32_t *)buf);
+        st.nfs_ctime = nfs_pntoh64((uint32_t *)(void *)buf);
         buf += 8;
         len -= 8;
-        st.nfs_ctime_nsec = ntohl(*(uint32_t *)buf);
+        st.nfs_ctime_nsec = ntohl(*(uint32_t *)(void *)buf);
         buf += 4;
         len -= 4;
         /* MTime */
         CHECK_GETATTR_BUF_SPACE(len, 12);
-        st.nfs_mtime = nfs_pntoh64((uint32_t *)buf);
+        st.nfs_mtime = nfs_pntoh64((uint32_t *)(void *)buf);
         buf += 8;
         len -= 8;
-        st.nfs_mtime_nsec = ntohl(*(uint32_t *)buf);
+        st.nfs_mtime_nsec = ntohl(*(uint32_t *)(void *)buf);
         buf += 4;
         len -= 4;
 
