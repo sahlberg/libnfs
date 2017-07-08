@@ -36,8 +36,8 @@
 #endif
 
 #include "libnfs-zdr.h"
-#include "nfs/libnfs-raw-nfs.h"
-#include "nfs4/libnfs-raw-nfs4.h"
+#include "../nfs/libnfs-raw-nfs.h"
+#include "../nfs4/libnfs-raw-nfs4.h"
 
 #ifdef __cplusplus
 extern "C" {
