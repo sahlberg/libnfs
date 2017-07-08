@@ -149,7 +149,7 @@ struct rpc_context {
 	uint32_t pagecache;
 	uint32_t pagecache_ttl;
 	int debug;
-	uint64_t timeout;
+	int timeout;
 	char ifname[IFNAMSIZ];
 
         /* Is a server context ? */
