@@ -2,7 +2,7 @@
 
 . ./functions.sh
 
-echo "stat test on symlink"
+echo "basic lstat test"
 
 start_share
 
@@ -11,17 +11,17 @@ chmod 644 "${TESTDIR}/testfile"
 ln -s testfile "${TESTDIR}/lstat1"
 
 
-echo -n "test nfs_stat64() ... "
-./prog_stat "${TESTURL}/" "." /testfile > "${TESTDIR}/output" || failure
+echo -n "test nfs_lstat64() ... "
+./prog_lstat "${TESTURL}/" "." /lstat1 > "${TESTDIR}/output" || failure
 success
 
 echo -n "test nfs_ino ... "
-INO=`stat --printf="%i" testdata/testfile`
+INO=`stat --printf="%i" testdata/lstat1`
 grep "nfs_ino:$INO" "${TESTDIR}/output" >/dev/null || failure
 success
 
 echo -n "test nfs_mode ... "
-grep "nfs_mode:100644" "${TESTDIR}/output" >/dev/null || failure
+grep "nfs_mode:120777" "${TESTDIR}/output" >/dev/null || failure
 success
 
 echo -n "test nfs_nlink ... "
@@ -37,21 +37,21 @@ grep "nfs_gid:$GID" "${TESTDIR}/output" >/dev/null || failure
 success
 
 echo -n "test nfs_size ... "
-grep "nfs_size:32768" "${TESTDIR}/output" >/dev/null || failure
+grep "nfs_size:8" "${TESTDIR}/output" >/dev/null || failure
 success
 
 echo -n "test nfs_atime ... "
-ATIME=`stat --printf="%X" testdata/testfile`
+ATIME=`stat --printf="%X" testdata/lstat1`
 grep "nfs_atime:$ATIME" "${TESTDIR}/output" >/dev/null || failure
 success
 
 echo -n "test nfs_mtime ... "
-MTIME=`stat --printf="%Y" testdata/testfile`
+MTIME=`stat --printf="%Y" testdata/lstat1`
 grep "nfs_mtime:$MTIME" "${TESTDIR}/output" >/dev/null || failure
 success
 
 echo -n "test nfs_ctime ... "
-CTIME=`stat --printf="%Z" testdata/testfile`
+CTIME=`stat --printf="%Z" testdata/lstat1`
 grep "nfs_ctime:$CTIME" "${TESTDIR}/output" >/dev/null || failure
 success
 

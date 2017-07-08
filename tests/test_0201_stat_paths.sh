@@ -2,7 +2,7 @@
 
 . ./functions.sh
 
-echo "basic nfs_stat64() test"
+echo "nfs_stat64() path tests"
 
 start_share
 

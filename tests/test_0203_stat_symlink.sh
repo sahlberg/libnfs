@@ -12,7 +12,7 @@ ln -s testfile "${TESTDIR}/lstat1"
 
 
 echo -n "test nfs_stat64() ... "
-./prog_stat "${TESTURL}/" "." /testfile > "${TESTDIR}/output" || failure
+./prog_stat "${TESTURL}/" "." /lstat1 > "${TESTDIR}/output" || failure
 success
 
 echo -n "test nfs_ino ... "
