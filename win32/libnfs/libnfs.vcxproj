@@ -185,7 +185,8 @@
     <ClCompile Include="..\..\lib\libnfs-sync.c" />
     <ClCompile Include="..\..\lib\libnfs-zdr.c" />
     <ClCompile Include="..\..\lib\libnfs.c" />
-    <ClCompile Include="..\..\lib\nfsv3.c" />
+    <ClCompile Include="..\..\lib\nfs_v3.c" />
+    <ClCompile Include="..\..\lib\nfs_v4.c" />
     <ClCompile Include="..\..\lib\pdu.c" />
     <ClCompile Include="..\..\lib\socket.c" />
     <ClCompile Include="..\..\mount\libnfs-raw-mount.c" />

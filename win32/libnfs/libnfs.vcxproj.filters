@@ -53,7 +53,10 @@
     <ClCompile Include="..\..\lib\libnfs-sync.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\lib\nfsv3.c">
+    <ClCompile Include="..\..\lib\nfs_v3.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\lib\nfs_v4.c">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\lib\pdu.c">
