@@ -462,6 +462,8 @@ int nfs3_write_async(struct nfs_context *nfs, struct nfsfh *nfsfh,
                      uint64_t count, const void *buf, nfs_cb cb,
                      void *private_data);
    
+int nfs4_chdir_async(struct nfs_context *nfs, const char *path,
+                     nfs_cb cb, void *private_data);
 int nfs4_mount_async(struct nfs_context *nfs, const char *server,
 		     const char *export, nfs_cb cb, void *private_data);
 int nfs4_stat64_async(struct nfs_context *nfs, const char *path,

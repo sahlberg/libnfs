@@ -3582,7 +3582,7 @@ nfs3_mkdir_continue_internal(struct nfs_context *nfs,
                              struct nfs_cb_data *data)
 {
 	char *str = data->continue_data;
-	int mode = data->continue_int;
+	int mode = (int)data->continue_int;
 	MKDIR3args args;
 
 	str = &str[strlen(str) + 1];

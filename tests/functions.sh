@@ -2,6 +2,9 @@ TESTDIR=`pwd`/testdata
 TESTSHARE="127.0.0.1:${TESTDIR}"
 TESTURL="nfs://127.0.0.1${TESTDIR}"
 
+# Which version of NFS to test for
+VERS=${VERSION:-3}
+
 start_share() {
     rm -rf "${TESTDIR}" 2>/dev/null
     mkdir "${TESTDIR}" 2>/dev/null

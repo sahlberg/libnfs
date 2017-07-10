@@ -2,7 +2,7 @@
 
 . ./functions.sh
 
-echo "stat test on symlink"
+echo "NFSv${VERS} nfs_stat64() test on symlink."
 
 start_share
 
@@ -12,7 +12,7 @@ ln -s testfile "${TESTDIR}/lstat1"
 
 
 echo -n "test nfs_stat64() ... "
-./prog_stat "${TESTURL}/" "." /lstat1 > "${TESTDIR}/output" || failure
+./prog_stat "${TESTURL}/?version=${VERS}" "." /lstat1 > "${TESTDIR}/output" || failure
 success
 
 echo -n "test nfs_ino ... "

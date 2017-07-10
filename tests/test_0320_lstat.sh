@@ -2,7 +2,7 @@
 
 . ./functions.sh
 
-echo "basic lstat test"
+echo "NFSv${VERS} Basic lstat test."
 
 start_share
 
@@ -12,7 +12,7 @@ ln -s testfile "${TESTDIR}/lstat1"
 
 
 echo -n "test nfs_lstat64() ... "
-./prog_lstat "${TESTURL}/" "." /lstat1 > "${TESTDIR}/output" || failure
+./prog_lstat "${TESTURL}/?version=${VERS}" "." /lstat1 > "${TESTDIR}/output" || failure
 success
 
 echo -n "test nfs_ino ... "
