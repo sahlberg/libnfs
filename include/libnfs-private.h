@@ -468,6 +468,8 @@ int nfs4_mkdir2_async(struct nfs_context *nfs, const char *path, int mode,
                       nfs_cb cb, void *private_data);
 int nfs4_mount_async(struct nfs_context *nfs, const char *server,
 		     const char *export, nfs_cb cb, void *private_data);
+int nfs4_rmdir_async(struct nfs_context *nfs, const char *path, nfs_cb cb,
+                     void *private_data);
 int nfs4_stat64_async(struct nfs_context *nfs, const char *path,
                       int no_follow, nfs_cb cb, void *private_data);
 

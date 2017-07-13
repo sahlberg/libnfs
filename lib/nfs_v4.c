@@ -1248,3 +1248,87 @@ nfs4_mkdir2_async(struct nfs_context *nfs, const char *orig_path, int mode,
 
         return 0;
 }
+
+/* Takes object name as filler.data
+ */
+static void
+nfs4_populate_rmdir(struct nfs4_cb_data *data, nfs_argop4 *op)
+{
+        REMOVE4args *rmargs;
+
+        rmargs = &op[0].nfs_argop4_u.opremove;
+        memset(rmargs, 0, sizeof(*rmargs));
+        rmargs->target.utf8string_val = data->filler.data;
+        rmargs->target.utf8string_len = strlen(rmargs->target.utf8string_val);
+        op[0].argop = OP_REMOVE;
+}
+
+static void
+nfs4_rmdir_cb(struct rpc_context *rpc, int status, void *command_data,
+              void *private_data)
+{
+        struct nfs4_cb_data *data = private_data;
+        struct nfs_context *nfs = data->nfs;
+        COMPOUND4res *res = command_data;
+
+        assert(rpc->magic == RPC_CONTEXT_MAGIC);
+
+        if (check_nfs4_error(nfs, status, data, res, "RMDIR")) {
+                free_nfs4_cb_data(data);
+                return;
+        }
+
+        data->cb(0, nfs, NULL, data->private_data);
+        free_nfs4_cb_data(data);
+}
+
+int
+nfs4_rmdir_async(struct nfs_context *nfs, const char *orig_path,
+                 nfs_cb cb, void *private_data)
+{
+        struct nfs4_cb_data *data;
+        char *path;
+
+        data = malloc(sizeof(*data));
+        if (data == NULL) {
+                nfs_set_error(nfs, "Out of memory. Failed to allocate "
+                              "cb data");
+                return -1;
+        }
+        memset(data, 0, sizeof(*data));
+
+        data->nfs          = nfs;
+        data->cb           = cb;
+        data->private_data = private_data;
+
+        data->path = nfs4_resolve_path(nfs, orig_path);
+        if (data->path == NULL) {
+                nfs_set_error(nfs, "Out of memory resolving path");
+                free_nfs4_cb_data(data);
+                return -1;
+        }
+
+        path = strrchr(data->path, '/');
+        if (path == data->path) {
+                char *ptr;
+
+                for (ptr = data->path; *ptr; ptr++) {
+                        *ptr = *(ptr + 1);
+                }
+                /* No path to lookup */
+                data->filler.data = data->path;
+                data->path = strdup("/");
+        } else {
+                *path++ = 0;
+                data->filler.data = strdup(path);
+        }
+        data->filler.func = nfs4_populate_rmdir;
+        data->filler.num_op = 1;
+
+        if (nfs4_lookup_path_async(nfs, data, nfs4_rmdir_cb) < 0) {
+                free_nfs4_cb_data(data);
+                return -1;
+        }
+
+        return 0;
+}
