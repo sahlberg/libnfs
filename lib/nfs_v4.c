@@ -107,7 +107,16 @@ struct lookup_link_data {
 struct lookup_filler {
         op_filler func;
         int num_op;
-        void *data;
+        void *data;  /* Freed by nfs4_cb_data destructor */
+
+        struct {
+                int   len;
+                void *val;
+        } blob0;   /* val is freed by nfs4_cb_data destructor */
+        struct {
+                int   len;
+                void *val;
+        } blob1;   /* val is freed by nfs4_cb_data destructor */
 };
 
 struct nfs4_cb_data {
@@ -137,6 +146,8 @@ free_nfs4_cb_data(struct nfs4_cb_data *data)
 {
         free(data->path);
         free(data->filler.data);
+        free(data->filler.blob0.val);
+        free(data->filler.blob1.val);
         free(data);
 }
 
@@ -723,7 +734,7 @@ nfs4_populate_getattr(struct nfs4_cb_data *data, nfs_argop4 *op)
         gaargs = &op[1].nfs_argop4_u.opgetattr;
         op[1].argop = OP_GETATTR;
         memset(gaargs, 0, sizeof(*gaargs));
-        
+
         attributes[0] =
                 1 << FATTR4_TYPE |
                 1 << FATTR4_SIZE |
@@ -1027,7 +1038,6 @@ int nfs4_chdir_async(struct nfs_context *nfs, const char *path,
         memset(data->filler.data, 0, 2 * sizeof(uint32_t));
 
         if (nfs4_lookup_path_async(nfs, data, nfs4_chdir_1_cb) < 0) {
-                data->cb(-ENOMEM, nfs, nfs_get_error(nfs), data->private_data);
                 free_nfs4_cb_data(data);
                 return -1;
         }
@@ -1117,7 +1127,121 @@ nfs4_stat64_async(struct nfs_context *nfs, const char *path,
         memset(data->filler.data, 0, 2 * sizeof(uint32_t));
 
         if (nfs4_lookup_path_async(nfs, data, nfs4_xstat64_cb) < 0) {
-                data->cb(-ENOMEM, nfs, nfs_get_error(nfs), data->private_data);
+                free_nfs4_cb_data(data);
+                return -1;
+        }
+
+        return 0;
+}
+
+/* Takes object name as filler.data
+ * blob0 as the fattr4 attribute mask
+ * blob1 as the fattr4 attribute list
+ */
+static void
+nfs4_populate_mkdir(struct nfs4_cb_data *data, nfs_argop4 *op)
+{
+        CREATE4args *cargs;
+
+        cargs = &op[0].nfs_argop4_u.opcreate;
+        memset(cargs, 0, sizeof(*cargs));
+        cargs->objtype.type = NF4DIR;
+        cargs->objname.utf8string_val = data->filler.data;
+        cargs->objname.utf8string_len = strlen(cargs->objname.utf8string_val);
+        cargs->createattrs.attrmask.bitmap4_len = data->filler.blob0.len;
+        cargs->createattrs.attrmask.bitmap4_val = data->filler.blob0.val;
+        cargs->createattrs.attr_vals.attrlist4_len = data->filler.blob1.len;
+        cargs->createattrs.attr_vals.attrlist4_val = data->filler.blob1.val;
+        op[0].argop = OP_CREATE;
+}
+
+static void
+nfs4_mkdir_cb(struct rpc_context *rpc, int status, void *command_data,
+              void *private_data)
+{
+        struct nfs4_cb_data *data = private_data;
+        struct nfs_context *nfs = data->nfs;
+        COMPOUND4res *res = command_data;
+
+        assert(rpc->magic == RPC_CONTEXT_MAGIC);
+
+        if (check_nfs4_error(nfs, status, data, res, "MKDIR")) {
+                free_nfs4_cb_data(data);
+                return;
+        }
+
+        data->cb(0, nfs, NULL, data->private_data);
+        free_nfs4_cb_data(data);
+}
+
+int
+nfs4_mkdir2_async(struct nfs_context *nfs, const char *orig_path, int mode,
+                 nfs_cb cb, void *private_data)
+{
+        struct nfs4_cb_data *data;
+        uint32_t *u32ptr;
+        char *path;
+
+        data = malloc(sizeof(*data));
+        if (data == NULL) {
+                nfs_set_error(nfs, "Out of memory. Failed to allocate "
+                              "cb data");
+                return -1;
+        }
+        memset(data, 0, sizeof(*data));
+
+        data->nfs          = nfs;
+        data->cb           = cb;
+        data->private_data = private_data;
+
+        data->path = nfs4_resolve_path(nfs, orig_path);
+        if (data->path == NULL) {
+                nfs_set_error(nfs, "Out of memory resolving path");
+                free_nfs4_cb_data(data);
+                return -1;
+        }
+
+        path = strrchr(data->path, '/');
+        if (path == data->path) {
+                char *ptr;
+
+                for (ptr = data->path; *ptr; ptr++) {
+                        *ptr = *(ptr + 1);
+                }
+                /* No path to lookup */
+                data->filler.data = data->path;
+                data->path = strdup("/");
+        } else {
+                *path++ = 0;
+                data->filler.data = strdup(path);
+        }
+        data->filler.func = nfs4_populate_mkdir;
+        data->filler.num_op = 1;
+        
+        /* attribute mask */
+        u32ptr = malloc(2 * sizeof(uint32_t));
+        if (u32ptr == NULL) {
+                nfs_set_error(nfs, "Out of memory allocating bitmap");
+                free_nfs4_cb_data(data);
+                return -1;
+        }
+        u32ptr[0] = 0;
+        u32ptr[1] = 1 << (FATTR4_MODE - 32);
+        data->filler.blob0.len = 2;
+        data->filler.blob0.val = u32ptr;
+
+        /* attribute values */
+        u32ptr = malloc(1 * sizeof(uint32_t));
+        if (u32ptr == NULL) {
+                nfs_set_error(nfs, "Out of memory allocating attributes");
+                free_nfs4_cb_data(data);
+                return -1;
+        }
+        u32ptr[0] = htonl(mode);
+        data->filler.blob1.len = 4;
+        data->filler.blob1.val = u32ptr;
+
+        if (nfs4_lookup_path_async(nfs, data, nfs4_mkdir_cb) < 0) {
                 free_nfs4_cb_data(data);
                 return -1;
         }
