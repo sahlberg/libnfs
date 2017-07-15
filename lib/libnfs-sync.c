@@ -497,7 +497,8 @@ nfs_close(struct nfs_context *nfs, struct nfsfh *nfsfh)
 	cb_data.is_finished = 0;
 
 	if (nfs_close_async(nfs, nfsfh, close_cb, &cb_data) != 0) {
-		nfs_set_error(nfs, "nfs_close_async failed");
+		nfs_set_error(nfs, "nfs_close_async failed. %s",
+                              nfs_get_error(nfs));
 		return -1;
 	}
 
@@ -545,7 +546,8 @@ nfs_fstat64(struct nfs_context *nfs, struct nfsfh *nfsfh,
 	cb_data.return_data = st;
 
 	if (nfs_fstat64_async(nfs, nfsfh, stat64_cb, &cb_data) != 0) {
-		nfs_set_error(nfs, "nfs_fstat64_async failed");
+		nfs_set_error(nfs, "nfs_fstat64_async failed. %s",
+                              nfs_get_error(nfs));
 		return -1;
 	}
 

@@ -513,6 +513,8 @@ EXTERN uint16_t nfs_umask(struct nfs_context *nfs, uint16_t mask);
  * mode is a combination of the flags :
  * O_RDONLY, O_WRONLY, O_RDWR , O_SYNC, O_APPEND, O_TRUNC, O_NOFOLLOW
  *
+ * ( O_SYNC, O_APPEND, O_TRUNC  are not yet supported for NFSv4. )
+ *
  * Function returns
  *  0 : The command was queued successfully. The callback will be invoked once
  *      the command completes.

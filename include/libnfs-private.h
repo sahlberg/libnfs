@@ -294,6 +294,7 @@ struct nfs_context {
         char *client_name;
         uint64_t clientid;
         verifier4 setclientid_confirm;
+        uint32_t seqid;
 };
 
 typedef int (*continue_func)(struct nfs_context *nfs, struct nfs_attr *attr,
@@ -364,13 +365,21 @@ struct nfs_pagecache {
        time_t ttl;
 };
 
+struct stateid {
+        uint32_t seqid;
+        char other[12];
+};
+
 struct nfsfh {
-       struct nfs_fh fh;
-       int is_sync;
-       int is_append;
-       uint64_t offset;
-       struct nfs_readahead ra;
-       struct nfs_pagecache pagecache;
+        struct nfs_fh fh;
+        int is_sync;
+        int is_append;
+        uint64_t offset;
+        struct nfs_readahead ra;
+        struct nfs_pagecache pagecache;
+
+        /* NFSv4 */
+        struct stateid stateid;
 };
 
 const struct nfs_fh *nfs_get_rootfh(struct nfs_context *nfs);
@@ -464,10 +473,16 @@ int nfs3_write_async(struct nfs_context *nfs, struct nfsfh *nfsfh,
    
 int nfs4_chdir_async(struct nfs_context *nfs, const char *path,
                      nfs_cb cb, void *private_data);
+int nfs4_close_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_cb cb,
+                     void *private_data);
+int nfs4_fstat64_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_cb cb,
+                       void *private_data);
 int nfs4_mkdir2_async(struct nfs_context *nfs, const char *path, int mode,
                       nfs_cb cb, void *private_data);
 int nfs4_mount_async(struct nfs_context *nfs, const char *server,
 		     const char *export, nfs_cb cb, void *private_data);
+int nfs4_open_async(struct nfs_context *nfs, const char *path, int flags,
+                    nfs_cb cb, void *private_data);
 int nfs4_rmdir_async(struct nfs_context *nfs, const char *path, nfs_cb cb,
                      void *private_data);
 int nfs4_stat64_async(struct nfs_context *nfs, const char *path,

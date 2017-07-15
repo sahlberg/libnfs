@@ -2,7 +2,7 @@
 
 . ./functions.sh
 
-echo "basic fstat test"
+echo "NFSv${VERS} Basic nfs_fstat64() test."
 
 start_share
 
@@ -10,7 +10,7 @@ dd if=/dev/zero of=testdata/testfile count=1 bs=32768 2>/dev/null
 chmod 644 testdata/testfile
 
 echo -n "test nfs_fstat64() ... "
-./prog_fstat "${TESTURL}/" "." testfile > "${TESTDIR}/output" || failure
+./prog_fstat "${TESTURL}/?version=${VERS}" "." testfile > "${TESTDIR}/output" || failure
 success
 
 echo -n "test nfs_ino ... "
