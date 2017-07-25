@@ -120,6 +120,11 @@ struct lookup_filler {
         } blob1;   /* val is freed by nfs4_cb_data destructor */
 };
 
+struct rw_data {
+        uint64_t offset;
+        int update_pos;
+};
+
 struct nfs4_cb_data {
         struct nfs_context *nfs;
 /* Do not follow symlinks for the final component on a lookup.
@@ -140,6 +145,9 @@ struct nfs4_cb_data {
 
         /* Data we need when resolving a symlink in the path */
         struct lookup_link_data link;
+
+        /* Data we need for updating offset in read/write */
+        struct rw_data rw_data;
 };
 
 static void
@@ -1740,6 +1748,97 @@ nfs4_close_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_cb cb,
         args.argarray.argarray_val = op;
 
         if (rpc_nfs4_compound_async(nfs->rpc, nfs4_close_cb, &args,
+                                    data) != 0) {
+                data->filler.blob0.val = NULL;
+                free_nfs4_cb_data(data);
+                return -1;
+        }
+
+        return 0;
+}
+
+static void
+nfs4_pread_cb(struct rpc_context *rpc, int status, void *command_data,
+              void *private_data)
+{
+        struct nfs4_cb_data *data = private_data;
+        struct nfs_context *nfs = data->nfs;
+        COMPOUND4res *res = command_data;
+        READ4resok *rres = NULL;
+        struct nfsfh *nfsfh;
+        int i;
+
+        assert(rpc->magic == RPC_CONTEXT_MAGIC);
+
+        nfsfh = data->filler.blob0.val;
+        data->filler.blob0.val = NULL;
+
+        if (check_nfs4_error(nfs, status, data, res, "READ")) {
+                free_nfs4_cb_data(data);
+                return;
+        }
+
+        if ((i = nfs4_find_op(nfs, data, res, OP_READ, "READ")) < 0) {
+                return;
+        }
+        rres = &res->resarray.resarray_val[i].nfs_resop4_u.opread.READ4res_u.resok4;
+
+        if (data->rw_data.update_pos) {
+                nfsfh->offset = data->rw_data.offset + rres->data.data_len;
+        }
+
+        data->cb(rres->data.data_len, nfs, rres->data.data_val,
+                 data->private_data);
+        free_nfs4_cb_data(data);
+}
+
+int
+nfs4_pread_async_internal(struct nfs_context *nfs, struct nfsfh *nfsfh,
+                          uint64_t offset, size_t count, nfs_cb cb,
+                          void *private_data, int update_pos)
+{
+        COMPOUND4args args;
+        nfs_argop4 op[2];
+        PUTFH4args *pfargs;
+        READ4args *rargs;
+        struct nfs4_cb_data *data;
+
+        data = malloc(sizeof(*data));
+        if (data == NULL) {
+                nfs_set_error(nfs, "Out of memory. Failed to allocate "
+                              "cb data");
+                return -1;
+        }
+        memset(data, 0, sizeof(*data));
+
+        data->nfs          = nfs;
+        data->cb           = cb;
+        data->private_data = private_data;
+
+        data->filler.blob0.val = nfsfh;
+        data->rw_data.offset = offset;
+        data->rw_data.update_pos = update_pos;
+        
+        memset(op, 0, sizeof(op));
+
+        op[0].argop = OP_PUTFH;
+        pfargs = &op[0].nfs_argop4_u.opputfh;
+        pfargs->object.nfs_fh4_len = nfsfh->fh.len;
+        pfargs->object.nfs_fh4_val = nfsfh->fh.val;
+
+        op[1].argop = OP_READ;
+        rargs = &op[1].nfs_argop4_u.opread;
+        rargs->stateid.seqid = nfsfh->stateid.seqid;
+        memcpy(rargs->stateid.other, nfsfh->stateid.other, 12);
+        rargs->offset = offset;
+        rargs->count = count;
+
+
+        memset(&args, 0, sizeof(args));
+        args.argarray.argarray_len = sizeof(op) / sizeof(nfs_argop4);
+        args.argarray.argarray_val = op;
+
+        if (rpc_nfs4_compound_async(nfs->rpc, nfs4_pread_cb, &args,
                                     data) != 0) {
                 data->filler.blob0.val = NULL;
                 free_nfs4_cb_data(data);

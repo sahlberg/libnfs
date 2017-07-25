@@ -440,7 +440,8 @@ nfs_pread(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t offset,
 
 	if (nfs_pread_async(nfs, nfsfh, offset, count, pread_cb,
                             &cb_data) != 0) {
-		nfs_set_error(nfs, "nfs_pread_async failed");
+		nfs_set_error(nfs, "nfs_pread_async failed. %s",
+                              nfs_get_error(nfs));
 		return -1;
 	}
 
@@ -463,7 +464,8 @@ nfs_read(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t count,
 	cb_data.call = "read";
 
 	if (nfs_read_async(nfs, nfsfh, count, pread_cb, &cb_data) != 0) {
-		nfs_set_error(nfs, "nfs_read_async failed");
+		nfs_set_error(nfs, "nfs_read_async failed. %s",
+                              nfs_get_error(nfs));
 		return -1;
 	}
 
