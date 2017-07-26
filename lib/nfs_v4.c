@@ -428,12 +428,14 @@ nfs4_allocate_op(struct nfs_context *nfs, nfs_argop4 **op,
 {
         char *ptr;
         int i, count;
+        GETATTR4args *gaargs;
+        static uint32_t attributes[2];
 
         *op = NULL;
 
         count = nfs4_num_path_components(nfs, path);
 
-        *op = malloc(sizeof(**op) * (1 + 2 * count + num_extra));
+        *op = malloc(sizeof(**op) * (2 + 2 * count + num_extra));
         if (*op == NULL) {
                 nfs_set_error(nfs, "Failed to allocate op array");
                 return -1;
@@ -470,6 +472,26 @@ nfs4_allocate_op(struct nfs_context *nfs, nfs_argop4 **op,
                 ptr = tmp;
                 i++;
         }                
+
+        gaargs = &(*op)[i].nfs_argop4_u.opgetattr;
+        (*op)[i++].argop = OP_GETATTR;
+        memset(gaargs, 0, sizeof(*gaargs));
+
+        attributes[0] =
+                1 << FATTR4_TYPE |
+                1 << FATTR4_SIZE |
+                1 << FATTR4_FILEID;
+        attributes[1] =
+                1 << (FATTR4_MODE - 32) |
+                1 << (FATTR4_NUMLINKS - 32) |
+                1 << (FATTR4_OWNER - 32) |
+                1 << (FATTR4_OWNER_GROUP - 32) |
+                1 << (FATTR4_SPACE_USED - 32) |
+                1 << (FATTR4_TIME_ACCESS - 32) |
+                1 << (FATTR4_TIME_METADATA - 32) |
+                1 << (FATTR4_TIME_MODIFY - 32);
+        gaargs->attr_request.bitmap4_len = 2;
+        gaargs->attr_request.bitmap4_val = attributes;
 
         return i;
 }
@@ -641,6 +663,7 @@ nfs4_lookup_path_1_cb(struct rpc_context *rpc, int status, void *command_data,
                         data->link.idx++;
                 }
         }
+
         if (!resolve_link && i == res->resarray.resarray_len) {
                 nfs_set_error(nfs, "Symlink not found during lookup.");
                 data->cb(-EFAULT, nfs, nfs_get_error(nfs), data->private_data);
@@ -748,30 +771,7 @@ nfs4_lookup_path_async(struct nfs_context *nfs,
 static void
 nfs4_populate_getattr(struct nfs4_cb_data *data, nfs_argop4 *op)
 {
-        GETATTR4args *gaargs;
-        uint32_t *attributes = data->filler.data;
-        
         op[0].argop = OP_GETFH;
-
-        gaargs = &op[1].nfs_argop4_u.opgetattr;
-        op[1].argop = OP_GETATTR;
-        memset(gaargs, 0, sizeof(*gaargs));
-
-        attributes[0] =
-                1 << FATTR4_TYPE |
-                1 << FATTR4_SIZE |
-                1 << FATTR4_FILEID;
-        attributes[1] =
-                1 << (FATTR4_MODE - 32) |
-                1 << (FATTR4_NUMLINKS - 32) |
-                1 << (FATTR4_OWNER - 32) |
-                1 << (FATTR4_OWNER_GROUP - 32) |
-                1 << (FATTR4_SPACE_USED - 32) |
-                1 << (FATTR4_TIME_ACCESS - 32) |
-                1 << (FATTR4_TIME_METADATA - 32) |
-                1 << (FATTR4_TIME_MODIFY - 32);
-        gaargs->attr_request.bitmap4_len = 2;
-        gaargs->attr_request.bitmap4_val = attributes;
 }
 
 static void
@@ -829,7 +829,7 @@ nfs4_mount_3_cb(struct rpc_context *rpc, int status, void *command_data,
         }
 
         data->filler.func = nfs4_populate_getattr;
-        data->filler.num_op = 2;
+        data->filler.num_op = 1;
         data->filler.data = malloc(2 * sizeof(uint32_t));
         if (data->filler.data == NULL) {
                 nfs_set_error(nfs, "Out of memory. Failed to allocate "
@@ -1039,7 +1039,7 @@ int nfs4_chdir_async(struct nfs_context *nfs, const char *path,
         }
 
         data->filler.func = nfs4_populate_getattr;
-        data->filler.num_op = 2;
+        data->filler.num_op = 1;
         data->filler.data = malloc(2 * sizeof(uint32_t));
         if (data->filler.data == NULL) {
                 nfs_set_error(nfs, "Out of memory. Failed to allocate "
@@ -1120,7 +1120,7 @@ nfs4_stat64_async(struct nfs_context *nfs, const char *path,
         }
 
         data->filler.func = nfs4_populate_getattr;
-        data->filler.num_op = 2;
+        data->filler.num_op = 1;
         data->filler.data = malloc(2 * sizeof(uint32_t));
         if (data->filler.data == NULL) {
                 nfs_set_error(nfs, "Out of memory. Failed to allocate "
@@ -1340,40 +1340,17 @@ nfs4_rmdir_async(struct nfs_context *nfs, const char *orig_path,
 
 /* filler.flags are the open flags
  * filler.data is the object name
- * filler.blob0.val is the attribute mask
  */
 static void
 nfs4_populate_open(struct nfs4_cb_data *data, nfs_argop4 *op)
 {
         struct nfs_context *nfs = data->nfs;
-        GETATTR4args *gaargs;
         ACCESS4args *aargs;
         OPEN4args *oargs;
-        uint32_t *attributes = data->filler.blob0.val;
-
-        gaargs = &op[0].nfs_argop4_u.opgetattr;
-        op[0].argop = OP_GETATTR;
-        memset(gaargs, 0, sizeof(*gaargs));
-
-        attributes[0] =
-                1 << FATTR4_TYPE |
-                1 << FATTR4_SIZE |
-                1 << FATTR4_FILEID;
-        attributes[1] =
-                1 << (FATTR4_MODE - 32) |
-                1 << (FATTR4_NUMLINKS - 32) |
-                1 << (FATTR4_OWNER - 32) |
-                1 << (FATTR4_OWNER_GROUP - 32) |
-                1 << (FATTR4_SPACE_USED - 32) |
-                1 << (FATTR4_TIME_ACCESS - 32) |
-                1 << (FATTR4_TIME_METADATA - 32) |
-                1 << (FATTR4_TIME_MODIFY - 32);
-        gaargs->attr_request.bitmap4_len = 2;
-        gaargs->attr_request.bitmap4_val = attributes;
 
         /* Access */
-        op[1].argop = OP_ACCESS;
-        aargs = &op[1].nfs_argop4_u.opaccess;
+        op[0].argop = OP_ACCESS;
+        aargs = &op[0].nfs_argop4_u.opaccess;
         memset(aargs, 0, sizeof(*aargs));
 
 	if (data->filler.flags & O_WRONLY) {
@@ -1387,8 +1364,8 @@ nfs4_populate_open(struct nfs4_cb_data *data, nfs_argop4 *op)
 	}
 
         /* Open */
-        op[2].argop = OP_OPEN;
-        oargs = &op[2].nfs_argop4_u.opopen;
+        op[1].argop = OP_OPEN;
+        oargs = &op[1].nfs_argop4_u.opopen;
         memset(oargs, 0, sizeof(*oargs));
 
         oargs->seqid = nfs->seqid++;
@@ -1405,7 +1382,7 @@ nfs4_populate_open(struct nfs4_cb_data *data, nfs_argop4 *op)
                 data->filler.data;
 
         /* GetFH */
-        op[3].argop = OP_GETFH;
+        op[2].argop = OP_GETFH;
 }
 
 static void
@@ -1594,17 +1571,8 @@ nfs4_open_async(struct nfs_context *nfs, const char *orig_path, int flags,
         }
 
         data->filler.func = nfs4_populate_open;
-        data->filler.num_op = 4;
+        data->filler.num_op = 3;
         data->filler.flags = flags;
-        data->filler.blob0.val = malloc(2 * sizeof(uint32_t));
-        if (data->filler.blob0.val == NULL) {
-                nfs_set_error(nfs, "Out of memory. Failed to allocate "
-                              "data structure.");
-                data->cb(-ENOMEM, nfs, nfs_get_error(nfs), data->private_data);
-                free_nfs4_cb_data(data);
-                return -1;
-        }
-        memset(data->filler.blob0.val, 0, 2 * sizeof(uint32_t));
 
         if (nfs4_lookup_path_async(nfs, data, nfs4_open_cb) < 0) {
                 free_nfs4_cb_data(data);
@@ -1989,6 +1957,7 @@ nfs4_readlink_async(struct nfs_context *nfs, const char *path, nfs_cb cb,
         data->cb           = cb;
         data->private_data = private_data;
         data->path = nfs4_resolve_path(nfs, path);
+        data->flags |= LOOKUP_FLAG_FINAL_NO_FOLLOW;
 
         if (data->path == NULL) {
                 nfs_set_error(nfs, "Out of memory duplicating path");
