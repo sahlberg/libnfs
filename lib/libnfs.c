@@ -1519,9 +1519,12 @@ nfs_symlink_async(struct nfs_context *nfs, const char *target,
         case NFS_V3:
                 return nfs3_symlink_async(nfs, target, newpath,
                                           cb, private_data);
+        case NFS_V4:
+                return nfs4_symlink_async(nfs, target, newpath,
+                                          cb, private_data);
         default:
-                nfs_set_error(nfs, "%s does not support NFSv4",
-                              __FUNCTION__);
+                nfs_set_error(nfs, "%s does not support NFSv%d",
+                              __FUNCTION__, nfs->version);
                 return -1;
         }
 }

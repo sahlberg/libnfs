@@ -1847,3 +1847,94 @@ nfs4_pread_async_internal(struct nfs_context *nfs, struct nfsfh *nfsfh,
 
         return 0;
 }
+
+static void
+nfs4_symlink_cb(struct rpc_context *rpc, int status, void *command_data,
+              void *private_data)
+{
+        struct nfs4_cb_data *data = private_data;
+        struct nfs_context *nfs = data->nfs;
+        COMPOUND4res *res = command_data;
+
+        assert(rpc->magic == RPC_CONTEXT_MAGIC);
+
+        if (check_nfs4_error(nfs, status, data, res, "SYMLINK")) {
+                free_nfs4_cb_data(data);
+                return;
+        }
+
+        data->cb(0, nfs, NULL, data->private_data);
+        free_nfs4_cb_data(data);
+}
+
+/* Takes object name as filler.data
+ * blob0 as the target
+ */
+static void
+nfs4_populate_symlink(struct nfs4_cb_data *data, nfs_argop4 *op)
+{
+        CREATE4args *cargs;
+
+        cargs = &op[0].nfs_argop4_u.opcreate;
+        memset(cargs, 0, sizeof(*cargs));
+        cargs->objtype.type = NF4LNK;
+        cargs->objtype.createtype4_u.linkdata.utf8string_len =
+                strlen(data->filler.blob0.val);
+        cargs->objtype.createtype4_u.linkdata.utf8string_val =
+                data->filler.blob0.val;
+        cargs->objname.utf8string_val = data->filler.data;
+        cargs->objname.utf8string_len = strlen(cargs->objname.utf8string_val);
+        op[0].argop = OP_CREATE;
+}
+
+int
+nfs4_symlink_async(struct nfs_context *nfs, const char *target,
+                   const char *linkname, nfs_cb cb, void *private_data)
+{
+        struct nfs4_cb_data *data;
+        char *path;
+
+        data = malloc(sizeof(*data));
+        if (data == NULL) {
+                nfs_set_error(nfs, "Out of memory. Failed to allocate "
+                              "cb data");
+                return -1;
+        }
+        memset(data, 0, sizeof(*data));
+        data->nfs          = nfs;
+        data->cb           = cb;
+        data->private_data = private_data;
+
+        data->path = nfs4_resolve_path(nfs, linkname);
+        if (data->path == NULL) {
+                nfs_set_error(nfs, "Out of memory resolving path");
+                free_nfs4_cb_data(data);
+                return -1;
+        }
+
+        path = strrchr(data->path, '/');
+        if (path == data->path) {
+                char *ptr;
+
+                for (ptr = data->path; *ptr; ptr++) {
+                        *ptr = *(ptr + 1);
+                }
+                /* No path to lookup */
+                data->filler.data = data->path;
+                data->path = strdup("/");
+        } else {
+                *path++ = 0;
+                data->filler.data = strdup(path);
+        }
+        data->filler.func = nfs4_populate_symlink;
+        data->filler.num_op = 1;
+
+        data->filler.blob0.val = strdup(target);
+
+        if (nfs4_lookup_path_async(nfs, data, nfs4_symlink_cb) < 0) {
+                free_nfs4_cb_data(data);
+                return -1;
+        }
+
+        return 0;
+}
