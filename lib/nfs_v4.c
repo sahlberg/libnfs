@@ -201,7 +201,7 @@ nfs4_find_op(struct nfs_context *nfs, struct nfs4_cb_data *data,
 {
         int i;
 
-        for (i = 0; i < res->resarray.resarray_len; i++) {
+        for (i = 0; i < (int)res->resarray.resarray_len; i++) {
                 if (res->resarray.resarray_val[i].resop == op) {
                         break;
                 }
