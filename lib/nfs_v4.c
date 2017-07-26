@@ -1938,3 +1938,71 @@ nfs4_symlink_async(struct nfs_context *nfs, const char *target,
 
         return 0;
 }
+
+static void
+nfs4_readlink_cb(struct rpc_context *rpc, int status, void *command_data,
+                 void *private_data)
+{
+        struct nfs4_cb_data *data = private_data;
+        struct nfs_context *nfs = data->nfs;
+        COMPOUND4res *res = command_data;
+        READLINK4resok *rlresok;
+        int i;
+
+        assert(rpc->magic == RPC_CONTEXT_MAGIC);
+
+        if (check_nfs4_error(nfs, status, data, res, "READLINK")) {
+                free_nfs4_cb_data(data);
+                return;
+        }
+
+        if ((i = nfs4_find_op(nfs, data, res, OP_READLINK, "READLINK")) < 0) {
+                return;
+        }
+
+        rlresok = &res->resarray.resarray_val[i].nfs_resop4_u.opreadlink.READLINK4res_u.resok4;
+
+        data->cb(0, nfs, rlresok->link.utf8string_val, data->private_data);
+        free_nfs4_cb_data(data);
+}
+
+static void
+nfs4_populate_readlink(struct nfs4_cb_data *data, nfs_argop4 *op)
+{
+        op[0].argop = OP_READLINK;
+}
+
+int
+nfs4_readlink_async(struct nfs_context *nfs, const char *path, nfs_cb cb,
+                    void *private_data)
+{
+        struct nfs4_cb_data *data;
+
+        data = malloc(sizeof(*data));
+        if (data == NULL) {
+                nfs_set_error(nfs, "Out of memory. Failed to allocate "
+                              "cb data");
+                return -1;
+        }
+        memset(data, 0, sizeof(*data));
+        data->nfs          = nfs;
+        data->cb           = cb;
+        data->private_data = private_data;
+        data->path = nfs4_resolve_path(nfs, path);
+
+        if (data->path == NULL) {
+                nfs_set_error(nfs, "Out of memory duplicating path");
+                free_nfs4_cb_data(data);
+                return -1;
+        }
+
+        data->filler.func = nfs4_populate_readlink;
+        data->filler.num_op = 1;
+
+        if (nfs4_lookup_path_async(nfs, data, nfs4_readlink_cb) < 0) {
+                free_nfs4_cb_data(data);
+                return -1;
+        }
+
+        return 0;
+}

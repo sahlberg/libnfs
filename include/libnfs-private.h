@@ -486,6 +486,8 @@ int nfs4_open_async(struct nfs_context *nfs, const char *path, int flags,
 int nfs4_pread_async_internal(struct nfs_context *nfs, struct nfsfh *nfsfh,
                               uint64_t offset, size_t count, nfs_cb cb,
                               void *private_data, int update_pos);
+int nfs4_readlink_async(struct nfs_context *nfs, const char *path, nfs_cb cb,
+                        void *private_data);
 int nfs4_rmdir_async(struct nfs_context *nfs, const char *path, nfs_cb cb,
                      void *private_data);
 int nfs4_stat64_async(struct nfs_context *nfs, const char *path,

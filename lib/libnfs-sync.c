@@ -1100,7 +1100,8 @@ nfs_readlink(struct nfs_context *nfs, const char *path, char *buf, int bufsize)
 	cb_data.return_int  = bufsize;
 
 	if (nfs_readlink_async(nfs, path, readlink_cb, &cb_data) != 0) {
-		nfs_set_error(nfs, "nfs_readlink_async failed");
+		nfs_set_error(nfs, "nfs_readlink_async failed. %s",
+                              nfs_get_error(nfs));
 		return -1;
 	}
 
