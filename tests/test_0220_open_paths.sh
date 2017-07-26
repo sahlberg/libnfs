@@ -51,11 +51,7 @@ echo -n "Open a symlinked file (rel) (9) ... "
 ./prog_open_read "${TESTURL}/?version=${VERS}" "." subdir4/open8 O_RDONLY >/dev/null || failure
 success
 
-echo -n "Open a symlinked path with O_NOFOLLOW (rel) (10) ... "
-./prog_open_read "${TESTURL}/?version=${VERS}" "." subdir4/open3 O_RDONLY,O_NOFOLLOW 2>/dev/null && failure
-success
-
-echo -n "Open a symlinked file with O_NOFOLLOW (rel) (11) ... "
+echo -n "Open a symlinked file with O_NOFOLLOW (rel) (10) ... "
 ./prog_open_read "${TESTURL}/?version=${VERS}" "." subdir/open8 O_RDONLY,O_NOFOLLOW 2>/dev/null && failure
 success
 

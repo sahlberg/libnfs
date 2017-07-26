@@ -130,7 +130,7 @@ struct nfs4_cb_data {
 /* Do not follow symlinks for the final component on a lookup.
  * I.e. stat vs lstat
  */
-#define LOOKUP_FLAG_FINAL_NO_FOLLOW 0x0001
+#define LOOKUP_FLAG_NO_FOLLOW 0x0001
         int flags;
 
         /* Application callback and data */
@@ -569,6 +569,10 @@ nfs4_lookup_path_2_cb(struct rpc_context *rpc, int status, void *command_data,
         }
 }
 
+static int
+nfs4_open_readlink(struct rpc_context *rpc, COMPOUND4res *res,
+                   struct nfs4_cb_data *data);
+
 static void
 nfs4_lookup_path_1_cb(struct rpc_context *rpc, int status, void *command_data,
                 void *private_data)
@@ -578,7 +582,7 @@ nfs4_lookup_path_1_cb(struct rpc_context *rpc, int status, void *command_data,
         COMPOUND4args args;
         nfs_argop4 *op;
         COMPOUND4res *res = command_data;
-        unsigned int i;
+        int i;
         int resolve_link = 0;
         char *path, *tmp;
 
@@ -614,7 +618,7 @@ nfs4_lookup_path_1_cb(struct rpc_context *rpc, int status, void *command_data,
                 return;
         }
 
-        for (i = 0; i < res->resarray.resarray_len; i++) {
+        for (i = 0; i < (int)res->resarray.resarray_len; i++) {
                 if (res->resarray.resarray_val[i].resop == OP_GETATTR) {
                         GETATTR4resok *garesok;
                         struct nfs_stat_64 st;
@@ -638,9 +642,24 @@ nfs4_lookup_path_1_cb(struct rpc_context *rpc, int status, void *command_data,
                 }
         }
 
-        if (data->flags & LOOKUP_FLAG_FINAL_NO_FOLLOW) {
+        /* Open/create is special since the final component for the file
+         * object is sent as part of the OP_OPEN command. So even if the
+         * directory path is all good and resolved, we still need to check
+         * the attributes for the final component and resolve it if it too
+         * is a symlink.
+         */
+        if (!resolve_link) {
+                if (nfs4_open_readlink(rpc, res, data) < 0) {
+                        /* It was a symlink and we have started trying to
+                         * resolve it. Nothing more to do here.
+                         */
+                        return;
+                }
+        }
+
+        if (data->flags & LOOKUP_FLAG_NO_FOLLOW) {
                 /* Do not resolve the final component of the path
-                 * even if it is a symlink.
+                 * if it is a symlink.
                  */
                 resolve_link = 0;
         }
@@ -655,7 +674,7 @@ nfs4_lookup_path_1_cb(struct rpc_context *rpc, int status, void *command_data,
 
         /* Find the lookup that failed and the associated fh */
         data->link.idx = 0;
-        for (i = 0; i < res->resarray.resarray_len; i++) {
+        for (i = 0; i < (int)res->resarray.resarray_len; i++) {
                 if (res->resarray.resarray_val[i].resop == OP_LOOKUP) {
                         if (res->resarray.resarray_val[i].nfs_resop4_u.oplookup.status == NFS4ERR_SYMLINK) {
                                 break;
@@ -1110,7 +1129,7 @@ nfs4_stat64_async(struct nfs_context *nfs, const char *path,
         data->cb           = cb;
         data->private_data = private_data;
         if (no_follow) {
-                data->flags |= LOOKUP_FLAG_FINAL_NO_FOLLOW;
+                data->flags |= LOOKUP_FLAG_NO_FOLLOW;
         }
         data->path = nfs4_resolve_path(nfs, path);
         if (data->path == NULL) {
@@ -1338,53 +1357,6 @@ nfs4_rmdir_async(struct nfs_context *nfs, const char *orig_path,
         return 0;
 }
 
-/* filler.flags are the open flags
- * filler.data is the object name
- */
-static void
-nfs4_populate_open(struct nfs4_cb_data *data, nfs_argop4 *op)
-{
-        struct nfs_context *nfs = data->nfs;
-        ACCESS4args *aargs;
-        OPEN4args *oargs;
-
-        /* Access */
-        op[0].argop = OP_ACCESS;
-        aargs = &op[0].nfs_argop4_u.opaccess;
-        memset(aargs, 0, sizeof(*aargs));
-
-	if (data->filler.flags & O_WRONLY) {
-		aargs->access |= ACCESS4_MODIFY;
-	}
-	if (data->filler.flags & O_RDWR) {
-		aargs->access |= ACCESS4_READ|ACCESS4_MODIFY;
-	}
-	if (!(data->filler.flags & (O_WRONLY|O_RDWR))) {
-		aargs->access |= ACCESS4_READ;
-	}
-
-        /* Open */
-        op[1].argop = OP_OPEN;
-        oargs = &op[1].nfs_argop4_u.opopen;
-        memset(oargs, 0, sizeof(*oargs));
-
-        oargs->seqid = nfs->seqid++;
-        oargs->share_access = OPEN4_SHARE_ACCESS_READ;
-        oargs->share_deny = OPEN4_SHARE_DENY_NONE;
-        oargs->owner.clientid = nfs->clientid;
-        oargs->owner.owner.owner_len = strlen(nfs->client_name);
-        oargs->owner.owner.owner_val = nfs->client_name;
-        oargs->openhow.opentype = OPEN4_NOCREATE;
-        oargs->claim.claim = CLAIM_NULL;
-        oargs->claim.open_claim4_u.file.utf8string_len =
-                strlen(data->filler.data);
-        oargs->claim.open_claim4_u.file.utf8string_val =
-                data->filler.data;
-
-        /* GetFH */
-        op[2].argop = OP_GETFH;
-}
-
 static void
 nfs4_open_confirm_cb(struct rpc_context *rpc, int status, void *command_data,
                      void *private_data)
@@ -1527,6 +1499,166 @@ nfs4_open_cb(struct rpc_context *rpc, int status, void *command_data,
         data->filler.blob1.val = NULL;
         data->cb(0, nfs, fh, data->private_data);
         free_nfs4_cb_data(data);
+}
+
+static void
+nfs4_open_readlink_cb(struct rpc_context *rpc, int status, void *command_data,
+                 void *private_data)
+{
+        struct nfs4_cb_data *data = private_data;
+        struct nfs_context *nfs = data->nfs;
+        COMPOUND4res *res = command_data;
+        READLINK4resok *rlresok;
+        int i;
+        char *path;
+
+        assert(rpc->magic == RPC_CONTEXT_MAGIC);
+
+        if (check_nfs4_error(nfs, status, data, res, "READLINK")) {
+                free_nfs4_cb_data(data);
+                return;
+        }
+
+        if ((i = nfs4_find_op(nfs, data, res, OP_READLINK, "READLINK")) < 0) {
+                return;
+        }
+
+        rlresok = &res->resarray.resarray_val[i].nfs_resop4_u.opreadlink.READLINK4res_u.resok4;
+
+        path = malloc(2 + strlen(data->path) +
+                      strlen(rlresok->link.utf8string_val));
+        if (path == NULL) {
+                nfs_set_error(nfs, "Out of memory. Failed to allocate "
+                              "path");
+                data->cb(-ENOMEM, nfs, nfs_get_error(nfs),
+                         data->private_data);
+                free_nfs4_cb_data(data);
+                return;
+        }
+        sprintf(path, "%s/%s", data->path, rlresok->link.utf8string_val);
+
+        /* We have resolved the final component and created a new path.
+         * Try to call open again.
+         */
+        if (nfs4_open_async(nfs, path, data->filler.flags,
+                            data->cb, data->private_data) < 0) {
+                data->cb(-ENOMEM, nfs, nfs_get_error(nfs), data->private_data);
+                free_nfs4_cb_data(data);
+                free(path);
+                return;
+        }
+        free_nfs4_cb_data(data);
+        free(path);
+}
+
+static void
+nfs4_populate_lookup_readlink(struct nfs4_cb_data *data, nfs_argop4 *op)
+{
+        LOOKUP4args *largs;
+
+        op[0].argop = OP_LOOKUP;
+
+        largs = &op[0].nfs_argop4_u.oplookup;
+        largs->objname.utf8string_len = strlen(data->filler.data);
+        largs->objname.utf8string_val = data->filler.data;
+
+        op[1].argop = OP_READLINK;
+}
+
+/* If the final component in the open was a symlink we need to resolve it and
+ * re-try the nfs4_open_async()
+ */
+static int
+nfs4_open_readlink(struct rpc_context *rpc, COMPOUND4res *res,
+                   struct nfs4_cb_data *data)
+{
+        struct nfs_context *nfs = data->nfs;
+        int i;
+
+        for (i = 0; i < (int)res->resarray.resarray_len; i++) {
+                OPEN4res *ores;
+
+                if (res->resarray.resarray_val[i].resop != OP_OPEN) {
+                        continue;
+                }
+                ores = &res->resarray.resarray_val[i].nfs_resop4_u.opopen;
+
+                if (ores->status != NFS4ERR_SYMLINK) {
+                        continue;
+                }
+
+                if (data->filler.flags & O_NOFOLLOW) {
+                        nfs_set_error(nfs, "Symlink encountered during "
+                                      "open(O_NOFOLLOW)");
+                        data->cb(-ELOOP, nfs, nfs_get_error(nfs),
+                                 data->private_data);
+                        return -1;
+                }
+
+                /* The object we need to do readlink on is already stored in
+                 * data->filler.data so *populate* can just grab it from there.
+                 */
+                data->filler.func = nfs4_populate_lookup_readlink;
+                data->filler.num_op = 2;
+
+                if (nfs4_lookup_path_async(nfs, data,
+                                           nfs4_open_readlink_cb) < 0) {
+                        data->cb(-ENOMEM, nfs, nfs_get_error(nfs),
+                                 data->private_data);
+                        free_nfs4_cb_data(data);
+                        return -1;
+                }
+                return -1;
+        }
+
+        return 0;
+}
+
+/* filler.flags are the open flags
+ * filler.data is the object name
+ */
+static void
+nfs4_populate_open(struct nfs4_cb_data *data, nfs_argop4 *op)
+{
+        struct nfs_context *nfs = data->nfs;
+        ACCESS4args *aargs;
+        OPEN4args *oargs;
+
+        /* Access */
+        op[0].argop = OP_ACCESS;
+        aargs = &op[0].nfs_argop4_u.opaccess;
+        memset(aargs, 0, sizeof(*aargs));
+
+	if (data->filler.flags & O_WRONLY) {
+		aargs->access |= ACCESS4_MODIFY;
+	}
+	if (data->filler.flags & O_RDWR) {
+		aargs->access |= ACCESS4_READ|ACCESS4_MODIFY;
+	}
+	if (!(data->filler.flags & (O_WRONLY|O_RDWR))) {
+		aargs->access |= ACCESS4_READ;
+	}
+
+        /* Open */
+        op[1].argop = OP_OPEN;
+        oargs = &op[1].nfs_argop4_u.opopen;
+        memset(oargs, 0, sizeof(*oargs));
+
+        oargs->seqid = nfs->seqid++;
+        oargs->share_access = OPEN4_SHARE_ACCESS_READ;
+        oargs->share_deny = OPEN4_SHARE_DENY_NONE;
+        oargs->owner.clientid = nfs->clientid;
+        oargs->owner.owner.owner_len = strlen(nfs->client_name);
+        oargs->owner.owner.owner_val = nfs->client_name;
+        oargs->openhow.opentype = OPEN4_NOCREATE;
+        oargs->claim.claim = CLAIM_NULL;
+        oargs->claim.open_claim4_u.file.utf8string_len =
+                strlen(data->filler.data);
+        oargs->claim.open_claim4_u.file.utf8string_val =
+                data->filler.data;
+
+        /* GetFH */
+        op[2].argop = OP_GETFH;
 }
 
 int
@@ -1957,7 +2089,7 @@ nfs4_readlink_async(struct nfs_context *nfs, const char *path, nfs_cb cb,
         data->cb           = cb;
         data->private_data = private_data;
         data->path = nfs4_resolve_path(nfs, path);
-        data->flags |= LOOKUP_FLAG_FINAL_NO_FOLLOW;
+        data->flags |= LOOKUP_FLAG_NO_FOLLOW;
 
         if (data->path == NULL) {
                 nfs_set_error(nfs, "Out of memory duplicating path");
