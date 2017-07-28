@@ -95,7 +95,7 @@
 
 
 struct nfs4_cb_data;
-typedef void (*op_filler)(struct nfs4_cb_data *data, nfs_argop4 *op);
+typedef int (*op_filler)(struct nfs4_cb_data *data, nfs_argop4 *op);
 
 struct lookup_link_data {
         unsigned int idx;
@@ -106,7 +106,7 @@ struct lookup_link_data {
  */
 struct lookup_filler {
         op_filler func;
-        int num_op;
+        int max_op;
         int flags;
         void *data;  /* Freed by nfs4_cb_data destructor */
 
@@ -747,7 +747,7 @@ nfs4_lookup_path_async(struct nfs_context *nfs,
         COMPOUND4args args;
         nfs_argop4 *op;
         char *path;
-        int i;
+        int i, num_op;
 
         path = nfs4_resolve_path(nfs, data->path);
         if (path == NULL) {
@@ -761,16 +761,16 @@ nfs4_lookup_path_async(struct nfs_context *nfs,
                 return -1;
         }
 
-        if ((i = nfs4_allocate_op(nfs, &op, path, data->filler.num_op)) < 0) {
+        if ((i = nfs4_allocate_op(nfs, &op, path, data->filler.max_op)) < 0) {
                 free(path);
                 return -1;
         }
 
-        data->filler.func(data, &op[i]);
+        num_op = data->filler.func(data, &op[i]);
         data->continue_cb = cb;
 
         memset(&args, 0, sizeof(args));
-        args.argarray.argarray_len = i + data->filler.num_op;
+        args.argarray.argarray_len = i + num_op;
         args.argarray.argarray_val = op;
 
         if (rpc_nfs4_compound_async(nfs->rpc, nfs4_lookup_path_1_cb, &args,
@@ -787,10 +787,12 @@ nfs4_lookup_path_async(struct nfs_context *nfs,
         return 0;
 }
 
-static void
+static int
 nfs4_populate_getattr(struct nfs4_cb_data *data, nfs_argop4 *op)
 {
         op[0].argop = OP_GETFH;
+
+        return 1;
 }
 
 static void
@@ -848,7 +850,7 @@ nfs4_mount_3_cb(struct rpc_context *rpc, int status, void *command_data,
         }
 
         data->filler.func = nfs4_populate_getattr;
-        data->filler.num_op = 1;
+        data->filler.max_op = 1;
         data->filler.data = malloc(2 * sizeof(uint32_t));
         if (data->filler.data == NULL) {
                 nfs_set_error(nfs, "Out of memory. Failed to allocate "
@@ -1058,7 +1060,7 @@ int nfs4_chdir_async(struct nfs_context *nfs, const char *path,
         }
 
         data->filler.func = nfs4_populate_getattr;
-        data->filler.num_op = 1;
+        data->filler.max_op = 1;
         data->filler.data = malloc(2 * sizeof(uint32_t));
         if (data->filler.data == NULL) {
                 nfs_set_error(nfs, "Out of memory. Failed to allocate "
@@ -1139,7 +1141,7 @@ nfs4_stat64_async(struct nfs_context *nfs, const char *path,
         }
 
         data->filler.func = nfs4_populate_getattr;
-        data->filler.num_op = 1;
+        data->filler.max_op = 1;
         data->filler.data = malloc(2 * sizeof(uint32_t));
         if (data->filler.data == NULL) {
                 nfs_set_error(nfs, "Out of memory. Failed to allocate "
@@ -1162,7 +1164,7 @@ nfs4_stat64_async(struct nfs_context *nfs, const char *path,
  * blob0 as the fattr4 attribute mask
  * blob1 as the fattr4 attribute list
  */
-static void
+static int
 nfs4_populate_mkdir(struct nfs4_cb_data *data, nfs_argop4 *op)
 {
         CREATE4args *cargs;
@@ -1177,6 +1179,8 @@ nfs4_populate_mkdir(struct nfs4_cb_data *data, nfs_argop4 *op)
         cargs->createattrs.attr_vals.attrlist4_len = data->filler.blob1.len;
         cargs->createattrs.attr_vals.attrlist4_val = data->filler.blob1.val;
         op[0].argop = OP_CREATE;
+
+        return 1;
 }
 
 static void
@@ -1240,7 +1244,7 @@ nfs4_mkdir2_async(struct nfs_context *nfs, const char *orig_path, int mode,
                 data->filler.data = strdup(path);
         }
         data->filler.func = nfs4_populate_mkdir;
-        data->filler.num_op = 1;
+        data->filler.max_op = 1;
         
         /* attribute mask */
         u32ptr = malloc(2 * sizeof(uint32_t));
@@ -1275,7 +1279,7 @@ nfs4_mkdir2_async(struct nfs_context *nfs, const char *orig_path, int mode,
 
 /* Takes object name as filler.data
  */
-static void
+static int
 nfs4_populate_rmdir(struct nfs4_cb_data *data, nfs_argop4 *op)
 {
         REMOVE4args *rmargs;
@@ -1285,6 +1289,8 @@ nfs4_populate_rmdir(struct nfs4_cb_data *data, nfs_argop4 *op)
         rmargs->target.utf8string_val = data->filler.data;
         rmargs->target.utf8string_len = strlen(rmargs->target.utf8string_val);
         op[0].argop = OP_REMOVE;
+
+        return 1;
 }
 
 static void
@@ -1347,7 +1353,7 @@ nfs4_rmdir_async(struct nfs_context *nfs, const char *orig_path,
                 data->filler.data = strdup(path);
         }
         data->filler.func = nfs4_populate_rmdir;
-        data->filler.num_op = 1;
+        data->filler.max_op = 1;
 
         if (nfs4_lookup_path_async(nfs, data, nfs4_rmdir_cb) < 0) {
                 free_nfs4_cb_data(data);
@@ -1551,7 +1557,7 @@ nfs4_open_readlink_cb(struct rpc_context *rpc, int status, void *command_data,
         free(path);
 }
 
-static void
+static int
 nfs4_populate_lookup_readlink(struct nfs4_cb_data *data, nfs_argop4 *op)
 {
         LOOKUP4args *largs;
@@ -1563,6 +1569,8 @@ nfs4_populate_lookup_readlink(struct nfs4_cb_data *data, nfs_argop4 *op)
         largs->objname.utf8string_val = data->filler.data;
 
         op[1].argop = OP_READLINK;
+
+        return 2;
 }
 
 /* If the final component in the open was a symlink we need to resolve it and
@@ -1599,7 +1607,7 @@ nfs4_open_readlink(struct rpc_context *rpc, COMPOUND4res *res,
                  * data->filler.data so *populate* can just grab it from there.
                  */
                 data->filler.func = nfs4_populate_lookup_readlink;
-                data->filler.num_op = 2;
+                data->filler.max_op = 2;
 
                 if (nfs4_lookup_path_async(nfs, data,
                                            nfs4_open_readlink_cb) < 0) {
@@ -1617,7 +1625,7 @@ nfs4_open_readlink(struct rpc_context *rpc, COMPOUND4res *res,
 /* filler.flags are the open flags
  * filler.data is the object name
  */
-static void
+static int
 nfs4_populate_open(struct nfs4_cb_data *data, nfs_argop4 *op)
 {
         struct nfs_context *nfs = data->nfs;
@@ -1659,6 +1667,8 @@ nfs4_populate_open(struct nfs4_cb_data *data, nfs_argop4 *op)
 
         /* GetFH */
         op[2].argop = OP_GETFH;
+
+        return 3;
 }
 
 int
@@ -1703,7 +1713,7 @@ nfs4_open_async(struct nfs_context *nfs, const char *orig_path, int flags,
         }
 
         data->filler.func = nfs4_populate_open;
-        data->filler.num_op = 3;
+        data->filler.max_op = 3;
         data->filler.flags = flags;
 
         if (nfs4_lookup_path_async(nfs, data, nfs4_open_cb) < 0) {
@@ -1970,7 +1980,7 @@ nfs4_symlink_cb(struct rpc_context *rpc, int status, void *command_data,
 /* Takes object name as filler.data
  * blob0 as the target
  */
-static void
+static int
 nfs4_populate_symlink(struct nfs4_cb_data *data, nfs_argop4 *op)
 {
         CREATE4args *cargs;
@@ -1985,6 +1995,8 @@ nfs4_populate_symlink(struct nfs4_cb_data *data, nfs_argop4 *op)
         cargs->objname.utf8string_val = data->filler.data;
         cargs->objname.utf8string_len = strlen(cargs->objname.utf8string_val);
         op[0].argop = OP_CREATE;
+
+        return 1;
 }
 
 int
@@ -2027,7 +2039,7 @@ nfs4_symlink_async(struct nfs_context *nfs, const char *target,
                 data->filler.data = strdup(path);
         }
         data->filler.func = nfs4_populate_symlink;
-        data->filler.num_op = 1;
+        data->filler.max_op = 1;
 
         data->filler.blob0.val = strdup(target);
 
@@ -2066,10 +2078,12 @@ nfs4_readlink_cb(struct rpc_context *rpc, int status, void *command_data,
         free_nfs4_cb_data(data);
 }
 
-static void
+static int
 nfs4_populate_readlink(struct nfs4_cb_data *data, nfs_argop4 *op)
 {
         op[0].argop = OP_READLINK;
+
+        return 1;
 }
 
 int
@@ -2098,7 +2112,7 @@ nfs4_readlink_async(struct nfs_context *nfs, const char *path, nfs_cb cb,
         }
 
         data->filler.func = nfs4_populate_readlink;
-        data->filler.num_op = 1;
+        data->filler.max_op = 1;
 
         if (nfs4_lookup_path_async(nfs, data, nfs4_readlink_cb) < 0) {
                 free_nfs4_cb_data(data);
