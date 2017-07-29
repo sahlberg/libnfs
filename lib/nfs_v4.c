@@ -93,6 +93,9 @@
 #include "libnfs-raw.h"
 #include "libnfs-private.h"
 
+#ifndef discard_const
+#define discard_const(ptr) ((void *)((intptr_t)(ptr)))
+#endif
 
 struct nfs4_cb_data;
 typedef int (*op_filler)(struct nfs4_cb_data *data, nfs_argop4 *op);
@@ -1653,7 +1656,12 @@ nfs4_populate_open(struct nfs4_cb_data *data, nfs_argop4 *op)
         memset(oargs, 0, sizeof(*oargs));
 
         oargs->seqid = nfs->seqid++;
-        oargs->share_access = OPEN4_SHARE_ACCESS_READ;
+        if (aargs->access & ACCESS4_READ) {
+                oargs->share_access |= OPEN4_SHARE_ACCESS_READ;
+        }
+        if (aargs->access & ACCESS4_MODIFY) {
+                oargs->share_access |= OPEN4_SHARE_ACCESS_WRITE;
+        }
         oargs->share_deny = OPEN4_SHARE_DENY_NONE;
         oargs->owner.clientid = nfs->clientid;
         oargs->owner.owner.owner_len = strlen(nfs->client_name);
@@ -2115,6 +2123,98 @@ nfs4_readlink_async(struct nfs_context *nfs, const char *path, nfs_cb cb,
         data->filler.max_op = 1;
 
         if (nfs4_lookup_path_async(nfs, data, nfs4_readlink_cb) < 0) {
+                free_nfs4_cb_data(data);
+                return -1;
+        }
+
+        return 0;
+}
+
+static void
+nfs4_pwrite_cb(struct rpc_context *rpc, int status, void *command_data,
+               void *private_data)
+{
+        struct nfs4_cb_data *data = private_data;
+        struct nfs_context *nfs = data->nfs;
+        COMPOUND4res *res = command_data;
+        WRITE4resok *wres = NULL;
+        struct nfsfh *nfsfh;
+        int i;
+
+        assert(rpc->magic == RPC_CONTEXT_MAGIC);
+
+        nfsfh = data->filler.blob0.val;
+        data->filler.blob0.val = NULL;
+
+        if (check_nfs4_error(nfs, status, data, res, "WRITE")) {
+                free_nfs4_cb_data(data);
+                return;
+        }
+
+        if ((i = nfs4_find_op(nfs, data, res, OP_WRITE, "WRITE")) < 0) {
+                return;
+        }
+        wres = &res->resarray.resarray_val[i].nfs_resop4_u.opwrite.WRITE4res_u.resok4;
+
+        if (data->rw_data.update_pos) {
+                nfsfh->offset = data->rw_data.offset + wres->count;
+        }
+
+        data->cb(wres->count, nfs, NULL, data->private_data);
+        free_nfs4_cb_data(data);
+}
+
+int
+nfs4_pwrite_async_internal(struct nfs_context *nfs, struct nfsfh *nfsfh,
+                           uint64_t offset, size_t count, const char *buf,
+                           nfs_cb cb, void *private_data, int update_pos)
+{
+        COMPOUND4args args;
+        nfs_argop4 op[2];
+        PUTFH4args *pfargs;
+        WRITE4args *wargs;
+        struct nfs4_cb_data *data;
+
+        data = malloc(sizeof(*data));
+        if (data == NULL) {
+                nfs_set_error(nfs, "Out of memory. Failed to allocate "
+                              "cb data");
+                return -1;
+        }
+        memset(data, 0, sizeof(*data));
+
+        data->nfs          = nfs;
+        data->cb           = cb;
+        data->private_data = private_data;
+
+        data->filler.blob0.val = nfsfh;
+        data->rw_data.offset = offset;
+        data->rw_data.update_pos = update_pos;
+
+        memset(op, 0, sizeof(op));
+
+        op[0].argop = OP_PUTFH;
+        pfargs = &op[0].nfs_argop4_u.opputfh;
+        pfargs->object.nfs_fh4_len = nfsfh->fh.len;
+        pfargs->object.nfs_fh4_val = nfsfh->fh.val;
+
+        op[1].argop = OP_WRITE;
+        wargs = &op[1].nfs_argop4_u.opwrite;
+        wargs->stateid.seqid = nfsfh->stateid.seqid;
+        memcpy(wargs->stateid.other, nfsfh->stateid.other, 12);
+        wargs->offset = offset;
+        wargs->stable = UNSTABLE4;
+        wargs->data.data_len = count;
+        wargs->data.data_val = discard_const(buf);
+
+
+        memset(&args, 0, sizeof(args));
+        args.argarray.argarray_len = sizeof(op) / sizeof(nfs_argop4);
+        args.argarray.argarray_val = op;
+
+        if (rpc_nfs4_compound_async(nfs->rpc, nfs4_pwrite_cb, &args,
+                                    data) != 0) {
+                data->filler.blob0.val = NULL;
                 free_nfs4_cb_data(data);
                 return -1;
         }

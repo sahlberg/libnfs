@@ -585,7 +585,8 @@ nfs_pwrite(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t offset,
 
 	if (nfs_pwrite_async(nfs, nfsfh, offset, count, buf, pwrite_cb,
                              &cb_data) != 0) {
-		nfs_set_error(nfs, "nfs_pwrite_async failed");
+		nfs_set_error(nfs, "nfs_pwrite_async failed. %s",
+                              nfs_get_error(nfs));
 		return -1;
 	}
 
@@ -607,7 +608,8 @@ nfs_write(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t count,
 	cb_data.call = "write";
 
 	if (nfs_write_async(nfs, nfsfh, count, buf, pwrite_cb, &cb_data) != 0) {
-		nfs_set_error(nfs, "nfs_write_async failed");
+		nfs_set_error(nfs, "nfs_write_async failed. %s",
+                              nfs_get_error(nfs));
 		return -1;
 	}
 

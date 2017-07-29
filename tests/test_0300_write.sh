@@ -2,22 +2,18 @@
 
 . ./functions.sh
 
-echo "basic write test"
+echo "NFSv${VERS} Basic nfs_write() test."
 
 start_share
 
-echo -n "Create a 10M file ... "
-dd if=/dev/urandom of="${TESTDIR}/orig" bs=1M count=10 2>/dev/null || failure
+echo -n "test writing to a file (1) ... "
+touch "${TESTDIR}/open1"
+./prog_open_write "${TESTURL}/?version=${VERS}" "." /open1 O_WRONLY "kangabanga" >/dev/null || failure
 success
 
-echo -n "Copy file to the NFS server ... "
-../utils/nfs-cp "${TESTDIR}/orig" "${TESTURL}/copy" >/dev/null || failure
-success
-
-echo -n "Verify the files are identical  ... "
-ORIGSUM=`md5sum "${TESTDIR}/orig" | cut -d " " -f 1`
-COPYSUM=`md5sum "${TESTDIR}/copy" | cut -d " " -f 1`
-[ "${ORIGSUM}" != "${COPYSUM}" ] && failure
+echo -n "verify the data is correct ... "
+echo -n "kangabanga" > "${TESTDIR}/verify1"
+diff "${TESTDIR}/verify1" "${TESTDIR}/open1" || failure
 success
 
 stop_share

@@ -1032,9 +1032,13 @@ nfs_pwrite_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t offset,
                 return nfs3_pwrite_async_internal(nfs, nfsfh, offset,
                                                   (size_t)count, buf,
                                                   cb, private_data, 0);
+        case NFS_V4:
+                return nfs4_pwrite_async_internal(nfs, nfsfh, offset,
+                                                  (size_t)count, buf,
+                                                  cb, private_data, 0);
         default:
-                nfs_set_error(nfs, "%s does not support NFSv4",
-                              __FUNCTION__);
+                nfs_set_error(nfs, "%s does not support NFSv%d.",
+                              __FUNCTION__, nfs->version);
                 return -1;
         }
 }
@@ -1047,9 +1051,13 @@ nfs_write_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t count,
         case NFS_V3:
                 return nfs3_write_async(nfs, nfsfh, count, buf,
                                         cb, private_data);
+        case NFS_V4:
+                return nfs4_pwrite_async_internal(nfs, nfsfh, nfsfh->offset,
+                                                  (size_t)count, buf,
+                                                  cb, private_data, 1);
         default:
-                nfs_set_error(nfs, "%s does not support NFSv4",
-                              __FUNCTION__);
+                nfs_set_error(nfs, "%s does not support NFSv%d",
+                              __FUNCTION__, nfs->version);
                 return -1;
         }
 }

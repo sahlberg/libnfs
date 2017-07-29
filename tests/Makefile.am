@@ -5,8 +5,8 @@ AM_CFLAGS = $(WARN_CFLAGS)
 LDADD = ../lib/libnfs.la
 
 noinst_PROGRAMS = prog_create prog_fstat prog_link prog_lstat prog_mkdir \
-	prog_mknod prog_mount prog_open_read prog_rename prog_rmdir prog_stat \
-	prog_symlink prog_timeout prog_unlink
+	prog_mknod prog_mount prog_open_read prog_open_write prog_rename \
+	prog_rmdir prog_stat prog_symlink prog_timeout prog_unlink
 
 EXTRA_PROGRAMS = ld_timeout
 CLEANFILES = ld_timeout.o ld_timeout.so
