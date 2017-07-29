@@ -1531,6 +1531,10 @@ nfs4_open_cb(struct rpc_context *rpc, int status, void *command_data,
 
         data->filler.blob0.val = fh;
 
+        if (data->filler.flags & O_SYNC) {
+                fh->is_sync = 1;
+        }
+
         fh->fh.len = gresok->object.nfs_fh4_len;
         fh->fh.val = malloc(fh->fh.len);
         if (fh->fh.val == NULL) {
@@ -1916,6 +1920,7 @@ nfs4_close_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_cb cb,
         COMMIT4args *coargs;
         CLOSE4args *clargs;
         struct nfs4_cb_data *data;
+        int i = 0;
 
         data = malloc(sizeof(*data));
         if (data == NULL) {
@@ -1931,18 +1936,20 @@ nfs4_close_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_cb cb,
 
         memset(op, 0, sizeof(op));
 
-        op[0].argop = OP_PUTFH;
-        pfargs = &op[0].nfs_argop4_u.opputfh;
+        op[i].argop = OP_PUTFH;
+        pfargs = &op[i++].nfs_argop4_u.opputfh;
         pfargs->object.nfs_fh4_len = nfsfh->fh.len;
         pfargs->object.nfs_fh4_val = nfsfh->fh.val;
 
-        op[1].argop = OP_COMMIT;
-        coargs = &op[1].nfs_argop4_u.opcommit;
-        coargs->offset = 0;
-        coargs->count = 0;
+        if (nfsfh->is_dirty) {
+                op[i].argop = OP_COMMIT;
+                coargs = &op[i++].nfs_argop4_u.opcommit;
+                coargs->offset = 0;
+                coargs->count = 0;
+        }
 
-        op[2].argop = OP_CLOSE;
-        clargs = &op[2].nfs_argop4_u.opclose;
+        op[i].argop = OP_CLOSE;
+        clargs = &op[i++].nfs_argop4_u.opclose;
         clargs->seqid = nfs->seqid++;
         clargs->open_stateid.seqid = nfsfh->stateid.seqid;
         memcpy(clargs->open_stateid.other, nfsfh->stateid.other, 12);
@@ -1951,7 +1958,7 @@ nfs4_close_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_cb cb,
 
 
         memset(&args, 0, sizeof(args));
-        args.argarray.argarray_len = sizeof(op) / sizeof(nfs_argop4);
+        args.argarray.argarray_len = i;
         args.argarray.argarray_val = op;
 
         if (rpc_nfs4_compound_async(nfs->rpc, nfs4_close_cb, &args,
@@ -2292,7 +2299,12 @@ nfs4_pwrite_async_internal(struct nfs_context *nfs, struct nfsfh *nfsfh,
         wargs->stateid.seqid = nfsfh->stateid.seqid;
         memcpy(wargs->stateid.other, nfsfh->stateid.other, 12);
         wargs->offset = offset;
-        wargs->stable = UNSTABLE4;
+        if (nfsfh->is_sync) {
+                wargs->stable = DATA_SYNC4;
+        } else {
+                wargs->stable = UNSTABLE4;
+                nfsfh->is_dirty = 1;
+        }
         wargs->data.data_len = count;
         wargs->data.data_val = discard_const(buf);
 

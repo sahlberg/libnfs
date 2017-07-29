@@ -374,6 +374,7 @@ struct nfsfh {
         struct nfs_fh fh;
         int is_sync;
         int is_append;
+        int is_dirty;
         uint64_t offset;
         struct nfs_readahead ra;
         struct nfs_pagecache pagecache;
