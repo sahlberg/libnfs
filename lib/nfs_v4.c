@@ -1367,6 +1367,78 @@ nfs4_rmdir_async(struct nfs_context *nfs, const char *orig_path,
 }
 
 static void
+nfs4_open_truncate_cb(struct rpc_context *rpc, int status, void *command_data,
+                      void *private_data)
+{
+        struct nfs4_cb_data *data = private_data;
+        struct nfs_context *nfs = data->nfs;
+        COMPOUND4res *res = command_data;
+        struct nfsfh *fh;
+
+        assert(rpc->magic == RPC_CONTEXT_MAGIC);
+
+        if (check_nfs4_error(nfs, status, data, res, "SETATTR")) {
+                free_nfs4_cb_data(data);
+                return;
+        }
+
+        fh = data->filler.blob0.val;
+
+        data->filler.blob0.val = NULL;
+        data->filler.blob1.val = NULL;
+        data->cb(0, nfs, fh, data->private_data);
+        free_nfs4_cb_data(data);
+}
+
+static int
+nfs4_open_truncate(struct rpc_context *rpc, struct nfs4_cb_data *data)
+{
+        struct nfs_context *nfs = data->nfs;
+        struct nfsfh *nfsfh;
+        nfs_argop4 op[2];
+        COMPOUND4args args;
+        PUTFH4args *pfargs;
+        SETATTR4args *saargs;
+        static uint32_t mask[2] = {1 << (FATTR4_SIZE),
+                                   1 << (FATTR4_TIME_MODIFY_SET - 32)};
+        static char zero[12];
+
+        nfsfh = data->filler.blob0.val;
+
+        op[0].argop = OP_PUTFH;
+        pfargs = &op[0].nfs_argop4_u.opputfh;
+        pfargs->object.nfs_fh4_len = nfsfh->fh.len;
+        pfargs->object.nfs_fh4_val = nfsfh->fh.val;
+
+        op[1].argop = OP_SETATTR;
+        saargs = &op[1].nfs_argop4_u.opsetattr;
+        saargs->stateid.seqid = nfsfh->stateid.seqid;
+        memcpy(saargs->stateid.other, nfsfh->stateid.other, 12);
+
+        saargs->obj_attributes.attrmask.bitmap4_len = 2;
+        saargs->obj_attributes.attrmask.bitmap4_val = mask;
+
+        saargs->obj_attributes.attr_vals.attrlist4_len = 12;
+        saargs->obj_attributes.attr_vals.attrlist4_val = zero;
+
+
+        memset(&args, 0, sizeof(args));
+        args.argarray.argarray_len = sizeof(op) / sizeof(nfs_argop4);
+        args.argarray.argarray_val = op;
+
+        if (rpc_nfs4_compound_async(rpc, nfs4_open_truncate_cb, &args,
+                                    data) != 0) {
+                nfs_set_error(nfs, "Failed to queue TRUNCATE. %s",
+                              nfs_get_error(nfs));
+                data->cb(-ENOMEM, nfs, nfs_get_error(nfs), data->private_data);
+                free_nfs4_cb_data(data);
+                return -1;
+        }
+
+        return 0;
+}
+
+static void
 nfs4_open_confirm_cb(struct rpc_context *rpc, int status, void *command_data,
                      void *private_data)
 {
@@ -1391,16 +1463,23 @@ nfs4_open_confirm_cb(struct rpc_context *rpc, int status, void *command_data,
         ocresok = &res->resarray.resarray_val[i].nfs_resop4_u.opopen_confirm.OPEN_CONFIRM4res_u.resok4;
 
         fh = data->filler.blob0.val;
-        data->filler.blob0.val = NULL;
-        data->filler.blob1.val = NULL;
 
         fh->stateid.seqid = ocresok->open_stateid.seqid;
         memcpy(fh->stateid.other, ocresok->open_stateid.other, 12);
 
+        if (data->filler.flags & O_TRUNC) {
+                nfs4_open_truncate(rpc, data);
+                return;
+        }
+
+        data->filler.blob0.val = NULL;
+        data->filler.blob1.val = NULL;
         data->cb(0, nfs, fh, data->private_data);
         free_nfs4_cb_data(data);
 }
 
+/* Stores nfsfh in data.blob0 and nfsfh->fh.val in data.blob1.
+ */
 static void
 nfs4_open_cb(struct rpc_context *rpc, int status, void *command_data,
               void *private_data)
@@ -1501,6 +1580,11 @@ nfs4_open_cb(struct rpc_context *rpc, int status, void *command_data,
                         free_nfs4_cb_data(data);
                         return;
                 }
+                return;
+        }
+
+        if (data->filler.flags & O_TRUNC) {
+                nfs4_open_truncate(rpc, data);
                 return;
         }
 
@@ -1640,15 +1724,15 @@ nfs4_populate_open(struct nfs4_cb_data *data, nfs_argop4 *op)
         aargs = &op[0].nfs_argop4_u.opaccess;
         memset(aargs, 0, sizeof(*aargs));
 
-	if (data->filler.flags & O_WRONLY) {
-		aargs->access |= ACCESS4_MODIFY;
-	}
-	if (data->filler.flags & O_RDWR) {
-		aargs->access |= ACCESS4_READ|ACCESS4_MODIFY;
-	}
-	if (!(data->filler.flags & (O_WRONLY|O_RDWR))) {
-		aargs->access |= ACCESS4_READ;
-	}
+        if (data->filler.flags & O_WRONLY) {
+                aargs->access |= ACCESS4_MODIFY;
+        }
+        if (data->filler.flags & O_RDWR) {
+                aargs->access |= ACCESS4_READ|ACCESS4_MODIFY;
+        }
+        if (!(data->filler.flags & (O_WRONLY|O_RDWR))) {
+                aargs->access |= ACCESS4_READ;
+        }
 
         /* Open */
         op[1].argop = OP_OPEN;
@@ -1685,6 +1769,11 @@ nfs4_open_async(struct nfs_context *nfs, const char *orig_path, int flags,
 {
         struct nfs4_cb_data *data;
         char *path;
+
+        /* O_TRUNC is only valid for O_RDWR or O_WRONLY */
+        if (flags & O_TRUNC && !(flags & (O_RDWR|O_WRONLY))) {
+                flags &= ~O_TRUNC;
+        }
 
         data = malloc(sizeof(*data));
         if (data == NULL) {
