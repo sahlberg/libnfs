@@ -1052,9 +1052,8 @@ nfs_write_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t count,
                 return nfs3_write_async(nfs, nfsfh, count, buf,
                                         cb, private_data);
         case NFS_V4:
-                return nfs4_pwrite_async_internal(nfs, nfsfh, nfsfh->offset,
-                                                  (size_t)count, buf,
-                                                  cb, private_data, 1);
+                return nfs4_write_async(nfs, nfsfh, count, buf,
+                                        cb, private_data);
         default:
                 nfs_set_error(nfs, "%s does not support NFSv%d",
                               __FUNCTION__, nfs->version);

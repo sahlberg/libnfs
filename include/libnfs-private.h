@@ -498,6 +498,9 @@ int nfs4_stat64_async(struct nfs_context *nfs, const char *path,
                       int no_follow, nfs_cb cb, void *private_data);
 int nfs4_symlink_async(struct nfs_context *nfs, const char *oldpath,
                        const char *newpath, nfs_cb cb, void *private_data);
+int nfs4_write_async(struct nfs_context *nfs, struct nfsfh *nfsfh,
+                     uint64_t count, const void *buf, nfs_cb cb,
+                     void *private_data);
 
 #ifdef __cplusplus
 }

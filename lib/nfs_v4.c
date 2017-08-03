@@ -1535,6 +1535,10 @@ nfs4_open_cb(struct rpc_context *rpc, int status, void *command_data,
                 fh->is_sync = 1;
         }
 
+        if (data->filler.flags & O_APPEND) {
+                fh->is_append = 1;
+        }
+
         fh->fh.len = gresok->object.nfs_fh4_len;
         fh->fh.val = malloc(fh->fh.len);
         if (fh->fh.val == NULL) {
@@ -1777,6 +1781,10 @@ nfs4_open_async(struct nfs_context *nfs, const char *orig_path, int flags,
         /* O_TRUNC is only valid for O_RDWR or O_WRONLY */
         if (flags & O_TRUNC && !(flags & (O_RDWR|O_WRONLY))) {
                 flags &= ~O_TRUNC;
+        }
+
+        if (flags & O_APPEND && !(flags & (O_RDWR|O_WRONLY))) {
+                flags &= ~O_APPEND;
         }
 
         data = malloc(sizeof(*data));
@@ -2321,4 +2329,121 @@ nfs4_pwrite_async_internal(struct nfs_context *nfs, struct nfsfh *nfsfh,
         }
 
         return 0;
+}
+
+static void
+nfs4_write_append_cb(struct rpc_context *rpc, int status, void *command_data,
+               void *private_data)
+{
+        struct nfs4_cb_data *data = private_data;
+        struct nfs_context *nfs = data->nfs;
+        COMPOUND4res *res = command_data;
+        GETATTR4resok *garesok = NULL;
+        struct nfsfh *nfsfh;
+        int i;
+        uint64_t offset;
+        char *buf;
+        uint32_t count;
+
+        assert(rpc->magic == RPC_CONTEXT_MAGIC);
+
+        nfsfh = data->filler.blob0.val;
+        data->filler.blob0.val = NULL;
+
+        buf = data->filler.blob1.val;
+        count = data->filler.blob1.len;
+        data->filler.blob1.val = NULL;
+
+        if (check_nfs4_error(nfs, status, data, res, "GETATTR")) {
+                free_nfs4_cb_data(data);
+                return;
+        }
+
+        if ((i = nfs4_find_op(nfs, data, res, OP_GETATTR, "GETATTR")) < 0) {
+                return;
+        }
+
+
+        garesok = &res->resarray.resarray_val[i].nfs_resop4_u.opgetattr.GETATTR4res_u.resok4;
+        if (garesok->obj_attributes.attr_vals.attrlist4_len < 8) {
+                data->cb(-EINVAL, nfs, nfs_get_error(nfs), data->private_data);
+                free_nfs4_cb_data(data);
+                return;
+        }
+
+        offset = nfs_pntoh64((uint32_t *)(void *)garesok->obj_attributes.attr_vals.attrlist4_val);
+
+        if (nfs4_pwrite_async_internal(nfs, nfsfh, offset,
+                                       (size_t)count, buf,
+                                       data->cb, data->private_data, 1) < 0) {
+                free_nfs4_cb_data(data);
+                data->cb(-ENOMEM, nfs, nfs_get_error(nfs), data->private_data);
+                return;
+        }
+
+        free_nfs4_cb_data(data);
+}
+
+int
+nfs4_write_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t count,
+                const void *buf, nfs_cb cb, void *private_data)
+{
+        if (nfsfh->is_append) {
+                COMPOUND4args args;
+                nfs_argop4 op[2];
+                PUTFH4args *pfargs;
+                GETATTR4args *gaargs;
+                static uint32_t attributes = 1 << FATTR4_SIZE;
+                struct nfs4_cb_data *data;
+
+                data = malloc(sizeof(*data));
+                if (data == NULL) {
+                        nfs_set_error(nfs, "Out of memory. Failed to allocate "
+                                      "cb data");
+                        return -1;
+                }
+                memset(data, 0, sizeof(*data));
+
+                data->nfs          = nfs;
+                data->cb           = cb;
+                data->private_data = private_data;
+
+                data->filler.blob0.val = nfsfh;
+
+                memset(op, 0, sizeof(op));
+
+                op[0].argop = OP_PUTFH;
+                pfargs = &op[0].nfs_argop4_u.opputfh;
+                pfargs->object.nfs_fh4_len = nfsfh->fh.len;
+                pfargs->object.nfs_fh4_val = nfsfh->fh.val;
+
+                op[1].argop = OP_GETATTR;
+                gaargs = &op[1].nfs_argop4_u.opgetattr;
+                memset(gaargs, 0, sizeof(*gaargs));
+
+                gaargs->attr_request.bitmap4_len = 1;
+                gaargs->attr_request.bitmap4_val = &attributes;
+
+                memset(&args, 0, sizeof(args));
+                args.argarray.argarray_len = sizeof(op) / sizeof(nfs_argop4);
+                args.argarray.argarray_val = op;
+
+                data->filler.blob0.val = nfsfh;
+                data->filler.blob1.val = discard_const(buf);
+                data->filler.blob1.len = count;
+
+                if (rpc_nfs4_compound_async(nfs->rpc, nfs4_write_append_cb,
+                                            &args, data) != 0) {
+                        data->filler.blob0.val = NULL;
+                        data->filler.blob1.val = NULL;
+                        free_nfs4_cb_data(data);
+                        return -1;
+                }
+
+                return 0;
+        }
+
+        return nfs4_pwrite_async_internal(nfs, nfsfh, nfsfh->offset,
+                                          (size_t)count, buf,
+                                          cb, private_data, 1);
 }
