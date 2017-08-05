@@ -1,7 +1,9 @@
 Testsuite for libnfs.
 
-To run the tests :
-  make test
+To run the tests:
+  make VERSION=3 test
+or
+  make VERSION=4 test
 
 The tests will ask for your password as it needs sudo access to
 run exportfs to create/remove the share we use for testing.
