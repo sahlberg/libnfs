@@ -1864,7 +1864,7 @@ nfs4_open_async(struct nfs_context *nfs, const char *orig_path, int flags,
                         return -1;
                 }
 
-                *d = mode;
+                *d = htonl(mode);
 
                 data->filler.blob2.val  = d;
                 data->filler.blob2.len  = 4;

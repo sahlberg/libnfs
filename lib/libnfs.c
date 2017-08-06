@@ -973,7 +973,8 @@ int
 nfs_open_async(struct nfs_context *nfs, const char *path, int flags,
                nfs_cb cb, void *private_data)
 {
-        return nfs_open2_async(nfs, path, flags, 0, cb, private_data);
+        return nfs_open2_async(nfs, path, flags, 0666 & ~nfs->mask,
+                               cb, private_data);
 }
 
 int
