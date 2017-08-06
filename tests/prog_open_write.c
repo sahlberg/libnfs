@@ -68,6 +68,9 @@ int main(int argc, char *argv[])
         if (strstr(argv[4], "O_TRUNC")) {
                 flags |= O_TRUNC;
         }
+        if (strstr(argv[4], "O_CREAT")) {
+                flags |= O_CREAT;
+        }
 
 	nfs = nfs_init_context();
 	if (nfs == NULL) {

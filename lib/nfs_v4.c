@@ -125,6 +125,11 @@ struct lookup_filler {
                 void     *val;
                 blob_free free;
         } blob1;
+        struct {
+                int       len;
+                void     *val;
+                blob_free free;
+        } blob2;
 };
 
 struct rw_data {
@@ -167,6 +172,9 @@ free_nfs4_cb_data(struct nfs4_cb_data *data)
         }
         if (data->filler.blob1.val && data->filler.blob1.free) {
                 data->filler.blob1.free(data->filler.blob1.val);
+        }
+        if (data->filler.blob2.val && data->filler.blob2.free) {
+                data->filler.blob2.free(data->filler.blob2.val);
         }
         free(data);
 }
@@ -1486,8 +1494,6 @@ nfs4_open_confirm_cb(struct rpc_context *rpc, int status, void *command_data,
         free_nfs4_cb_data(data);
 }
 
-/* Stores nfsfh in data.blob0.
- */
 static void
 nfs4_open_cb(struct rpc_context *rpc, int status, void *command_data,
               void *private_data)
@@ -1764,7 +1770,23 @@ nfs4_populate_open(struct nfs4_cb_data *data, nfs_argop4 *op)
         oargs->owner.clientid = nfs->clientid;
         oargs->owner.owner.owner_len = strlen(nfs->client_name);
         oargs->owner.owner.owner_val = nfs->client_name;
-        oargs->openhow.opentype = OPEN4_NOCREATE;
+        if (data->filler.flags & O_CREAT) {
+                createhow4 *ch;
+                fattr4 *fa;
+
+                ch = &oargs->openhow.openflag4_u.how;
+                fa = &ch->createhow4_u.createattrs;
+
+                oargs->openhow.opentype = OPEN4_CREATE;
+                ch->mode = UNCHECKED4;
+                fa->attrmask.bitmap4_len = data->filler.blob1.len;
+                fa->attrmask.bitmap4_val = data->filler.blob1.val;
+
+                fa->attr_vals.attrlist4_len = data->filler.blob2.len;
+                fa->attr_vals.attrlist4_val = data->filler.blob2.val;
+        } else {
+                oargs->openhow.opentype = OPEN4_NOCREATE;
+        }
         oargs->claim.claim = CLAIM_NULL;
         oargs->claim.open_claim4_u.file.utf8string_len =
                 strlen(data->filler.data);
@@ -1777,7 +1799,11 @@ nfs4_populate_open(struct nfs4_cb_data *data, nfs_argop4 *op)
         return 3;
 }
 
-/* TODO add the plumbing for mode */
+/*
+ * data.blob0 is used for nfsfh
+ * data.blob1 is used for the attribute mask in case on O_CREAT
+ * data.blob2 is the attribute value in case of O_CREAT
+ */
 int
 nfs4_open_async(struct nfs_context *nfs, const char *orig_path, int flags,
                 int mode, nfs_cb cb, void *private_data)
@@ -1811,6 +1837,38 @@ nfs4_open_async(struct nfs_context *nfs, const char *orig_path, int flags,
                 nfs_set_error(nfs, "Out of memory resolving path");
                 free_nfs4_cb_data(data);
                 return -1;
+        }
+
+        if (flags & O_CREAT) {
+                uint32_t *d;
+
+                /* Attribute mask */
+                d = malloc(2 * sizeof(uint32_t));
+                if (d == NULL) {
+                        nfs_set_error(nfs, "Out of memory");
+                        free_nfs4_cb_data(data);
+                        return -1;
+                }
+                d[0] = 0;
+                d[1] = 1 << (FATTR4_MODE - 32);
+
+                data->filler.blob1.val  = d;
+                data->filler.blob1.len  = 2;
+                data->filler.blob1.free = free;
+
+                /* Attribute value */
+                d = malloc(sizeof(uint32_t));
+                if (d == NULL) {
+                        nfs_set_error(nfs, "Out of memory");
+                        free_nfs4_cb_data(data);
+                        return -1;
+                }
+
+                *d = mode;
+
+                data->filler.blob2.val  = d;
+                data->filler.blob2.len  = 4;
+                data->filler.blob2.free = free;
         }
 
         path = strrchr(data->path, '/');
