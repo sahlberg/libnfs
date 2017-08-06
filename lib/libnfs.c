@@ -1207,9 +1207,12 @@ nfs_create_async(struct nfs_context *nfs, const char *path, int flags,
         case NFS_V3:
                 return nfs3_create_async(nfs, path, flags, mode,
                                          cb, private_data);
+        case NFS_V4:
+                return nfs4_create_async(nfs, path, flags, mode,
+                                         cb, private_data);
         default:
-                nfs_set_error(nfs, "%s does not support NFSv4",
-                              __FUNCTION__);
+                nfs_set_error(nfs, "%s does not support NFSv%d",
+                              __FUNCTION__, nfs->version);
                 return -1;
         }
 }

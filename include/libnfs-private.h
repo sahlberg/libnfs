@@ -476,6 +476,8 @@ int nfs4_chdir_async(struct nfs_context *nfs, const char *path,
                      nfs_cb cb, void *private_data);
 int nfs4_close_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_cb cb,
                      void *private_data);
+int nfs4_create_async(struct nfs_context *nfs, const char *path, int flags,
+                      int mode, nfs_cb cb, void *private_data);
 int nfs4_fstat64_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_cb cb,
                        void *private_data);
 int nfs4_mkdir2_async(struct nfs_context *nfs, const char *path, int mode,

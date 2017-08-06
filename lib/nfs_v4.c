@@ -2506,3 +2506,11 @@ nfs4_write_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t count,
                                           (size_t)count, buf,
                                           cb, private_data, 1);
 }
+
+int
+nfs4_create_async(struct nfs_context *nfs, const char *path, int flags,
+                  int mode, nfs_cb cb, void *private_data)
+{
+        return nfs4_open_async(nfs, path, O_CREAT | flags, mode,
+                               cb, private_data);
+}
