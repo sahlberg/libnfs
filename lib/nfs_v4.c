@@ -1301,7 +1301,7 @@ nfs4_mkdir2_async(struct nfs_context *nfs, const char *orig_path, int mode,
 /* Takes object name as filler.data
  */
 static int
-nfs4_populate_rmdir(struct nfs4_cb_data *data, nfs_argop4 *op)
+nfs4_populate_remove(struct nfs4_cb_data *data, nfs_argop4 *op)
 {
         REMOVE4args *rmargs;
 
@@ -1315,8 +1315,8 @@ nfs4_populate_rmdir(struct nfs4_cb_data *data, nfs_argop4 *op)
 }
 
 static void
-nfs4_rmdir_cb(struct rpc_context *rpc, int status, void *command_data,
-              void *private_data)
+nfs4_remove_cb(struct rpc_context *rpc, int status, void *command_data,
+               void *private_data)
 {
         struct nfs4_cb_data *data = private_data;
         struct nfs_context *nfs = data->nfs;
@@ -1324,7 +1324,7 @@ nfs4_rmdir_cb(struct rpc_context *rpc, int status, void *command_data,
 
         assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
-        if (check_nfs4_error(nfs, status, data, res, "RMDIR")) {
+        if (check_nfs4_error(nfs, status, data, res, "REMOVE")) {
                 free_nfs4_cb_data(data);
                 return;
         }
@@ -1333,9 +1333,9 @@ nfs4_rmdir_cb(struct rpc_context *rpc, int status, void *command_data,
         free_nfs4_cb_data(data);
 }
 
-int
-nfs4_rmdir_async(struct nfs_context *nfs, const char *orig_path,
-                 nfs_cb cb, void *private_data)
+static int
+nfs4_remove_async(struct nfs_context *nfs, const char *orig_path,
+                  nfs_cb cb, void *private_data)
 {
         struct nfs4_cb_data *data;
         char *path;
@@ -1373,10 +1373,10 @@ nfs4_rmdir_async(struct nfs_context *nfs, const char *orig_path,
                 *path++ = 0;
                 data->filler.data = strdup(path);
         }
-        data->filler.func = nfs4_populate_rmdir;
+        data->filler.func = nfs4_populate_remove;
         data->filler.max_op = 1;
 
-        if (nfs4_lookup_path_async(nfs, data, nfs4_rmdir_cb) < 0) {
+        if (nfs4_lookup_path_async(nfs, data, nfs4_remove_cb) < 0) {
                 free_nfs4_cb_data(data);
                 return -1;
         }
@@ -1384,6 +1384,13 @@ nfs4_rmdir_async(struct nfs_context *nfs, const char *orig_path,
         return 0;
 }
 
+int
+nfs4_rmdir_async(struct nfs_context *nfs, const char *path,
+                 nfs_cb cb, void *private_data)
+{
+        return nfs4_remove_async(nfs, path, cb, private_data);
+}
+    
 static void
 nfs4_open_truncate_cb(struct rpc_context *rpc, int status, void *command_data,
                       void *private_data)
@@ -2513,4 +2520,11 @@ nfs4_create_async(struct nfs_context *nfs, const char *path, int flags,
 {
         return nfs4_open_async(nfs, path, O_CREAT | flags, mode,
                                cb, private_data);
+}
+
+int
+nfs4_unlink_async(struct nfs_context *nfs, const char *path,
+                  nfs_cb cb, void *private_data)
+{
+        return nfs4_remove_async(nfs, path, cb, private_data);
 }
