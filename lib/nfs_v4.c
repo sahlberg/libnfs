@@ -104,6 +104,8 @@ struct lookup_link_data {
         unsigned int idx;
 };
 
+typedef void (*blob_free)(void *);
+
 /* Function and arguments to append the requested operations we want
  * for the resolved path.
  */
@@ -114,13 +116,15 @@ struct lookup_filler {
         void *data;  /* Freed by nfs4_cb_data destructor */
 
         struct {
-                int   len;
-                void *val;
-        } blob0;   /* val is freed by nfs4_cb_data destructor */
+                int       len;
+                void     *val;
+                blob_free free;
+        } blob0;
         struct {
-                int   len;
-                void *val;
-        } blob1;   /* val is freed by nfs4_cb_data destructor */
+                int       len;
+                void     *val;
+                blob_free free;
+        } blob1;
 };
 
 struct rw_data {
@@ -158,8 +162,12 @@ free_nfs4_cb_data(struct nfs4_cb_data *data)
 {
         free(data->path);
         free(data->filler.data);
-        free(data->filler.blob0.val);
-        free(data->filler.blob1.val);
+        if (data->filler.blob0.val && data->filler.blob0.free) {
+                data->filler.blob0.free(data->filler.blob0.val);
+        }
+        if (data->filler.blob1.val && data->filler.blob1.free) {
+                data->filler.blob1.free(data->filler.blob1.val);
+        }
         free(data);
 }
 
@@ -1258,8 +1266,9 @@ nfs4_mkdir2_async(struct nfs_context *nfs, const char *orig_path, int mode,
         }
         u32ptr[0] = 0;
         u32ptr[1] = 1 << (FATTR4_MODE - 32);
-        data->filler.blob0.len = 2;
-        data->filler.blob0.val = u32ptr;
+        data->filler.blob0.len  = 2;
+        data->filler.blob0.val  = u32ptr;
+        data->filler.blob0.free = free;
 
         /* attribute values */
         u32ptr = malloc(1 * sizeof(uint32_t));
@@ -1269,8 +1278,9 @@ nfs4_mkdir2_async(struct nfs_context *nfs, const char *orig_path, int mode,
                 return -1;
         }
         u32ptr[0] = htonl(mode);
-        data->filler.blob1.len = 4;
-        data->filler.blob1.val = u32ptr;
+        data->filler.blob1.len  = 4;
+        data->filler.blob1.val  = u32ptr;
+        data->filler.blob1.free = free;
 
         if (nfs4_lookup_path_async(nfs, data, nfs4_mkdir_cb) < 0) {
                 free_nfs4_cb_data(data);
@@ -1383,9 +1393,8 @@ nfs4_open_truncate_cb(struct rpc_context *rpc, int status, void *command_data,
         }
 
         fh = data->filler.blob0.val;
-
         data->filler.blob0.val = NULL;
-        data->filler.blob1.val = NULL;
+
         data->cb(0, nfs, fh, data->private_data);
         free_nfs4_cb_data(data);
 }
@@ -1473,12 +1482,11 @@ nfs4_open_confirm_cb(struct rpc_context *rpc, int status, void *command_data,
         }
 
         data->filler.blob0.val = NULL;
-        data->filler.blob1.val = NULL;
         data->cb(0, nfs, fh, data->private_data);
         free_nfs4_cb_data(data);
 }
 
-/* Stores nfsfh in data.blob0 and nfsfh->fh.val in data.blob1.
+/* Stores nfsfh in data.blob0.
  */
 static void
 nfs4_open_cb(struct rpc_context *rpc, int status, void *command_data,
@@ -1529,7 +1537,8 @@ nfs4_open_cb(struct rpc_context *rpc, int status, void *command_data,
         }
         memset(fh, 0 , sizeof(*fh));
 
-        data->filler.blob0.val = fh;
+        data->filler.blob0.val  = fh;
+        data->filler.blob0.free = (blob_free)nfs_free_nfsfh;
 
         if (data->filler.flags & O_SYNC) {
                 fh->is_sync = 1;
@@ -1549,8 +1558,6 @@ nfs4_open_cb(struct rpc_context *rpc, int status, void *command_data,
                 return;
         }
         memcpy(fh->fh.val, gresok->object.nfs_fh4_val, fh->fh.len);
-
-        data->filler.blob1.val = fh->fh.val;
 
         /* Parse Open */
         if ((i = nfs4_find_op(nfs, data, res, OP_OPEN, "OPEN")) < 0) {
@@ -1597,7 +1604,6 @@ nfs4_open_cb(struct rpc_context *rpc, int status, void *command_data,
         }
 
         data->filler.blob0.val = NULL;
-        data->filler.blob1.val = NULL;
         data->cb(0, nfs, fh, data->private_data);
         free_nfs4_cb_data(data);
 }
@@ -1901,12 +1907,8 @@ nfs4_close_cb(struct rpc_context *rpc, int status, void *command_data,
         struct nfs4_cb_data *data = private_data;
         struct nfs_context *nfs = data->nfs;
         COMPOUND4res *res = command_data;
-        struct nfsfh *nfsfh;
 
         assert(rpc->magic == RPC_CONTEXT_MAGIC);
-
-        nfsfh = data->filler.blob0.val;
-        data->filler.blob0.val = NULL;
 
         if (check_nfs4_error(nfs, status, data, res, "OPEN_CONFIRM")) {
                 free_nfs4_cb_data(data);
@@ -1914,7 +1916,6 @@ nfs4_close_cb(struct rpc_context *rpc, int status, void *command_data,
         }
 
         data->cb(0, nfs, NULL, data->private_data);
-        nfs_free_nfsfh(nfsfh);
         free_nfs4_cb_data(data);
 }
 
@@ -1962,8 +1963,8 @@ nfs4_close_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_cb cb,
         clargs->open_stateid.seqid = nfsfh->stateid.seqid;
         memcpy(clargs->open_stateid.other, nfsfh->stateid.other, 12);
 
-        data->filler.blob0.val = nfsfh;
-
+        data->filler.blob0.val  = nfsfh;
+        data->filler.blob0.free = (blob_free)nfs_free_nfsfh;
 
         memset(&args, 0, sizeof(args));
         args.argarray.argarray_len = i;
@@ -1993,7 +1994,6 @@ nfs4_pread_cb(struct rpc_context *rpc, int status, void *command_data,
         assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
         nfsfh = data->filler.blob0.val;
-        data->filler.blob0.val = NULL;
 
         if (check_nfs4_error(nfs, status, data, res, "READ")) {
                 free_nfs4_cb_data(data);
@@ -2037,7 +2037,8 @@ nfs4_pread_async_internal(struct nfs_context *nfs, struct nfsfh *nfsfh,
         data->cb           = cb;
         data->private_data = private_data;
 
-        data->filler.blob0.val = nfsfh;
+        data->filler.blob0.val  = nfsfh;
+        data->filler.blob0.free = NULL;
         data->rw_data.offset = offset;
         data->rw_data.update_pos = update_pos;
         
@@ -2062,7 +2063,6 @@ nfs4_pread_async_internal(struct nfs_context *nfs, struct nfsfh *nfsfh,
 
         if (rpc_nfs4_compound_async(nfs->rpc, nfs4_pread_cb, &args,
                                     data) != 0) {
-                data->filler.blob0.val = NULL;
                 free_nfs4_cb_data(data);
                 return -1;
         }
@@ -2153,7 +2153,8 @@ nfs4_symlink_async(struct nfs_context *nfs, const char *target,
         data->filler.func = nfs4_populate_symlink;
         data->filler.max_op = 1;
 
-        data->filler.blob0.val = strdup(target);
+        data->filler.blob0.val  = strdup(target);
+        data->filler.blob0.free = free;
 
         if (nfs4_lookup_path_async(nfs, data, nfs4_symlink_cb) < 0) {
                 free_nfs4_cb_data(data);
@@ -2248,7 +2249,6 @@ nfs4_pwrite_cb(struct rpc_context *rpc, int status, void *command_data,
         assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
         nfsfh = data->filler.blob0.val;
-        data->filler.blob0.val = NULL;
 
         if (check_nfs4_error(nfs, status, data, res, "WRITE")) {
                 free_nfs4_cb_data(data);
@@ -2291,7 +2291,8 @@ nfs4_pwrite_async_internal(struct nfs_context *nfs, struct nfsfh *nfsfh,
         data->cb           = cb;
         data->private_data = private_data;
 
-        data->filler.blob0.val = nfsfh;
+        data->filler.blob0.val  = nfsfh;
+        data->filler.blob0.free = NULL;
         data->rw_data.offset = offset;
         data->rw_data.update_pos = update_pos;
 
@@ -2323,7 +2324,6 @@ nfs4_pwrite_async_internal(struct nfs_context *nfs, struct nfsfh *nfsfh,
 
         if (rpc_nfs4_compound_async(nfs->rpc, nfs4_pwrite_cb, &args,
                                     data) != 0) {
-                data->filler.blob0.val = NULL;
                 free_nfs4_cb_data(data);
                 return -1;
         }
@@ -2348,11 +2348,9 @@ nfs4_write_append_cb(struct rpc_context *rpc, int status, void *command_data,
         assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
         nfsfh = data->filler.blob0.val;
-        data->filler.blob0.val = NULL;
 
         buf = data->filler.blob1.val;
         count = data->filler.blob1.len;
-        data->filler.blob1.val = NULL;
 
         if (check_nfs4_error(nfs, status, data, res, "GETATTR")) {
                 free_nfs4_cb_data(data);
@@ -2408,7 +2406,8 @@ nfs4_write_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t count,
                 data->cb           = cb;
                 data->private_data = private_data;
 
-                data->filler.blob0.val = nfsfh;
+                data->filler.blob0.val  = nfsfh;
+                data->filler.blob0.free = NULL;
 
                 memset(op, 0, sizeof(op));
 
@@ -2428,14 +2427,15 @@ nfs4_write_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t count,
                 args.argarray.argarray_len = sizeof(op) / sizeof(nfs_argop4);
                 args.argarray.argarray_val = op;
 
-                data->filler.blob0.val = nfsfh;
+                data->filler.blob0.val  = nfsfh;
+                data->filler.blob0.free = NULL;
+
                 data->filler.blob1.val = discard_const(buf);
                 data->filler.blob1.len = count;
+                data->filler.blob1.free = NULL;
 
                 if (rpc_nfs4_compound_async(nfs->rpc, nfs4_write_append_cb,
                                             &args, data) != 0) {
-                        data->filler.blob0.val = NULL;
-                        data->filler.blob1.val = NULL;
                         free_nfs4_cb_data(data);
                         return -1;
                 }
