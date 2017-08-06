@@ -952,19 +952,28 @@ nfs_lstat64_async(struct nfs_context *nfs, const char *path,
 }
 
 int
-nfs_open_async(struct nfs_context *nfs, const char *path, int flags,
-               nfs_cb cb, void *private_data)
+nfs_open2_async(struct nfs_context *nfs, const char *path, int flags,
+                int mode, nfs_cb cb, void *private_data)
 {
 	switch (nfs->version) {
         case NFS_V3:
-                return nfs3_open_async(nfs, path, flags, cb, private_data);
+                return nfs3_open_async(nfs, path, flags, mode,
+                                       cb, private_data);
         case NFS_V4:
-                return nfs4_open_async(nfs, path, flags, cb, private_data);
+                return nfs4_open_async(nfs, path, flags, mode,
+                                       cb, private_data);
         default:
                 nfs_set_error(nfs, "%s does not support NFSv%d",
                               __FUNCTION__, nfs->version);
                 return -1;
         }
+}
+
+int
+nfs_open_async(struct nfs_context *nfs, const char *path, int flags,
+               nfs_cb cb, void *private_data)
+{
+        return nfs_open2_async(nfs, path, flags, 0, cb, private_data);
 }
 
 int

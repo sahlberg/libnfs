@@ -49,6 +49,8 @@ nfs_mount
 nfs_mount_async
 nfs_open
 nfs_open_async
+nfs_open2
+nfs_open2_async
 nfs_opendir
 nfs_opendir_async
 nfs_parse_url_full

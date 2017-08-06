@@ -370,6 +370,26 @@ nfs_open(struct nfs_context *nfs, const char *path, int flags,
 	return cb_data.status;
 }
 
+int
+nfs_open2(struct nfs_context *nfs, const char *path, int flags,
+          int mode, struct nfsfh **nfsfh)
+{
+	struct sync_cb_data cb_data;
+
+	cb_data.is_finished = 0;
+	cb_data.return_data = nfsfh;
+
+	if (nfs_open2_async(nfs, path, flags, mode, open_cb, &cb_data) != 0) {
+		nfs_set_error(nfs, "nfs_open2_async failed. %s",
+                              nfs_get_error(nfs));
+		return -1;
+	}
+
+	wait_for_nfs_reply(nfs, &cb_data);
+
+	return cb_data.status;
+}
+
 /*
  * chdir()
  */

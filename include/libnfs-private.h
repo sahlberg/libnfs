@@ -436,7 +436,7 @@ int nfs3_mknod_async(struct nfs_context *nfs, const char *path, int mode,
 int nfs3_mount_async(struct nfs_context *nfs, const char *server,
 		     const char *export, nfs_cb cb, void *private_data);
 int nfs3_open_async(struct nfs_context *nfs, const char *path, int flags,
-                    nfs_cb cb, void *private_data);
+                    int mode, nfs_cb cb, void *private_data);
 int nfs3_opendir_async(struct nfs_context *nfs, const char *path, nfs_cb cb,
                        void *private_data);
 int nfs3_pread_async_internal(struct nfs_context *nfs, struct nfsfh *nfsfh,
@@ -483,7 +483,7 @@ int nfs4_mkdir2_async(struct nfs_context *nfs, const char *path, int mode,
 int nfs4_mount_async(struct nfs_context *nfs, const char *server,
 		     const char *export, nfs_cb cb, void *private_data);
 int nfs4_open_async(struct nfs_context *nfs, const char *path, int flags,
-                    nfs_cb cb, void *private_data);
+                    int mode, nfs_cb cb, void *private_data);
 int nfs4_pread_async_internal(struct nfs_context *nfs, struct nfsfh *nfsfh,
                               uint64_t offset, size_t count, nfs_cb cb,
                               void *private_data, int update_pos);

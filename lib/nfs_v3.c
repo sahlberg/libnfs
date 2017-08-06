@@ -4910,9 +4910,10 @@ nfs3_open_continue_internal(struct nfs_context *nfs,
 	return 0;
 }
 
+/* TODO add the plumbing for mode */
 int
 nfs3_open_async(struct nfs_context *nfs, const char *path, int flags,
-                nfs_cb cb, void *private_data)
+                int mode, nfs_cb cb, void *private_data)
 {
 	if (nfs3_lookuppath_async(nfs, path, 0, cb, private_data,
                                   nfs3_open_continue_internal,

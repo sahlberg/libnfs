@@ -1648,7 +1648,7 @@ nfs4_open_readlink_cb(struct rpc_context *rpc, int status, void *command_data,
          * Try to call open again.
          */
         if (nfs4_open_async(nfs, path, data->filler.flags,
-                            data->cb, data->private_data) < 0) {
+                            0, data->cb, data->private_data) < 0) {
                 data->cb(-ENOMEM, nfs, nfs_get_error(nfs), data->private_data);
                 free_nfs4_cb_data(data);
                 free(path);
@@ -1777,9 +1777,10 @@ nfs4_populate_open(struct nfs4_cb_data *data, nfs_argop4 *op)
         return 3;
 }
 
+/* TODO add the plumbing for mode */
 int
 nfs4_open_async(struct nfs_context *nfs, const char *orig_path, int flags,
-                nfs_cb cb, void *private_data)
+                int mode, nfs_cb cb, void *private_data)
 {
         struct nfs4_cb_data *data;
         char *path;

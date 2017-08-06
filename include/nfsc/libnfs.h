@@ -537,6 +537,8 @@ EXTERN uint16_t nfs_umask(struct nfs_context *nfs, uint16_t mask);
  */
 EXTERN int nfs_open_async(struct nfs_context *nfs, const char *path, int flags,
                           nfs_cb cb, void *private_data);
+EXTERN int nfs_open2_async(struct nfs_context *nfs, const char *path, int flags,
+                           int mode, nfs_cb cb, void *private_data);
 /*
  * Sync open(<filename>)
  * Function returns
@@ -545,6 +547,8 @@ EXTERN int nfs_open_async(struct nfs_context *nfs, const char *path, int flags,
  */
 EXTERN int nfs_open(struct nfs_context *nfs, const char *path, int flags,
                     struct nfsfh **nfsfh);
+EXTERN int nfs_open2(struct nfs_context *nfs, const char *path, int flags,
+                     int mode, struct nfsfh **nfsfh);
 
 
 
