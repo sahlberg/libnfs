@@ -1576,9 +1576,12 @@ nfs_link_async(struct nfs_context *nfs, const char *oldpath,
         case NFS_V3:
                 return nfs3_link_async(nfs, oldpath, newpath,
                                        cb, private_data);
+        case NFS_V4:
+                return nfs4_link_async(nfs, oldpath, newpath,
+                                       cb, private_data);
         default:
-                nfs_set_error(nfs, "%s does not support NFSv4",
-                              __FUNCTION__);
+                nfs_set_error(nfs, "%s does not support NFSv%d",
+                              __FUNCTION__, nfs->version);
                 return -1;
         }
 }

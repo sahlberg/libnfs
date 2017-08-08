@@ -807,6 +807,14 @@ nfs4_lookup_path_async(struct nfs_context *nfs,
 }
 
 static int
+nfs4_populate_getfh(struct nfs4_cb_data *data, nfs_argop4 *op)
+{
+        op[0].argop = OP_GETFH;
+
+        return 1;
+}
+
+static int
 nfs4_populate_getattr(struct nfs4_cb_data *data, nfs_argop4 *op)
 {
         op[0].argop = OP_GETFH;
@@ -2527,4 +2535,178 @@ nfs4_unlink_async(struct nfs_context *nfs, const char *path,
                   nfs_cb cb, void *private_data)
 {
         return nfs4_remove_async(nfs, path, cb, private_data);
+}
+
+static void
+nfs4_link_2_cb(struct rpc_context *rpc, int status, void *command_data,
+             void *private_data)
+{
+        struct nfs4_cb_data *data = private_data;
+        struct nfs_context *nfs = data->nfs;
+        COMPOUND4res *res = command_data;
+
+        assert(rpc->magic == RPC_CONTEXT_MAGIC);
+
+        if (check_nfs4_error(nfs, status, data, res, "LINK")) {
+                free_nfs4_cb_data(data);
+                return;
+        }
+
+        data->cb(0, nfs, NULL, data->private_data);
+        free_nfs4_cb_data(data);
+}
+
+static int
+nfs4_populate_link(struct nfs4_cb_data *data, nfs_argop4 *op)
+{
+        LINK4args *largs;
+        PUTFH4args *pfargs;
+        struct nfsfh *nfsfh;
+
+        op[0].argop = OP_SAVEFH;
+
+        nfsfh = data->filler.blob0.val;
+        op[1].argop = OP_PUTFH;
+        pfargs = &op[1].nfs_argop4_u.opputfh;
+        pfargs->object.nfs_fh4_len = nfsfh->fh.len;
+        pfargs->object.nfs_fh4_val = nfsfh->fh.val;
+
+        op[2].argop = OP_LINK;
+        largs = &op[2].nfs_argop4_u.oplink;
+        memset(largs, 0, sizeof(*largs));
+        largs->newname.utf8string_len = strlen(data->filler.blob1.val);
+        largs->newname.utf8string_val = data->filler.blob1.val;
+
+        return 3;
+}
+
+static void
+nfs4_link_cb(struct rpc_context *rpc, int status, void *command_data,
+             void *private_data)
+{
+        struct nfs4_cb_data *data = private_data;
+        struct nfs_context *nfs = data->nfs;
+        COMPOUND4res *res = command_data;
+        GETFH4resok *gfhresok;
+        int i;
+        struct nfsfh *fh;
+
+        assert(rpc->magic == RPC_CONTEXT_MAGIC);
+
+        if (check_nfs4_error(nfs, status, data, res, "LINK")) {
+                free_nfs4_cb_data(data);
+                return;
+        }
+
+        if ((i = nfs4_find_op(nfs, data, res, OP_GETFH, "GETFH")) < 0) {
+                return;
+        }
+        gfhresok = &res->resarray.resarray_val[i].nfs_resop4_u.opgetfh.GETFH4res_u.resok4;
+
+        /* oldpath fh */
+        fh = malloc(sizeof(*fh));
+        if (fh == NULL) {
+                nfs_set_error(nfs, "Out of memory. Failed to allocate "
+                              "nfsfh");
+                data->cb(-ENOMEM, nfs, nfs_get_error(nfs), data->private_data);
+                free_nfs4_cb_data(data);
+                return;
+        }
+        memset(fh, 0 , sizeof(*fh));
+        data->filler.blob0.val  = fh;
+        data->filler.blob0.free = (blob_free)nfs_free_nfsfh;
+
+        fh->fh.len = gfhresok->object.nfs_fh4_len;
+        fh->fh.val = malloc(fh->fh.len);
+        if (fh->fh.val == NULL) {
+                nfs_set_error(nfs, "Out of memory. Failed to allocate "
+                              "nfsfh");
+                data->cb(-ENOMEM, nfs, nfs_get_error(nfs), data->private_data);
+                free_nfs4_cb_data(data);
+                return;
+        }
+        memcpy(fh->fh.val, gfhresok->object.nfs_fh4_val, fh->fh.len);
+
+
+        data->filler.func = nfs4_populate_link;
+        data->filler.max_op = 3;
+
+        free(data->path);
+        data->path = data->filler.blob2.val;
+        data->filler.blob2.val  = NULL;
+        data->filler.blob2.free = NULL;
+
+        if (nfs4_lookup_path_async(nfs, data, nfs4_link_2_cb) < 0) {
+                data->cb(-EFAULT, nfs, nfs_get_error(nfs), data->private_data);
+                free_nfs4_cb_data(data);
+                return;
+        }
+}
+
+/*
+ * blob0 is the filehandle for newpath parent directory.
+ * blob1 is the name of the new object
+ * blob2 is oldpath.
+ */
+int
+nfs4_link_async(struct nfs_context *nfs, const char *oldpath,
+                const char *newpath, nfs_cb cb, void *private_data)
+{
+        struct nfs4_cb_data *data;
+        char *path;
+
+        data = malloc(sizeof(*data));
+        if (data == NULL) {
+                nfs_set_error(nfs, "Out of memory. Failed to allocate "
+                              "cb data");
+                return -1;
+        }
+        memset(data, 0, sizeof(*data));
+
+        data->nfs          = nfs;
+        data->cb           = cb;
+        data->private_data = private_data;
+
+        data->path = nfs4_resolve_path(nfs, newpath);
+        if (data->path == NULL) {
+                nfs_set_error(nfs, "Out of memory resolving path");
+                free_nfs4_cb_data(data);
+                return -1;
+        }
+
+        path = strrchr(data->path, '/');
+        if (path == data->path) {
+                char *ptr;
+
+                for (ptr = data->path; *ptr; ptr++) {
+                        *ptr = *(ptr + 1);
+                }
+                /* No path to lookup */
+                data->filler.blob1.val  = data->path;
+                data->filler.blob1.free = free;
+                data->path = strdup("/");
+        } else {
+                *path++ = 0;
+                data->filler.blob1.val  = strdup(path);
+                data->filler.blob1.free = free;
+        }
+
+        data->filler.func = nfs4_populate_getfh;
+        data->filler.max_op = 1;
+
+        /* oldpath */
+        data->filler.blob2.val  = strdup(oldpath);
+        if (data->filler.blob2.val == NULL) {
+                nfs_set_error(nfs, "Out of memory");
+                free_nfs4_cb_data(data);
+                return -1;
+        }
+        data->filler.blob2.free = free;
+
+        if (nfs4_lookup_path_async(nfs, data, nfs4_link_cb) < 0) {
+                free_nfs4_cb_data(data);
+                return -1;
+        }
+
+        return 0;
 }
