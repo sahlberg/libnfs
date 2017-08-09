@@ -876,7 +876,7 @@ nfs4_mount_3_cb(struct rpc_context *rpc, int status, void *command_data,
                 return;
         }
 
-        data->filler.func = nfs4_populate_getattr;
+        data->filler.func = nfs4_populate_getfh;
         data->filler.max_op = 1;
         data->filler.data = malloc(2 * sizeof(uint32_t));
         if (data->filler.data == NULL) {
