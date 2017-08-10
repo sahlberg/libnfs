@@ -162,6 +162,40 @@ struct nfs4_cb_data {
         struct rw_data rw_data;
 };
 
+/* Caller will free the returned path. */
+static char *
+nfs4_resolve_path(struct nfs_context *nfs, const char *path)
+{
+        char *new_path = NULL;
+
+        /* Absolute paths we just use as is.
+         * Relateive paths have cwd prepended to them and then become
+         * absolute paths too.
+         */
+        if (path[0] == '/') {
+                new_path = strdup(path);
+        } else {
+                new_path = malloc(strlen(path) + strlen(nfs->cwd) + 2);
+                if (new_path != NULL) {
+                        sprintf(new_path, "%s/%s", nfs->cwd, path);
+                }
+        }
+        if (new_path == NULL) {
+                nfs_set_error(nfs, "Out of memory: failed to "
+                              "allocate path string");
+                return NULL;
+        }
+
+        if (nfs_normalize_path(nfs, new_path)) {
+                nfs_set_error(nfs, "Failed to normalize real path. %s",
+                              nfs_get_error(nfs));
+                free(new_path);
+                return NULL;
+        }
+
+        return new_path;
+}
+
 static void
 free_nfs4_cb_data(struct nfs4_cb_data *data)
 {
@@ -177,6 +211,58 @@ free_nfs4_cb_data(struct nfs4_cb_data *data)
                 data->filler.blob2.free(data->filler.blob2.val);
         }
         free(data);
+}
+
+static struct nfs4_cb_data *
+init_cb_data_full_path(struct nfs_context *nfs, const char *path)
+{
+        struct nfs4_cb_data *data;
+
+        data = malloc(sizeof(*data));
+        if (data == NULL) {
+                nfs_set_error(nfs, "Out of memory. Failed to allocate "
+                              "cb data");
+                return NULL;
+        }
+        memset(data, 0, sizeof(*data));
+
+        data->nfs          = nfs;
+        data->path = nfs4_resolve_path(nfs, path);
+        if (data->path == NULL) {
+                free_nfs4_cb_data(data);
+                return NULL;
+        }
+
+        return data;
+}
+
+static struct nfs4_cb_data *
+init_cb_data_split_path(struct nfs_context *nfs, const char *orig_path)
+{
+        struct nfs4_cb_data *data;
+        char *path;
+
+        data = init_cb_data_full_path(nfs, orig_path);
+        if (data == NULL) {
+                return NULL;
+        }
+
+        path = strrchr(data->path, '/');
+        if (path == data->path) {
+                char *ptr;
+
+                for (ptr = data->path; *ptr; ptr++) {
+                        *ptr = *(ptr + 1);
+                }
+                /* No path to lookup */
+                data->filler.data = data->path;
+                data->path = strdup("/");
+        } else {
+                *path++ = 0;
+                data->filler.data = strdup(path);
+        }
+
+        return data;
 }
 
 static int
@@ -385,40 +471,6 @@ nfs_parse_attributes(struct nfs_context *nfs, struct nfs4_cb_data *data,
         st->nfs_blocks  = st->nfs_used / 4096;
 
         return 0;
-}
-
-/* Caller will free the returned path. */
-static char *
-nfs4_resolve_path(struct nfs_context *nfs, const char *path)
-{
-        char *new_path = NULL;
-
-        /* Absolute paths we just use as is.
-         * Relateive paths have cwd prepended to them and then become
-         * absolute paths too.
-         */
-        if (path[0] == '/') {
-                new_path = strdup(path);
-        } else {
-                new_path = malloc(strlen(path) + strlen(nfs->cwd) + 2);
-                if (new_path != NULL) {
-                        sprintf(new_path, "%s/%s", nfs->cwd, path);
-                }
-        }
-        if (new_path == NULL) {
-                nfs_set_error(nfs, "Out of memory: failed to "
-                              "allocate path string");
-                return NULL;
-        }
-
-        if (nfs_normalize_path(nfs, new_path)) {
-                nfs_set_error(nfs, "Failed to normalize real path. %s",
-                              nfs_get_error(nfs));
-                free(new_path);
-                return NULL;
-        }
-
-        return new_path;
 }
 
 static int
@@ -1068,27 +1120,16 @@ int nfs4_chdir_async(struct nfs_context *nfs, const char *path,
 {
         struct nfs4_cb_data *data;
 
-        data = malloc(sizeof(*data));
+        data = init_cb_data_full_path(nfs, path);
         if (data == NULL) {
-                nfs_set_error(nfs, "Out of memory. Failed to allocate "
-                              "cb data");
-                return -1;
-        }
-        memset(data, 0, sizeof(*data));
-        data->nfs          = nfs;
-        data->cb           = cb;
-        data->private_data = private_data;
-        data->path = nfs4_resolve_path(nfs, path);
-
-        if (data->path == NULL) {
-                nfs_set_error(nfs, "Out of memory duplicating path");
-                free_nfs4_cb_data(data);
                 return -1;
         }
 
-        data->filler.func = nfs4_populate_getattr;
+        data->cb            = cb;
+        data->private_data  = private_data;
+        data->filler.func   = nfs4_populate_getattr;
         data->filler.max_op = 1;
-        data->filler.data = malloc(2 * sizeof(uint32_t));
+        data->filler.data   = malloc(2 * sizeof(uint32_t));
         if (data->filler.data == NULL) {
                 nfs_set_error(nfs, "Out of memory. Failed to allocate "
                               "data structure.");
@@ -1147,29 +1188,19 @@ nfs4_stat64_async(struct nfs_context *nfs, const char *path,
 {
         struct nfs4_cb_data *data;
 
-        data = malloc(sizeof(*data));
+        data = init_cb_data_full_path(nfs, path);
         if (data == NULL) {
-                nfs_set_error(nfs, "Out of memory. Failed to allocate "
-                              "cb data");
-                return -1;
-        }
-        memset(data, 0, sizeof(*data));
-        data->nfs          = nfs;
-        data->cb           = cb;
-        data->private_data = private_data;
-        if (no_follow) {
-                data->flags |= LOOKUP_FLAG_NO_FOLLOW;
-        }
-        data->path = nfs4_resolve_path(nfs, path);
-        if (data->path == NULL) {
-                nfs_set_error(nfs, "Out of memory duplicating path");
-                free_nfs4_cb_data(data);
                 return -1;
         }
 
-        data->filler.func = nfs4_populate_getattr;
+        if (no_follow) {
+                data->flags |= LOOKUP_FLAG_NO_FOLLOW;
+        }
+        data->cb            = cb;
+        data->private_data  = private_data;
+        data->filler.func   = nfs4_populate_getattr;
         data->filler.max_op = 1;
-        data->filler.data = malloc(2 * sizeof(uint32_t));
+        data->filler.data   = malloc(2 * sizeof(uint32_t));
         if (data->filler.data == NULL) {
                 nfs_set_error(nfs, "Out of memory. Failed to allocate "
                               "data structure.");
@@ -1230,46 +1261,19 @@ nfs4_mkdir_cb(struct rpc_context *rpc, int status, void *command_data,
 }
 
 int
-nfs4_mkdir2_async(struct nfs_context *nfs, const char *orig_path, int mode,
+nfs4_mkdir2_async(struct nfs_context *nfs, const char *path, int mode,
                  nfs_cb cb, void *private_data)
 {
         struct nfs4_cb_data *data;
         uint32_t *u32ptr;
-        char *path;
 
-        data = malloc(sizeof(*data));
+        data = init_cb_data_split_path(nfs, path);
         if (data == NULL) {
-                nfs_set_error(nfs, "Out of memory. Failed to allocate "
-                              "cb data");
                 return -1;
         }
-        memset(data, 0, sizeof(*data));
 
-        data->nfs          = nfs;
         data->cb           = cb;
         data->private_data = private_data;
-
-        data->path = nfs4_resolve_path(nfs, orig_path);
-        if (data->path == NULL) {
-                nfs_set_error(nfs, "Out of memory resolving path");
-                free_nfs4_cb_data(data);
-                return -1;
-        }
-
-        path = strrchr(data->path, '/');
-        if (path == data->path) {
-                char *ptr;
-
-                for (ptr = data->path; *ptr; ptr++) {
-                        *ptr = *(ptr + 1);
-                }
-                /* No path to lookup */
-                data->filler.data = data->path;
-                data->path = strdup("/");
-        } else {
-                *path++ = 0;
-                data->filler.data = strdup(path);
-        }
         data->filler.func = nfs4_populate_mkdir;
         data->filler.max_op = 1;
         
@@ -1342,45 +1346,18 @@ nfs4_remove_cb(struct rpc_context *rpc, int status, void *command_data,
 }
 
 static int
-nfs4_remove_async(struct nfs_context *nfs, const char *orig_path,
+nfs4_remove_async(struct nfs_context *nfs, const char *path,
                   nfs_cb cb, void *private_data)
 {
         struct nfs4_cb_data *data;
-        char *path;
 
-        data = malloc(sizeof(*data));
+        data = init_cb_data_split_path(nfs, path);
         if (data == NULL) {
-                nfs_set_error(nfs, "Out of memory. Failed to allocate "
-                              "cb data");
                 return -1;
         }
-        memset(data, 0, sizeof(*data));
 
-        data->nfs          = nfs;
         data->cb           = cb;
         data->private_data = private_data;
-
-        data->path = nfs4_resolve_path(nfs, orig_path);
-        if (data->path == NULL) {
-                nfs_set_error(nfs, "Out of memory resolving path");
-                free_nfs4_cb_data(data);
-                return -1;
-        }
-
-        path = strrchr(data->path, '/');
-        if (path == data->path) {
-                char *ptr;
-
-                for (ptr = data->path; *ptr; ptr++) {
-                        *ptr = *(ptr + 1);
-                }
-                /* No path to lookup */
-                data->filler.data = data->path;
-                data->path = strdup("/");
-        } else {
-                *path++ = 0;
-                data->filler.data = strdup(path);
-        }
         data->filler.func = nfs4_populate_remove;
         data->filler.max_op = 1;
 
@@ -1820,11 +1797,15 @@ nfs4_populate_open(struct nfs4_cb_data *data, nfs_argop4 *op)
  * data.blob2 is the attribute value in case of O_CREAT
  */
 int
-nfs4_open_async(struct nfs_context *nfs, const char *orig_path, int flags,
+nfs4_open_async(struct nfs_context *nfs, const char *path, int flags,
                 int mode, nfs_cb cb, void *private_data)
 {
         struct nfs4_cb_data *data;
-        char *path;
+
+        data = init_cb_data_split_path(nfs, path);
+        if (data == NULL) {
+                return -1;
+        }
 
         /* O_TRUNC is only valid for O_RDWR or O_WRONLY */
         if (flags & O_TRUNC && !(flags & (O_RDWR|O_WRONLY))) {
@@ -1833,25 +1814,6 @@ nfs4_open_async(struct nfs_context *nfs, const char *orig_path, int flags,
 
         if (flags & O_APPEND && !(flags & (O_RDWR|O_WRONLY))) {
                 flags &= ~O_APPEND;
-        }
-
-        data = malloc(sizeof(*data));
-        if (data == NULL) {
-                nfs_set_error(nfs, "Out of memory. Failed to allocate "
-                              "cb data");
-                return -1;
-        }
-        memset(data, 0, sizeof(*data));
-
-        data->nfs          = nfs;
-        data->cb           = cb;
-        data->private_data = private_data;
-
-        data->path = nfs4_resolve_path(nfs, orig_path);
-        if (data->path == NULL) {
-                nfs_set_error(nfs, "Out of memory resolving path");
-                free_nfs4_cb_data(data);
-                return -1;
         }
 
         if (flags & O_CREAT) {
@@ -1886,21 +1848,8 @@ nfs4_open_async(struct nfs_context *nfs, const char *orig_path, int flags,
                 data->filler.blob2.free = free;
         }
 
-        path = strrchr(data->path, '/');
-        if (path == data->path) {
-                char *ptr;
-
-                for (ptr = data->path; *ptr; ptr++) {
-                        *ptr = *(ptr + 1);
-                }
-                /* No path to lookup */
-                data->filler.data = data->path;
-                data->path = strdup("/");
-        } else {
-                *path++ = 0;
-                data->filler.data = strdup(path);
-        }
-
+        data->cb           = cb;
+        data->private_data = private_data;
         data->filler.func = nfs4_populate_open;
         data->filler.max_op = 3;
         data->filler.flags = flags;
@@ -2190,40 +2139,14 @@ nfs4_symlink_async(struct nfs_context *nfs, const char *target,
                    const char *linkname, nfs_cb cb, void *private_data)
 {
         struct nfs4_cb_data *data;
-        char *path;
 
-        data = malloc(sizeof(*data));
+        data = init_cb_data_split_path(nfs, linkname);
         if (data == NULL) {
-                nfs_set_error(nfs, "Out of memory. Failed to allocate "
-                              "cb data");
                 return -1;
         }
-        memset(data, 0, sizeof(*data));
-        data->nfs          = nfs;
+
         data->cb           = cb;
         data->private_data = private_data;
-
-        data->path = nfs4_resolve_path(nfs, linkname);
-        if (data->path == NULL) {
-                nfs_set_error(nfs, "Out of memory resolving path");
-                free_nfs4_cb_data(data);
-                return -1;
-        }
-
-        path = strrchr(data->path, '/');
-        if (path == data->path) {
-                char *ptr;
-
-                for (ptr = data->path; *ptr; ptr++) {
-                        *ptr = *(ptr + 1);
-                }
-                /* No path to lookup */
-                data->filler.data = data->path;
-                data->path = strdup("/");
-        } else {
-                *path++ = 0;
-                data->filler.data = strdup(path);
-        }
         data->filler.func = nfs4_populate_symlink;
         data->filler.max_op = 1;
 
@@ -2279,27 +2202,16 @@ nfs4_readlink_async(struct nfs_context *nfs, const char *path, nfs_cb cb,
 {
         struct nfs4_cb_data *data;
 
-        data = malloc(sizeof(*data));
+        data = init_cb_data_full_path(nfs, path);
         if (data == NULL) {
-                nfs_set_error(nfs, "Out of memory. Failed to allocate "
-                              "cb data");
                 return -1;
         }
-        memset(data, 0, sizeof(*data));
-        data->nfs          = nfs;
+
         data->cb           = cb;
         data->private_data = private_data;
-        data->path = nfs4_resolve_path(nfs, path);
-        data->flags |= LOOKUP_FLAG_NO_FOLLOW;
-
-        if (data->path == NULL) {
-                nfs_set_error(nfs, "Out of memory duplicating path");
-                free_nfs4_cb_data(data);
-                return -1;
-        }
-
         data->filler.func = nfs4_populate_readlink;
         data->filler.max_op = 1;
+        data->flags |= LOOKUP_FLAG_NO_FOLLOW;
 
         if (nfs4_lookup_path_async(nfs, data, nfs4_readlink_cb) < 0) {
                 free_nfs4_cb_data(data);
@@ -2574,8 +2486,8 @@ nfs4_populate_link(struct nfs4_cb_data *data, nfs_argop4 *op)
         op[2].argop = OP_LINK;
         largs = &op[2].nfs_argop4_u.oplink;
         memset(largs, 0, sizeof(*largs));
-        largs->newname.utf8string_len = strlen(data->filler.blob1.val);
-        largs->newname.utf8string_val = data->filler.blob1.val;
+        largs->newname.utf8string_len = strlen(data->filler.data);
+        largs->newname.utf8string_val = data->filler.data;
 
         return 3;
 }
@@ -2632,9 +2544,9 @@ nfs4_link_cb(struct rpc_context *rpc, int status, void *command_data,
         data->filler.max_op = 3;
 
         free(data->path);
-        data->path = data->filler.blob2.val;
-        data->filler.blob2.val  = NULL;
-        data->filler.blob2.free = NULL;
+        data->path = data->filler.blob1.val;
+        data->filler.blob1.val  = NULL;
+        data->filler.blob1.free = NULL;
 
         if (nfs4_lookup_path_async(nfs, data, nfs4_link_2_cb) < 0) {
                 data->cb(-EFAULT, nfs, nfs_get_error(nfs), data->private_data);
@@ -2644,64 +2556,34 @@ nfs4_link_cb(struct rpc_context *rpc, int status, void *command_data,
 }
 
 /*
+ * filler.data is the name of the new object
  * blob0 is the filehandle for newpath parent directory.
- * blob1 is the name of the new object
- * blob2 is oldpath.
+ * blob1 is oldpath.
  */
 int
 nfs4_link_async(struct nfs_context *nfs, const char *oldpath,
                 const char *newpath, nfs_cb cb, void *private_data)
 {
         struct nfs4_cb_data *data;
-        char *path;
 
-        data = malloc(sizeof(*data));
+        data = init_cb_data_split_path(nfs, newpath);
         if (data == NULL) {
-                nfs_set_error(nfs, "Out of memory. Failed to allocate "
-                              "cb data");
-                return -1;
-        }
-        memset(data, 0, sizeof(*data));
-
-        data->nfs          = nfs;
-        data->cb           = cb;
-        data->private_data = private_data;
-
-        data->path = nfs4_resolve_path(nfs, newpath);
-        if (data->path == NULL) {
-                nfs_set_error(nfs, "Out of memory resolving path");
-                free_nfs4_cb_data(data);
                 return -1;
         }
 
-        path = strrchr(data->path, '/');
-        if (path == data->path) {
-                char *ptr;
-
-                for (ptr = data->path; *ptr; ptr++) {
-                        *ptr = *(ptr + 1);
-                }
-                /* No path to lookup */
-                data->filler.blob1.val  = data->path;
-                data->filler.blob1.free = free;
-                data->path = strdup("/");
-        } else {
-                *path++ = 0;
-                data->filler.blob1.val  = strdup(path);
-                data->filler.blob1.free = free;
-        }
-
-        data->filler.func = nfs4_populate_getfh;
+        data->cb            = cb;
+        data->private_data  = private_data;
+        data->filler.func   = nfs4_populate_getfh;
         data->filler.max_op = 1;
 
         /* oldpath */
-        data->filler.blob2.val  = strdup(oldpath);
-        if (data->filler.blob2.val == NULL) {
+        data->filler.blob1.val  = strdup(oldpath);
+        if (data->filler.blob1.val == NULL) {
                 nfs_set_error(nfs, "Out of memory");
                 free_nfs4_cb_data(data);
                 return -1;
         }
-        data->filler.blob2.free = free;
+        data->filler.blob1.free = free;
 
         if (nfs4_lookup_path_async(nfs, data, nfs4_link_cb) < 0) {
                 free_nfs4_cb_data(data);
