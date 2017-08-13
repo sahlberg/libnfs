@@ -236,17 +236,10 @@ init_cb_data_full_path(struct nfs_context *nfs, const char *path)
         return data;
 }
 
-static struct nfs4_cb_data *
-init_cb_data_split_path(struct nfs_context *nfs, const char *orig_path)
+static void
+data_split_path(struct nfs4_cb_data *data)
 {
-        struct nfs4_cb_data *data;
         char *path;
-
-        data = init_cb_data_full_path(nfs, orig_path);
-        if (data == NULL) {
-                return NULL;
-        }
-
         path = strrchr(data->path, '/');
         if (path == data->path) {
                 char *ptr;
@@ -261,7 +254,19 @@ init_cb_data_split_path(struct nfs_context *nfs, const char *orig_path)
                 *path++ = 0;
                 data->filler.data = strdup(path);
         }
+}
 
+static struct nfs4_cb_data *
+init_cb_data_split_path(struct nfs_context *nfs, const char *orig_path)
+{
+        struct nfs4_cb_data *data;
+
+        data = init_cb_data_full_path(nfs, orig_path);
+        if (data == NULL) {
+                return NULL;
+        }
+
+        data_split_path(data);
         return data;
 }
 
@@ -2493,8 +2498,8 @@ nfs4_populate_link(struct nfs4_cb_data *data, nfs_argop4 *op)
 }
 
 static void
-nfs4_link_cb(struct rpc_context *rpc, int status, void *command_data,
-             void *private_data)
+nfs4_link_1_cb(struct rpc_context *rpc, int status, void *command_data,
+               void *private_data)
 {
         struct nfs4_cb_data *data = private_data;
         struct nfs_context *nfs = data->nfs;
@@ -2585,7 +2590,162 @@ nfs4_link_async(struct nfs_context *nfs, const char *oldpath,
         }
         data->filler.blob1.free = free;
 
-        if (nfs4_lookup_path_async(nfs, data, nfs4_link_cb) < 0) {
+        if (nfs4_lookup_path_async(nfs, data, nfs4_link_1_cb) < 0) {
+                free_nfs4_cb_data(data);
+                return -1;
+        }
+
+        return 0;
+}
+
+static void
+nfs4_rename_2_cb(struct rpc_context *rpc, int status, void *command_data,
+                 void *private_data)
+{
+        struct nfs4_cb_data *data = private_data;
+        struct nfs_context *nfs = data->nfs;
+        COMPOUND4res *res = command_data;
+
+        assert(rpc->magic == RPC_CONTEXT_MAGIC);
+
+        if (check_nfs4_error(nfs, status, data, res, "RENAME")) {
+                free_nfs4_cb_data(data);
+                return;
+        }
+
+        data->cb(0, nfs, NULL, data->private_data);
+        free_nfs4_cb_data(data);
+}
+
+static int
+nfs4_populate_rename(struct nfs4_cb_data *data, nfs_argop4 *op)
+{
+        PUTFH4args *pfargs;
+        RENAME4args *rargs;
+        struct nfsfh *nfsfh;
+
+        op[0].argop = OP_SAVEFH;
+
+        nfsfh = data->filler.blob0.val;
+        op[1].argop = OP_PUTFH;
+        pfargs = &op[1].nfs_argop4_u.opputfh;
+        pfargs->object.nfs_fh4_len = nfsfh->fh.len;
+        pfargs->object.nfs_fh4_val = nfsfh->fh.val;
+
+        op[2].argop = OP_RENAME;
+        rargs = &op[2].nfs_argop4_u.oprename;
+        memset(rargs, 0, sizeof(*rargs));
+        rargs->oldname.utf8string_len = strlen(data->filler.data);
+        rargs->oldname.utf8string_val = data->filler.data;
+        rargs->newname.utf8string_len = strlen(data->filler.blob1.val);
+        rargs->newname.utf8string_val = data->filler.blob1.val;
+
+        return 3;
+}
+
+static void
+nfs4_rename_1_cb(struct rpc_context *rpc, int status, void *command_data,
+                 void *private_data)
+{
+        struct nfs4_cb_data *data = private_data;
+        struct nfs_context *nfs = data->nfs;
+        COMPOUND4res *res = command_data;
+        GETFH4resok *gfhresok;
+        int i;
+        struct nfsfh *fh;
+
+        assert(rpc->magic == RPC_CONTEXT_MAGIC);
+
+        if (check_nfs4_error(nfs, status, data, res, "RENAME")) {
+                free_nfs4_cb_data(data);
+                return;
+        }
+
+        if ((i = nfs4_find_op(nfs, data, res, OP_GETFH, "GETFH")) < 0) {
+                return;
+        }
+        gfhresok = &res->resarray.resarray_val[i].nfs_resop4_u.opgetfh.GETFH4res_u.resok4;
+
+        /* newpath fh */
+        fh = malloc(sizeof(*fh));
+        if (fh == NULL) {
+                nfs_set_error(nfs, "Out of memory. Failed to allocate "
+                              "nfsfh");
+                data->cb(-ENOMEM, nfs, nfs_get_error(nfs), data->private_data);
+                free_nfs4_cb_data(data);
+                return;
+        }
+        memset(fh, 0 , sizeof(*fh));
+        data->filler.blob0.val  = fh;
+        data->filler.blob0.free = (blob_free)nfs_free_nfsfh;
+
+        fh->fh.len = gfhresok->object.nfs_fh4_len;
+        fh->fh.val = malloc(fh->fh.len);
+        if (fh->fh.val == NULL) {
+                nfs_set_error(nfs, "Out of memory. Failed to allocate "
+                              "nfsfh");
+                data->cb(-ENOMEM, nfs, nfs_get_error(nfs), data->private_data);
+                free_nfs4_cb_data(data);
+                return;
+        }
+        memcpy(fh->fh.val, gfhresok->object.nfs_fh4_val, fh->fh.len);
+
+        data->filler.blob1.val  = data->filler.data;
+        data->filler.blob1.free = free;
+        data->filler.data = NULL;
+
+        /* Update path and data to point to the old path/name */
+        free(data->path);
+        data->path = nfs4_resolve_path(nfs, data->filler.blob2.val);
+        if (data->path == NULL) {
+                data->cb(-EINVAL, nfs, nfs_get_error(nfs), data->private_data);
+                free_nfs4_cb_data(data);
+                return;
+        }
+        data_split_path(data);
+
+        data->filler.func   = nfs4_populate_rename;
+        data->filler.max_op = 3;
+
+        if (nfs4_lookup_path_async(nfs, data, nfs4_rename_2_cb) < 0) {
+                nfs_set_error(nfs, "Out of memory.");
+                data->cb(-ENOMEM, nfs, nfs_get_error(nfs), data->private_data);
+                free_nfs4_cb_data(data);
+                return;
+        }
+}
+
+/*
+ * blob0 is the filehandle for newpath parent directory.
+ * blob1 is the new name
+ * blob2 is oldpath.
+ */
+int
+nfs4_rename_async(struct nfs_context *nfs, const char *oldpath,
+                  const char *newpath, nfs_cb cb, void *private_data)
+{
+        struct nfs4_cb_data *data;
+
+        data = init_cb_data_split_path(nfs, newpath);
+        if (data == NULL) {
+                return -1;
+        }
+
+        data->cb            = cb;
+        data->private_data  = private_data;
+        data->filler.func   = nfs4_populate_getfh;
+        data->filler.max_op = 1;
+
+        /* oldpath */
+        data->filler.blob2.val  = strdup(oldpath);
+        if (data->filler.blob2.val == NULL) {
+                nfs_set_error(nfs, "Out of memory");
+                free_nfs4_cb_data(data);
+                return -1;
+        }
+        data->filler.blob2.free = free;
+
+        if (nfs4_lookup_path_async(nfs, data, nfs4_rename_1_cb) < 0) {
                 free_nfs4_cb_data(data);
                 return -1;
         }
