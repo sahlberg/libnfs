@@ -1247,9 +1247,11 @@ nfs_mknod_async(struct nfs_context *nfs, const char *path, int mode, int dev,
 	switch (nfs->version) {
         case NFS_V3:
                 return nfs3_mknod_async(nfs, path, mode, dev, cb, private_data);
+        case NFS_V4:
+                return nfs4_mknod_async(nfs, path, mode, dev, cb, private_data);
         default:
-                nfs_set_error(nfs, "%s does not support NFSv4",
-                              __FUNCTION__);
+                nfs_set_error(nfs, "%s does not support NFSv%d",
+                              __FUNCTION__, nfs->version);
                 return -1;
         }
 }

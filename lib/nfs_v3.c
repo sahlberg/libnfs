@@ -3001,6 +3001,7 @@ nfs3_mknod_continue_internal(struct nfs_context *nfs,
 		args.what.mknoddata3_u.blk_device.dev_attributes.mode.set_mode3_u.mode = cb_data->mode & (S_IRUSR|S_IWUSR|S_IXUSR|S_IRGRP|S_IWGRP|S_IXGRP|S_IROTH|S_IWOTH|S_IXOTH);
 		args.what.mknoddata3_u.blk_device.spec.specdata1 = cb_data->major;
 		args.what.mknoddata3_u.blk_device.spec.specdata2 = cb_data->minor;
+                break;
 	case S_IFSOCK:
 		args.what.type = NF3SOCK;
 		args.what.mknoddata3_u.sock_attributes.mode.set_it = 1;

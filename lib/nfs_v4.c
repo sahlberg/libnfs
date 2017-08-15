@@ -2752,3 +2752,128 @@ nfs4_rename_async(struct nfs_context *nfs, const char *oldpath,
 
         return 0;
 }
+
+static void
+nfs4_mknod_cb(struct rpc_context *rpc, int status, void *command_data,
+              void *private_data)
+{
+        struct nfs4_cb_data *data = private_data;
+        struct nfs_context *nfs = data->nfs;
+        COMPOUND4res *res = command_data;
+
+        assert(rpc->magic == RPC_CONTEXT_MAGIC);
+
+        if (check_nfs4_error(nfs, status, data, res, "MKNOD")) {
+                free_nfs4_cb_data(data);
+                return;
+        }
+
+        data->cb(0, nfs, NULL, data->private_data);
+        free_nfs4_cb_data(data);
+}
+
+static int
+nfs4_populate_mknod(struct nfs4_cb_data *data, nfs_argop4 *op)
+{
+        CREATE4args *cargs;
+        uint32_t mode, *ptr;
+        int dev;
+
+        /* Strip off the file type before we marshall it */
+        ptr = (void *)data->filler.blob1.val;
+        mode = *ptr;
+        *ptr = htonl(mode & ~S_IFMT);
+
+        dev = data->filler.blob2.len;
+
+        op[0].argop = OP_CREATE;
+        cargs = &op[0].nfs_argop4_u.opcreate;
+        memset(cargs, 0, sizeof(*cargs));
+        cargs->objname.utf8string_val = data->filler.data;
+        cargs->objname.utf8string_len = strlen(cargs->objname.utf8string_val);
+        cargs->createattrs.attrmask.bitmap4_len = data->filler.blob0.len;
+        cargs->createattrs.attrmask.bitmap4_val = data->filler.blob0.val;
+        cargs->createattrs.attr_vals.attrlist4_len = data->filler.blob1.len;
+        cargs->createattrs.attr_vals.attrlist4_val = data->filler.blob1.val;
+
+        switch (mode & S_IFMT) {
+	case S_IFCHR:
+                cargs->objtype.type = NF4CHR;
+                cargs->objtype.createtype4_u.devdata.specdata1 = major(dev);
+                cargs->objtype.createtype4_u.devdata.specdata2 = minor(dev);
+                break;
+	case S_IFBLK:
+                cargs->objtype.type = NF4BLK;
+                cargs->objtype.createtype4_u.devdata.specdata1 = major(dev);
+                cargs->objtype.createtype4_u.devdata.specdata2 = minor(dev);
+                break;
+        }
+
+        return 1;
+}
+
+/* Takes object name as filler.data
+ * blob0 as attribute mask
+ * blob1 as attribute value
+ * blob2.len as dev
+ */
+int
+nfs4_mknod_async(struct nfs_context *nfs, const char *path, int mode, int dev,
+                 nfs_cb cb, void *private_data)
+{
+        struct nfs4_cb_data *data;
+        uint32_t *u32ptr;
+
+        switch (mode & S_IFMT) {
+	case S_IFCHR:
+	case S_IFBLK:
+                break;
+        default:
+		nfs_set_error(nfs, "Invalid file type for "
+                              "MKNOD call");
+		return -1;
+        }
+
+        data = init_cb_data_split_path(nfs, path);
+        if (data == NULL) {
+                return -1;
+        }
+
+        data->cb            = cb;
+        data->private_data  = private_data;
+        data->filler.func   = nfs4_populate_mknod;
+        data->filler.max_op = 1;
+
+        /* attribute mask */
+        u32ptr = malloc(2 * sizeof(uint32_t));
+        if (u32ptr == NULL) {
+                nfs_set_error(nfs, "Out of memory allocating bitmap");
+                return 0;
+        }
+        u32ptr[0] = 0;
+        u32ptr[1] = 1 << (FATTR4_MODE - 32);
+        data->filler.blob0.len  = 2;
+        data->filler.blob0.val  = u32ptr;
+        data->filler.blob0.free = free;
+
+        /* attribute values */
+        u32ptr = malloc(1 * sizeof(uint32_t));
+        if (u32ptr == NULL) {
+                nfs_set_error(nfs, "Out of memory allocating attributes");
+                free_nfs4_cb_data(data);
+                return -1;
+        }
+        u32ptr[0] = mode;
+        data->filler.blob1.len  = 4;
+        data->filler.blob1.val  = u32ptr;
+        data->filler.blob1.free = free;
+
+        data->filler.blob2.len  = dev;
+
+        if (nfs4_lookup_path_async(nfs, data, nfs4_mknod_cb) < 0) {
+                free_nfs4_cb_data(data);
+                return -1;
+        }
+
+        return 0;
+}

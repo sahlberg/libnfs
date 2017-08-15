@@ -44,6 +44,18 @@ echo -n "Create a chrdev outside the share (abs) (6)... "
 ./prog_mknod "${TESTURL}/?uid=0&version=${VERS}" "." ../subdir2/mknod6 020775 0x1234 2>/dev/null && failure
 success
 
+echo -n "Create a blkdev in the root (abs) (7)... "
+./prog_mknod "${TESTURL}/?uid=0&version=${VERS}" "." /mknod7 060755 0x1234 || failure
+success
+
+echo -n "Stat the node ... "
+./prog_stat "${TESTURL}/?version=${VERS}" "." mknod7 > "${TESTDIR}/output" || failure
+success
+
+echo -n "Testing nfs_mode and verify it is a BLKDEV ... "
+grep "nfs_mode:60755" "${TESTDIR}/output" >/dev/null || failure
+success
+
 stop_share
 
 exit 0
