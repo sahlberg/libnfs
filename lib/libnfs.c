@@ -1263,6 +1263,8 @@ nfs_opendir_async(struct nfs_context *nfs, const char *path, nfs_cb cb,
 	switch (nfs->version) {
         case NFS_V3:
                 return nfs3_opendir_async(nfs, path, cb, private_data);
+        case NFS_V4:
+                return nfs4_opendir_async(nfs, path, cb, private_data);
         default:
                 nfs_set_error(nfs, "%s does not support NFSv4",
                               __FUNCTION__);

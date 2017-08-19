@@ -490,6 +490,8 @@ int nfs4_mount_async(struct nfs_context *nfs, const char *server,
 		     const char *export, nfs_cb cb, void *private_data);
 int nfs4_open_async(struct nfs_context *nfs, const char *path, int flags,
                     int mode, nfs_cb cb, void *private_data);
+int nfs4_opendir_async(struct nfs_context *nfs, const char *path, nfs_cb cb,
+                       void *private_data);
 int nfs4_pread_async_internal(struct nfs_context *nfs, struct nfsfh *nfsfh,
                               uint64_t offset, size_t count, nfs_cb cb,
                               void *private_data, int update_pos);

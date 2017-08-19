@@ -162,6 +162,20 @@ struct nfs4_cb_data {
         struct rw_data rw_data;
 };
 
+static uint32_t standard_attributes[2] = {
+        (1 << FATTR4_TYPE |
+         1 << FATTR4_SIZE |
+         1 << FATTR4_FILEID),
+        (1 << (FATTR4_MODE - 32) |
+         1 << (FATTR4_NUMLINKS - 32) |
+         1 << (FATTR4_OWNER - 32) |
+         1 << (FATTR4_OWNER_GROUP - 32) |
+         1 << (FATTR4_SPACE_USED - 32) |
+         1 << (FATTR4_TIME_ACCESS - 32) |
+         1 << (FATTR4_TIME_METADATA - 32) |
+         1 << (FATTR4_TIME_MODIFY - 32))
+};
+
 /* Caller will free the returned path. */
 static char *
 nfs4_resolve_path(struct nfs_context *nfs, const char *path)
@@ -472,8 +486,8 @@ nfs_parse_attributes(struct nfs_context *nfs, struct nfs4_cb_data *data,
         buf += 4;
         len -= 4;
 
-        st->nfs_blksize = 4096;
-        st->nfs_blocks  = st->nfs_used / 4096;
+        st->nfs_blksize = NFS_BLKSIZE;
+        st->nfs_blocks  = (st->nfs_used + NFS_BLKSIZE -1) / NFS_BLKSIZE;
 
         return 0;
 }
@@ -505,7 +519,6 @@ nfs4_allocate_op(struct nfs_context *nfs, nfs_argop4 **op,
         char *ptr;
         int i, count;
         GETATTR4args *gaargs;
-        static uint32_t attributes[2];
 
         *op = NULL;
 
@@ -553,21 +566,8 @@ nfs4_allocate_op(struct nfs_context *nfs, nfs_argop4 **op,
         (*op)[i++].argop = OP_GETATTR;
         memset(gaargs, 0, sizeof(*gaargs));
 
-        attributes[0] =
-                1 << FATTR4_TYPE |
-                1 << FATTR4_SIZE |
-                1 << FATTR4_FILEID;
-        attributes[1] =
-                1 << (FATTR4_MODE - 32) |
-                1 << (FATTR4_NUMLINKS - 32) |
-                1 << (FATTR4_OWNER - 32) |
-                1 << (FATTR4_OWNER_GROUP - 32) |
-                1 << (FATTR4_SPACE_USED - 32) |
-                1 << (FATTR4_TIME_ACCESS - 32) |
-                1 << (FATTR4_TIME_METADATA - 32) |
-                1 << (FATTR4_TIME_MODIFY - 32);
+        gaargs->attr_request.bitmap4_val = standard_attributes;
         gaargs->attr_request.bitmap4_len = 2;
-        gaargs->attr_request.bitmap4_val = attributes;
 
         return i;
 }
@@ -1543,14 +1543,6 @@ nfs4_open_cb(struct rpc_context *rpc, int status, void *command_data,
         data->filler.blob0.val  = fh;
         data->filler.blob0.free = (blob_free)nfs_free_nfsfh;
 
-        if (data->filler.flags & O_SYNC) {
-                fh->is_sync = 1;
-        }
-
-        if (data->filler.flags & O_APPEND) {
-                fh->is_append = 1;
-        }
-
         fh->fh.len = gresok->object.nfs_fh4_len;
         fh->fh.val = malloc(fh->fh.len);
         if (fh->fh.val == NULL) {
@@ -1561,6 +1553,14 @@ nfs4_open_cb(struct rpc_context *rpc, int status, void *command_data,
                 return;
         }
         memcpy(fh->fh.val, gresok->object.nfs_fh4_val, fh->fh.len);
+
+        if (data->filler.flags & O_SYNC) {
+                fh->is_sync = 1;
+        }
+
+        if (data->filler.flags & O_APPEND) {
+                fh->is_append = 1;
+        }
 
         /* Parse Open */
         if ((i = nfs4_find_op(nfs, data, res, OP_OPEN, "OPEN")) < 0) {
@@ -1875,7 +1875,6 @@ nfs4_fstat64_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_cb cb,
         nfs_argop4 op[2];
         PUTFH4args *pfargs;
         GETATTR4args *gaargs;
-        uint32_t attributes[2];
         struct nfs4_cb_data *data;
 
         data = malloc(sizeof(*data));
@@ -1899,21 +1898,8 @@ nfs4_fstat64_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_cb cb,
         op[1].argop = OP_GETATTR;
         memset(gaargs, 0, sizeof(*gaargs));
 
-        attributes[0] =
-                1 << FATTR4_TYPE |
-                1 << FATTR4_SIZE |
-                1 << FATTR4_FILEID;
-        attributes[1] =
-                1 << (FATTR4_MODE - 32) |
-                1 << (FATTR4_NUMLINKS - 32) |
-                1 << (FATTR4_OWNER - 32) |
-                1 << (FATTR4_OWNER_GROUP - 32) |
-                1 << (FATTR4_SPACE_USED - 32) |
-                1 << (FATTR4_TIME_ACCESS - 32) |
-                1 << (FATTR4_TIME_METADATA - 32) |
-                1 << (FATTR4_TIME_MODIFY - 32);
         gaargs->attr_request.bitmap4_len = 2;
-        gaargs->attr_request.bitmap4_val = attributes;
+        gaargs->attr_request.bitmap4_val = standard_attributes;
 
         memset(&args, 0, sizeof(args));
         args.argarray.argarray_len = sizeof(op) / sizeof(nfs_argop4);
@@ -2871,6 +2857,306 @@ nfs4_mknod_async(struct nfs_context *nfs, const char *path, int mode, int dev,
         data->filler.blob2.len  = dev;
 
         if (nfs4_lookup_path_async(nfs, data, nfs4_mknod_cb) < 0) {
+                free_nfs4_cb_data(data);
+                return -1;
+        }
+
+        return 0;
+}
+
+static void
+nfs4_parse_readdir(struct nfs_context *nfs, struct nfs4_cb_data *data,
+                   READDIR4resok *res);
+
+static void
+nfs4_opendir_2_cb(struct rpc_context *rpc, int status, void *command_data,
+                  void *private_data)
+{
+        struct nfs4_cb_data *data = private_data;
+        struct nfs_context *nfs = data->nfs;
+        COMPOUND4res *res = command_data;
+        READDIR4resok *rdresok;
+        int i;
+
+        assert(rpc->magic == RPC_CONTEXT_MAGIC);
+
+        if (check_nfs4_error(nfs, status, data, res, "READDIR")) {
+                free_nfs4_cb_data(data);
+                return;
+        }
+
+        if ((i = nfs4_find_op(nfs, data, res, OP_READDIR, "READDIR")) < 0) {
+                return;
+        }
+        rdresok = &res->resarray.resarray_val[i].nfs_resop4_u.opreaddir.READDIR4res_u.resok4;
+        nfs4_parse_readdir(nfs, data, rdresok);
+}
+
+static void
+nfs4_opendir_continue(struct nfs_context *nfs, struct nfs4_cb_data *data)
+{
+        COMPOUND4args args;
+        nfs_argop4 op[2];
+        PUTFH4args *pfargs;
+        READDIR4args *rdargs;
+        struct nfsfh *fh = data->filler.blob0.val;
+        uint64_t *cookie = data->filler.blob2.val;
+
+        memset(op, 0, sizeof(op));
+
+        op[0].argop = OP_PUTFH;
+        pfargs = &op[0].nfs_argop4_u.opputfh;
+        pfargs->object.nfs_fh4_len = fh->fh.len;
+        pfargs->object.nfs_fh4_val = fh->fh.val;
+
+        op[1].argop = OP_READDIR;
+        rdargs = &op[1].nfs_argop4_u.opreaddir;
+        memset(rdargs, 0, sizeof(*rdargs));
+
+        rdargs->cookie = *cookie;
+        rdargs->dircount = 8192;
+        rdargs->maxcount = 8192;
+        rdargs->attr_request.bitmap4_len = 2;
+        rdargs->attr_request.bitmap4_val = standard_attributes;
+
+        memset(&args, 0, sizeof(args));
+        args.argarray.argarray_len = 2;
+        args.argarray.argarray_val = op;
+
+        if (rpc_nfs4_compound_async(nfs->rpc, nfs4_opendir_2_cb, &args,
+                                    data) != 0) {
+                nfs_set_error(nfs, "Failed to queue READDIR command. %s",
+                              nfs_get_error(nfs));
+                data->cb(-ENOMEM, nfs, nfs_get_error(nfs), data->private_data);
+                free_nfs4_cb_data(data);
+                return;
+        }
+}
+
+static void
+nfs4_parse_readdir(struct nfs_context *nfs, struct nfs4_cb_data *data,
+                   READDIR4resok *res)
+{
+	struct nfsdir *nfsdir = data->filler.blob1.val;
+        uint64_t *cookie = data->filler.blob2.val;
+        struct entry4 *e;
+
+        e = res->reply.entries;
+        while (e) {
+                struct nfsdirent *nfsdirent;
+                struct nfs_stat_64 st;
+
+                *cookie = e->cookie;
+
+		nfsdirent = malloc(sizeof(struct nfsdirent));
+		if (nfsdirent == NULL) {
+                        nfs_set_error(nfs, "Out of memory.");
+                        data->cb(-ENOMEM, nfs, nfs_get_error(nfs),
+                                 data->private_data);
+                        free_nfs4_cb_data(data);
+                        return;
+                }
+		nfsdirent->name = strdup(e->name.utf8string_val);
+		if (nfsdirent->name == NULL) {
+                        nfs_set_error(nfs, "Out of memory.");
+                        data->cb(-ENOMEM, nfs, nfs_get_error(nfs),
+                                 data->private_data);
+                        free_nfs4_cb_data(data);
+                        free(nfsdirent);
+                        return;
+                }
+
+                memset(&st, 0, sizeof(st));
+                if (nfs_parse_attributes(nfs, data, &st,
+                                         e->attrs.attr_vals.attrlist4_val,
+                                         e->attrs.attr_vals.attrlist4_len) < 0) {
+                        data->cb(-EINVAL, nfs, nfs_get_error(nfs),
+                                 data->private_data);
+                        free_nfs4_cb_data(data);
+                        free(nfsdirent->name);
+                        free(nfsdirent);
+                        return;
+                }
+
+                nfsdirent->mode = st.nfs_mode;
+                switch (st.nfs_mode & S_IFMT) {
+                case S_IFREG:
+                        nfsdirent->type = NF4REG;
+                        break;
+                case S_IFDIR:
+                        nfsdirent->type = NF4DIR;
+                        break;
+                case S_IFBLK:
+                        nfsdirent->type = NF4BLK;
+                        break;
+                case S_IFCHR:
+                        nfsdirent->type = NF4CHR;
+                        break;
+                case S_IFLNK:
+                        nfsdirent->type = NF4LNK;
+                        break;
+                case S_IFSOCK:
+                        nfsdirent->type = NF4SOCK;
+                        break;
+                case S_IFIFO:
+                        nfsdirent->type = NF4FIFO;
+                        break;
+                }
+                nfsdirent->size = st.nfs_size;
+                nfsdirent->atime.tv_sec  = st.nfs_atime;
+                nfsdirent->atime.tv_usec = st.nfs_atime_nsec/1000;
+                nfsdirent->atime_nsec    = st.nfs_atime_nsec;
+                nfsdirent->mtime.tv_sec  = st.nfs_mtime;
+                nfsdirent->mtime.tv_usec = st.nfs_mtime_nsec/1000;
+                nfsdirent->mtime_nsec    = st.nfs_mtime_nsec;
+                nfsdirent->ctime.tv_sec  = st.nfs_ctime;
+                nfsdirent->ctime.tv_usec = st.nfs_ctime_nsec/1000;
+                nfsdirent->ctime_nsec    = st.nfs_ctime_nsec;
+                nfsdirent->uid = st.nfs_uid;
+                nfsdirent->gid = st.nfs_gid;
+                nfsdirent->nlink = st.nfs_nlink;
+                nfsdirent->dev = st.nfs_dev;
+                nfsdirent->rdev = st.nfs_rdev;
+                nfsdirent->blksize = NFS_BLKSIZE;
+                nfsdirent->blocks = st.nfs_blocks;
+                nfsdirent->used = st.nfs_used;
+
+		nfsdirent->next  = nfsdir->entries;
+		nfsdir->entries  = nfsdirent;
+                e = e->nextentry;
+        }
+
+        if (res->reply.eof == 0) {
+                nfs4_opendir_continue(nfs, data);
+                return;
+        }
+
+        nfsdir->current = nfsdir->entries;
+        data->filler.blob1.val = NULL;
+        data->cb(0, nfs, nfsdir, data->private_data);
+        free_nfs4_cb_data(data);
+}
+
+static void
+nfs4_opendir_cb(struct rpc_context *rpc, int status, void *command_data,
+                void *private_data)
+{
+        struct nfs4_cb_data *data = private_data;
+        struct nfs_context *nfs = data->nfs;
+        COMPOUND4res *res = command_data;
+        struct nfsfh *fh;
+        GETFH4resok *gresok;
+        READDIR4resok *rdresok;
+        int i;
+
+        assert(rpc->magic == RPC_CONTEXT_MAGIC);
+
+        if (check_nfs4_error(nfs, status, data, res, "READDIR")) {
+                free_nfs4_cb_data(data);
+                return;
+        }
+
+        /* Parse GetFH */
+        if ((i = nfs4_find_op(nfs, data, res, OP_GETFH, "GETFH")) < 0) {
+                return;
+        }
+        gresok = &res->resarray.resarray_val[i].nfs_resop4_u.opgetfh.GETFH4res_u.resok4;
+
+        fh = malloc(sizeof(*fh));
+        if (fh == NULL) {
+                nfs_set_error(nfs, "Out of memory. Failed to allocate "
+                              "nfsfh");
+                data->cb(-ENOMEM, nfs, nfs_get_error(nfs), data->private_data);
+                free_nfs4_cb_data(data);
+                return;
+        }
+        memset(fh, 0 , sizeof(*fh));
+
+        data->filler.blob0.val  = fh;
+        data->filler.blob0.free = (blob_free)nfs_free_nfsfh;
+
+        fh->fh.len = gresok->object.nfs_fh4_len;
+        fh->fh.val = malloc(fh->fh.len);
+        if (fh->fh.val == NULL) {
+                nfs_set_error(nfs, "Out of memory. Failed to allocate "
+                              "nfsfh");
+                data->cb(-ENOMEM, nfs, nfs_get_error(nfs), data->private_data);
+                free_nfs4_cb_data(data);
+                return;
+        }
+        memcpy(fh->fh.val, gresok->object.nfs_fh4_val, fh->fh.len);
+
+        if ((i = nfs4_find_op(nfs, data, res, OP_READDIR, "READDIR")) < 0) {
+                return;
+        }
+        rdresok = &res->resarray.resarray_val[i].nfs_resop4_u.opreaddir.READDIR4res_u.resok4;
+        nfs4_parse_readdir(nfs, data, rdresok);
+}
+
+static int
+nfs4_populate_readdir(struct nfs4_cb_data *data, nfs_argop4 *op)
+{
+        READDIR4args *rdargs;
+        uint64_t *cookie = data->filler.blob2.val;
+
+        op[0].argop = OP_GETFH;
+
+        op[1].argop = OP_READDIR;
+        rdargs = &op[1].nfs_argop4_u.opreaddir;
+        memset(rdargs, 0, sizeof(*rdargs));
+
+        rdargs->cookie = *cookie;
+        rdargs->dircount = 8192;
+        rdargs->maxcount = 8192;
+        rdargs->attr_request.bitmap4_len = 2;
+        rdargs->attr_request.bitmap4_val = standard_attributes;
+
+        return 2;
+}
+
+
+/* blob0 is the directory filehandle
+ * blob1 is nfsdir
+ * blob2 is the cookie
+ */
+int
+nfs4_opendir_async(struct nfs_context *nfs, const char *path, nfs_cb cb,
+                   void *private_data)
+{
+        struct nfs4_cb_data *data;
+	struct nfsdir *nfsdir;
+
+        data = init_cb_data_split_path(nfs, path);
+        if (data == NULL) {
+                return -1;
+        }
+
+        data->cb           = cb;
+        data->private_data = private_data;
+        data->filler.func = nfs4_populate_readdir;
+        data->filler.max_op = 2;
+
+	nfsdir = malloc(sizeof(struct nfsdir));
+	if (nfsdir == NULL) {
+                free_nfs4_cb_data(data);
+		nfs_set_error(nfs, "failed to allocate buffer for nfsdir");
+		return -1;
+	}
+	memset(nfsdir, 0, sizeof(struct nfsdir));
+
+        data->filler.blob1.val = nfsdir;
+        data->filler.blob1.free = (blob_free)nfs_free_nfsdir;
+
+	data->filler.blob2.val = malloc(sizeof(uint64_t));
+	if (data->filler.blob2.val == NULL) {
+                free_nfs4_cb_data(data);
+		nfs_set_error(nfs, "failed to allocate buffer for cookie");
+		return -1;
+	}
+	memset(data->filler.blob2.val, 0, sizeof(uint64_t));
+        data->filler.blob2.free = (blob_free)free;
+
+        if (nfs4_lookup_path_async(nfs, data, nfs4_opendir_cb) < 0) {
                 free_nfs4_cb_data(data);
                 return -1;
         }

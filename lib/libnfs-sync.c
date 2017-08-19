@@ -994,7 +994,8 @@ nfs_opendir(struct nfs_context *nfs, const char *path, struct nfsdir **nfsdir)
 	cb_data.return_data = nfsdir;
 
 	if (nfs_opendir_async(nfs, path, opendir_cb, &cb_data) != 0) {
-		nfs_set_error(nfs, "nfs_opendir_async failed");
+		nfs_set_error(nfs, "nfs_opendir_async failed. %s",
+                              nfs_get_error(nfs));
 		return -1;
 	}
 
