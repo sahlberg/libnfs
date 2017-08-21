@@ -1453,6 +1453,24 @@ nfs4_open_truncate(struct rpc_context *rpc, struct nfs4_cb_data *data)
 }
 
 static void
+nfs_increment_seqid(struct nfs_context *nfs, uint32_t status)
+{
+        /* RFC3530 8.1.5 */
+        switch (status) {
+        case NFS4ERR_STALE_CLIENTID:
+        case NFS4ERR_STALE_STATEID:
+        case NFS4ERR_BAD_STATEID:
+        case NFS4ERR_BAD_SEQID:
+        case NFS4ERR_BADZDR:
+        case NFS4ERR_RESOURCE:
+        case NFS4ERR_NOFILEHANDLE:
+                break;
+        default:
+                nfs->seqid++;
+        }
+}
+
+static void
 nfs4_open_confirm_cb(struct rpc_context *rpc, int status, void *command_data,
                      void *private_data)
 {
@@ -1464,6 +1482,10 @@ nfs4_open_confirm_cb(struct rpc_context *rpc, int status, void *command_data,
         struct nfsfh *fh;
 
         assert(rpc->magic == RPC_CONTEXT_MAGIC);
+
+        if (res) {
+                nfs_increment_seqid(nfs, res->status);
+        }
 
         if (check_nfs4_error(nfs, status, data, res, "OPEN_CONFIRM")) {
                 free_nfs4_cb_data(data);
@@ -1505,6 +1527,10 @@ nfs4_open_cb(struct rpc_context *rpc, int status, void *command_data,
         struct nfsfh *fh;
 
         assert(rpc->magic == RPC_CONTEXT_MAGIC);
+
+        if (res) {
+                nfs_increment_seqid(nfs, res->status);
+        }
 
         if (check_nfs4_error(nfs, status, data, res, "OPEN")) {
                 free_nfs4_cb_data(data);
@@ -1585,7 +1611,6 @@ nfs4_open_cb(struct rpc_context *rpc, int status, void *command_data,
                 memcpy(op[1].nfs_argop4_u.opopen_confirm.open_stateid.other,
                        fh->stateid.other, 12);
                 op[1].nfs_argop4_u.opopen_confirm.seqid = nfs->seqid;
-                nfs->seqid++;
 
                 memset(&args, 0, sizeof(args));
                 args.argarray.argarray_len = sizeof(op) / sizeof(nfs_argop4);
@@ -1756,7 +1781,7 @@ nfs4_populate_open(struct nfs4_cb_data *data, nfs_argop4 *op)
         oargs = &op[1].nfs_argop4_u.opopen;
         memset(oargs, 0, sizeof(*oargs));
 
-        oargs->seqid = nfs->seqid++;
+        oargs->seqid = nfs->seqid;
         if (aargs->access & ACCESS4_READ) {
                 oargs->share_access |= OPEN4_SHARE_ACCESS_READ;
         }
@@ -1924,6 +1949,10 @@ nfs4_close_cb(struct rpc_context *rpc, int status, void *command_data,
 
         assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
+        if (res) {
+                nfs_increment_seqid(nfs, res->status);
+        }
+
         if (check_nfs4_error(nfs, status, data, res, "OPEN_CONFIRM")) {
                 free_nfs4_cb_data(data);
                 return;
@@ -1973,7 +2002,7 @@ nfs4_close_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_cb cb,
 
         op[i].argop = OP_CLOSE;
         clargs = &op[i++].nfs_argop4_u.opclose;
-        clargs->seqid = nfs->seqid++;
+        clargs->seqid = nfs->seqid;
         clargs->open_stateid.seqid = nfsfh->stateid.seqid;
         memcpy(clargs->open_stateid.other, nfsfh->stateid.other, 12);
 
