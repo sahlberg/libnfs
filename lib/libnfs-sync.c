@@ -1021,7 +1021,7 @@ lseek_cb(int status, struct nfs_context *nfs, void *data, void *private_data)
 
 	if (status < 0) {
 		nfs_set_error(nfs, "lseek call failed with \"%s\"",
-                              (char *)data);
+                              nfs_get_error(nfs));
 		return;
 	}
 
@@ -1040,7 +1040,8 @@ nfs_lseek(struct nfs_context *nfs, struct nfsfh *nfsfh, int64_t offset, int when
 
 	if (nfs_lseek_async(nfs, nfsfh, offset, whence, lseek_cb,
                             &cb_data) != 0) {
-		nfs_set_error(nfs, "nfs_lseek_async failed");
+		nfs_set_error(nfs, "nfs_lseek_async failed. %s",
+                              nfs_get_error(nfs));
 		return -1;
 	}
 

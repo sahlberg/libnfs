@@ -3495,10 +3495,6 @@ nfs4_fsync_cb(struct rpc_context *rpc, int status, void *command_data,
 
         assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
-        if (res) {
-                nfs_increment_seqid(nfs, res->status);
-        }
-
         if (check_nfs4_error(nfs, status, data, res, "FSYNC")) {
                 free_nfs4_cb_data(data);
                 return;
@@ -3591,6 +3587,126 @@ nfs4_ftruncate_async(struct nfs_context *nfs, struct nfsfh *fh,
         if (rpc_nfs4_compound_async(nfs->rpc, nfs4_fsync_cb, &args,
                                     data) != 0) {
                 data->filler.blob0.val = NULL;
+                free_nfs4_cb_data(data);
+                return -1;
+        }
+
+        return 0;
+}
+
+static void
+nfs4_lseek_cb(struct rpc_context *rpc, int status, void *command_data,
+              void *private_data)
+{
+        struct nfs4_cb_data *data = private_data;
+        struct nfs_context *nfs = data->nfs;
+        COMPOUND4res *res = command_data;
+        GETATTR4resok *garesok = NULL;
+        struct nfsfh *fh = data->filler.blob0.val;
+        struct nfs_stat_64 st;
+        uint64_t offset;
+        int i;
+
+        assert(rpc->magic == RPC_CONTEXT_MAGIC);
+
+        memcpy(&offset, data->filler.blob1.val, sizeof(uint64_t));
+        
+        if (check_nfs4_error(nfs, status, data, res, "LSEEK")) {
+                free_nfs4_cb_data(data);
+                return;
+        }
+
+        if ((i = nfs4_find_op(nfs, data, res, OP_GETATTR, "GETATTR")) < 0) {
+                return;
+        }
+        garesok = &res->resarray.resarray_val[i].nfs_resop4_u.opgetattr.GETATTR4res_u.resok4;
+
+        memset(&st, 0, sizeof(st));
+        nfs_parse_attributes(nfs, data, &st,
+                             garesok->obj_attributes.attr_vals.attrlist4_val,
+                             garesok->obj_attributes.attr_vals.attrlist4_len);
+
+	if (offset < 0 &&
+	    -offset > st.nfs_size) {
+                nfs_set_error(nfs, "Negative offset for lseek("
+                              "SEET_END)");
+		data->cb(-EINVAL, nfs, &fh->offset,
+                         data->private_data);
+	} else {
+		fh->offset = offset + st.nfs_size;
+		data->cb(0, nfs, &fh->offset, data->private_data);
+	}
+
+        free_nfs4_cb_data(data);
+}
+
+/* blob0.val is nfsfh
+ * blob1.val is offset
+ */
+int
+nfs4_lseek_async(struct nfs_context *nfs, struct nfsfh *fh, int64_t offset,
+                 int whence, nfs_cb cb, void *private_data)
+{
+        COMPOUND4args args;
+        nfs_argop4 op[2];
+        struct nfs4_cb_data *data;
+        int i;
+
+	if (whence == SEEK_SET) {
+		if (offset < 0) {
+                        nfs_set_error(nfs, "Negative offset for lseek("
+                                      "SEET_SET)");
+			cb(-EINVAL, nfs, &fh->offset, private_data);
+		} else {
+			fh->offset = offset;
+			cb(0, nfs, &fh->offset, private_data);
+		}
+		return 0;
+	}
+	if (whence == SEEK_CUR) {
+		if (offset < 0 &&
+		    fh->offset < (uint64_t)(-offset)) {
+                        nfs_set_error(nfs, "Negative offset for lseek("
+                                      "SEET_CUR)");
+			cb(-EINVAL, nfs, &fh->offset, private_data);
+		} else {
+			fh->offset += offset;
+			cb(0, nfs, &fh->offset, private_data);
+		}
+		return 0;
+	}
+
+        data = malloc(sizeof(*data));
+        if (data == NULL) {
+                nfs_set_error(nfs, "Out of memory.");
+                return -1;
+        }
+        memset(data, 0, sizeof(*data));
+
+        data->nfs          = nfs;
+        data->cb           = cb;
+        data->private_data = private_data;
+
+        data->filler.blob0.val  = fh;
+        data->filler.blob0.free = NULL;
+
+        data->filler.blob1.val = malloc(sizeof(uint64_t));
+        if (data->filler.blob1.val == NULL) {
+                nfs_set_error(nfs, "Out of memory.");
+                free_nfs4_cb_data(data);
+                return -1;
+        }
+        memcpy(data->filler.blob1.val, &offset, sizeof(uint64_t));
+
+        i = nfs4_op_putfh(nfs, &op[0], fh);
+        i += nfs4_op_getattr(nfs, &op[i]);
+
+        memset(&args, 0, sizeof(args));
+        args.argarray.argarray_len = i;
+        args.argarray.argarray_val = op;
+
+        if (rpc_nfs4_compound_async(nfs->rpc, nfs4_lseek_cb, &args,
+                                    data) != 0) {
                 free_nfs4_cb_data(data);
                 return -1;
         }

@@ -1348,9 +1348,12 @@ nfs_lseek_async(struct nfs_context *nfs, struct nfsfh *nfsfh, int64_t offset,
         case NFS_V3:
                 return nfs3_lseek_async(nfs, nfsfh, offset, whence,
                                         cb, private_data);
+        case NFS_V4:
+                return nfs4_lseek_async(nfs, nfsfh, offset, whence,
+                                        cb, private_data);
         default:
-                nfs_set_error(nfs, "%s does not support NFSv4",
-                              __FUNCTION__);
+                nfs_set_error(nfs, "%s does not support NFSv%d",
+                              __FUNCTION__, nfs->version);
                 return -1;
         }
 }
