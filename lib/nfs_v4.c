@@ -1451,23 +1451,30 @@ nfs4_open_setattr_cb(struct rpc_context *rpc, int status, void *command_data,
 }
 
 static int
-nfs4_op_setattr(struct nfs_context *nfs, nfs_argop4 *op, struct nfsfh *nfsfh,
-                void *sabuf)
+nfs4_op_putfh(struct nfs_context *nfs, nfs_argop4 *op, struct nfsfh *nfsfh)
 {
         PUTFH4args *pfargs;
-        SETATTR4args *saargs;
-        static uint32_t mask[2] = {1 << (FATTR4_SIZE),
-                                   1 << (FATTR4_TIME_MODIFY_SET - 32)};
-
         op[0].argop = OP_PUTFH;
+
         pfargs = &op[0].nfs_argop4_u.opputfh;
         pfargs->object.nfs_fh4_len = nfsfh->fh.len;
         pfargs->object.nfs_fh4_val = nfsfh->fh.val;
 
-        op[1].argop = OP_SETATTR;
-        saargs = &op[1].nfs_argop4_u.opsetattr;
-        saargs->stateid.seqid = nfsfh->stateid.seqid;
-        memcpy(saargs->stateid.other, nfsfh->stateid.other, 12);
+        return 1;
+}
+
+static int
+nfs4_op_setattr(struct nfs_context *nfs, nfs_argop4 *op, struct nfsfh *fh,
+                void *sabuf)
+{
+        SETATTR4args *saargs;
+        static uint32_t mask[2] = {1 << (FATTR4_SIZE),
+                                   1 << (FATTR4_TIME_MODIFY_SET - 32)};
+
+        op[0].argop = OP_SETATTR;
+        saargs = &op[0].nfs_argop4_u.opsetattr;
+        saargs->stateid.seqid = fh->stateid.seqid;
+        memcpy(saargs->stateid.other, fh->stateid.other, 12);
 
         saargs->obj_attributes.attrmask.bitmap4_len = 2;
         saargs->obj_attributes.attrmask.bitmap4_val = mask;
@@ -1475,7 +1482,7 @@ nfs4_op_setattr(struct nfs_context *nfs, nfs_argop4 *op, struct nfsfh *nfsfh,
         saargs->obj_attributes.attr_vals.attrlist4_len = 12;
         saargs->obj_attributes.attr_vals.attrlist4_val = sabuf;
 
-        return 2;
+        return 1;
 }
 
 static void
@@ -1495,7 +1502,8 @@ nfs4_open_truncate_cb(struct rpc_context *rpc, int status, void *command_data,
                 return;
         }
 
-        i = nfs4_op_setattr(nfs, op, fh, data->filler.blob3.val);
+        i = nfs4_op_putfh(nfs, op, fh);
+        i += nfs4_op_setattr(nfs, &op[i], fh, data->filler.blob3.val);
 
         memset(&args, 0, sizeof(args));
         args.argarray.argarray_len = i;
@@ -2036,19 +2044,13 @@ nfs4_close_cb(struct rpc_context *rpc, int status, void *command_data,
 }
 
 static int
-nfs4_op_close(struct nfs_context *nfs, nfs_argop4 *op, struct nfsfh *nfsfh)
+nfs4_op_close(struct nfs_context *nfs, nfs_argop4 *op, struct nfsfh *fh)
 {
-        PUTFH4args *pfargs;
         COMMIT4args *coargs;
         CLOSE4args *clargs;
         int i = 0;
 
-        op[i].argop = OP_PUTFH;
-        pfargs = &op[i++].nfs_argop4_u.opputfh;
-        pfargs->object.nfs_fh4_len = nfsfh->fh.len;
-        pfargs->object.nfs_fh4_val = nfsfh->fh.val;
-
-        if (nfsfh->is_dirty) {
+        if (fh->is_dirty) {
                 op[i].argop = OP_COMMIT;
                 coargs = &op[i++].nfs_argop4_u.opcommit;
                 coargs->offset = 0;
@@ -2058,8 +2060,8 @@ nfs4_op_close(struct nfs_context *nfs, nfs_argop4 *op, struct nfsfh *nfsfh)
         op[i].argop = OP_CLOSE;
         clargs = &op[i++].nfs_argop4_u.opclose;
         clargs->seqid = nfs->seqid;
-        clargs->open_stateid.seqid = nfsfh->stateid.seqid;
-        memcpy(clargs->open_stateid.other, nfsfh->stateid.other, 12);
+        clargs->open_stateid.seqid = fh->stateid.seqid;
+        memcpy(clargs->open_stateid.other, fh->stateid.other, 12);
 
         return i;
 }
@@ -2087,7 +2089,8 @@ nfs4_close_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_cb cb,
 
         memset(op, 0, sizeof(op));
 
-        i = nfs4_op_close(nfs, op, nfsfh);
+        i = nfs4_op_putfh(nfs, op, nfsfh);
+        i += nfs4_op_close(nfs, &op[i], nfsfh);
 
         data->filler.blob0.val  = nfsfh;
         data->filler.blob0.free = (blob_free)nfs_free_nfsfh;
@@ -3308,7 +3311,7 @@ nfs4_truncate_open_cb(struct rpc_context *rpc, int status, void *command_data,
         struct nfsfh *fh = data->filler.blob0.val;
         COMPOUND4res *res = command_data;
         COMPOUND4args args;
-        nfs_argop4 op[5];
+        nfs_argop4 op[4];
         int i;
 
         if (check_nfs4_error(nfs, status, data, res, "OPEN")) {
@@ -3316,7 +3319,8 @@ nfs4_truncate_open_cb(struct rpc_context *rpc, int status, void *command_data,
                 return;
         }
 
-        i = nfs4_op_setattr(nfs, op, fh, data->filler.blob3.val);
+        i = nfs4_op_putfh(nfs, op, fh);
+        i += nfs4_op_setattr(nfs, &op[i], fh, data->filler.blob3.val);
         i += nfs4_op_close(nfs, &op[i], fh);
 
         memset(&args, 0, sizeof(args));
