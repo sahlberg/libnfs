@@ -567,17 +567,26 @@ nfs4_op_create(struct nfs_context *nfs, nfs_argop4 *op, const char *name,
 }
 
 static int
-nfs4_op_close(struct nfs_context *nfs, nfs_argop4 *op, struct nfsfh *fh)
+nfs4_op_commit(struct nfs_context *nfs, nfs_argop4 *op)
 {
         COMMIT4args *coargs;
+
+        op[0].argop = OP_COMMIT;
+        coargs = &op[0].nfs_argop4_u.opcommit;
+        coargs->offset = 0;
+        coargs->count = 0;
+
+        return 1;
+}
+
+static int
+nfs4_op_close(struct nfs_context *nfs, nfs_argop4 *op, struct nfsfh *fh)
+{
         CLOSE4args *clargs;
         int i = 0;
 
         if (fh->is_dirty) {
-                op[i].argop = OP_COMMIT;
-                coargs = &op[i++].nfs_argop4_u.opcommit;
-                coargs->offset = 0;
-                coargs->count = 0;
+                i += nfs4_op_commit(nfs, &op[i]);
         }
 
         op[i].argop = OP_CLOSE;
@@ -3470,6 +3479,71 @@ nfs4_truncate_async(struct nfs_context *nfs, const char *path, uint64_t length,
         memcpy(data->filler.blob3.val, &length, sizeof(uint64_t));
 
         if (nfs4_open_async_internal(nfs, data, O_WRONLY, 0) < 0) {
+                return -1;
+        }
+
+        return 0;
+}
+
+static void
+nfs4_fsync_cb(struct rpc_context *rpc, int status, void *command_data,
+              void *private_data)
+{
+        struct nfs4_cb_data *data = private_data;
+        struct nfs_context *nfs = data->nfs;
+        COMPOUND4res *res = command_data;
+
+        assert(rpc->magic == RPC_CONTEXT_MAGIC);
+
+        if (res) {
+                nfs_increment_seqid(nfs, res->status);
+        }
+
+        if (check_nfs4_error(nfs, status, data, res, "FSYNC")) {
+                free_nfs4_cb_data(data);
+                return;
+        }
+
+        data->cb(0, nfs, NULL, data->private_data);
+        free_nfs4_cb_data(data);
+}
+
+int
+nfs4_fsync_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_cb cb,
+                 void *private_data)
+{
+        COMPOUND4args args;
+        nfs_argop4 op[3];
+        struct nfs4_cb_data *data;
+        int i;
+
+        data = malloc(sizeof(*data));
+        if (data == NULL) {
+                nfs_set_error(nfs, "Out of memory.");
+                return -1;
+        }
+        memset(data, 0, sizeof(*data));
+
+        data->nfs          = nfs;
+        data->cb           = cb;
+        data->private_data = private_data;
+
+        memset(op, 0, sizeof(op));
+
+        i = nfs4_op_putfh(nfs, &op[0], nfsfh);
+        i += nfs4_op_commit(nfs, &op[i]);
+
+        data->filler.blob0.val  = nfsfh;
+        data->filler.blob0.free = (blob_free)nfs_free_nfsfh;
+
+        memset(&args, 0, sizeof(args));
+        args.argarray.argarray_len = i;
+        args.argarray.argarray_val = op;
+
+        if (rpc_nfs4_compound_async(nfs->rpc, nfs4_fsync_cb, &args,
+                                    data) != 0) {
+                data->filler.blob0.val = NULL;
+                free_nfs4_cb_data(data);
                 return -1;
         }
 

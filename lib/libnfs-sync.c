@@ -664,7 +664,8 @@ nfs_fsync(struct nfs_context *nfs, struct nfsfh *nfsfh)
 	cb_data.is_finished = 0;
 
 	if (nfs_fsync_async(nfs, nfsfh, fsync_cb, &cb_data) != 0) {
-		nfs_set_error(nfs, "nfs_fsync_async failed");
+		nfs_set_error(nfs, "nfs_fsync_async failed. %s",
+                              nfs_get_error(nfs));
 		return -1;
 	}
 
