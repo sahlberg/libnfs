@@ -655,8 +655,8 @@ nfs4_op_open_confirm(struct nfs_context *nfs, nfs_argop4 *op, uint32_t seqid,
 }
 
 static int
-nfs4_op_setattr(struct nfs_context *nfs, nfs_argop4 *op, struct nfsfh *fh,
-                void *sabuf)
+nfs4_op_truncate(struct nfs_context *nfs, nfs_argop4 *op, struct nfsfh *fh,
+                 void *sabuf)
 {
         SETATTR4args *saargs;
         static uint32_t mask[2] = {1 << (FATTR4_SIZE),
@@ -1750,7 +1750,7 @@ nfs4_open_truncate_cb(struct rpc_context *rpc, int status, void *command_data,
         }
 
         i = nfs4_op_putfh(nfs, op, fh);
-        i += nfs4_op_setattr(nfs, &op[i], fh, data->filler.blob3.val);
+        i += nfs4_op_truncate(nfs, &op[i], fh, data->filler.blob3.val);
 
         memset(&args, 0, sizeof(args));
         args.argarray.argarray_len = i;
@@ -3432,7 +3432,7 @@ nfs4_truncate_open_cb(struct rpc_context *rpc, int status, void *command_data,
         }
 
         i = nfs4_op_putfh(nfs, &op[0], fh);
-        i += nfs4_op_setattr(nfs, &op[i], fh, data->filler.blob3.val);
+        i += nfs4_op_truncate(nfs, &op[i], fh, data->filler.blob3.val);
         i += nfs4_op_close(nfs, &op[i], fh);
 
         memset(&args, 0, sizeof(args));
@@ -3509,11 +3509,11 @@ nfs4_fsync_cb(struct rpc_context *rpc, int status, void *command_data,
 }
 
 int
-nfs4_fsync_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_cb cb,
+nfs4_fsync_async(struct nfs_context *nfs, struct nfsfh *fh, nfs_cb cb,
                  void *private_data)
 {
         COMPOUND4args args;
-        nfs_argop4 op[3];
+        nfs_argop4 op[2];
         struct nfs4_cb_data *data;
         int i;
 
@@ -3530,11 +3530,59 @@ nfs4_fsync_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_cb cb,
 
         memset(op, 0, sizeof(op));
 
-        i = nfs4_op_putfh(nfs, &op[0], nfsfh);
+        i = nfs4_op_putfh(nfs, &op[0], fh);
         i += nfs4_op_commit(nfs, &op[i]);
 
-        data->filler.blob0.val  = nfsfh;
-        data->filler.blob0.free = (blob_free)nfs_free_nfsfh;
+        memset(&args, 0, sizeof(args));
+        args.argarray.argarray_len = i;
+        args.argarray.argarray_val = op;
+
+        if (rpc_nfs4_compound_async(nfs->rpc, nfs4_fsync_cb, &args,
+                                    data) != 0) {
+                data->filler.blob0.val = NULL;
+                free_nfs4_cb_data(data);
+                return -1;
+        }
+
+        return 0;
+}
+
+int
+nfs4_ftruncate_async(struct nfs_context *nfs, struct nfsfh *fh,
+                     uint64_t length, nfs_cb cb, void *private_data)
+{
+        COMPOUND4args args;
+        nfs_argop4 op[2];
+        struct nfs4_cb_data *data;
+        int i;
+
+        data = malloc(sizeof(*data));
+        if (data == NULL) {
+                nfs_set_error(nfs, "Out of memory.");
+                return -1;
+        }
+        memset(data, 0, sizeof(*data));
+
+        data->nfs          = nfs;
+        data->cb           = cb;
+        data->private_data = private_data;
+
+        data->filler.blob3.val = malloc(12);
+        if (data->filler.blob3.val == NULL) {
+                nfs_set_error(nfs, "Out of memory");
+                free_nfs4_cb_data(data);
+                return -1;
+        }
+        data->filler.blob3.free = free;
+
+        memset(data->filler.blob3.val, 0, 12);
+        length = nfs_hton64(length);
+        memcpy(data->filler.blob3.val, &length, sizeof(uint64_t));
+        
+        memset(op, 0, sizeof(op));
+
+        i = nfs4_op_putfh(nfs, &op[0], fh);
+        i += nfs4_op_truncate(nfs, &op[i], fh, data->filler.blob3.val);
 
         memset(&args, 0, sizeof(args));
         args.argarray.argarray_len = i;

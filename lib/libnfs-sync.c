@@ -702,7 +702,8 @@ nfs_ftruncate(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t length)
 
 	if (nfs_ftruncate_async(nfs, nfsfh, length, ftruncate_cb,
                                 &cb_data) != 0) {
-		nfs_set_error(nfs, "nfs_ftruncate_async failed");
+		nfs_set_error(nfs, "nfs_ftruncate_async failed. %s",
+                              nfs_get_error(nfs));
 		return -1;
 	}
 
