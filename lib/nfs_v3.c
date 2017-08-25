@@ -4916,6 +4916,11 @@ int
 nfs3_open_async(struct nfs_context *nfs, const char *path, int flags,
                 int mode, nfs_cb cb, void *private_data)
 {
+        if (flags & O_CREAT) {
+                return nfs3_create_async(nfs, path, flags, mode,
+                                         cb, private_data);
+        }
+        
 	if (nfs3_lookuppath_async(nfs, path, 0, cb, private_data,
                                   nfs3_open_continue_internal,
                                   NULL, NULL, flags) != 0) {

@@ -523,7 +523,7 @@ EXTERN uint16_t nfs_umask(struct nfs_context *nfs, uint16_t mask);
  * Supported flags are
  * O_NOFOLLOW
  * O_APPEND
- * O_CREAT (Only NFSv4)
+ * O_CREAT
  * O_RDONLY
  * O_WRONLY
  * O_RDWR
