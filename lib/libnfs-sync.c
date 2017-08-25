@@ -736,7 +736,8 @@ int nfs_truncate(struct nfs_context *nfs, const char *path, uint64_t length)
 	cb_data.is_finished = 0;
 
 	if (nfs_truncate_async(nfs, path, length, truncate_cb, &cb_data) != 0) {
-		nfs_set_error(nfs, "nfs_ftruncate_async failed");
+		nfs_set_error(nfs, "nfs_ftruncate_async failed. %s",
+                              nfs_get_error(nfs));
 		return -1;
 	}
 

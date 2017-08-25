@@ -1153,9 +1153,11 @@ nfs_truncate_async(struct nfs_context *nfs, const char *path, uint64_t length,
 	switch (nfs->version) {
         case NFS_V3:
                 return nfs3_truncate_async(nfs, path, length, cb, private_data);
+        case NFS_V4:
+                return nfs4_truncate_async(nfs, path, length, cb, private_data);
         default:
-                nfs_set_error(nfs, "%s does not support NFSv4",
-                              __FUNCTION__);
+                nfs_set_error(nfs, "%s does not support NFSv%d",
+                              __FUNCTION__, nfs->version);
                 return -1;
         }
 }
