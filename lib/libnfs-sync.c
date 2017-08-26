@@ -1081,7 +1081,8 @@ nfs_statvfs(struct nfs_context *nfs, const char *path, struct statvfs *svfs)
 	cb_data.return_data = svfs;
 
 	if (nfs_statvfs_async(nfs, path, statvfs_cb, &cb_data) != 0) {
-		nfs_set_error(nfs, "nfs_statvfs_async failed");
+		nfs_set_error(nfs, "nfs_statvfs_async failed. %s",
+                              nfs_get_error(nfs));
 		return -1;
 	}
 

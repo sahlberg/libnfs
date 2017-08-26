@@ -173,6 +173,16 @@ static uint32_t standard_attributes[2] = {
          1 << (FATTR4_TIME_METADATA - 32) |
          1 << (FATTR4_TIME_MODIFY - 32))
 };
+static uint32_t statvfs_attributes[2] = {
+        (1 << FATTR4_FSID |
+         1 << FATTR4_FILES_AVAIL |
+         1 << FATTR4_FILES_FREE |
+         1 << FATTR4_FILES_TOTAL |
+         1 << FATTR4_MAXNAME),
+        (1 << (FATTR4_SPACE_AVAIL - 32) |
+         1 << (FATTR4_SPACE_FREE - 32) |
+         1 << (FATTR4_SPACE_TOTAL - 32))
+};
 
 static int
 nfs4_open_async_internal(struct nfs_context *nfs, struct nfs4_cb_data *data,
@@ -298,16 +308,19 @@ check_nfs4_error(struct nfs_context *nfs, int status,
 
         if (status == RPC_STATUS_ERROR) {
                 data->cb(-EFAULT, nfs, res, data->private_data);
+                free_nfs4_cb_data(data);
                 return 1;
         }
         if (status == RPC_STATUS_CANCEL) {
                 data->cb(-EINTR, nfs, "Command was cancelled",
                          data->private_data);
+                free_nfs4_cb_data(data);
                 return 1;
         }
         if (status == RPC_STATUS_TIMEOUT) {
                 data->cb(-EINTR, nfs, "Command timed out",
                          data->private_data);
+                free_nfs4_cb_data(data);
                 return 1;
         }
         if (res && res->status != NFS4_OK) {
@@ -318,6 +331,7 @@ check_nfs4_error(struct nfs_context *nfs, int status,
                               nfsstat4_to_errno(res->status));
                 data->cb(nfsstat3_to_errno(res->status), nfs,
                          nfs_get_error(nfs), data->private_data);
+                free_nfs4_cb_data(data);
                 return 1;
         }
 
@@ -347,6 +361,20 @@ nfs4_find_op(struct nfs_context *nfs, struct nfs4_cb_data *data,
 
 static uint64_t
 nfs_hton64(uint64_t val)
+{
+        int i;
+        uint64_t res;
+        unsigned char *ptr = (void *)&res;
+
+        for (i = 0; i < 8; i++) {
+                ptr[7 - i] = val & 0xff;
+                val >>= 8;
+        }
+        return res;
+}
+
+static uint64_t
+nfs_ntoh64(uint64_t val)
 {
         int i;
         uint64_t res;
@@ -851,7 +879,8 @@ nfs4_op_remove(struct nfs_context *nfs, nfs_argop4 *op, const char *name)
 }
 
 static int
-nfs4_op_getattr(struct nfs_context *nfs, nfs_argop4 *op)
+nfs4_op_getattr(struct nfs_context *nfs, nfs_argop4 *op,
+                uint32_t *attributes, int count)
 {
         GETATTR4args *gaargs;
 
@@ -859,8 +888,8 @@ nfs4_op_getattr(struct nfs_context *nfs, nfs_argop4 *op)
         gaargs = &op[0].nfs_argop4_u.opgetattr;
         memset(gaargs, 0, sizeof(*gaargs));
 
-        gaargs->attr_request.bitmap4_val = standard_attributes;
-        gaargs->attr_request.bitmap4_len = 2;
+        gaargs->attr_request.bitmap4_val = attributes;
+        gaargs->attr_request.bitmap4_len = count;
 
         return 1;
 }
@@ -916,7 +945,7 @@ nfs4_allocate_op(struct nfs_context *nfs, nfs_argop4 **op,
                 ptr = tmp;
         }                
 
-        i += nfs4_op_getattr(nfs, &(*op)[i]);
+        i += nfs4_op_getattr(nfs, &(*op)[i], standard_attributes, 2);
 
         return i;
 }
@@ -940,7 +969,6 @@ nfs4_lookup_path_2_cb(struct rpc_context *rpc, int status, void *command_data,
         assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
         if (check_nfs4_error(nfs, status, data, res, "READLINK")) {
-                free_nfs4_cb_data(data);
                 return;
         }
 
@@ -1237,7 +1265,6 @@ nfs4_mount_4_cb(struct rpc_context *rpc, int status, void *command_data,
         assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
         if (check_nfs4_error(nfs, status, data, res, "GETFH")) {
-                free_nfs4_cb_data(data);
                 return;
         }
 
@@ -1274,7 +1301,6 @@ nfs4_mount_3_cb(struct rpc_context *rpc, int status, void *command_data,
         assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
         if (check_nfs4_error(nfs, status, data, res, "SETCLIENTID_CONFIRM")) {
-                free_nfs4_cb_data(data);
                 return;
         }
 
@@ -1313,7 +1339,6 @@ nfs4_mount_2_cb(struct rpc_context *rpc, int status, void *command_data,
         assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
         if (check_nfs4_error(nfs, status, data, res, "SETCLIENTID")) {
-                free_nfs4_cb_data(data);
                 return;
         }
 
@@ -1355,7 +1380,6 @@ nfs4_mount_1_cb(struct rpc_context *rpc, int status, void *command_data,
         assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
         if (check_nfs4_error(nfs, status, data, NULL, "CONNECT")) {
-                free_nfs4_cb_data(data);
                 return;
         }
 
@@ -1433,7 +1457,6 @@ nfs4_chdir_1_cb(struct rpc_context *rpc, int status, void *command_data,
         assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
         if (check_nfs4_error(nfs, status, data, res, "CHDIR")) {
-                free_nfs4_cb_data(data);
                 return;
         }
 
@@ -1492,7 +1515,6 @@ nfs4_xstat64_cb(struct rpc_context *rpc, int status, void *command_data,
         assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
         if (check_nfs4_error(nfs, status, data, res, "STAT64")) {
-                free_nfs4_cb_data(data);
                 return;
         }
 
@@ -1574,7 +1596,6 @@ nfs4_mkdir_cb(struct rpc_context *rpc, int status, void *command_data,
         assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
         if (check_nfs4_error(nfs, status, data, res, "MKDIR")) {
-                free_nfs4_cb_data(data);
                 return;
         }
 
@@ -1653,7 +1674,6 @@ nfs4_remove_cb(struct rpc_context *rpc, int status, void *command_data,
         assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
         if (check_nfs4_error(nfs, status, data, res, "REMOVE")) {
-                free_nfs4_cb_data(data);
                 return;
         }
 
@@ -1722,7 +1742,6 @@ nfs4_open_setattr_cb(struct rpc_context *rpc, int status, void *command_data,
         assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
         if (check_nfs4_error(nfs, status, data, res, "SETATTR")) {
-                free_nfs4_cb_data(data);
                 return;
         }
 
@@ -1745,7 +1764,6 @@ nfs4_open_truncate_cb(struct rpc_context *rpc, int status, void *command_data,
         int i;
 
         if (check_nfs4_error(nfs, status, data, res, "OPEN")) {
-                free_nfs4_cb_data(data);
                 return;
         }
 
@@ -1782,7 +1800,6 @@ nfs4_open_confirm_cb(struct rpc_context *rpc, int status, void *command_data,
         }
 
         if (check_nfs4_error(nfs, status, data, res, "OPEN_CONFIRM")) {
-                free_nfs4_cb_data(data);
                 return;
         }
 
@@ -1826,7 +1843,6 @@ nfs4_open_cb(struct rpc_context *rpc, int status, void *command_data,
         }
 
         if (check_nfs4_error(nfs, status, data, res, "OPEN")) {
-                free_nfs4_cb_data(data);
                 return;
         }
 
@@ -2004,7 +2020,6 @@ nfs4_open_readlink_cb(struct rpc_context *rpc, int status, void *command_data,
         assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
         if (check_nfs4_error(nfs, status, data, res, "READLINK")) {
-                free_nfs4_cb_data(data);
                 return;
         }
 
@@ -2230,7 +2245,7 @@ nfs4_fstat64_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_cb cb,
         data->private_data = private_data;
 
         i = nfs4_op_putfh(nfs, &op[0], nfsfh);
-        i += nfs4_op_getattr(nfs, &op[i]);
+        i += nfs4_op_getattr(nfs, &op[i], standard_attributes, 2);
 
         memset(&args, 0, sizeof(args));
         args.argarray.argarray_len = i;
@@ -2260,7 +2275,6 @@ nfs4_close_cb(struct rpc_context *rpc, int status, void *command_data,
         }
 
         if (check_nfs4_error(nfs, status, data, res, "CLOSE")) {
-                free_nfs4_cb_data(data);
                 return;
         }
 
@@ -2327,7 +2341,6 @@ nfs4_pread_cb(struct rpc_context *rpc, int status, void *command_data,
         nfsfh = data->filler.blob0.val;
 
         if (check_nfs4_error(nfs, status, data, res, "READ")) {
-                free_nfs4_cb_data(data);
                 return;
         }
 
@@ -2401,7 +2414,6 @@ nfs4_symlink_cb(struct rpc_context *rpc, int status, void *command_data,
         assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
         if (check_nfs4_error(nfs, status, data, res, "SYMLINK")) {
-                free_nfs4_cb_data(data);
                 return;
         }
 
@@ -2463,7 +2475,6 @@ nfs4_readlink_cb(struct rpc_context *rpc, int status, void *command_data,
         assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
         if (check_nfs4_error(nfs, status, data, res, "READLINK")) {
-                free_nfs4_cb_data(data);
                 return;
         }
 
@@ -2529,7 +2540,6 @@ nfs4_pwrite_cb(struct rpc_context *rpc, int status, void *command_data,
         nfsfh = data->filler.blob0.val;
 
         if (check_nfs4_error(nfs, status, data, res, "WRITE")) {
-                free_nfs4_cb_data(data);
                 return;
         }
 
@@ -2614,7 +2624,6 @@ nfs4_write_append_cb(struct rpc_context *rpc, int status, void *command_data,
         count = data->filler.blob1.len;
 
         if (check_nfs4_error(nfs, status, data, res, "GETATTR")) {
-                free_nfs4_cb_data(data);
                 return;
         }
 
@@ -2675,7 +2684,7 @@ nfs4_write_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t count,
                 memset(op, 0, sizeof(op));
 
                 i = nfs4_op_putfh(nfs, &op[0], nfsfh);
-                i += nfs4_op_getattr(nfs, &op[i]);
+                i += nfs4_op_getattr(nfs, &op[i], standard_attributes, 2);
 
                 memset(&args, 0, sizeof(args));
                 args.argarray.argarray_len = i;
@@ -2728,7 +2737,6 @@ nfs4_link_2_cb(struct rpc_context *rpc, int status, void *command_data,
         assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
         if (check_nfs4_error(nfs, status, data, res, "LINK")) {
-                free_nfs4_cb_data(data);
                 return;
         }
 
@@ -2765,7 +2773,6 @@ nfs4_link_1_cb(struct rpc_context *rpc, int status, void *command_data,
         assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
         if (check_nfs4_error(nfs, status, data, res, "LINK")) {
-                free_nfs4_cb_data(data);
                 return;
         }
 
@@ -2863,7 +2870,6 @@ nfs4_rename_2_cb(struct rpc_context *rpc, int status, void *command_data,
         assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
         if (check_nfs4_error(nfs, status, data, res, "RENAME")) {
-                free_nfs4_cb_data(data);
                 return;
         }
 
@@ -2900,7 +2906,6 @@ nfs4_rename_1_cb(struct rpc_context *rpc, int status, void *command_data,
         assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
         if (check_nfs4_error(nfs, status, data, res, "RENAME")) {
-                free_nfs4_cb_data(data);
                 return;
         }
 
@@ -3007,7 +3012,6 @@ nfs4_mknod_cb(struct rpc_context *rpc, int status, void *command_data,
         assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
         if (check_nfs4_error(nfs, status, data, res, "MKNOD")) {
-                free_nfs4_cb_data(data);
                 return;
         }
 
@@ -3126,7 +3130,6 @@ nfs4_opendir_2_cb(struct rpc_context *rpc, int status, void *command_data,
         assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
         if (check_nfs4_error(nfs, status, data, res, "READDIR")) {
-                free_nfs4_cb_data(data);
                 return;
         }
 
@@ -3285,7 +3288,6 @@ nfs4_opendir_cb(struct rpc_context *rpc, int status, void *command_data,
         assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
         if (check_nfs4_error(nfs, status, data, res, "READDIR")) {
-                free_nfs4_cb_data(data);
                 return;
         }
 
@@ -3406,7 +3408,6 @@ nfs4_truncate_close_cb(struct rpc_context *rpc, int status, void *command_data,
         }
 
         if (check_nfs4_error(nfs, status, data, res, "CLOSE")) {
-                free_nfs4_cb_data(data);
                 return;
         }
 
@@ -3427,7 +3428,6 @@ nfs4_truncate_open_cb(struct rpc_context *rpc, int status, void *command_data,
         int i;
 
         if (check_nfs4_error(nfs, status, data, res, "OPEN")) {
-                free_nfs4_cb_data(data);
                 return;
         }
 
@@ -3496,7 +3496,6 @@ nfs4_fsync_cb(struct rpc_context *rpc, int status, void *command_data,
         assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
         if (check_nfs4_error(nfs, status, data, res, "FSYNC")) {
-                free_nfs4_cb_data(data);
                 return;
         }
 
@@ -3612,7 +3611,6 @@ nfs4_lseek_cb(struct rpc_context *rpc, int status, void *command_data,
         memcpy(&offset, data->filler.blob1.val, sizeof(uint64_t));
         
         if (check_nfs4_error(nfs, status, data, res, "LSEEK")) {
-                free_nfs4_cb_data(data);
                 return;
         }
 
@@ -3699,13 +3697,173 @@ nfs4_lseek_async(struct nfs_context *nfs, struct nfsfh *fh, int64_t offset,
         memcpy(data->filler.blob1.val, &offset, sizeof(uint64_t));
 
         i = nfs4_op_putfh(nfs, &op[0], fh);
-        i += nfs4_op_getattr(nfs, &op[i]);
+        i += nfs4_op_getattr(nfs, &op[i], standard_attributes, 2);
 
         memset(&args, 0, sizeof(args));
         args.argarray.argarray_len = i;
         args.argarray.argarray_val = op;
 
         if (rpc_nfs4_compound_async(nfs->rpc, nfs4_lseek_cb, &args,
+                                    data) != 0) {
+                free_nfs4_cb_data(data);
+                return -1;
+        }
+
+        return 0;
+}
+
+static int
+nfs_parse_statvfs(struct nfs_context *nfs, struct nfs4_cb_data *data,
+                  struct statvfs *svfs, const char *buf, int len)
+{
+        uint64_t u64;
+        uint32_t u32;
+
+	svfs->f_bsize   = NFS_BLKSIZE;
+	svfs->f_frsize  = NFS_BLKSIZE;
+
+#if !defined(__ANDROID__)
+	svfs->f_flag    = 0;
+#endif
+
+        /* FSID
+         * NFSv4 FSID is 2*64 bit but statvfs fsid is just an
+         * unsigmed long. Mix the 2*64 bits and hope for the best.
+         */
+        CHECK_GETATTR_BUF_SPACE(len, 16);
+        memcpy(&u64, buf, 8);
+	svfs->f_fsid = nfs_ntoh64(u64);
+        buf += 8;
+        len -= 8;
+        memcpy(&u64, buf, 8);
+	svfs->f_fsid |= nfs_ntoh64(u64);
+        buf += 8;
+        len -= 8;
+
+        /* Files Avail */
+        CHECK_GETATTR_BUF_SPACE(len, 8);
+        memcpy(&u64, buf, 8);
+#if !defined(__ANDROID__)
+	svfs->f_favail  = nfs_ntoh64(u64);
+#endif
+        buf += 8;
+        len -= 8;
+
+        /* Files Free */
+        CHECK_GETATTR_BUF_SPACE(len, 8);
+        memcpy(&u64, buf, 8);
+	svfs->f_ffree  = nfs_ntoh64(u64);
+        buf += 8;
+        len -= 8;
+
+        /* Files Total */
+        CHECK_GETATTR_BUF_SPACE(len, 8);
+        memcpy(&u64, buf, 8);
+	svfs->f_files  = nfs_ntoh64(u64);
+        buf += 8;
+        len -= 8;
+
+        /* Max Name */
+        CHECK_GETATTR_BUF_SPACE(len, 4);
+        memcpy(&u32, buf, 4);
+#if !defined(__ANDROID__)
+	svfs->f_namemax  = ntohl(u32);
+#endif
+        buf += 4;
+        len -= 4;
+
+        /* Space Avail */
+        CHECK_GETATTR_BUF_SPACE(len, 8);
+        memcpy(&u64, buf, 8);
+	svfs->f_bavail  = nfs_ntoh64(u64) / svfs->f_frsize;
+        buf += 8;
+        len -= 8;
+
+        /* Space Free */
+        CHECK_GETATTR_BUF_SPACE(len, 8);
+        memcpy(&u64, buf, 8);
+	svfs->f_bfree  = nfs_ntoh64(u64) / svfs->f_frsize;
+        buf += 8;
+        len -= 8;
+
+        /* Space Total */
+        CHECK_GETATTR_BUF_SPACE(len, 8);
+        memcpy(&u64, buf, 8);
+	svfs->f_blocks  = nfs_ntoh64(u64) / svfs->f_frsize;
+        buf += 8;
+        len -= 8;
+
+        return 0;
+}
+
+static void
+nfs4_statvfs_cb(struct rpc_context *rpc, int status, void *command_data,
+              void *private_data)
+{
+        struct nfs4_cb_data *data = private_data;
+        struct nfs_context *nfs = data->nfs;
+        COMPOUND4res *res = command_data;
+        GETATTR4resok *garesok;
+	struct statvfs svfs;
+        int i;
+
+        assert(rpc->magic == RPC_CONTEXT_MAGIC);
+
+        if (check_nfs4_error(nfs, status, data, res, "STATVFS")) {
+                return;
+        }
+
+        memset(&svfs, 0, sizeof(svfs));
+
+        if ((i = nfs4_find_op(nfs, data, res, OP_GETATTR, "GETATTR")) < 0) {
+                return;
+        }
+        garesok = &res->resarray.resarray_val[i].nfs_resop4_u.opgetattr.GETATTR4res_u.resok4;
+
+        if (nfs_parse_statvfs(nfs, data, &svfs,
+                              garesok->obj_attributes.attr_vals.attrlist4_val,
+                              garesok->obj_attributes.attr_vals.attrlist4_len) < 0) {
+                data->cb(-EINVAL, nfs, nfs_get_error(nfs), data->private_data);
+                free_nfs4_cb_data(data);
+                return;
+        }
+
+	data->cb(0, nfs, &svfs, data->private_data);
+	free_nfs4_cb_data(data);
+}
+
+int
+nfs4_statvfs_async(struct nfs_context *nfs, const char *path, nfs_cb cb,
+                   void *private_data)
+{
+        struct nfs4_cb_data *data;
+        COMPOUND4args args;
+        struct nfsfh fh;
+        nfs_argop4 op[2];
+        int i;
+
+        data = malloc(sizeof(*data));
+        if (data == NULL) {
+                nfs_set_error(nfs, "Out of memory.");
+                return -1;
+        }
+        memset(data, 0, sizeof(*data));
+
+        data->nfs          = nfs;
+        data->cb           = cb;
+        data->private_data = private_data;
+
+        fh.fh.len = nfs->rootfh.len;
+        fh.fh.val = nfs->rootfh.val;
+
+        i = nfs4_op_putfh(nfs, &op[0], &fh);
+        i += nfs4_op_getattr(nfs, &op[i], statvfs_attributes, 2);
+
+        memset(&args, 0, sizeof(args));
+        args.argarray.argarray_len = i;
+        args.argarray.argarray_val = op;
+
+        if (rpc_nfs4_compound_async(nfs->rpc, nfs4_statvfs_cb, &args,
                                     data) != 0) {
                 free_nfs4_cb_data(data);
                 return -1;
