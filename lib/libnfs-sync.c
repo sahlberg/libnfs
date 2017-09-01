@@ -1212,7 +1212,8 @@ nfs_chmod(struct nfs_context *nfs, const char *path, int mode)
 	cb_data.is_finished = 0;
 
 	if (nfs_chmod_async(nfs, path, mode, chmod_cb, &cb_data) != 0) {
-		nfs_set_error(nfs, "nfs_chmod_async failed");
+		nfs_set_error(nfs, "nfs_chmod_async failed. %s",
+                              nfs_get_error(nfs));
 		return -1;
 	}
 
@@ -1229,7 +1230,8 @@ nfs_lchmod(struct nfs_context *nfs, const char *path, int mode)
 	cb_data.is_finished = 0;
 
 	if (nfs_lchmod_async(nfs, path, mode, chmod_cb, &cb_data) != 0) {
-		nfs_set_error(nfs, "nfs_lchmod_async failed");
+		nfs_set_error(nfs, "nfs_lchmod_async failed. %s",
+                              nfs_get_error(nfs));
 		return -1;
 	}
 
@@ -1267,7 +1269,8 @@ nfs_fchmod(struct nfs_context *nfs, struct nfsfh *nfsfh, int mode)
 	cb_data.is_finished = 0;
 
 	if (nfs_fchmod_async(nfs, nfsfh, mode, fchmod_cb, &cb_data) != 0) {
-		nfs_set_error(nfs, "nfs_fchmod_async failed");
+		nfs_set_error(nfs, "nfs_fchmod_async failed. %s",
+                              nfs_get_error(nfs));
 		return -1;
 	}
 

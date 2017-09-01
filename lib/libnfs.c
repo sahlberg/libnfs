@@ -1398,9 +1398,12 @@ nfs_chmod_async(struct nfs_context *nfs, const char *path, int mode,
         case NFS_V3:
                 return nfs3_chmod_async_internal(nfs, path, 0, mode,
                                                  cb, private_data);
+        case NFS_V4:
+                return nfs4_chmod_async_internal(nfs, path, 0, mode,
+                                                 cb, private_data);
         default:
-                nfs_set_error(nfs, "%s does not support NFSv4",
-                              __FUNCTION__);
+                nfs_set_error(nfs, "%s does not support NFSv%d",
+                              __FUNCTION__, nfs->version);
                 return -1;
         }
 }
@@ -1413,9 +1416,12 @@ nfs_lchmod_async(struct nfs_context *nfs, const char *path, int mode,
         case NFS_V3:
                 return nfs3_chmod_async_internal(nfs, path, 1, mode,
                                                  cb, private_data);
+        case NFS_V4:
+                return nfs4_chmod_async_internal(nfs, path, 1, mode,
+                                                 cb, private_data);
         default:
-                nfs_set_error(nfs, "%s does not support NFSv4",
-                              __FUNCTION__);
+                nfs_set_error(nfs, "%s does not support NFSv%d",
+                              __FUNCTION__, nfs->version);
                 return -1;
         }
 }
@@ -1427,9 +1433,11 @@ nfs_fchmod_async(struct nfs_context *nfs, struct nfsfh *nfsfh, int mode,
 	switch (nfs->version) {
         case NFS_V3:
                 return nfs3_fchmod_async(nfs, nfsfh, mode, cb, private_data);
+        case NFS_V4:
+                return nfs4_fchmod_async(nfs, nfsfh, mode, cb, private_data);
         default:
-                nfs_set_error(nfs, "%s does not support NFSv4",
-                              __FUNCTION__);
+                nfs_set_error(nfs, "%s does not support NFSv%d",
+                              __FUNCTION__, nfs->version);
                 return -1;
         }
 }

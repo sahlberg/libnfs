@@ -705,6 +705,28 @@ nfs4_op_truncate(struct nfs_context *nfs, nfs_argop4 *op, struct nfsfh *fh,
 }
 
 static int
+nfs4_op_chmod(struct nfs_context *nfs, nfs_argop4 *op, struct nfsfh *fh,
+              void *sabuf)
+{
+        SETATTR4args *saargs;
+        static uint32_t mask[2] = {0,
+                                   1 << (FATTR4_MODE - 32)};
+
+        op[0].argop = OP_SETATTR;
+        saargs = &op[0].nfs_argop4_u.opsetattr;
+        saargs->stateid.seqid = fh->stateid.seqid;
+        memcpy(saargs->stateid.other, fh->stateid.other, 12);
+
+        saargs->obj_attributes.attrmask.bitmap4_len = 2;
+        saargs->obj_attributes.attrmask.bitmap4_val = mask;
+
+        saargs->obj_attributes.attr_vals.attrlist4_len = 4;
+        saargs->obj_attributes.attr_vals.attrlist4_val = sabuf;
+
+        return 1;
+}
+
+static int
 nfs4_op_readdir(struct nfs_context *nfs, nfs_argop4 *op, uint64_t cookie)
 {
         READDIR4args *rdargs;
@@ -3865,6 +3887,151 @@ nfs4_statvfs_async(struct nfs_context *nfs, const char *path, nfs_cb cb,
 
         if (rpc_nfs4_compound_async(nfs->rpc, nfs4_statvfs_cb, &args,
                                     data) != 0) {
+                free_nfs4_cb_data(data);
+                return -1;
+        }
+
+        return 0;
+}
+
+static void
+nfs4_chmod_close_cb(struct rpc_context *rpc, int status, void *command_data,
+                    void *private_data)
+{
+        struct nfs4_cb_data *data = private_data;
+        struct nfs_context *nfs = data->nfs;
+        COMPOUND4res *res = command_data;
+
+        assert(rpc->magic == RPC_CONTEXT_MAGIC);
+
+        if (res) {
+                nfs_increment_seqid(nfs, res->status);
+        }
+
+        if (check_nfs4_error(nfs, status, data, res, "CLOSE")) {
+                return;
+        }
+
+        data->cb(0, nfs, NULL, data->private_data);
+        free_nfs4_cb_data(data);
+}
+
+static void
+nfs4_chmod_open_cb(struct rpc_context *rpc, int status, void *command_data,
+                   void *private_data)
+{
+        struct nfs4_cb_data *data = private_data;
+        struct nfs_context *nfs = data->nfs;
+        struct nfsfh *fh = data->filler.blob0.val;
+        COMPOUND4res *res = command_data;
+        COMPOUND4args args;
+        nfs_argop4 op[4];
+        int i;
+
+        if (check_nfs4_error(nfs, status, data, res, "OPEN")) {
+                return;
+        }
+
+        i = nfs4_op_putfh(nfs, &op[0], fh);
+        i += nfs4_op_chmod(nfs, &op[i], fh, data->filler.blob3.val);
+        i += nfs4_op_close(nfs, &op[i], fh);
+
+        memset(&args, 0, sizeof(args));
+        args.argarray.argarray_len = i;
+        args.argarray.argarray_val = op;
+
+        if (rpc_nfs4_compound_async(nfs->rpc, nfs4_chmod_close_cb, &args,
+                                    data) != 0) {
+                /* Not much we can do but leak one fd on the server :( */
+                data->cb(-ENOMEM, nfs, nfs_get_error(nfs), data->private_data);
+                free_nfs4_cb_data(data);
+                return;
+        }
+}
+
+int
+nfs4_chmod_async_internal(struct nfs_context *nfs, const char *path,
+                          int no_follow, int mode, nfs_cb cb,
+                          void *private_data)
+{
+        struct nfs4_cb_data *data;
+        uint32_t m;
+
+        data = init_cb_data_split_path(nfs, path);
+        if (data == NULL) {
+                return -1;
+        }
+
+        data->cb           = cb;
+        data->private_data = private_data;
+        data->open_cb      = nfs4_chmod_open_cb;
+
+        if (no_follow) {
+                data->flags |= LOOKUP_FLAG_NO_FOLLOW;
+        }
+
+        data->filler.blob3.val = malloc(sizeof(uint32_t));
+        if (data->filler.blob3.val == NULL) {
+                nfs_set_error(nfs, "Out of memory");
+                free_nfs4_cb_data(data);
+                return -1;
+        }
+        data->filler.blob3.free = free;
+
+        m = htonl(mode);
+        memcpy(data->filler.blob3.val, &m, sizeof(uint32_t));
+
+        if (nfs4_open_async_internal(nfs, data, O_WRONLY, 0) < 0) {
+                return -1;
+        }
+
+        return 0;
+}
+
+int
+nfs4_fchmod_async(struct nfs_context *nfs, struct nfsfh *fh, int mode,
+                  nfs_cb cb, void *private_data)
+{
+        COMPOUND4args args;
+        nfs_argop4 op[2];
+        struct nfs4_cb_data *data;
+        uint32_t m;
+        int i;
+
+        data = malloc(sizeof(*data));
+        if (data == NULL) {
+                nfs_set_error(nfs, "Out of memory.");
+                return -1;
+        }
+        memset(data, 0, sizeof(*data));
+
+        data->nfs          = nfs;
+        data->cb           = cb;
+        data->private_data = private_data;
+
+        data->filler.blob3.val = malloc(sizeof(uint32_t));
+        if (data->filler.blob3.val == NULL) {
+                nfs_set_error(nfs, "Out of memory");
+                free_nfs4_cb_data(data);
+                return -1;
+        }
+        data->filler.blob3.free = free;
+
+        m = htonl(mode);
+        memcpy(data->filler.blob3.val, &m, sizeof(uint32_t));
+        
+        memset(op, 0, sizeof(op));
+
+        i = nfs4_op_putfh(nfs, &op[0], fh);
+        i += nfs4_op_chmod(nfs, &op[i], fh, data->filler.blob3.val);
+
+        memset(&args, 0, sizeof(args));
+        args.argarray.argarray_len = i;
+        args.argarray.argarray_val = op;
+
+        if (rpc_nfs4_compound_async(nfs->rpc, nfs4_fsync_cb, &args,
+                                    data) != 0) {
+                data->filler.blob0.val = NULL;
                 free_nfs4_cb_data(data);
                 return -1;
         }

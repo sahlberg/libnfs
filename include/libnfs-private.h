@@ -474,10 +474,15 @@ int nfs3_write_async(struct nfs_context *nfs, struct nfsfh *nfsfh,
    
 int nfs4_chdir_async(struct nfs_context *nfs, const char *path,
                      nfs_cb cb, void *private_data);
+int nfs4_chmod_async_internal(struct nfs_context *nfs, const char *path,
+                              int no_follow, int mode, nfs_cb cb,
+                              void *private_data);
 int nfs4_close_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_cb cb,
                      void *private_data);
 int nfs4_create_async(struct nfs_context *nfs, const char *path, int flags,
                       int mode, nfs_cb cb, void *private_data);
+int nfs4_fchmod_async(struct nfs_context *nfs, struct nfsfh *nfsfh, int mode,
+                      nfs_cb cb, void *private_data);
 int nfs4_fstat64_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_cb cb,
                        void *private_data);
 int nfs4_fsync_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_cb cb,
