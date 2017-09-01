@@ -1308,7 +1308,8 @@ nfs_chown(struct nfs_context *nfs, const char *path, int uid, int gid)
 	cb_data.is_finished = 0;
 
 	if (nfs_chown_async(nfs, path, uid, gid, chown_cb, &cb_data) != 0) {
-		nfs_set_error(nfs, "nfs_chown_async failed");
+		nfs_set_error(nfs, "nfs_chown_async failed. %s",
+                              nfs_get_error(nfs));
 		return -1;
 	}
 
@@ -1328,7 +1329,8 @@ nfs_lchown(struct nfs_context *nfs, const char *path, int uid, int gid)
 	cb_data.is_finished = 0;
 
 	if (nfs_lchown_async(nfs, path, uid, gid, chown_cb, &cb_data) != 0) {
-		nfs_set_error(nfs, "nfs_lchown_async failed");
+		nfs_set_error(nfs, "nfs_lchown_async failed. %s",
+                              nfs_get_error(nfs));
 		return -1;
 	}
 
@@ -1363,7 +1365,8 @@ nfs_fchown(struct nfs_context *nfs, struct nfsfh *nfsfh, int uid, int gid)
 	cb_data.is_finished = 0;
 
 	if (nfs_fchown_async(nfs, nfsfh, uid, gid, fchown_cb, &cb_data) != 0) {
-		nfs_set_error(nfs, "nfs_fchown_async failed");
+		nfs_set_error(nfs, "nfs_fchown_async failed. %s",
+                              nfs_get_error(nfs));
 		return -1;
 	}
 

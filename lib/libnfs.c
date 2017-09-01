@@ -1450,9 +1450,12 @@ nfs_chown_async(struct nfs_context *nfs, const char *path, int uid, int gid,
         case NFS_V3:
                 return nfs3_chown_async_internal(nfs, path, 0, uid, gid,
                                                  cb, private_data);
+        case NFS_V4:
+                return nfs4_chown_async_internal(nfs, path, 0, uid, gid,
+                                                 cb, private_data);
         default:
-                nfs_set_error(nfs, "%s does not support NFSv4",
-                              __FUNCTION__);
+                nfs_set_error(nfs, "%s does not support NFSv%d",
+                              __FUNCTION__, nfs->version);
                 return -1;
         }
 }
@@ -1465,9 +1468,12 @@ nfs_lchown_async(struct nfs_context *nfs, const char *path, int uid, int gid,
         case NFS_V3:
                 return nfs3_chown_async_internal(nfs, path, 1, uid, gid,
                                                  cb, private_data);
+        case NFS_V4:
+                return nfs4_chown_async_internal(nfs, path, 1, uid, gid,
+                                                 cb, private_data);
         default:
-                nfs_set_error(nfs, "%s does not support NFSv4",
-                              __FUNCTION__);
+                nfs_set_error(nfs, "%s does not support NFSv%d",
+                              __FUNCTION__, nfs->version);
                 return -1;
         }
 }
@@ -1480,9 +1486,12 @@ nfs_fchown_async(struct nfs_context *nfs, struct nfsfh *nfsfh, int uid,
         case NFS_V3:
                 return nfs3_fchown_async(nfs, nfsfh, uid, gid,
                                          cb, private_data);
+        case NFS_V4:
+                return nfs4_fchown_async(nfs, nfsfh, uid, gid,
+                                         cb, private_data);
         default:
-                nfs_set_error(nfs, "%s does not support NFSv4",
-                              __FUNCTION__);
+                nfs_set_error(nfs, "%s does not support NFSv%d",
+                              __FUNCTION__, nfs->version);
                 return -1;
         }
 }
