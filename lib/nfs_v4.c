@@ -1227,7 +1227,7 @@ nfs4_lookup_path_1_cb(struct rpc_context *rpc, int status, void *command_data,
          */
         if (!resolve_link) {
                 tmp = path;
-                for (i = 0; i < data->link.idx; i++) {
+                for (i = 0; i < (int)data->link.idx; i++) {
                         tmp = strchr(tmp + 1, '/');
                 }
                 *tmp = 0;
@@ -2772,7 +2772,7 @@ nfs4_write_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t count,
                 data->filler.blob0.free = NULL;
 
                 data->filler.blob1.val = discard_const(buf);
-                data->filler.blob1.len = count;
+                data->filler.blob1.len = (int)count;
                 data->filler.blob1.free = NULL;
 
                 if (rpc_nfs4_compound_async(nfs->rpc, nfs4_write_append_cb,
@@ -3292,7 +3292,7 @@ nfs4_parse_readdir(struct nfs_context *nfs, struct nfs4_cb_data *data,
                         return;
                 }
 
-                nfsdirent->mode = st.nfs_mode;
+                nfsdirent->mode = (uint32_t)st.nfs_mode;
                 switch (st.nfs_mode & S_IFMT) {
                 case S_IFREG:
                         nfsdirent->type = NF4REG;
@@ -3317,18 +3317,18 @@ nfs4_parse_readdir(struct nfs_context *nfs, struct nfs4_cb_data *data,
                         break;
                 }
                 nfsdirent->size = st.nfs_size;
-                nfsdirent->atime.tv_sec  = st.nfs_atime;
-                nfsdirent->atime.tv_usec = st.nfs_atime_nsec/1000;
-                nfsdirent->atime_nsec    = st.nfs_atime_nsec;
-                nfsdirent->mtime.tv_sec  = st.nfs_mtime;
-                nfsdirent->mtime.tv_usec = st.nfs_mtime_nsec/1000;
-                nfsdirent->mtime_nsec    = st.nfs_mtime_nsec;
-                nfsdirent->ctime.tv_sec  = st.nfs_ctime;
-                nfsdirent->ctime.tv_usec = st.nfs_ctime_nsec/1000;
-                nfsdirent->ctime_nsec    = st.nfs_ctime_nsec;
-                nfsdirent->uid = st.nfs_uid;
-                nfsdirent->gid = st.nfs_gid;
-                nfsdirent->nlink = st.nfs_nlink;
+                nfsdirent->atime.tv_sec  = (long)st.nfs_atime;
+                nfsdirent->atime.tv_usec = (long)(st.nfs_atime_nsec/1000);
+                nfsdirent->atime_nsec    = (uint32_t)st.nfs_atime_nsec;
+                nfsdirent->mtime.tv_sec  = (long)st.nfs_mtime;
+                nfsdirent->mtime.tv_usec = (long)(st.nfs_mtime_nsec/1000);
+                nfsdirent->mtime_nsec    = (uint32_t)st.nfs_mtime_nsec;
+                nfsdirent->ctime.tv_sec  = (long)st.nfs_ctime;
+                nfsdirent->ctime.tv_usec = (long)(st.nfs_ctime_nsec/1000);
+                nfsdirent->ctime_nsec    = (uint32_t)st.nfs_ctime_nsec;
+                nfsdirent->uid = (uint32_t)st.nfs_uid;
+                nfsdirent->gid = (uint32_t)st.nfs_gid;
+                nfsdirent->nlink = (uint32_t)st.nfs_nlink;
                 nfsdirent->dev = st.nfs_dev;
                 nfsdirent->rdev = st.nfs_rdev;
                 nfsdirent->blksize = NFS_BLKSIZE;
@@ -3681,12 +3681,12 @@ nfs4_lseek_cb(struct rpc_context *rpc, int status, void *command_data,
         GETATTR4resok *garesok = NULL;
         struct nfsfh *fh = data->filler.blob0.val;
         struct nfs_stat_64 st;
-        uint64_t offset;
+        int64_t offset;
         int i;
 
         assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
-        memcpy(&offset, data->filler.blob1.val, sizeof(uint64_t));
+        memcpy(&offset, data->filler.blob1.val, sizeof(int64_t));
         
         if (check_nfs4_error(nfs, status, data, res, "LSEEK")) {
                 return;
@@ -3703,7 +3703,7 @@ nfs4_lseek_cb(struct rpc_context *rpc, int status, void *command_data,
                              garesok->obj_attributes.attr_vals.attrlist4_len);
 
 	if (offset < 0 &&
-	    -offset > st.nfs_size) {
+	    -offset > (int64_t)st.nfs_size) {
                 nfs_set_error(nfs, "Negative offset for lseek("
                               "SEET_END)");
 		data->cb(-EINVAL, nfs, &fh->offset,
@@ -3810,11 +3810,11 @@ nfs_parse_statvfs(struct nfs_context *nfs, struct nfs4_cb_data *data,
          */
         CHECK_GETATTR_BUF_SPACE(len, 16);
         memcpy(&u64, buf, 8);
-	svfs->f_fsid = nfs_ntoh64(u64);
+	svfs->f_fsid = (unsigned long)nfs_ntoh64(u64);
         buf += 8;
         len -= 8;
         memcpy(&u64, buf, 8);
-	svfs->f_fsid |= nfs_ntoh64(u64);
+	svfs->f_fsid |= (unsigned long)nfs_ntoh64(u64);
         buf += 8;
         len -= 8;
 
@@ -3822,7 +3822,7 @@ nfs_parse_statvfs(struct nfs_context *nfs, struct nfs4_cb_data *data,
         CHECK_GETATTR_BUF_SPACE(len, 8);
         memcpy(&u64, buf, 8);
 #if !defined(__ANDROID__)
-	svfs->f_favail  = nfs_ntoh64(u64);
+	svfs->f_favail  = (fsfilcnt_t)nfs_ntoh64(u64);
 #endif
         buf += 8;
         len -= 8;
@@ -3830,14 +3830,14 @@ nfs_parse_statvfs(struct nfs_context *nfs, struct nfs4_cb_data *data,
         /* Files Free */
         CHECK_GETATTR_BUF_SPACE(len, 8);
         memcpy(&u64, buf, 8);
-	svfs->f_ffree  = nfs_ntoh64(u64);
+	svfs->f_ffree  = (fsfilcnt_t)nfs_ntoh64(u64);
         buf += 8;
         len -= 8;
 
         /* Files Total */
         CHECK_GETATTR_BUF_SPACE(len, 8);
         memcpy(&u64, buf, 8);
-	svfs->f_files  = nfs_ntoh64(u64);
+	svfs->f_files  = (fsfilcnt_t)nfs_ntoh64(u64);
         buf += 8;
         len -= 8;
 
@@ -3853,21 +3853,21 @@ nfs_parse_statvfs(struct nfs_context *nfs, struct nfs4_cb_data *data,
         /* Space Avail */
         CHECK_GETATTR_BUF_SPACE(len, 8);
         memcpy(&u64, buf, 8);
-	svfs->f_bavail  = nfs_ntoh64(u64) / svfs->f_frsize;
+	svfs->f_bavail  = (fsblkcnt_t)(nfs_ntoh64(u64) / svfs->f_frsize);
         buf += 8;
         len -= 8;
 
         /* Space Free */
         CHECK_GETATTR_BUF_SPACE(len, 8);
         memcpy(&u64, buf, 8);
-	svfs->f_bfree  = nfs_ntoh64(u64) / svfs->f_frsize;
+	svfs->f_bfree  = (fsblkcnt_t)(nfs_ntoh64(u64) / svfs->f_frsize);
         buf += 8;
         len -= 8;
 
         /* Space Total */
         CHECK_GETATTR_BUF_SPACE(len, 8);
         memcpy(&u64, buf, 8);
-	svfs->f_blocks  = nfs_ntoh64(u64) / svfs->f_frsize;
+	svfs->f_blocks  = (fsblkcnt_t)(nfs_ntoh64(u64) / svfs->f_frsize);
         buf += 8;
         len -= 8;
 

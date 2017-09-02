@@ -34,6 +34,8 @@ THE SOFTWARE.
 #include <sys/stat.h>
 #include <time.h>
 
+typedef unsigned long fsblkcnt_t;
+typedef unsigned long fsfilcnt_t;
 typedef unsigned int uid_t;
 typedef unsigned int gid_t;
 typedef int socklen_t;
