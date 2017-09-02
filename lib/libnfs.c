@@ -1504,9 +1504,12 @@ nfs_utimes_async(struct nfs_context *nfs, const char *path,
         case NFS_V3:
                 return nfs3_utimes_async_internal(nfs, path, 0, times,
                                                   cb, private_data);
+        case NFS_V4:
+                return nfs4_utimes_async_internal(nfs, path, 0, times,
+                                                  cb, private_data);
         default:
-                nfs_set_error(nfs, "%s does not support NFSv4",
-                              __FUNCTION__);
+                nfs_set_error(nfs, "%s does not support NFSv%d",
+                              __FUNCTION__, nfs->version);
                 return -1;
         }
 }
@@ -1519,9 +1522,12 @@ nfs_lutimes_async(struct nfs_context *nfs, const char *path,
         case NFS_V3:
                 return nfs3_utimes_async_internal(nfs, path, 1, times,
                                                   cb, private_data);
+        case NFS_V4:
+                return nfs4_utimes_async_internal(nfs, path, 1, times,
+                                                  cb, private_data);
         default:
-                nfs_set_error(nfs, "%s does not support NFSv4",
-                              __FUNCTION__);
+                nfs_set_error(nfs, "%s does not support NFSv%d",
+                              __FUNCTION__, nfs->version);
                 return -1;
         }
 }

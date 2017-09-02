@@ -750,6 +750,29 @@ nfs4_op_chown(struct nfs_context *nfs, nfs_argop4 *op, struct nfsfh *fh,
 }
 
 static int
+nfs4_op_utimes(struct nfs_context *nfs, nfs_argop4 *op, struct nfsfh *fh,
+               void *sabuf, int len)
+{
+        SETATTR4args *saargs;
+        static uint32_t mask[2] = {0,
+                                   1 << (FATTR4_TIME_ACCESS_SET - 32) |
+                                   1 << (FATTR4_TIME_MODIFY_SET - 32)};
+
+        op[0].argop = OP_SETATTR;
+        saargs = &op[0].nfs_argop4_u.opsetattr;
+        saargs->stateid.seqid = fh->stateid.seqid;
+        memcpy(saargs->stateid.other, fh->stateid.other, 12);
+
+        saargs->obj_attributes.attrmask.bitmap4_len = 2;
+        saargs->obj_attributes.attrmask.bitmap4_val = mask;
+
+        saargs->obj_attributes.attr_vals.attrlist4_len = len;
+        saargs->obj_attributes.attr_vals.attrlist4_val = sabuf;
+
+        return 1;
+}
+
+static int
 nfs4_op_readdir(struct nfs_context *nfs, nfs_argop4 *op, uint64_t cookie)
 {
         READDIR4args *rdargs;
@@ -4320,4 +4343,92 @@ nfs4_access2_async(struct nfs_context *nfs, const char *path, nfs_cb cb,
 {
         return nfs4_access_internal(nfs, path, R_OK|W_OK|X_OK, 1,
                                     cb, private_data);
+}
+
+static void
+nfs4_utimes_open_cb(struct rpc_context *rpc, int status, void *command_data,
+                   void *private_data)
+{
+        struct nfs4_cb_data *data = private_data;
+        struct nfs_context *nfs = data->nfs;
+        struct nfsfh *fh = data->filler.blob0.val;
+        COMPOUND4res *res = command_data;
+        COMPOUND4args args;
+        nfs_argop4 op[4];
+        int i;
+
+        if (check_nfs4_error(nfs, status, data, res, "OPEN")) {
+                return;
+        }
+
+        i = nfs4_op_putfh(nfs, &op[0], fh);
+        i += nfs4_op_utimes(nfs, &op[i], fh, data->filler.blob3.val,
+                            data->filler.blob3.len);
+        i += nfs4_op_close(nfs, &op[i], fh);
+
+        memset(&args, 0, sizeof(args));
+        args.argarray.argarray_len = i;
+        args.argarray.argarray_val = op;
+
+        if (rpc_nfs4_compound_async(nfs->rpc, nfs4_close_cb, &args,
+                                    data) != 0) {
+                /* Not much we can do but leak one fd on the server :( */
+                data->cb(-ENOMEM, nfs, nfs_get_error(nfs), data->private_data);
+                free_nfs4_cb_data(data);
+                return;
+        }
+}
+
+int
+nfs4_utimes_async_internal(struct nfs_context *nfs, const char *path,
+                           int no_follow, struct timeval *times,
+                           nfs_cb cb, void *private_data)
+{
+        struct nfs4_cb_data *data;
+        char *buf;
+        uint32_t u32;
+        uint64_t u64;
+
+        data = init_cb_data_split_path(nfs, path);
+        if (data == NULL) {
+                return -1;
+        }
+
+        data->cb           = cb;
+        data->private_data = private_data;
+        data->open_cb      = nfs4_utimes_open_cb;
+
+        if (no_follow) {
+                data->flags |= LOOKUP_FLAG_NO_FOLLOW;
+        }
+
+        data->filler.blob3.len = 2 * (4 + 8 + 4);
+        buf = data->filler.blob3.val = malloc(data->filler.blob3.len);
+        if (data->filler.blob3.val == NULL) {
+                nfs_set_error(nfs, "Out of memory");
+                return -1;
+        }
+        data->filler.blob3.free = free;
+
+        /* atime */
+        u32 = htonl(SET_TO_CLIENT_TIME4);
+        memcpy(buf, &u32, sizeof(uint32_t));
+        u64 = nfs_hton64(times[0].tv_sec);
+        memcpy(buf + 4, &u64, sizeof(uint64_t));
+        u32 = htonl(times[0].tv_usec * 1000);
+        memcpy(buf + 12, &u32, sizeof(uint32_t));
+        buf += 16;
+        /* mtime */
+        u32 = htonl(SET_TO_CLIENT_TIME4);
+        memcpy(buf, &u32, sizeof(uint32_t));
+        u64 = nfs_hton64(times[1].tv_sec);
+        memcpy(buf + 4, &u64, sizeof(uint64_t));
+        u32 = htonl(times[1].tv_usec * 1000);
+        memcpy(buf + 12, &u32, sizeof(uint32_t));
+
+        if (nfs4_open_async_internal(nfs, data, O_WRONLY, 0) < 0) {
+                return -1;
+        }
+
+        return 0;
 }

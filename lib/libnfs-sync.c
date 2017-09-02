@@ -1403,7 +1403,8 @@ nfs_utimes(struct nfs_context *nfs, const char *path, struct timeval *times)
 	cb_data.is_finished = 0;
 
 	if (nfs_utimes_async(nfs, path, times, utimes_cb, &cb_data) != 0) {
-		nfs_set_error(nfs, "nfs_utimes_async failed");
+		nfs_set_error(nfs, "nfs_utimes_async failed. %s",
+                              nfs_get_error(nfs));
 		return -1;
 	}
 
@@ -1420,7 +1421,8 @@ nfs_lutimes(struct nfs_context *nfs, const char *path, struct timeval *times)
 	cb_data.is_finished = 0;
 
 	if (nfs_lutimes_async(nfs, path, times, utimes_cb, &cb_data) != 0) {
-		nfs_set_error(nfs, "nfs_lutimes_async failed");
+		nfs_set_error(nfs, "nfs_lutimes_async failed. %s",
+                              nfs_get_error(nfs));
 		return -1;
 	}
 
