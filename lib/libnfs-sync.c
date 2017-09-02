@@ -1493,7 +1493,8 @@ nfs_access(struct nfs_context *nfs, const char *path, int mode)
 	cb_data.is_finished = 0;
 
 	if (nfs_access_async(nfs, path, mode, access_cb, &cb_data) != 0) {
-		nfs_set_error(nfs, "nfs_access_async failed");
+		nfs_set_error(nfs, "nfs_access_async failed. %s",
+                              nfs_get_error(nfs));
 		return -1;
 	}
 
@@ -1530,7 +1531,8 @@ nfs_access2(struct nfs_context *nfs, const char *path)
 	cb_data.is_finished = 0;
 
 	if (nfs_access2_async(nfs, path, access2_cb, &cb_data) != 0) {
-		nfs_set_error(nfs, "nfs_access2_async failed");
+		nfs_set_error(nfs, "nfs_access2_async failed. %s",
+                              nfs_get_error(nfs));
 		return -1;
 	}
 

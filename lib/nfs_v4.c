@@ -1297,6 +1297,16 @@ nfs4_populate_getattr(struct nfs4_cb_data *data, nfs_argop4 *op)
         return nfs4_op_getfh(data->nfs, op);
 }
 
+static int
+nfs4_populate_access(struct nfs4_cb_data *data, nfs_argop4 *op)
+{
+        uint32_t mode;
+
+        memcpy(&mode, data->filler.blob3.val, sizeof(uint32_t));
+
+        return nfs4_op_access(data->nfs, op, mode);
+}
+
 static void
 nfs4_mount_4_cb(struct rpc_context *rpc, int status, void *command_data,
                 void *private_data)
@@ -4199,4 +4209,115 @@ nfs4_fchown_async(struct nfs_context *nfs, struct nfsfh *fh, int uid, int gid,
         }
 
         return 0;
+}
+
+static void
+nfs4_access_cb(struct rpc_context *rpc, int status, void *command_data,
+               void *private_data)
+{
+        struct nfs4_cb_data *data = private_data;
+        struct nfs_context *nfs = data->nfs;
+        COMPOUND4res *res = command_data;
+        ACCESS4resok *aresok;
+        int i;
+
+        assert(rpc->magic == RPC_CONTEXT_MAGIC);
+
+        if (check_nfs4_error(nfs, status, data, res, "ACCESS")) {
+                return;
+        }
+
+        if ((i = nfs4_find_op(nfs, data, res, OP_ACCESS, "ACCESS")) < 0) {
+                return;
+        }
+
+        aresok = &res->resarray.resarray_val[i].nfs_resop4_u.opaccess.ACCESS4res_u.resok4;
+
+        /* access2 */
+        if (data->filler.flags) {
+                int mode = 0;
+
+                if (aresok->access & ACCESS4_READ) {
+                        mode |= R_OK;
+                }
+                if (aresok->access & ACCESS4_MODIFY) {
+                        mode |= W_OK;
+                }
+                if (aresok->access & ACCESS4_EXECUTE) {
+                        mode |= X_OK;
+                }
+                data->cb(mode, nfs, NULL, data->private_data);
+                free_nfs4_cb_data(data);
+                return;
+        }
+
+        if (aresok->supported != aresok->access) {
+                data->cb(-EACCES, nfs, NULL, data->private_data);
+                free_nfs4_cb_data(data);
+                return;
+        }
+
+        data->cb(0, nfs, NULL, data->private_data);
+        free_nfs4_cb_data(data);
+}
+
+static int
+nfs4_access_internal(struct nfs_context *nfs, const char *path, int mode,
+                     int is_access2, nfs_cb cb, void *private_data)
+{
+        struct nfs4_cb_data *data;
+        uint32_t m;
+
+        data = init_cb_data_full_path(nfs, path);
+        if (data == NULL) {
+                return -1;
+        }
+
+        data->cb            = cb;
+        data->private_data  = private_data;
+        data->filler.func   = nfs4_populate_access;
+        data->filler.max_op = 1;
+        data->filler.flags = is_access2;
+
+        data->filler.blob3.val = malloc(sizeof(uint32_t));
+        if (data->filler.blob3.val == NULL) {
+                nfs_set_error(nfs, "Out of memory");
+                return -1;
+        }
+        data->filler.blob3.free = free;
+
+        m = 0;
+        if (mode & R_OK) {
+                m |= ACCESS4_READ;
+        }
+        if (mode & W_OK) {
+                m |= ACCESS4_MODIFY;
+        }
+        if (mode & X_OK) {
+                m |= ACCESS4_EXECUTE;
+        }
+        memcpy(data->filler.blob3.val, &m, sizeof(uint32_t));
+
+        if (nfs4_lookup_path_async(nfs, data, nfs4_access_cb) < 0) {
+                free_nfs4_cb_data(data);
+                return -1;
+        }
+
+        return 0;
+}
+
+int
+nfs4_access_async(struct nfs_context *nfs, const char *path, int mode,
+                  nfs_cb cb, void *private_data)
+{
+        return nfs4_access_internal(nfs, path, mode, 0,
+                                    cb, private_data);
+}
+
+int
+nfs4_access2_async(struct nfs_context *nfs, const char *path, nfs_cb cb,
+                   void *private_data)
+{
+        return nfs4_access_internal(nfs, path, R_OK|W_OK|X_OK, 1,
+                                    cb, private_data);
 }

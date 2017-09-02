@@ -1547,9 +1547,11 @@ nfs_access_async(struct nfs_context *nfs, const char *path, int mode,
 	switch (nfs->version) {
         case NFS_V3:
                 return nfs3_access_async(nfs, path, mode, cb, private_data);
+        case NFS_V4:
+                return nfs4_access_async(nfs, path, mode, cb, private_data);
         default:
-                nfs_set_error(nfs, "%s does not support NFSv4",
-                              __FUNCTION__);
+                nfs_set_error(nfs, "%s does not support NFSv%d",
+                              __FUNCTION__, nfs->version);
                 return -1;
         }
 }
@@ -1561,6 +1563,8 @@ nfs_access2_async(struct nfs_context *nfs, const char *path, nfs_cb cb,
 	switch (nfs->version) {
         case NFS_V3:
                 return nfs3_access2_async(nfs, path, cb, private_data);
+        case NFS_V4:
+                return nfs4_access2_async(nfs, path, cb, private_data);
         default:
                 nfs_set_error(nfs, "%s does not support NFSv4",
                               __FUNCTION__);
