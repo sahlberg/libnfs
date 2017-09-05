@@ -2296,7 +2296,8 @@ nfs3_lseek_1_cb(struct rpc_context *rpc, int status, void *command_data,
 	GETATTR3res *res;
 	struct nfs_cb_data *data = private_data;
 	struct nfs_context *nfs = data->nfs;
-	uint64_t size = 0;
+	int64_t size = 0;
+        int64_t offset = (int64_t) data->offset;
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
@@ -2316,10 +2317,10 @@ nfs3_lseek_1_cb(struct rpc_context *rpc, int status, void *command_data,
 		return;
 	}
 
-	size = res->GETATTR3res_u.resok.obj_attributes.size;
+	size = (int64_t)res->GETATTR3res_u.resok.obj_attributes.size;
 
-	if (data->offset < 0 &&
-	    (uint64_t)(-data->offset) > size) {
+	if (offset < 0 &&
+	    -offset > (int64_t)size) {
 		data->cb(-EINVAL, nfs, &data->nfsfh->offset,
                          data->private_data);
 	} else {
