@@ -38,3 +38,4 @@ stamp-h1
 
 libnfs.pc
 !libnfs.pc.in
+build
