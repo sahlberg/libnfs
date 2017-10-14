@@ -45,6 +45,7 @@ typedef int socklen_t;
 #define S_IWUSR 0000200
 #define S_IXUSR 0000100
 #endif
+#ifndef S_IRWXG
 #define	S_IRWXG	0000070			/* RWX mask for group */
 #define S_IRGRP 0000040
 #define S_IWGRP 0000020
@@ -53,6 +54,7 @@ typedef int socklen_t;
 #define S_IROTH 0000004
 #define S_IWOTH 0000002
 #define S_IXOTH 0000001
+#endif
 
 #define F_GETFL  3
 #define F_SETFL  4
