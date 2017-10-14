@@ -396,6 +396,9 @@ rpc_timeout_scan(struct rpc_context *rpc)
 			continue;
 		}
 		LIBNFS_LIST_REMOVE(&rpc->outqueue.head, pdu);
+		if (!rpc->outqueue.head) {
+			rpc->outqueue.tail = NULL;
+		}
 		rpc_set_error(rpc, "command timed out");
 		pdu->cb(rpc, RPC_STATUS_TIMEOUT,
 			NULL, pdu->private_data);
@@ -416,6 +419,9 @@ rpc_timeout_scan(struct rpc_context *rpc)
 				continue;
 			}
 			LIBNFS_LIST_REMOVE(&q->head, pdu);
+			if (!q->head) {
+				q->tail = NULL;
+			}
 			rpc_set_error(rpc, "command timed out");
 			pdu->cb(rpc, RPC_STATUS_TIMEOUT,
 				NULL, pdu->private_data);
