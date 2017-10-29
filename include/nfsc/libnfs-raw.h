@@ -1484,9 +1484,9 @@ EXTERN int rpc_nfs2_lookup_async(struct rpc_context *rpc, rpc_cb cb,
  *                      data is NULL.
  */
 struct READLINK2args;
-EXTERN int rpc_nfs32_readlink_async(struct rpc_context *rpc, rpc_cb cb,
-                                    struct READLINK2args *args,
-                                    void *private_data);
+EXTERN int rpc_nfs2_readlink_async(struct rpc_context *rpc, rpc_cb cb,
+                                   struct READLINK2args *args,
+                                   void *private_data);
 
 /*
  * Call NFS2/READ
