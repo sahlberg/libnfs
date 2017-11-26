@@ -34,6 +34,8 @@
 #define NFS_MAX_FD  255
 
 static int debug = 0;
+static int nfsuid = -1;
+static int nfsgid = -1;
 
 #ifndef discard_const
 #define discard_const(ptr) ((void *)((intptr_t)(ptr)))
@@ -78,6 +80,11 @@ int open(const char *path, int flags, mode_t mode)
 			errno = ENOMEM;
 			return -1;
 		}
+
+		if (nfsuid >= 0)
+			nfs_set_uid(nfs, nfsuid);
+		if (nfsgid >= 0)
+			nfs_set_gid(nfs, nfsgid);
 
 		url = nfs_parse_url_full(nfs, path);
 		if (url == NULL) {
@@ -442,11 +449,8 @@ int __fxstat(int ver, int fd, struct stat *buf)
 		buf->st_blksize = st64.nfs_blksize;
 		buf->st_blocks  = st64.nfs_blocks;
 		buf->st_atim.tv_sec   = st64.nfs_atime;
-		buf->st_atim.tv_usec  = st64.nfs_atime_nsec / 1000;
 		buf->st_mtim.tv_sec   = st64.nfs_mtime;
-		buf->st_mtim.tv_usec  = st64.nfs_mtime_nsec / 1000;
 		buf->st_ctim.tv_sec   = st64.nfs_ctime;
-		buf->st_ctim.tv_usec  = st64.nfs_ctime_nsec / 1000;
 
 		LD_NFS_DPRINTF(9, "__fxstat(%d) success", fd);
 		return ret;
@@ -481,17 +485,35 @@ int __fxstat64(int ver, int fd, struct stat64 *buf)
 		buf->st_blksize = st64.nfs_blksize;
 		buf->st_blocks  = st64.nfs_blocks;
 		buf->st_atim.tv_sec   = st64.nfs_atime;
-		buf->st_atim.tv_usec  = st64.nfs_atime_nsec / 1000;
 		buf->st_mtim.tv_sec   = st64.nfs_mtime;
-		buf->st_mtim.tv_usec  = st64.nfs_mtime_nsec / 1000;
 		buf->st_ctim.tv_sec   = st64.nfs_ctime;
-		buf->st_ctim.tv_usec  = st64.nfs_ctime_nsec / 1000;
 
 		LD_NFS_DPRINTF(9, "__fxstat64(%d) success", fd);
 		return ret;
 	}
 
 	return real_fxstat64(ver, fd, buf);
+}
+
+int (*real_fxstatat)(int ver, int fd, const char *path, struct stat *buf, int flag);
+
+int __fxstatat(int ver, int fd, const char *path, struct stat *buf, int flag)
+{
+	if (!strncmp(path, "nfs:", 4)) {
+		return __xstat(ver, path, buf);
+	}
+
+	return real_fxstatat(ver, fd, path, buf, flag);
+}
+
+int (*real_fxstatat64)(int ver, int fd, const char *path, struct stat64 *buf, int flag);
+
+int __fxstatat64(int ver, int fd, const char *path, struct stat64 *buf, int flag)
+{
+	if (!strncmp(path, "nfs:", 4)) {
+		return __xstat64(ver, path, buf);
+	}
+	return real_fxstatat64(ver, fd, path, buf, flag);
 }
 
 int (*real_fallocate)(int fd, int mode, off_t offset, off_t len);
@@ -589,12 +611,83 @@ int chmod(const char *path, mode_t mode)
 	return real_chmod(path, mode);
 }
 
+int (*real_fchmodat)(int fd, const char *path, mode_t mode, int flags);
+
+int fchmodat(int fd, const char *path, mode_t mode, int flags)
+{
+	if (!strncmp(path, "nfs:", 4)) {
+		return chmod(path, mode);
+	}
+
+	return real_fchmodat(fd, path, mode, flags);
+}
+
+int (*real_fchown)(int fd, __uid_t uid, __gid_t gid);
+
+int fchown(int fd, __uid_t uid, __gid_t gid)
+{
+	if (nfs_fd_list[fd].is_nfs == 1) {
+		int ret;
+
+		LD_NFS_DPRINTF(9, "fchown(%d, %o, %o)", fd, (int)uid, (int)gid);
+		if ((ret = nfs_fchown(nfs_fd_list[fd].nfs,
+				nfs_fd_list[fd].fh,
+				uid, gid)) < 0) {
+			errno = -ret;
+			return -1;
+		}
+		return 0;
+	}
+
+	return real_fchown(fd, uid, gid);
+}
+
+int (*real_chown)(const char *path, __uid_t uid, __gid_t gid);
+
+int chown(const char *path, __uid_t uid, __gid_t gid)
+{
+	if (!strncmp(path, "nfs:", 4)) {
+		int fd, ret;
+
+		LD_NFS_DPRINTF(9, "chown(%s, %o, %o)", path, (int)uid, (int)gid);
+		fd = open(path, 0, 0);
+		if (fd == -1) {
+			return fd;
+		}
+
+		ret = fchown(fd, uid, gid);
+		close(fd);
+		return ret;
+	}
+
+	return real_chown(path, uid, gid);
+}
+
+int (*real_fchownat)(int fd, const char *path, __uid_t uid, __gid_t gid, int flags);
+
+int fchownat(int fd, const char *path, uid_t uid, gid_t gid, int flags)
+{
+	if (!strncmp(path, "nfs:", 4)) {
+		return chown(path, uid, gid);
+	}
+
+	return real_fchownat(fd, path, uid, gid, flags);
+}
+
 static void __attribute__((constructor)) _init(void)
 {
 	int i;
 
 	if (getenv("LD_NFS_DEBUG") != NULL) {
 		debug = atoi(getenv("LD_NFS_DEBUG"));
+	}
+
+	if (getenv("LD_NFS_UID") != NULL) {
+		nfsuid = atoi(getenv("LD_NFS_UID"));
+	}
+
+	if (getenv("LD_NFS_GID") != NULL) {
+		nfsgid = atoi(getenv("LD_NFS_GID"));
 	}
 
 	real_open = dlsym(RTLD_NEXT, "open");
@@ -668,6 +761,18 @@ static void __attribute__((constructor)) _init(void)
 		exit(10);
 	}
 
+	real_fxstatat = dlsym(RTLD_NEXT, "__fxstatat");
+	if (real_fxstatat == NULL) {
+		LD_NFS_DPRINTF(0, "Failed to dlsym(__fxstatat)");
+		exit(10);
+	}
+
+	real_fxstatat64 = dlsym(RTLD_NEXT, "__fxstatat64");
+	if (real_fxstatat64 == NULL) {
+		LD_NFS_DPRINTF(0, "Failed to dlsym(__fxstatat64)");
+		exit(10);
+	}
+
 	real_fallocate = dlsym(RTLD_NEXT, "fallocate");
 	if (real_fallocate == NULL) {
 		LD_NFS_DPRINTF(0, "Failed to dlsym(fallocate)");
@@ -701,6 +806,30 @@ static void __attribute__((constructor)) _init(void)
 	real_fchmod = dlsym(RTLD_NEXT, "fchmod");
 	if (real_fchmod == NULL) {
 		LD_NFS_DPRINTF(0, "Failed to dlsym(fchmod)");
+		exit(10);
+	}
+
+	real_fchmodat = dlsym(RTLD_NEXT, "fchmodat");
+	if (real_fchmodat == NULL) {
+		LD_NFS_DPRINTF(0, "Failed to dlsym(fchmodat)");
+		exit(10);
+	}
+
+	real_chown = dlsym(RTLD_NEXT, "chown");
+	if (real_chown == NULL) {
+		LD_NFS_DPRINTF(0, "Failed to dlsym(chown)");
+		exit(10);
+	}
+
+	real_fchown = dlsym(RTLD_NEXT, "fchown");
+	if (real_fchown == NULL) {
+		LD_NFS_DPRINTF(0, "Failed to dlsym(fchown)");
+		exit(10);
+	}
+
+	real_fchownat = dlsym(RTLD_NEXT, "fchownat");
+	if (real_fchownat == NULL) {
+		LD_NFS_DPRINTF(0, "Failed to dlsym(fchownat)");
 		exit(10);
 	}
 }
