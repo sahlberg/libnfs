@@ -151,6 +151,11 @@ LD_NFS_DEBUG=9 LD_PRELOAD=./ld_nfs.so cat nfs://127.0.0.1/data/tmp/foo123
 
 LD_NFS_DEBUG=9 LD_PRELOAD=./ld_nfs.so cp nfs://127.0.0.1/data/tmp/foo123 nfs://127.0.0.1/data/tmp/foo123.copy
 
+LD_NFS_UID and LD_NFS_GID can be used to fake the uid andthe gid in the nfs context.
+This can be useful on "insecure" enabled NFS share to make the server trust you as a root.
+You can try to run as a normal user things like :
+LD_NFS_DEBUG=9 LD_NFS_UID=0 LD_NFS_GID=0 LD_PRELOAD=./ld_nfs.so chown root:root nfs://127.0.0.1/data/tmp/foo123
+
 This is just a toy preload module. Don't open bugs if it does not work. Send
 patches to make it better instead.
 

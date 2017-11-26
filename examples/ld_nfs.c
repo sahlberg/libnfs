@@ -34,6 +34,8 @@
 #define NFS_MAX_FD  255
 
 static int debug = 0;
+static int nfsuid = -1;
+static int nfsgid = -1;
 
 #ifndef discard_const
 #define discard_const(ptr) ((void *)((intptr_t)(ptr)))
@@ -78,6 +80,11 @@ int open(const char *path, int flags, mode_t mode)
 			errno = ENOMEM;
 			return -1;
 		}
+
+		if (nfsuid >= 0)
+			nfs_set_uid(nfs, nfsuid);
+		if (nfsgid >= 0)
+			nfs_set_gid(nfs, nfsgid);
 
 		url = nfs_parse_url_full(nfs, path);
 		if (url == NULL) {
@@ -673,6 +680,14 @@ static void __attribute__((constructor)) _init(void)
 
 	if (getenv("LD_NFS_DEBUG") != NULL) {
 		debug = atoi(getenv("LD_NFS_DEBUG"));
+	}
+
+	if (getenv("LD_NFS_UID") != NULL) {
+		nfsuid = atoi(getenv("LD_NFS_UID"));
+	}
+
+	if (getenv("LD_NFS_GID") != NULL) {
+		nfsgid = atoi(getenv("LD_NFS_GID"));
 	}
 
 	real_open = dlsym(RTLD_NEXT, "open");
