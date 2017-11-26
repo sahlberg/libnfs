@@ -442,11 +442,8 @@ int __fxstat(int ver, int fd, struct stat *buf)
 		buf->st_blksize = st64.nfs_blksize;
 		buf->st_blocks  = st64.nfs_blocks;
 		buf->st_atim.tv_sec   = st64.nfs_atime;
-		buf->st_atim.tv_usec  = st64.nfs_atime_nsec / 1000;
 		buf->st_mtim.tv_sec   = st64.nfs_mtime;
-		buf->st_mtim.tv_usec  = st64.nfs_mtime_nsec / 1000;
 		buf->st_ctim.tv_sec   = st64.nfs_ctime;
-		buf->st_ctim.tv_usec  = st64.nfs_ctime_nsec / 1000;
 
 		LD_NFS_DPRINTF(9, "__fxstat(%d) success", fd);
 		return ret;
@@ -481,11 +478,8 @@ int __fxstat64(int ver, int fd, struct stat64 *buf)
 		buf->st_blksize = st64.nfs_blksize;
 		buf->st_blocks  = st64.nfs_blocks;
 		buf->st_atim.tv_sec   = st64.nfs_atime;
-		buf->st_atim.tv_usec  = st64.nfs_atime_nsec / 1000;
 		buf->st_mtim.tv_sec   = st64.nfs_mtime;
-		buf->st_mtim.tv_usec  = st64.nfs_mtime_nsec / 1000;
 		buf->st_ctim.tv_sec   = st64.nfs_ctime;
-		buf->st_ctim.tv_usec  = st64.nfs_ctime_nsec / 1000;
 
 		LD_NFS_DPRINTF(9, "__fxstat64(%d) success", fd);
 		return ret;
