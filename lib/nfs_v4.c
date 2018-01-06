@@ -890,6 +890,90 @@ nfs4_op_putfh(struct nfs_context *nfs, nfs_argop4 *op, struct nfsfh *nfsfh)
 }
 
 static int
+nfs4_op_lock(struct nfs_context *nfs, nfs_argop4 *op, struct nfsfh *fh,
+             nfs_opnum4 cmd, nfs_lock_type4 locktype,
+             int reclaim, uint64_t offset, length4 length)
+{
+        LOCK4args *largs;
+        op[0].argop = cmd;
+
+        largs = &op[0].nfs_argop4_u.oplock;
+        largs->locktype = locktype;
+        largs->reclaim  = reclaim;
+        largs->offset   = offset;
+        largs->length   = length;
+
+        if (fh->has_lock) {
+                largs->locker.new_lock_owner = 0;
+                largs->locker.locker4_u.lock_owner.lock_stateid.seqid =
+                        fh->lock_stateid.seqid;
+                memcpy(largs->locker.locker4_u.lock_owner.lock_stateid.other,
+                        fh->lock_stateid.other, 12);
+                largs->locker.locker4_u.lock_owner.lock_seqid =
+                        fh->lock_seqid;
+        } else {
+                largs->locker.new_lock_owner = 1;
+                largs->locker.locker4_u.open_owner.open_seqid =
+                        nfs->seqid;
+                largs->locker.locker4_u.open_owner.open_stateid.seqid =
+                        fh->stateid.seqid;
+                memcpy(largs->locker.locker4_u.open_owner.open_stateid.other,
+                       fh->stateid.other, 12);
+                largs->locker.locker4_u.open_owner.lock_owner.clientid =
+                        nfs->clientid;
+                largs->locker.locker4_u.open_owner.lock_owner.owner.owner_len =
+                        strlen(nfs->client_name);
+                largs->locker.locker4_u.open_owner.lock_owner.owner.owner_val =
+                        nfs->client_name;
+                largs->locker.locker4_u.open_owner.lock_seqid =
+                        fh->lock_seqid;
+        }
+        fh->lock_seqid++;
+
+        return 1;
+}
+
+static int
+nfs4_op_locku(struct nfs_context *nfs, nfs_argop4 *op, struct nfsfh *fh,
+              nfs_lock_type4 locktype, uint64_t offset, length4 length)
+{
+        LOCKU4args *luargs;
+        op[0].argop = OP_LOCKU;
+
+        luargs = &op[0].nfs_argop4_u.oplocku;
+        luargs->locktype = locktype;
+        luargs->offset   = offset;
+        luargs->length   = length;
+
+        luargs->seqid = fh->lock_seqid;
+        luargs->lock_stateid.seqid = fh->lock_stateid.seqid;
+        memcpy(luargs->lock_stateid.other, fh->lock_stateid.other, 12);
+
+        fh->lock_seqid++;
+
+        return 1;
+}
+
+static int
+nfs4_op_lockt(struct nfs_context *nfs, nfs_argop4 *op, struct nfsfh *fh,
+              nfs_lock_type4 locktype, uint64_t offset, length4 length)
+{
+        LOCKT4args *ltargs;
+        op[0].argop = OP_LOCKT;
+
+        ltargs = &op[0].nfs_argop4_u.oplockt;
+        ltargs->locktype = locktype;
+        ltargs->offset   = offset;
+        ltargs->length   = length;
+
+        ltargs->owner.clientid = nfs->clientid;
+        ltargs->owner.owner.owner_len = strlen(nfs->client_name);
+        ltargs->owner.owner.owner_val = nfs->client_name;
+
+        return 1;
+}
+
+static int
 nfs4_op_lookup(struct nfs_context *nfs, nfs_argop4 *op, const char *path)
 {
         LOOKUP4args *largs;
@@ -3782,6 +3866,119 @@ nfs4_lseek_async(struct nfs_context *nfs, struct nfsfh *fh, int64_t offset,
         args.argarray.argarray_val = op;
 
         if (rpc_nfs4_compound_async(nfs->rpc, nfs4_lseek_cb, &args,
+                                    data) != 0) {
+                free_nfs4_cb_data(data);
+                return -1;
+        }
+
+        return 0;
+}
+
+static void
+nfs4_lockf_cb(struct rpc_context *rpc, int status, void *command_data,
+              void *private_data)
+{
+        struct nfs4_cb_data *data = private_data;
+        struct nfs_context *nfs = data->nfs;
+        COMPOUND4res *res = command_data;
+        LOCK4resok *lresok = NULL;
+        LOCKU4res *lures = NULL;
+        struct nfsfh *fh = data->filler.blob0.val;
+        enum nfs4_lock_op cmd;
+        int i;
+
+        assert(rpc->magic == RPC_CONTEXT_MAGIC);
+
+        cmd = data->filler.blob1.len;
+
+        if (check_nfs4_error(nfs, status, data, res, "LOCKF")) {
+                return;
+        }
+
+        switch (cmd) {
+        case NFS4_F_LOCK:
+        case NFS4_F_TLOCK:
+                if ((i = nfs4_find_op(nfs, data, res, OP_LOCK, "LOCK")) < 0) {
+                        return;
+                }
+
+                lresok = &res->resarray.resarray_val[i].nfs_resop4_u.oplock.LOCK4res_u.resok4;
+                fh->has_lock = 1;
+                fh->lock_stateid.seqid = lresok->lock_stateid.seqid;
+                memcpy(fh->lock_stateid.other, lresok->lock_stateid.other, 12);
+                break;
+        case NFS4_F_ULOCK:
+                if ((i = nfs4_find_op(nfs, data, res, OP_LOCKU, "LOCKU")) < 0) {
+                        return;
+                }
+                lures = &res->resarray.resarray_val[i].nfs_resop4_u.oplocku;
+                fh->lock_stateid.seqid = lures->LOCKU4res_u.lock_stateid.seqid;
+                memcpy(fh->lock_stateid.other,
+                       lures->LOCKU4res_u.lock_stateid.other, 12);
+                break;
+        case NFS4_F_TEST:
+                break;
+        }
+
+        data->cb(0, nfs, NULL, data->private_data);
+
+        free_nfs4_cb_data(data);
+}
+
+/* blob0.val is nfsfh
+ * blob1.len is cmd
+ */
+int
+nfs4_lockf_async(struct nfs_context *nfs, struct nfsfh *fh,
+                     enum nfs4_lock_op cmd, uint64_t count,
+                     nfs_cb cb, void *private_data)
+{
+        COMPOUND4args args;
+        nfs_argop4 op[2];
+        struct nfs4_cb_data *data;
+        int i;
+
+        data = malloc(sizeof(*data));
+        if (data == NULL) {
+                nfs_set_error(nfs, "Out of memory.");
+                return -1;
+        }
+        memset(data, 0, sizeof(*data));
+
+        data->nfs          = nfs;
+        data->cb           = cb;
+        data->private_data = private_data;
+
+        data->filler.blob0.val  = fh;
+        data->filler.blob0.free = NULL;
+
+        data->filler.blob1.len = cmd;
+
+        i = nfs4_op_putfh(nfs, &op[0], fh);
+        switch (cmd) {
+        case NFS4_F_LOCK:
+                i += nfs4_op_lock(nfs, &op[i], fh, OP_LOCK, WRITEW_LT,
+                                  0, fh->offset, count);
+                break;
+        case NFS4_F_TLOCK:
+                i += nfs4_op_lock(nfs, &op[i], fh, OP_LOCK, WRITE_LT,
+                                  0, fh->offset, count);
+                break;
+        case NFS4_F_ULOCK:
+                i += nfs4_op_locku(nfs, &op[i], fh, WRITE_LT,
+                                   fh->offset, count);
+                break;
+        case NFS4_F_TEST:
+                i += nfs4_op_lockt(nfs, &op[i], fh, WRITEW_LT,
+                                   fh->offset, count);
+                break;
+        }
+
+        memset(&args, 0, sizeof(args));
+        args.argarray.argarray_len = i;
+        args.argarray.argarray_val = op;
+
+        if (rpc_nfs4_compound_async(nfs->rpc, nfs4_lockf_cb, &args,
                                     data) != 0) {
                 free_nfs4_cb_data(data);
                 return -1;

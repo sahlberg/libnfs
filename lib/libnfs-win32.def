@@ -37,6 +37,8 @@ nfs_get_timeout
 nfs_init_context
 nfs_link
 nfs_link_async
+nfs_lockf
+nfs_lockf_async
 nfs_lseek
 nfs_lseek_async
 nfs_mkdir

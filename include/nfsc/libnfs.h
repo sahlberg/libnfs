@@ -744,6 +744,41 @@ EXTERN int nfs_lseek(struct nfs_context *nfs, struct nfsfh *nfsfh,
 
 
 /*
+ * LOCKF()
+ */
+/*
+ * Async lockf()
+ *
+ * Function returns
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
+ *
+ * When the callback is invoked, status indicates the result:
+ *      0 : Success.
+ * -errno : An error occured.
+ *          data is the error string.
+ */
+enum nfs4_lock_op {
+        NFS4_F_LOCK  = 0,
+        NFS4_F_TLOCK = 1,
+        NFS4_F_ULOCK = 2,
+        NFS4_F_TEST  = 3,
+};
+EXTERN int nfs_lockf_async(struct nfs_context *nfs, struct nfsfh *nfsfh,
+                           enum nfs4_lock_op op, uint64_t count,
+                           nfs_cb cb, void *private_data);
+/*
+ * Sync lockf()
+ * Function returns
+ *      0 : Success.
+ * -errno : An error occured.
+ */
+EXTERN int nfs_lockf(struct nfs_context *nfs, struct nfsfh *nfsfh,
+                     enum nfs4_lock_op op, uint64_t count);
+
+/*
  * FSYNC()
  */
 /*

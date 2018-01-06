@@ -1051,6 +1051,43 @@ nfs_lseek(struct nfs_context *nfs, struct nfsfh *nfsfh, int64_t offset, int when
 }
 
 
+/*
+ * lockf()
+ */
+static void
+lockf_cb(int status, struct nfs_context *nfs, void *data, void *private_data)
+{
+	struct sync_cb_data *cb_data = private_data;
+
+	cb_data->is_finished = 1;
+	cb_data->status = status;
+
+	if (status < 0) {
+		nfs_set_error(nfs, "lockf call failed with \"%s\"",
+                              nfs_get_error(nfs));
+		return;
+	}
+}
+
+int
+nfs_lockf(struct nfs_context *nfs, struct nfsfh *nfsfh,
+          enum nfs4_lock_op cmd, uint64_t count)
+{
+	struct sync_cb_data cb_data;
+
+	cb_data.is_finished = 0;
+
+	if (nfs_lockf_async(nfs, nfsfh, cmd, count,
+                            lockf_cb, &cb_data) != 0) {
+		nfs_set_error(nfs, "nfs_lockf_async failed. %s",
+                              nfs_get_error(nfs));
+		return -1;
+	}
+
+	wait_for_nfs_reply(nfs, &cb_data);
+
+	return cb_data.status;
+}
 
 /*
  * statvfs()
