@@ -903,7 +903,7 @@ nfs4_op_lock(struct nfs_context *nfs, nfs_argop4 *op, struct nfsfh *fh,
         largs->offset   = offset;
         largs->length   = length;
 
-        if (fh->has_lock) {
+        if (nfs->has_lock_owner) {
                 largs->locker.new_lock_owner = 0;
                 largs->locker.locker4_u.lock_owner.lock_stateid.seqid =
                         fh->lock_stateid.seqid;
@@ -3903,7 +3903,7 @@ nfs4_lockf_cb(struct rpc_context *rpc, int status, void *command_data,
                 }
 
                 lresok = &res->resarray.resarray_val[i].nfs_resop4_u.oplock.LOCK4res_u.resok4;
-                fh->has_lock = 1;
+                nfs->has_lock_owner = 1;
                 fh->lock_stateid.seqid = lresok->lock_stateid.seqid;
                 memcpy(fh->lock_stateid.other, lresok->lock_stateid.other, 12);
                 break;

@@ -295,6 +295,7 @@ struct nfs_context {
         uint64_t clientid;
         verifier4 setclientid_confirm;
         uint32_t seqid;
+        int has_lock_owner;
 };
 
 typedef int (*continue_func)(struct nfs_context *nfs, struct nfs_attr *attr,
@@ -382,7 +383,6 @@ struct nfsfh {
         /* NFSv4 */
         struct stateid stateid;
         /* locking */
-        int has_lock;
         uint32_t lock_seqid;
         struct stateid lock_stateid;
 };
