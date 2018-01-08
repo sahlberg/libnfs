@@ -1090,6 +1090,44 @@ nfs_lockf(struct nfs_context *nfs, struct nfsfh *nfsfh,
 }
 
 /*
+ * fcntl()
+ */
+static void
+fcntl_cb(int status, struct nfs_context *nfs, void *data, void *private_data)
+{
+	struct sync_cb_data *cb_data = private_data;
+
+	cb_data->is_finished = 1;
+	cb_data->status = status;
+
+	if (status < 0) {
+		nfs_set_error(nfs, "fcntl call failed with \"%s\"",
+                              nfs_get_error(nfs));
+		return;
+	}
+}
+
+int
+nfs_fcntl(struct nfs_context *nfs, struct nfsfh *nfsfh,
+          enum nfs4_fcntl_op cmd, void *arg)
+{
+	struct sync_cb_data cb_data;
+
+	cb_data.is_finished = 0;
+
+	if (nfs_fcntl_async(nfs, nfsfh, cmd, arg,
+                            fcntl_cb, &cb_data) != 0) {
+		nfs_set_error(nfs, "nfs_fcntl_async failed. %s",
+                              nfs_get_error(nfs));
+		return -1;
+	}
+
+	wait_for_nfs_reply(nfs, &cb_data);
+
+	return cb_data.status;
+}
+
+/*
  * statvfs()
  */
 static void

@@ -22,6 +22,8 @@ nfs_fchmod
 nfs_fchmod_async
 nfs_fchown
 nfs_fchown_async
+nfs_fcntl
+nfs_fcntl_async
 nfs_fstat
 nfs_fstat_async
 nfs_fsync

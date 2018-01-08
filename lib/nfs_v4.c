@@ -3987,6 +3987,227 @@ nfs4_lockf_async(struct nfs_context *nfs, struct nfsfh *fh,
         return 0;
 }
 
+static void
+nfs4_fcntl_cb(struct rpc_context *rpc, int status, void *command_data,
+              void *private_data)
+{
+        struct nfs4_cb_data *data = private_data;
+        struct nfs_context *nfs = data->nfs;
+        COMPOUND4res *res = command_data;
+        LOCK4resok *lresok = NULL;
+        struct nfsfh *fh = data->filler.blob0.val;
+        enum nfs4_fcntl_op cmd;
+        struct nfs4_flock *fl;
+        int i;
+
+        assert(rpc->magic == RPC_CONTEXT_MAGIC);
+
+        cmd = data->filler.blob1.len;
+
+        if (check_nfs4_error(nfs, status, data, res, "FCNTL")) {
+                return;
+        }
+
+        switch (cmd) {
+        case NFS4_F_SETLK:
+        case NFS4_F_SETLKW:
+                fl = (struct nfs4_flock *)data->filler.blob1.val;
+
+                switch (fl->l_type) {
+                case F_RDLCK:
+                case F_WRLCK:
+                        if ((i = nfs4_find_op(nfs, data, res, OP_LOCK,
+                                              "LOCK")) < 0) {
+                                return;
+                        }
+
+                        lresok = &res->resarray.resarray_val[i].nfs_resop4_u.oplock.LOCK4res_u.resok4;
+                        nfs->has_lock_owner = 1;
+                        fh->lock_stateid.seqid = lresok->lock_stateid.seqid;
+                        memcpy(fh->lock_stateid.other,
+                               lresok->lock_stateid.other, 12);
+                        break;
+                case F_UNLCK:
+                        if ((i = nfs4_find_op(nfs, data, res, OP_LOCKU,
+                                              "UNLOCK")) < 0) {
+                                return;
+                        }
+                        break;
+                }
+                break;
+        }
+
+        data->cb(0, nfs, NULL, data->private_data);
+
+        free_nfs4_cb_data(data);
+}
+
+static int
+nfs4_fcntl_async_internal(struct nfs_context *nfs, struct nfsfh *fh,
+                          struct nfs4_cb_data *data)
+{
+        COMPOUND4args args;
+        nfs_argop4 op[2];
+        struct nfs4_flock *fl;
+        enum nfs4_fcntl_op cmd;
+        int i, lock_type;
+
+        cmd = data->filler.blob1.len;
+
+        i = nfs4_op_putfh(nfs, &op[0], fh);
+        switch (cmd) {
+        case NFS4_F_SETLK:
+        case NFS4_F_SETLKW:
+                fl = data->filler.blob1.val;
+
+                switch (fl->l_type) {
+                case F_RDLCK:
+                        lock_type = cmd == NFS4_F_SETLK ? READ_LT : READW_LT;
+                        i += nfs4_op_lock(nfs, &op[i], fh, OP_LOCK, lock_type,
+                                          0, fl->l_start, fl->l_len);
+                        break;
+                case F_WRLCK:
+                        lock_type = cmd == NFS4_F_SETLK ? WRITE_LT : WRITEW_LT;
+                        i += nfs4_op_lock(nfs, &op[i], fh, OP_LOCK, lock_type,
+                                          0, fl->l_start, fl->l_len);
+                        break;
+                case F_UNLCK:
+                        i += nfs4_op_locku(nfs, &op[i], fh, WRITE_LT,
+                                           fl->l_start, fl->l_len);
+                        break;
+                }
+                break;
+        }
+
+        memset(&args, 0, sizeof(args));
+        args.argarray.argarray_len = i;
+        args.argarray.argarray_val = op;
+
+        if (rpc_nfs4_compound_async(nfs->rpc, nfs4_fcntl_cb, &args,
+                                    data) != 0) {
+                free_nfs4_cb_data(data);
+                return -1;
+        }
+
+        return 0;
+}
+
+static void
+nfs4_fcntl_stat_cb(struct rpc_context *rpc, int status, void *command_data,
+              void *private_data)
+{
+        struct nfs4_cb_data *data = private_data;
+        struct nfs_context *nfs = data->nfs;
+        struct nfsfh *fh = data->filler.blob0.val;
+        enum nfs4_fcntl_op cmd = data->filler.blob1.len;
+        COMPOUND4res *res = command_data;
+        GETATTR4resok *garesok;
+        struct nfs4_flock *fl;
+        struct nfs_stat_64 st;
+        int i;
+
+        if (check_nfs4_error(nfs, status, data, res, "STAT64")) {
+                return;
+        }
+
+        if ((i = nfs4_find_op(nfs, data, res, OP_GETATTR, "GETATTR")) < 0) {
+                return;
+        }
+        garesok = &res->resarray.resarray_val[i].nfs_resop4_u.opgetattr.GETATTR4res_u.resok4;
+        memset(&st, 0, sizeof(st));
+        if (nfs_parse_attributes(nfs, data, &st,
+                                 garesok->obj_attributes.attr_vals.attrlist4_val,
+                                 garesok->obj_attributes.attr_vals.attrlist4_len) < 0) {
+                data->cb(-EINVAL, nfs, nfs_get_error(nfs), data->private_data);
+                free_nfs4_cb_data(data);
+        }
+
+        switch (cmd) {
+        case NFS4_F_SETLK:
+        case NFS4_F_SETLKW:
+                fl = data->filler.blob1.val;
+
+                fl->l_whence = SEEK_SET;
+                fl->l_start = st.nfs_size + fl->l_start;
+                if (nfs4_fcntl_async_internal(nfs, fh, data)) {
+                        data->cb(-ENOMEM, nfs, nfs_get_error(nfs),
+                                 data->private_data);
+                        free_nfs4_cb_data(data);
+                }
+        }
+}
+
+/* blob0.val is nfsfh
+ * blob1.len is cmd
+ * blob1.val is arg
+ */
+int
+nfs4_fcntl_async(struct nfs_context *nfs, struct nfsfh *fh,
+                 enum nfs4_fcntl_op cmd, void *arg,
+                 nfs_cb cb, void *private_data)
+{
+        struct nfs4_cb_data *data;
+        struct nfs4_flock *fl;
+        COMPOUND4args args;
+        nfs_argop4 op[2];
+        int i;
+
+        data = malloc(sizeof(*data));
+        if (data == NULL) {
+                nfs_set_error(nfs, "Out of memory.");
+                return -1;
+        }
+        memset(data, 0, sizeof(*data));
+
+        data->nfs          = nfs;
+        data->cb           = cb;
+        data->private_data = private_data;
+
+        data->filler.blob0.val  = fh;
+        data->filler.blob0.free = NULL;
+
+        data->filler.blob1.len = cmd;
+        data->filler.blob1.val = arg;
+        data->filler.blob1.free = NULL;
+
+        switch (cmd) {
+        case NFS4_F_SETLK:
+        case NFS4_F_SETLKW:
+                fl = arg;
+                switch (fl->l_whence) {
+                case SEEK_SET:
+                        return nfs4_fcntl_async_internal(nfs, fh, data);
+                case SEEK_CUR:
+                        fl->l_whence = SEEK_SET;
+                        fl->l_start = fh->offset + fl->l_start;
+                        return nfs4_fcntl_async_internal(nfs, fh, data);
+                case SEEK_END:
+                        i = nfs4_op_putfh(nfs, &op[0], fh);
+                        i += nfs4_op_getattr(nfs, &op[i], standard_attributes,
+                                             2);
+
+                        memset(&args, 0, sizeof(args));
+                        args.argarray.argarray_len = i;
+                        args.argarray.argarray_val = op;
+
+                        if (rpc_nfs4_compound_async(nfs->rpc,
+                                                    nfs4_fcntl_stat_cb,
+                                                    &args, data) != 0) {
+                                free_nfs4_cb_data(data);
+                                return -1;
+                        }
+                        return 0;
+                }
+                nfs_set_error(nfs, "fcntl: unknown fl->whence:%d\n",
+                              fl->l_whence);
+                free_nfs4_cb_data(data);
+                return -1;
+        }
+        nfs_set_error(nfs, "fcntl: unknown cmd:%d\n", cmd);
+        free_nfs4_cb_data(data);
+        return -1;
+}
+
 static int
 nfs_parse_statvfs(struct nfs_context *nfs, struct nfs4_cb_data *data,
                   struct statvfs *svfs, const char *buf, int len)

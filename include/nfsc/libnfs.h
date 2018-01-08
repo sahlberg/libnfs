@@ -779,6 +779,50 @@ EXTERN int nfs_lockf(struct nfs_context *nfs, struct nfsfh *nfsfh,
                      enum nfs4_lock_op op, uint64_t count);
 
 /*
+ * FCNTL()
+ */
+/*
+ * Async fcntl()
+ * Supported commands are :
+ *       NFS4_F_SETLK
+ *       NFS4_F_SETLKW
+ *
+ * Function returns
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
+ *
+ * When the callback is invoked, status indicates the result:
+ *      0 : Success.
+ * -errno : An error occured.
+ *          data is the error string.
+ */
+enum nfs4_fcntl_op {
+        NFS4_F_SETLK  = 0,
+        NFS4_F_SETLKW,
+};
+struct nfs4_flock {
+        int l_type;        /* F_RDLCK, F_WRLCK or F_UNLCK */
+        int l_whence;      /* SEEK_SET, SEEK_CUR or SEEK_END */
+        uint32_t l_pid;
+        uint64_t l_start;
+        uint64_t l_len;
+};
+
+EXTERN int nfs_fcntl_async(struct nfs_context *nfs, struct nfsfh *nfsfh,
+                           enum nfs4_fcntl_op cmd, void *arg,
+                           nfs_cb cb, void *private_data);
+/*
+ * Sync lockf()
+ * Function returns
+ *      0 : Success.
+ * -errno : An error occured.
+ */
+EXTERN int nfs_fcntl(struct nfs_context *nfs, struct nfsfh *nfsfh,
+                     enum nfs4_fcntl_op cmd, void *arg);
+
+/*
  * FSYNC()
  */
 /*

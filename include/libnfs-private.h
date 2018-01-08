@@ -496,6 +496,9 @@ int nfs4_fchmod_async(struct nfs_context *nfs, struct nfsfh *nfsfh, int mode,
                       nfs_cb cb, void *private_data);
 int nfs4_fchown_async(struct nfs_context *nfs, struct nfsfh *nfsfh, int uid,
                       int gid, nfs_cb cb, void *private_data);
+int nfs4_fcntl_async(struct nfs_context *nfs, struct nfsfh *nfsfh,
+                     enum nfs4_fcntl_op cmd, void *arg,
+                     nfs_cb cb, void *private_data);
 int nfs4_fstat64_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_cb cb,
                        void *private_data);
 int nfs4_fsync_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_cb cb,

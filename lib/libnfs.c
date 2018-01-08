@@ -1375,6 +1375,22 @@ nfs_lockf_async(struct nfs_context *nfs, struct nfsfh *nfsfh,
 }
 
 int
+nfs_fcntl_async(struct nfs_context *nfs, struct nfsfh *nfsfh,
+                enum nfs4_fcntl_op cmd, void *arg,
+                nfs_cb cb, void *private_data)
+{
+	switch (nfs->version) {
+        case NFS_V4:
+                return nfs4_fcntl_async(nfs, nfsfh, cmd, arg,
+                                        cb, private_data);
+        default:
+                nfs_set_error(nfs, "%s does not support NFSv%d",
+                              __FUNCTION__, nfs->version);
+                return -1;
+        }
+}
+
+int
 nfs_statvfs_async(struct nfs_context *nfs, const char *path, nfs_cb cb,
                    void *private_data)
 {
