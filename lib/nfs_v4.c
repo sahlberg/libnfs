@@ -4850,3 +4850,18 @@ nfs4_utimes_async_internal(struct nfs_context *nfs, const char *path,
 
         return 0;
 }
+
+int
+nfs4_utime_async(struct nfs_context *nfs, const char *path,
+                 struct utimbuf *times, nfs_cb cb, void *private_data)
+{
+	struct timeval new_times[2];
+
+        new_times[0].tv_sec  = times->actime;
+        new_times[0].tv_usec = 0;
+        new_times[1].tv_sec  = times->modtime;
+        new_times[1].tv_usec = 0;
+
+        return nfs4_utimes_async_internal(nfs, path, 0, new_times,
+                                          cb, private_data);
+}

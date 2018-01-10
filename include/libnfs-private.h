@@ -544,6 +544,8 @@ int nfs4_truncate_async(struct nfs_context *nfs, const char *path,
                         uint64_t length, nfs_cb cb, void *private_data);
 int nfs4_unlink_async(struct nfs_context *nfs, const char *path, nfs_cb cb,
                       void *private_data);
+int nfs4_utime_async(struct nfs_context *nfs, const char *path,
+                     struct utimbuf *times, nfs_cb cb, void *private_data);
 int nfs4_utimes_async_internal(struct nfs_context *nfs, const char *path,
                                int no_follow, struct timeval *times,
                                nfs_cb cb, void *private_data);

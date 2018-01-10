@@ -1571,6 +1571,8 @@ nfs_utime_async(struct nfs_context *nfs, const char *path,
 	switch (nfs->version) {
         case NFS_V3:
                 return nfs3_utime_async(nfs, path, times, cb, private_data);
+        case NFS_V4:
+                return nfs4_utime_async(nfs, path, times, cb, private_data);
         default:
                 nfs_set_error(nfs, "%s does not support NFSv4",
                               __FUNCTION__);
