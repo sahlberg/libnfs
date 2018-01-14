@@ -63,6 +63,12 @@ typedef int socklen_t;
 #define S_IFLNK        0xA000  /* Link */
 #endif
 
+#ifndef F_RDLCK
+#define F_RDLCK 0
+#define F_WRLCK 1
+#define F_UNLCK 2
+#endif
+
 #ifndef S_IFIFO
 #define S_IFIFO        0x1000  /* FIFO */
 #endif
