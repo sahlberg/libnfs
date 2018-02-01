@@ -1843,7 +1843,8 @@ mount_getexports_async(struct rpc_context *rpc, const char *server, rpc_cb cb,
 	}
 	if (rpc_connect_program_async(rpc, data->server, MOUNT_PROGRAM,
                                       MOUNT_V3, mount_export_4_cb, data) != 0) {
-		rpc_set_error(rpc, "Failed to start connection");
+		rpc_set_error(rpc, "Failed to start connection. %s",
+                              rpc_get_error(rpc));
 		free_mount_cb_data(data);
 		return -1;
 	}

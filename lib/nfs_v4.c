@@ -1600,7 +1600,8 @@ nfs4_mount_async(struct nfs_context *nfs, const char *server,
         if (rpc_connect_program_async(nfs->rpc, server,
                                       NFS4_PROGRAM, NFS_V4,
                                       nfs4_mount_1_cb, data) != 0) {
-                nfs_set_error(nfs, "Failed to start connection");
+                nfs_set_error(nfs, "Failed to start connection. %s",
+                              nfs_get_error(nfs));
                 free_nfs4_cb_data(data);
                 return -1;
         }
