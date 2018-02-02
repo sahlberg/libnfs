@@ -745,7 +745,8 @@ rpc_connect_program_async(struct rpc_context *rpc, const char *server,
 
 	if (rpc_connect_async(rpc, server, 111, rpc_connect_program_1_cb,
                               data) != 0) {
-		rpc_set_error(rpc, "Failed to start connection");
+		rpc_set_error(rpc, "Failed to start connection. %s",
+                              rpc_get_error(rpc));
 		free_rpc_cb_data(data);
 		return -1;
 	}
