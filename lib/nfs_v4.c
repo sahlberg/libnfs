@@ -76,6 +76,10 @@
 #include <sys/sysmacros.h>
 #endif
 
+#ifdef HAVE_GETPWNAM
+#include <pwd.h>
+#endif
+
 #include <ctype.h>
 #include <stdio.h>
 #include <stdarg.h>
@@ -399,6 +403,36 @@ nfs_pntoh64(const uint32_t *buf)
         return val;
 }
 
+static int
+nfs_get_ugid(struct nfs_context *nfs, const char *buf, int slen, int is_user)
+{
+        int ugid = 0;
+        const char *name = buf;
+
+        while (slen) {
+                if (isdigit(*buf)) {
+                        ugid *= 10;
+                        ugid += *buf - '0';
+                } else {
+#ifdef HAVE_GETPWNAM
+                        struct passwd *pwd = getpwnam(name);
+                        if (pwd) {
+                                if (is_user) {
+                                        return pwd->pw_uid;
+                                } else {
+                                        return pwd->pw_gid;
+                                }
+                        }
+#endif
+                        nfs_set_error(nfs, "Bad digit in fattr3 uid/gid");
+                        return 65534;
+                }
+                buf++;
+                slen--;
+        }
+        return ugid;
+}
+
 #define CHECK_GETATTR_BUF_SPACE(len, size)                              \
     if (len < size) {                                                   \
         nfs_set_error(nfs, "Not enough data in fattr4");                \
@@ -468,17 +502,8 @@ nfs_parse_attributes(struct nfs_context *nfs, struct nfs4_cb_data *data,
         len -= 4;
         pad = (4 - (slen & 0x03)) & 0x03;
         CHECK_GETATTR_BUF_SPACE(len, slen);
-        while (slen) {
-                if (isdigit(*buf)) {
-                        st->nfs_uid *= 10;
-                        st->nfs_uid += *buf - '0';
-                } else {
-                        nfs_set_error(nfs, "Bad digit in fattr3 uid");
-                        return -1;
-                }
-                buf++;
-                slen--;
-        }
+        st->nfs_uid = nfs_get_ugid(nfs, buf, slen, 1);
+        buf += slen;
         CHECK_GETATTR_BUF_SPACE(len, pad);
         buf += pad;
         len -= pad;
@@ -489,17 +514,8 @@ nfs_parse_attributes(struct nfs_context *nfs, struct nfs4_cb_data *data,
         len -= 4;
         pad = (4 - (slen & 0x03)) & 0x03;
         CHECK_GETATTR_BUF_SPACE(len, slen);
-        while (slen) {
-                if (isdigit(*buf)) {
-                        st->nfs_gid *= 10;
-                        st->nfs_gid += *buf - '0';
-                } else {
-                        nfs_set_error(nfs, "Bad digit in fattr3 gid");
-                        return -1;
-                }
-                buf++;
-                slen--;
-        }
+        st->nfs_gid = nfs_get_ugid(nfs, buf, slen, 0);
+        buf += slen;
         CHECK_GETATTR_BUF_SPACE(len, pad);
         buf += pad;
         len -= pad;
