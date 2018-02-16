@@ -424,7 +424,6 @@ nfs_get_ugid(struct nfs_context *nfs, const char *buf, int slen, int is_user)
                                 }
                         }
 #endif
-                        nfs_set_error(nfs, "Bad digit in fattr3 uid/gid");
                         return 65534;
                 }
                 buf++;
