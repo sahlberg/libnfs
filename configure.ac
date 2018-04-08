@@ -82,7 +82,10 @@ else
 fi
 
 AC_MSG_CHECKING(whether getpwnam() is available)
-AC_TRY_COMPILE([#include <sys/types.h>, #include <pwd.h>], [
+AC_TRY_COMPILE([
+	#include <sys/types.h>
+	#include <pwd.h>
+], [
         struct passwd *pwd = getpwnam("nobody");
 ], ac_cv_have_getpwnam=yes, ac_cv_have_getpwnam=no)
 if test "$ac_cv_have_getpwnam" = yes ; then

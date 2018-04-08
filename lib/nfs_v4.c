@@ -423,6 +423,8 @@ nfs_get_ugid(struct nfs_context *nfs, const char *buf, int slen, int is_user)
                                         return pwd->pw_gid;
                                 }
                         }
+#else
+			(void) name; // Let the compiler know that this variable is intentionally unused, build would fail with -Werror=unused-variable otherwise
 #endif
                         return 65534;
                 }
