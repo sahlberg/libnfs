@@ -274,6 +274,10 @@ nfs_set_context_args(struct nfs_context *nfs, const char *arg, const char *val)
 				      atoi(val));
 			return -1;
 		}
+	} else if (!strcmp(arg, "nfsport")) {
+		nfs->nfsport =  atoi(val);
+	} else if (!strcmp(arg, "mountport")) {
+		nfs->mountport =  atoi(val);
 	}
 	return 0;
 }
@@ -540,6 +544,9 @@ void free_rpc_cb_data(struct rpc_cb_data *data)
 	free(data);
 }
 
+static int
+rpc_connect_port_internal(struct rpc_context *rpc, int port, struct rpc_cb_data *data);
+
 static void
 rpc_connect_program_5_cb(struct rpc_context *rpc, int status,
                          void *command_data, void *private_data)
@@ -636,12 +643,12 @@ rpc_connect_program_3_cb(struct rpc_context *rpc, int status,
 	}
 
 	rpc_disconnect(rpc, "normal disconnect");
-	if (rpc_connect_async(rpc, data->server, rpc_port,
-                              rpc_connect_program_4_cb, data) != 0) {
-		data->cb(rpc, RPC_STATUS_ERROR, command_data, data->private_data);
+        if (rpc_connect_port_internal(rpc, rpc_port, data)) {
+		data->cb(rpc, RPC_STATUS_ERROR, command_data,
+                         data->private_data);
 		free_rpc_cb_data(data);
-		return;
-	}
+                return;
+        }
 }
 
 static void
@@ -722,6 +729,46 @@ rpc_connect_program_1_cb(struct rpc_context *rpc, int status,
 		}
 		break;
 	}
+}
+
+static int
+rpc_connect_port_internal(struct rpc_context *rpc, int port, struct rpc_cb_data *data)
+{
+        if (rpc_connect_async(rpc, data->server, port,
+                              rpc_connect_program_4_cb, data) != 0) {
+		return -1;
+	}
+
+        return 0;
+}
+
+int
+rpc_connect_port_async(struct rpc_context *rpc, const char *server,
+                       int port,
+                       int program, int version,
+                       rpc_cb cb, void *private_data)
+{
+	struct rpc_cb_data *data;
+
+	data = malloc(sizeof(struct rpc_cb_data));
+	if (data == NULL) {
+		return -1;
+	}
+	memset(data, 0, sizeof(struct rpc_cb_data));
+	data->server       = strdup(server);
+	data->program      = program;
+	data->version      = version;
+
+	data->cb           = cb;
+	data->private_data = private_data;
+
+        if (rpc_connect_port_internal(rpc, port, data)) {
+		rpc_set_error(rpc, "Failed to start connection. %s",
+                              rpc_get_error(rpc));
+		free_rpc_cb_data(data);
+                return -1;
+        }
+        return 0;
 }
 
 int

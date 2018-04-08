@@ -1612,6 +1612,18 @@ nfs4_mount_async(struct nfs_context *nfs, const char *server,
         data->private_data = private_data;
         data->path         = strdup(new_export);
 
+        if (nfs->nfsport) {
+                if (rpc_connect_port_async(nfs->rpc, server, nfs->nfsport,
+                                           NFS4_PROGRAM, NFS_V4,
+                                           nfs4_mount_1_cb, data) != 0) {
+                        nfs_set_error(nfs, "Failed to start connection. %s",
+                                      nfs_get_error(nfs));
+                        free_nfs4_cb_data(data);
+                        return -1;
+                }
+                return 0;
+        }
+
         if (rpc_connect_program_async(nfs->rpc, server,
                                       NFS4_PROGRAM, NFS_V4,
                                       nfs4_mount_1_cb, data) != 0) {

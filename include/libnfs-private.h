@@ -287,7 +287,9 @@ struct nfs_context {
        int auto_traverse_mounts;
        struct nested_mounts *nested_mounts;
 
-       int version;
+        int version;
+        int nfsport;
+        int mountport;
 
         /* NFSv4 specific fields */
         verifier4 verifier;

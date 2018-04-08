@@ -116,6 +116,8 @@ nfs4_set_client_name
 nfs4_set_verifier
 win32_poll
 rpc_connect_async
+rpc_connect_port_async
+rpc_connect_program_async
 rpc_destroy_context
 rpc_disconnect
 rpc_get_error

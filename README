@@ -69,6 +69,10 @@ Arguments supported by libnfs are :
  version=<3|4>     : NFS Version. Default is 3.
                      This is just a placeholder for now. NFSv4 support is not
 		     yet functional.
+ nfsport=<port>    : Use this port for NFS instead of using the portmapper.
+ mountport=<port>  : Use this port for the MOUNT protocol instead of
+                     using portmapper. This argument is ignored for NFSv4
+                     as it does not use the MOUNT protocol.
 
 Auto_traverse_mounts
 ====================

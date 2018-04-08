@@ -854,6 +854,21 @@ finished:
 		return;
 	}
 
+        if (nfs->nfsport) {
+                if (rpc_connect_port_async(nfs->rpc, nfs->server, nfs->nfsport,
+                                           NFS_PROGRAM, NFS_V3,
+                                           nfs3_mount_5_cb, data) != 0) {
+                        nfs_set_error(nfs, "%s: %s", __FUNCTION__,
+                                      nfs_get_error(nfs));
+                        data->cb(-ENOMEM, nfs, nfs_get_error(nfs),
+                                 data->private_data);
+                        free(md_cb);
+                        free_nfs_cb_data(data);
+                        return;
+                }
+                return;
+        }
+
 	if (rpc_connect_program_async(nfs->rpc, nfs->server, NFS_PROGRAM,
                                       NFS_V3, nfs3_mount_5_cb, data) != 0) {
                 nfs_set_error(nfs, "%s: %s", __FUNCTION__, nfs_get_error(nfs));
@@ -961,6 +976,20 @@ nfs3_mount_3_cb(struct rpc_context *rpc, int status, void *command_data,
 	 */
 	rpc_disconnect(rpc, "normal disconnect");
 
+        if (nfs->nfsport) {
+                if (rpc_connect_port_async(nfs->rpc, nfs->server, nfs->nfsport,
+                                           NFS_PROGRAM, NFS_V3,
+                                           nfs3_mount_5_cb, data) != 0) {
+                        nfs_set_error(nfs, "%s: %s", __FUNCTION__,
+                                      nfs_get_error(nfs));
+                        data->cb(-ENOMEM, nfs, nfs_get_error(nfs),
+                                 data->private_data);
+                        free_nfs_cb_data(data);
+                        return;
+                }
+                return;
+        }
+
 	if (rpc_connect_program_async(nfs->rpc, nfs->server, NFS_PROGRAM,
                                       NFS_V3, nfs3_mount_5_cb, data) != 0) {
                 nfs_set_error(nfs, "%s: %s", __FUNCTION__, nfs_get_error(nfs));
@@ -1024,6 +1053,19 @@ nfs3_mount_2_cb(struct rpc_context *rpc, int status, void *command_data,
 	}
 
 	rpc_disconnect(rpc, "normal disconnect");
+        if (nfs->nfsport) {
+                if (rpc_connect_port_async(nfs->rpc, nfs->server, nfs->nfsport,
+                                           NFS_PROGRAM, NFS_V3,
+                                           nfs3_mount_5_cb, data) != 0) {
+                        nfs_set_error(nfs, "%s: %s", __FUNCTION__,
+                                      nfs_get_error(nfs));
+                        data->cb(-ENOMEM, nfs, nfs_get_error(nfs),
+                                 data->private_data);
+                        free_nfs_cb_data(data);
+                        return;
+                }
+                return;
+        }
 
 	if (rpc_connect_program_async(nfs->rpc, nfs->server, NFS_PROGRAM,
                                       NFS_V3, nfs3_mount_5_cb, data) != 0) {
@@ -1085,6 +1127,18 @@ nfs3_mount_async(struct nfs_context *nfs, const char *server,
 	data->nfs          = nfs;
 	data->cb           = cb;
 	data->private_data = private_data;
+
+        if (nfs->mountport) {
+                if (rpc_connect_port_async(nfs->rpc, server, nfs->mountport,
+                                           MOUNT_PROGRAM, MOUNT_V3,
+                                           nfs3_mount_1_cb, data) != 0) {
+                        nfs_set_error(nfs, "Failed to start connection. %s",
+                                      nfs_get_error(nfs));
+                        free_nfs_cb_data(data);
+                        return -1;
+                }
+                return 0;
+        }
 
 	if (rpc_connect_program_async(nfs->rpc, server,
 				      MOUNT_PROGRAM, MOUNT_V3,
