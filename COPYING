@@ -13,6 +13,20 @@ The protocol definition, .x, files
 These are based on old RFCs and studying how wireshark dissects various packets.
 These are distributed under the simplified BSD licence.
 
+The files generated from the .x files
+=====================================
+The files that are generated from the .x sources,
+i.e. */libnfs-raw-<protocol>.[ch]
+can be considered to be distributed under the simplified BSD licence.
+
+These files are only provided as a convenience, so that you do not need to
+install and run rpcgen on the *.x files locally.
+If you disagree with the simplified BSD licence I provide them under
+then just delete them and then generate identical copies of these files yourself
+using "make compile_rpc" in each protocol subdirectory.
+
+Then you can pick whatever licence you want on those files.
+
 The examples directory
 ================================
 The utility and example applications using this library, i.e. the
