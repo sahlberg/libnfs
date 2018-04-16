@@ -31,7 +31,7 @@
 #endif
 
 #ifdef WIN32
-#include "win32_compat.h"
+#include <win32/win32_compat.h>
 #endif
 
 #ifdef HAVE_INTTYPES_H
