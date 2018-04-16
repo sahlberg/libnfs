@@ -28,7 +28,7 @@
 
 
 #ifdef WIN32
-#include "win32_compat.h"
+#include <win32/win32_compat.h>
 #pragma comment(lib, "ws2_32.lib")
 WSADATA wsaData;
 #else

@@ -26,7 +26,7 @@ THE SOFTWARE.
 static int dummy _U_;
 
 #else
-#include "win32_compat.h"
+#include <win32/win32_compat.h>
 #include <errno.h>
 #include <stdio.h>
 

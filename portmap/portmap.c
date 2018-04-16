@@ -15,7 +15,7 @@
    along with this program; if not, see <http://www.gnu.org/licenses/>.
 */
 #ifdef WIN32
-#include "win32_compat.h"
+#include <win32/win32_compat.h>
 #endif/*WIN32*/
 
 #include <stdio.h>

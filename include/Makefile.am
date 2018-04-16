@@ -12,6 +12,6 @@ dist_nfsc_HEADERS = \
 	../rquota/libnfs-raw-rquota.h
 
 dist_noinst_HEADERS = \
-	../win32/win32_compat.h \
+	win32/win32_compat.h \
         libnfs-private.h \
         slist.h
