@@ -2714,8 +2714,14 @@ nfs3_opendir_cb(struct rpc_context *rpc, int status, void *command_data,
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
-	if (status == RPC_STATUS_ERROR ||
-	    (status == RPC_STATUS_SUCCESS && res->status == NFS3ERR_NOTSUPP)) {
+    if (check_nfs_error(nfs, status, data, command_data)) {
+        nfs_free_nfsdir(nfsdir);
+        data->continue_data = NULL;
+        free_nfs_cb_data(data);
+        return;
+    }
+
+	if (status == RPC_STATUS_SUCCESS && res->status == NFS3ERR_NOTSUPP) {
 		READDIR3args args;
 
 		args.dir.data.data_len = data->fh.len;
@@ -2735,15 +2741,6 @@ nfs3_opendir_cb(struct rpc_context *rpc, int status, void *command_data,
 			free_nfs_cb_data(data);
 			return;
 		}
-		return;
-	}
-
-	if (status == RPC_STATUS_CANCEL) {
-		data->cb(-EINTR, nfs, "Command was cancelled",
-                         data->private_data);
-		nfs_free_nfsdir(nfsdir);
-		data->continue_data = NULL;
-		free_nfs_cb_data(data);
 		return;
 	}
 
