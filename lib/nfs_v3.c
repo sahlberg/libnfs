@@ -4669,7 +4669,7 @@ nfs3_pread_async_internal(struct nfs_context *nfs, struct nfsfh *nfsfh,
 	if (nfs->rpc->readahead) {
 		nfsfh->ra.cur_ra = MAX(NFS_BLKSIZE, nfsfh->ra.cur_ra);
 		if (offset >= nfsfh->ra.fh_offset &&
-			offset - NFS_BLKSIZE <= nfsfh->ra.fh_offset + nfsfh->ra.cur_ra) {
+			offset <= nfsfh->ra.fh_offset + nfsfh->ra.cur_ra + NFS_BLKSIZE) {
 			if (nfs->rpc->readahead > nfsfh->ra.cur_ra) {
 				nfsfh->ra.cur_ra <<= 1;
 			}
