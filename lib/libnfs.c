@@ -199,6 +199,18 @@ nfs_pagecache_get(struct nfs_pagecache *pagecache, uint64_t offset)
 	return e->buf;
 }
 
+void nfs_pagecache_init(struct nfs_context *nfs, struct nfsfh *nfsfh) {
+	/* init page cache */
+	if (nfs->rpc->pagecache) {
+		nfsfh->pagecache.num_entries = nfs->rpc->pagecache;
+		nfsfh->pagecache.ttl = nfs->rpc->pagecache_ttl;
+		nfsfh->pagecache.entries = malloc(sizeof(struct nfs_pagecache_entry) * nfsfh->pagecache.num_entries);
+		nfs_pagecache_invalidate(nfs, nfsfh);
+		RPC_LOG(nfs->rpc, 2, "init pagecache entries %d pagesize %d\n",
+                        nfsfh->pagecache.num_entries, NFS_BLKSIZE);
+	}
+}
+
 void
 nfs_set_auth(struct nfs_context *nfs, struct AUTH *auth)
 {
