@@ -221,7 +221,7 @@ rpc_write_to_socket(struct rpc_context *rpc)
 		total = pdu->outdata.size;
 
 		count = send(rpc->fd, pdu->outdata.data + pdu->written,
-                             (int)(total - pdu->written), 0);
+                             (int)(total - pdu->written), MSG_NOSIGNAL);
 		if (count == -1) {
 			if (errno == EAGAIN || errno == EWOULDBLOCK) {
 				return 0;
