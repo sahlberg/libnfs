@@ -1373,7 +1373,7 @@ nfs_rewinddir(struct nfs_context *nfs _U_, struct nfsdir *nfsdir)
 void
 nfs_closedir(struct nfs_context *nfs, struct nfsdir *nfsdir)
 {
-	if (nfs->dircache_enabled) {
+	if (nfs && nfs->dircache_enabled) {
 		nfs_dircache_add(nfs, nfsdir);
 	} else {
 		nfs_free_nfsdir(nfsdir);
