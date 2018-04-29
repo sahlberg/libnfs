@@ -56,6 +56,10 @@ typedef int socklen_t;
 #define S_IXOTH 0000001
 #endif
 
+#ifndef MSG_NOSIGNAL
+#define MSG_NOSIGNAL 0
+#endif
+
 #define F_GETFL  3
 #define F_SETFL  4
 
