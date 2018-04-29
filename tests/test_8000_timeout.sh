@@ -7,7 +7,7 @@ echo "NFSv${VERS} Basic timeout test."
 if [ $VERS -eq 3 ]; then
     COUNT=28
 else
-    COUNT=18
+    COUNT=13
 fi
 
 start_share
