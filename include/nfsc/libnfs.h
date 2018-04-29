@@ -279,6 +279,12 @@ EXTERN void nfs_pagecache_invalidate(struct nfs_context *nfs,
                                      struct nfsfh *nfsfh);
 
 /*
+ * Initialize the pagecache
+ */
+EXTERN  void nfs_pagecache_init(struct nfs_context *nfs,
+                                struct nfsfh *nfsfh);
+
+/*
  * MOUNT THE EXPORT
  */
 /*

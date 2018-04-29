@@ -4917,19 +4917,12 @@ nfs3_open_cb(struct rpc_context *rpc, int status, void *command_data,
 		nfsfh->is_append = 1;
 	}
 
+    /* init the pagecache */
+    nfs_pagecache_init(nfs, nfsfh);
+
 	/* steal the filehandle */
 	nfsfh->fh = data->fh;
 	data->fh.val = NULL;
-
-	/* init page cache */
-	if (rpc->pagecache) {
-		nfsfh->pagecache.num_entries = rpc->pagecache;
-		nfsfh->pagecache.ttl = rpc->pagecache_ttl;
-		nfsfh->pagecache.entries = malloc(sizeof(struct nfs_pagecache_entry) * nfsfh->pagecache.num_entries);
-		nfs_pagecache_invalidate(nfs, nfsfh);
-		RPC_LOG(nfs->rpc, 2, "init pagecache entries %d pagesize %d\n",
-                        nfsfh->pagecache.num_entries, NFS_BLKSIZE);
-	}
 
 	data->cb(0, nfs, nfsfh, data->private_data);
 	free_nfs_cb_data(data);
