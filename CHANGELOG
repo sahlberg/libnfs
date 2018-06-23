@@ -1,3 +1,22 @@
+Changes since 2.0.0
+
+NFSv4 support.
+lockf() support (NFSv4 only).
+fcntl() support for locking (NFSv4 only).
+Add CMake support.
+URL arguments to select NFS version.
+URL argument to set nfsport. This allows NFSv4 to work for
+ servers without portmapper support.
+URL argument to set he mount port.
+NFSv4: use getpwnam to map NFSv4 (Ganesha) when passing uid/gid
+ as a user/group name insead of as a uid/gid.
+Added nfs-fh: a simle utility to print the filehandle for a nfs file.
+Win32 build fixes.
+Add a new open2() function that takes a mode argument.
+Add a testsuite for libnfs.
+	
+
+
 Changes since 1.11.0
 
 BUGS
