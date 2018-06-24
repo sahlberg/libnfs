@@ -9,6 +9,7 @@ set(SOURCES init.c
 
 add_library(nfs ${SOURCES})
 target_link_libraries(nfs PUBLIC ${core_DEPENDS})
+target_include_directories(nfs PUBLIC ../include)
 set_target_properties(nfs PROPERTIES
                           VERSION ${PROJECT_VERSION}
                           SOVERSION ${SOVERSION})
