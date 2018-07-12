@@ -74,6 +74,7 @@
 #include <stdarg.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 #include "slist.h"
 #include "libnfs.h"
 #include "libnfs-raw.h"
