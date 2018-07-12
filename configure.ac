@@ -25,11 +25,13 @@ fi
 AC_SYS_LARGEFILE
 
 #option: utils
+MAYBE_UTILS="utils"
 AC_ARG_ENABLE([utils],
               [AC_HELP_STRING([--enable-utils],
                               [Build util programs])],
-	      [MAYBE_UTILS=""],
-	      [MAYBE_UTILS="utils"])
+	      [if test $enableval = no ; then
+	    	    MAYBE_UTILS=""
+	       fi])
 AC_SUBST(MAYBE_UTILS)
 
 #option: examples
