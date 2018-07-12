@@ -19,6 +19,7 @@ set(SOURCES prog_access
             prog_mount
             prog_open_read
             prog_open_write
+            prog_opendir
             prog_rename
             prog_rmdir
             prog_stat

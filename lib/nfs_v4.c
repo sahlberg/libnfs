@@ -3536,7 +3536,7 @@ nfs4_opendir_async(struct nfs_context *nfs, const char *path, nfs_cb cb,
         struct nfs4_cb_data *data;
 	struct nfsdir *nfsdir;
 
-        data = init_cb_data_split_path(nfs, path);
+        data = init_cb_data_full_path(nfs, path);
         if (data == NULL) {
                 return -1;
         }
