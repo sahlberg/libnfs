@@ -25,9 +25,9 @@ examples/nfsclient-sync.c provides examples on how to use this API
 
 NFSv4:
 ======
-NFSv4 is supported but only for the RAW ASYNC interface.
-Examples/nfsv4-cat.c is a "simple" example to illustrate how to use
-NFSv4 to connect to a server and read a file off the server.
+NFSv3 is the default but NFSv4 can be selected either by using the URL argument
+version=4 or programatically calling nfs_set_version(nfs, NFS_V4) before
+connecting to the server/share.
 
 SERVER SUPPORT:
 ===============
@@ -67,8 +67,6 @@ Arguments supported by libnfs are :
                          to the application.
  if=<interface>    : Interface name (e.g., eth1) to bind; requires `root`
  version=<3|4>     : NFS Version. Default is 3.
-                     This is just a placeholder for now. NFSv4 support is not
-		     yet functional.
  nfsport=<port>    : Use this port for NFS instead of using the portmapper.
  mountport=<port>  : Use this port for the MOUNT protocol instead of
                      using portmapper. This argument is ignored for NFSv4
