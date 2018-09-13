@@ -591,11 +591,18 @@ rpc_connect_sockaddr_async(struct rpc_context *rpc)
 	}
 
 	if (rpc->old_fd) {
+#if !defined(WIN32)
 		if (dup2(rpc->fd, rpc->old_fd) == -1) {
 			return -1;
 		}
 		close(rpc->fd);
 		rpc->fd = rpc->old_fd;
+#else
+		/* On Windows dup2 does not work on sockets
+		 * instead just close the old socket */
+		close(rpc->old_fd);
+		rpc->old_fd = 0;
+#endif
 	}
 
 	/* Some systems allow you to set capabilities on an executable
