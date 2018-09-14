@@ -1964,6 +1964,37 @@ nfs4_open_truncate_cb(struct rpc_context *rpc, int status, void *command_data,
 }
 
 static void
+nfs4_open_chmod_cb(struct rpc_context *rpc, int status, void *command_data,
+                      void *private_data)
+{
+        struct nfs4_cb_data *data = private_data;
+        struct nfs_context *nfs = data->nfs;
+        struct nfsfh *fh = data->filler.blob0.val;
+        COMPOUND4res *res = command_data;
+        COMPOUND4args args;
+        nfs_argop4 op[2];
+        int i;
+
+        if (check_nfs4_error(nfs, status, data, res, "OPEN")) {
+                return;
+        }
+
+        i = nfs4_op_putfh(nfs, op, fh);
+        i += nfs4_op_chmod(nfs, &op[i], fh, data->filler.blob3.val);
+
+        memset(&args, 0, sizeof(args));
+        args.argarray.argarray_len = i;
+        args.argarray.argarray_val = op;
+
+        if (rpc_nfs4_compound_async(nfs->rpc, nfs4_open_setattr_cb, &args,
+                                    data) != 0) {
+                data->cb(-ENOMEM, nfs, nfs_get_error(nfs), data->private_data);
+                free_nfs4_cb_data(data);
+                return;
+        }
+}
+
+static void
 nfs4_open_confirm_cb(struct rpc_context *rpc, int status, void *command_data,
                      void *private_data)
 {
@@ -2118,6 +2149,25 @@ nfs4_open_cb(struct rpc_context *rpc, int status, void *command_data,
         free_nfs4_cb_data(data);
 }
 
+static void
+nfs4_init_random_verifier(char *verifier)
+{
+        static uint64_t seed = 0, v;
+        int i;
+
+        if (seed == 0) {
+                seed = ~rpc_current_time() << 32 | getpid();
+        } else {
+                seed *= 1337;
+        }
+
+        v = seed;
+        for (i = 0; i < NFS4_VERIFIER_SIZE; i++) {
+                verifier[i] = v & 0xff;
+                v >>= 8;
+        }
+}
+
 /* filler.flags are the open flags
  * filler.data is the object name
  */
@@ -2127,6 +2177,7 @@ nfs4_populate_open(struct nfs4_cb_data *data, nfs_argop4 *op)
         struct nfs_context *nfs = data->nfs;
         OPEN4args *oargs;
         uint32_t access_mask = 0;
+        verifier4 verifier;
         int i;
 
         if (data->filler.flags & O_WRONLY) {
@@ -2135,7 +2186,7 @@ nfs4_populate_open(struct nfs4_cb_data *data, nfs_argop4 *op)
         if (data->filler.flags & O_RDWR) {
                 access_mask |= ACCESS4_READ|ACCESS4_MODIFY;
         }
-        if (!(data->filler.flags & (O_WRONLY|O_RDWR))) {
+        if (!(data->filler.flags & O_WRONLY)) {
                 access_mask |= ACCESS4_READ;
         }
         
@@ -2166,12 +2217,20 @@ nfs4_populate_open(struct nfs4_cb_data *data, nfs_argop4 *op)
                 fa = &ch->createhow4_u.createattrs;
 
                 oargs->openhow.opentype = OPEN4_CREATE;
-                ch->mode = UNCHECKED4;
-                fa->attrmask.bitmap4_len = data->filler.blob1.len;
-                fa->attrmask.bitmap4_val = data->filler.blob1.val;
+                if (data->filler.flags|O_EXCL) {
+                        ch->mode = EXCLUSIVE4;
 
-                fa->attr_vals.attrlist4_len = data->filler.blob2.len;
-                fa->attr_vals.attrlist4_val = data->filler.blob2.val;
+                        nfs4_init_random_verifier(&verifier[0]);
+                        memcpy(ch->createhow4_u.createverf, verifier,
+                               sizeof(verifier4));
+                } else {
+                        ch->mode = UNCHECKED4;
+                        fa->attrmask.bitmap4_len = data->filler.blob1.len;
+                        fa->attrmask.bitmap4_val = data->filler.blob1.val;
+
+                        fa->attr_vals.attrlist4_len = data->filler.blob2.len;
+                        fa->attr_vals.attrlist4_val = data->filler.blob2.val;
+                }
         } else {
                 oargs->openhow.opentype = OPEN4_NOCREATE;
         }
@@ -2373,6 +2432,7 @@ nfs4_open_async(struct nfs_context *nfs, const char *path, int flags,
                 int mode, nfs_cb cb, void *private_data)
 {
         struct nfs4_cb_data *data;
+        uint32_t m;
 
         data = init_cb_data_split_path(nfs, path);
         if (data == NULL) {
@@ -2384,6 +2444,10 @@ nfs4_open_async(struct nfs_context *nfs, const char *path, int flags,
 
         /* O_TRUNC is only valid for O_RDWR or O_WRONLY */
         if (flags & O_TRUNC && !(flags & (O_RDWR|O_WRONLY))) {
+                flags &= ~O_TRUNC;
+        }
+        /* Successful O_EXCL means the file is 0 size already. */
+        if (flags & O_EXCL) {
                 flags &= ~O_TRUNC;
         }
 
@@ -2399,6 +2463,20 @@ nfs4_open_async(struct nfs_context *nfs, const char *path, int flags,
                 data->filler.blob3.free = free;
 
                 memset(data->filler.blob3.val, 0, 12);
+        }
+        if (flags & O_EXCL) {
+                data->open_cb = nfs4_open_chmod_cb;
+
+                data->filler.blob3.val = malloc(4);
+                if (data->filler.blob3.val == NULL) {
+                        nfs_set_error(nfs, "Out of memory");
+                        free_nfs4_cb_data(data);
+                        return -1;
+                }
+                data->filler.blob3.free = free;
+
+                m = htonl(mode);
+                memcpy(data->filler.blob3.val, &m, sizeof(uint32_t));
         }
 
         return nfs4_open_async_internal(nfs, data, flags, mode);

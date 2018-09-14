@@ -197,8 +197,9 @@ open_file(const char *url, int flags)
 			return NULL;
 		}
 	} else {
-		if (nfs_creat(file_context->nfs, file_context->url->file, 0660,
-				&file_context->nfsfh) != 0) {
+		if (nfs_create(file_context->nfs, file_context->url->file,
+			       flags, 0660,
+			       &file_context->nfsfh) != 0) {
  			fprintf(stderr, "Failed to creat file %s: %s\n",
 				       file_context->url->file,
 				       nfs_get_error(file_context->nfs));
@@ -241,7 +242,7 @@ int main(int argc, char *argv[])
 		return 10;
 	}
 
-	dst = open_file(argv[2], O_WRONLY|O_CREAT|O_TRUNC);
+	dst = open_file(argv[2], O_WRONLY|O_CREAT|O_EXCL|O_TRUNC);
 	if (dst == NULL) {
 		fprintf(stderr, "Failed to open %s\n", argv[2]);
 		free_file_context(src);
