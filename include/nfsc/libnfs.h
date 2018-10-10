@@ -53,7 +53,9 @@ struct nfs_url {
 #if defined(WIN32)
 #define EXTERN __declspec( dllexport )
 #else
+#ifndef EXTERN
 #define EXTERN
+#endif
 #endif
 
 #ifdef WIN32
