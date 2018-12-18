@@ -81,7 +81,9 @@ struct rpc_context *rpc_init_context(void)
 		free(rpc);
 		return NULL;
 	}
-	rpc->xid = salt + (uint32_t)rpc_current_time() + (getpid() << 16);
+	// Add PID to rpc->xid for easier debugging, making sure to cast
+	// pid to 32-bit type to avoid invalid left-shifts.
+	rpc->xid = salt + rpc_current_time() + ((uint32_t)getpid() << 16);
 	salt += 0x01000000;
 	rpc->fd = -1;
 	rpc->tcp_syncnt = RPC_PARAM_UNDEFINED;
