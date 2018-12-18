@@ -86,6 +86,12 @@
 #include "win32_errnowrapper.h"
 #endif
 
+#ifndef MSG_NOSIGNAL
+#if (defined(__APPLE__) && defined(__MACH__))
+#define MSG_NOSIGNAL 0
+#endif
+#endif
+
 static int
 rpc_reconnect_requeue(struct rpc_context *rpc);
 
