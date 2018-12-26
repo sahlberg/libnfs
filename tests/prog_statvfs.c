@@ -40,7 +40,7 @@ int main(int argc, char *argv[])
 {
 	struct nfs_context *nfs = NULL;
 	struct nfs_url *url = NULL;
-	struct statvfs svfs;
+	struct nfs_statvfs_64 svfs;
 	int ret = 0;
 
 	if (argc != 4) {
@@ -75,23 +75,23 @@ int main(int argc, char *argv[])
 		goto finished;
 	}
 
-	if (nfs_statvfs(nfs, argv[3], &svfs)) {
- 		fprintf(stderr, "statvfs failed : %s\n",
+	if (nfs_statvfs64(nfs, argv[3], &svfs)) {
+		fprintf(stderr, "statvfs64 failed : %s\n",
 			nfs_get_error(nfs));
 		ret = 1;
 		goto finished;
 	}
 
-	printf("bsize:%lu\n", svfs.f_bsize);
-	printf("frsize:%lu\n", svfs.f_frsize);
-	printf("blocks:%lu\n", svfs.f_blocks);
-	printf("bfree:%lu\n", svfs.f_bfree);
-	printf("bavail:%lu\n", svfs.f_bavail);
-	printf("files:%lu\n", svfs.f_files);
-	printf("ffree:%lu\n", svfs.f_ffree);
-	printf("favail:%lu\n", svfs.f_favail);
-	printf("fsid:%lu\n", svfs.f_fsid);
-	printf("namemax:%lu\n", svfs.f_namemax);
+	printf("bsize:%" PRIu64 "\n", svfs.f_bsize);
+	printf("frsize:%" PRIu64 "\n", svfs.f_frsize);
+	printf("blocks:%" PRIu64 "\n", svfs.f_blocks);
+	printf("bfree:%" PRIu64 "\n", svfs.f_bfree);
+	printf("bavail:%" PRIu64 "\n", svfs.f_bavail);
+	printf("files:%" PRIu64 "\n", svfs.f_files);
+	printf("ffree:%" PRIu64 "\n", svfs.f_ffree);
+	printf("favail:%" PRIu64 "\n", svfs.f_favail);
+	printf("fsid:%" PRIu64 "\n", svfs.f_fsid);
+	printf("namemax:%" PRIu64 "\n", svfs.f_namemax);
 
 finished:
 	nfs_destroy_url(url);

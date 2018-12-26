@@ -1166,6 +1166,46 @@ nfs_statvfs(struct nfs_context *nfs, const char *path, struct statvfs *svfs)
 	return cb_data.status;
 }
 
+/*
+ * statvfs64()
+ */
+static void
+statvfs64_cb(int status, struct nfs_context *nfs, void *data,
+             void *private_data)
+{
+	struct sync_cb_data *cb_data = private_data;
+
+	cb_data->is_finished = 1;
+	cb_data->status = status;
+
+	if (status < 0) {
+		nfs_set_error(nfs, "statvfs64 call failed with \"%s\"",
+                              (char *)data);
+		return;
+	}
+
+	memcpy(cb_data->return_data, data, sizeof(struct nfs_statvfs_64));
+}
+
+int
+nfs_statvfs64(struct nfs_context *nfs, const char *path,
+              struct nfs_statvfs_64 *svfs)
+{
+	struct sync_cb_data cb_data;
+
+	cb_data.is_finished = 0;
+	cb_data.return_data = svfs;
+
+	if (nfs_statvfs64_async(nfs, path, statvfs64_cb, &cb_data) != 0) {
+		nfs_set_error(nfs, "nfs_statvfs64_async failed. %s",
+                              nfs_get_error(nfs));
+		return -1;
+	}
+
+	wait_for_nfs_reply(nfs, &cb_data);
+
+	return cb_data.status;
+}
 
 /*
  * readlink()

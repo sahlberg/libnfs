@@ -141,7 +141,8 @@ struct nfs4_cb_data {
 /* Do not follow symlinks for the final component on a lookup.
  * I.e. stat vs lstat
  */
-#define LOOKUP_FLAG_NO_FOLLOW 0x0001
+#define LOOKUP_FLAG_NO_FOLLOW    0x0001
+#define LOOKUP_FLAG_IS_STATVFS64 0x0002
         int flags;
 
         /* Internal callback for open-with-continuation use */
@@ -4389,6 +4390,83 @@ nfs_parse_statvfs(struct nfs_context *nfs, struct nfs4_cb_data *data,
         return 0;
 }
 
+static int
+nfs_parse_statvfs64(struct nfs_context *nfs, struct nfs4_cb_data *data,
+                    struct nfs_statvfs_64 *svfs64, const char *buf, int len)
+{
+        uint64_t u64;
+        uint32_t u32;
+
+	svfs64->f_bsize   = NFS_BLKSIZE;
+	svfs64->f_frsize  = NFS_BLKSIZE;
+	svfs64->f_flag    = 0;
+
+        /* FSID
+         * NFSv4 FSID is 2*64 bit but statvfs fsid is just an
+         * unsigmed long. Mix the 2*64 bits and hope for the best.
+         */
+        CHECK_GETATTR_BUF_SPACE(len, 16);
+        memcpy(&u64, buf, 8);
+	svfs64->f_fsid = nfs_ntoh64(u64);
+        buf += 8;
+        len -= 8;
+        memcpy(&u64, buf, 8);
+	svfs64->f_fsid |= nfs_ntoh64(u64);
+        buf += 8;
+        len -= 8;
+
+        /* Files Avail */
+        CHECK_GETATTR_BUF_SPACE(len, 8);
+        memcpy(&u64, buf, 8);
+	svfs64->f_favail = nfs_ntoh64(u64);
+        buf += 8;
+        len -= 8;
+
+        /* Files Free */
+        CHECK_GETATTR_BUF_SPACE(len, 8);
+        memcpy(&u64, buf, 8);
+	svfs64->f_ffree = nfs_ntoh64(u64);
+        buf += 8;
+        len -= 8;
+
+        /* Files Total */
+        CHECK_GETATTR_BUF_SPACE(len, 8);
+        memcpy(&u64, buf, 8);
+	svfs64->f_files = nfs_ntoh64(u64);
+        buf += 8;
+        len -= 8;
+
+        /* Max Name */
+        CHECK_GETATTR_BUF_SPACE(len, 4);
+        memcpy(&u32, buf, 4);
+	svfs64->f_namemax = ntohl(u32);
+        buf += 4;
+        len -= 4;
+
+        /* Space Avail */
+        CHECK_GETATTR_BUF_SPACE(len, 8);
+        memcpy(&u64, buf, 8);
+	svfs64->f_bavail = nfs_ntoh64(u64) / svfs64->f_frsize;
+        buf += 8;
+        len -= 8;
+
+        /* Space Free */
+        CHECK_GETATTR_BUF_SPACE(len, 8);
+        memcpy(&u64, buf, 8);
+	svfs64->f_bfree = nfs_ntoh64(u64) / svfs64->f_frsize;
+        buf += 8;
+        len -= 8;
+
+        /* Space Total */
+        CHECK_GETATTR_BUF_SPACE(len, 8);
+        memcpy(&u64, buf, 8);
+	svfs64->f_blocks = nfs_ntoh64(u64) / svfs64->f_frsize;
+        buf += 8;
+        len -= 8;
+
+        return 0;
+}
+
 static void
 nfs4_statvfs_cb(struct rpc_context *rpc, int status, void *command_data,
               void *private_data)
@@ -4398,6 +4476,7 @@ nfs4_statvfs_cb(struct rpc_context *rpc, int status, void *command_data,
         COMPOUND4res *res = command_data;
         GETATTR4resok *garesok;
 	struct statvfs svfs;
+	struct nfs_statvfs_64 svfs64;
         int i;
 
         assert(rpc->magic == RPC_CONTEXT_MAGIC);
@@ -4413,21 +4492,37 @@ nfs4_statvfs_cb(struct rpc_context *rpc, int status, void *command_data,
         }
         garesok = &res->resarray.resarray_val[i].nfs_resop4_u.opgetattr.GETATTR4res_u.resok4;
 
-        if (nfs_parse_statvfs(nfs, data, &svfs,
+        if (data->flags & LOOKUP_FLAG_IS_STATVFS64) {
+                /* statvfs64 */
+                if (nfs_parse_statvfs64(nfs, data, &svfs64,
                               garesok->obj_attributes.attr_vals.attrlist4_val,
                               garesok->obj_attributes.attr_vals.attrlist4_len) < 0) {
-                data->cb(-EINVAL, nfs, nfs_get_error(nfs), data->private_data);
-                free_nfs4_cb_data(data);
-                return;
+                        data->cb(-EINVAL, nfs, nfs_get_error(nfs), data->private_data);
+                        free_nfs4_cb_data(data);
+                        return;
+                }
+
+                data->cb(0, nfs, &svfs64, data->private_data);
+        } else {
+                /* statvfs */
+                if (nfs_parse_statvfs(nfs, data, &svfs,
+                              garesok->obj_attributes.attr_vals.attrlist4_val,
+                              garesok->obj_attributes.attr_vals.attrlist4_len) < 0) {
+                        data->cb(-EINVAL, nfs, nfs_get_error(nfs), data->private_data);
+                        free_nfs4_cb_data(data);
+                        return;
+                }
+
+                data->cb(0, nfs, &svfs, data->private_data);
         }
 
-	data->cb(0, nfs, &svfs, data->private_data);
 	free_nfs4_cb_data(data);
 }
 
-int
-nfs4_statvfs_async(struct nfs_context *nfs, const char *path, nfs_cb cb,
-                   void *private_data)
+static int
+nfs4_statvfs_async_internal(struct nfs_context *nfs, const char *path,
+                            int is_statvfs64,
+                            nfs_cb cb, void *private_data)
 {
         struct nfs4_cb_data *data;
         COMPOUND4args args;
@@ -4445,6 +4540,9 @@ nfs4_statvfs_async(struct nfs_context *nfs, const char *path, nfs_cb cb,
         data->nfs          = nfs;
         data->cb           = cb;
         data->private_data = private_data;
+        if (is_statvfs64) {
+                data->flags |= LOOKUP_FLAG_IS_STATVFS64;
+        }
 
         fh.fh.len = nfs->rootfh.len;
         fh.fh.val = nfs->rootfh.val;
@@ -4463,6 +4561,22 @@ nfs4_statvfs_async(struct nfs_context *nfs, const char *path, nfs_cb cb,
         }
 
         return 0;
+}
+
+int
+nfs4_statvfs_async(struct nfs_context *nfs, const char *path, nfs_cb cb,
+                   void *private_data)
+{
+        return nfs4_statvfs_async_internal(nfs, path, 0,
+                                           cb, private_data);
+}
+
+int
+nfs4_statvfs64_async(struct nfs_context *nfs, const char *path, nfs_cb cb,
+                     void *private_data)
+{
+        return nfs4_statvfs_async_internal(nfs, path, 1,
+                                           cb, private_data);
 }
 
 static void

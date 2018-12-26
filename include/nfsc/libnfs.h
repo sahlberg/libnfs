@@ -1292,8 +1292,23 @@ EXTERN void nfs_getcwd(struct nfs_context *nfs, const char **cwd);
 /*
  * STATVFS()
  */
+struct nfs_statvfs_64 {
+	uint64_t	f_bsize;
+	uint64_t	f_frsize;
+	uint64_t	f_blocks;
+	uint64_t	f_bfree;
+	uint64_t	f_bavail;
+	uint64_t	f_files;
+	uint64_t	f_ffree;
+	uint64_t	f_favail;
+	uint64_t	f_fsid;
+	uint64_t	f_flag;
+	uint64_t	f_namemax;
+};
 /*
  * Async statvfs(<dirname>)
+ * This function is deprecated. Use nfs_statvfs64_async() instead.
+ *
  * Function returns
  *  0 : The command was queued successfully. The callback will be invoked once
  *      the command completes.
@@ -1311,13 +1326,40 @@ EXTERN int nfs_statvfs_async(struct nfs_context *nfs, const char *path,
                              nfs_cb cb, void *private_data);
 /*
  * Sync statvfs(<dirname>)
+ * This function is deprecated. Use nfs_statvfs64() instead.
+ *
  * Function returns
  *      0 : The operation was successful.
  * -errno : The command failed.
  */
 EXTERN int nfs_statvfs(struct nfs_context *nfs, const char *path,
                        struct statvfs *svfs);
-
+/*
+ * Async statvfs64(<dirname>)
+ *
+ * Function returns
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
+ *
+ * When the callback is invoked, status indicates the result:
+ *      0 : Success.
+ *          data is struct nfs_statvfs_64 *
+ * -errno : An error occured.
+ *          data is the error string.
+ */
+EXTERN int nfs_statvfs64_async(struct nfs_context *nfs, const char *path,
+                               nfs_cb cb, void *private_data);
+/*
+ * Sync statvfs64(<dirname>)
+ *
+ * Function returns
+ *      0 : The operation was successful.
+ * -errno : The command failed.
+ */
+EXTERN int nfs_statvfs64(struct nfs_context *nfs, const char *path,
+                         struct nfs_statvfs_64 *svfs);
 
 /*
  * READLINK()
@@ -1338,7 +1380,6 @@ EXTERN int nfs_statvfs(struct nfs_context *nfs, const char *path,
  * -errno : An error occured.
  *          data is the error string.
  */
-struct statvfs;
 EXTERN int nfs_readlink_async(struct nfs_context *nfs, const char *path,
                               nfs_cb cb, void *private_data);
 /*

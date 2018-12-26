@@ -1472,6 +1472,22 @@ nfs_statvfs_async(struct nfs_context *nfs, const char *path, nfs_cb cb,
 }
 
 int
+nfs_statvfs64_async(struct nfs_context *nfs, const char *path, nfs_cb cb,
+                    void *private_data)
+{
+	switch (nfs->version) {
+        case NFS_V3:
+                return nfs3_statvfs64_async(nfs, path, cb, private_data);
+        case NFS_V4:
+                return nfs4_statvfs64_async(nfs, path, cb, private_data);
+        default:
+                nfs_set_error(nfs, "%s does not support NFSv%d",
+                              __FUNCTION__, nfs->version);
+                return -1;
+        }
+}
+
+int
 nfs_readlink_async(struct nfs_context *nfs, const char *path, nfs_cb cb,
                     void *private_data)
 {

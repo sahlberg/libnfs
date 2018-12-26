@@ -95,6 +95,8 @@ nfs_stat64
 nfs_stat64_async
 nfs_statvfs
 nfs_statvfs_async
+nfs_statvfs64
+nfs_statvfs64_async
 nfs_symlink
 nfs_symlink_async
 nfs_truncate

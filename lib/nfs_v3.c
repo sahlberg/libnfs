@@ -2272,6 +2272,7 @@ nfs3_statvfs_1_cb(struct rpc_context *rpc, int status, void *command_data,
 	struct nfs_cb_data *data = private_data;
 	struct nfs_context *nfs = data->nfs;
 	struct statvfs svfs;
+	struct nfs_statvfs_64 svfs64;
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
@@ -2292,21 +2293,39 @@ nfs3_statvfs_1_cb(struct rpc_context *rpc, int status, void *command_data,
 		return;
 	}
 
-	svfs.f_bsize   = NFS_BLKSIZE;
-	svfs.f_frsize  = NFS_BLKSIZE;
-	svfs.f_blocks  = res->FSSTAT3res_u.resok.tbytes/NFS_BLKSIZE;
-	svfs.f_bfree   = res->FSSTAT3res_u.resok.fbytes/NFS_BLKSIZE;
-	svfs.f_bavail  = res->FSSTAT3res_u.resok.abytes/NFS_BLKSIZE;
-	svfs.f_files   = (uint32_t)res->FSSTAT3res_u.resok.tfiles;
-	svfs.f_ffree   = (uint32_t)res->FSSTAT3res_u.resok.ffiles;
+        if (data->continue_int == 0) {
+                /* statvfs */
+                svfs.f_bsize   = NFS_BLKSIZE;
+                svfs.f_frsize  = NFS_BLKSIZE;
+                svfs.f_blocks  = res->FSSTAT3res_u.resok.tbytes/NFS_BLKSIZE;
+                svfs.f_bfree   = res->FSSTAT3res_u.resok.fbytes/NFS_BLKSIZE;
+                svfs.f_bavail  = res->FSSTAT3res_u.resok.abytes/NFS_BLKSIZE;
+                svfs.f_files   = (uint32_t)res->FSSTAT3res_u.resok.tfiles;
+                svfs.f_ffree   = (uint32_t)res->FSSTAT3res_u.resok.ffiles;
 #if !defined(__ANDROID__)
-	svfs.f_favail  = (uint32_t)res->FSSTAT3res_u.resok.afiles;
-	svfs.f_fsid    = 0;
-	svfs.f_flag    = 0;
-	svfs.f_namemax = 256;
+                svfs.f_favail  = (uint32_t)res->FSSTAT3res_u.resok.afiles;
+                svfs.f_fsid    = 0;
+                svfs.f_flag    = 0;
+                svfs.f_namemax = 256;
 #endif
+                data->cb(0, nfs, &svfs, data->private_data);
+        } else {
+                /* statvfs64 */
+                svfs64.f_bsize   = NFS_BLKSIZE;
+                svfs64.f_frsize  = NFS_BLKSIZE;
+                svfs64.f_blocks  = res->FSSTAT3res_u.resok.tbytes/NFS_BLKSIZE;
+                svfs64.f_bfree   = res->FSSTAT3res_u.resok.fbytes/NFS_BLKSIZE;
+                svfs64.f_bavail  = res->FSSTAT3res_u.resok.abytes/NFS_BLKSIZE;
+                svfs64.f_files   = res->FSSTAT3res_u.resok.tfiles;
+                svfs64.f_ffree   = res->FSSTAT3res_u.resok.ffiles;
+                svfs64.f_favail  = res->FSSTAT3res_u.resok.afiles;
+                svfs64.f_fsid    = 0;
+                svfs64.f_flag    = 0;
+                svfs64.f_namemax = 256;
 
-	data->cb(0, nfs, &svfs, data->private_data);
+                data->cb(0, nfs, &svfs64, data->private_data);
+        }
+
 	free_nfs_cb_data(data);
 }
 
@@ -2338,6 +2357,19 @@ nfs3_statvfs_async(struct nfs_context *nfs, const char *path, nfs_cb cb,
 	if (nfs3_lookuppath_async(nfs, path, 0, cb, private_data,
                                   nfs3_statvfs_continue_internal,
                                   NULL, NULL, 0) != 0) {
+		return -1;
+	}
+
+	return 0;
+}
+
+int
+nfs3_statvfs64_async(struct nfs_context *nfs, const char *path, nfs_cb cb,
+                     void *private_data)
+{
+	if (nfs3_lookuppath_async(nfs, path, 0, cb, private_data,
+                                  nfs3_statvfs_continue_internal,
+                                  NULL, NULL, 1) != 0) {
 		return -1;
 	}
 
