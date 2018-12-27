@@ -4486,6 +4486,7 @@ nfs4_statvfs_cb(struct rpc_context *rpc, int status, void *command_data,
         }
 
         memset(&svfs, 0, sizeof(svfs));
+        memset(&svfs64, 0, sizeof(svfs64));
 
         if ((i = nfs4_find_op(nfs, data, res, OP_GETATTR, "GETATTR")) < 0) {
                 return;
