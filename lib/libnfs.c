@@ -865,6 +865,26 @@ nfs_mount_async(struct nfs_context *nfs, const char *server,
         }
 }
 
+/*
+ * Async call for umounting an nfs share
+ */
+int
+nfs_umount_async(struct nfs_context *nfs, nfs_cb cb, void *private_data)
+{
+	switch (nfs->version) {
+        case NFS_V3:
+                return nfs3_umount_async(nfs, cb, private_data);
+        case NFS_V4:
+                /* umount is a no-op in v4 */
+                (*cb)(0, nfs, NULL, private_data);
+                return 0;
+        default:
+                nfs_set_error(nfs, "%s does not support NFSv%d",
+                              __FUNCTION__, nfs->version);
+                return -1;
+        }
+}
+
 int
 nfs_normalize_path(struct nfs_context *nfs, char *path)
 {

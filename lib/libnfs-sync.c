@@ -229,6 +229,57 @@ nfs_mount(struct nfs_context *nfs, const char *server, const char *export)
 
 
 /*
+ * unregister the mount
+ */
+static void
+umount_cb(int status, struct nfs_context *nfs, void *data, void *private_data)
+{
+	struct sync_cb_data *cb_data = private_data;
+
+	cb_data->is_finished = 1;
+	cb_data->status = status;
+
+	if (status < 0) {
+		nfs_set_error(nfs, "%s: %s",
+                              __FUNCTION__, nfs_get_error(nfs));
+		return;
+	}
+}
+
+int
+nfs_umount(struct nfs_context *nfs)
+{
+	struct sync_cb_data cb_data;
+	struct rpc_context *rpc = nfs_get_rpc_context(nfs);
+
+	assert(rpc->magic == RPC_CONTEXT_MAGIC);
+
+	cb_data.is_finished = 0;
+
+	if (nfs_umount_async(nfs, umount_cb, &cb_data) != 0) {
+		nfs_set_error(nfs, "nfs_umount_async failed. %s",
+			      nfs_get_error(nfs));
+		return -1;
+	}
+
+	wait_for_nfs_reply(nfs, &cb_data);
+
+	/* Dont want any more callbacks even if the socket is closed */
+	rpc->connect_cb = NULL;
+
+	/* Ensure that no RPCs are pending. In error case (e.g. timeout in
+	 * wait_for_nfs_reply()) we can disconnect; in success case all RPCs
+	 * are completed by definition.
+	 */
+	if (cb_data.status) {
+		rpc_disconnect(rpc, "failed mount");
+	}
+
+	return cb_data.status;
+}
+
+
+/*
  * stat()
  */
 static void

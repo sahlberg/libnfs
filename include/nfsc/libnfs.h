@@ -316,6 +316,39 @@ EXTERN int nfs_mount(struct nfs_context *nfs, const char *server,
                      const char *exportname);
 
 
+/*
+ * UNMOUNT THE EXPORT
+ */
+/*
+ * Async nfs umount.
+ * For NFSv4 this is a NO-OP.
+ * For NFSv3 this function returns unregisters the mount from the MOUNT Daemon.
+ *
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
+ *
+ * When the callback is invoked, status indicates the result:
+ *      0 : Success.
+ *          data is NULL
+ * -errno : An error occured.
+ *          data is the error string.
+ */
+EXTERN int nfs_umount_async(struct nfs_context *nfs, nfs_cb cb,
+                           void *private_data);
+/*
+ * Sync nfs umount.
+ * For NFSv4 this is a NO-OP.
+ * For NFSv3 this function returns unregisters the mount from the MOUNT Daemon.
+ *
+ * Function returns
+ *      0 : The operation was successful.
+ * -errno : The command failed.
+ */
+EXTERN int nfs_umount(struct nfs_context *nfs);
+
+
 
 
 /*

@@ -469,6 +469,7 @@ int nfs3_symlink_async(struct nfs_context *nfs, const char *oldpath,
                        const char *newpath, nfs_cb cb, void *private_data);
 int nfs3_truncate_async(struct nfs_context *nfs, const char *path,
                         uint64_t length, nfs_cb cb, void *private_data);
+int nfs3_umount_async(struct nfs_context *nfs, nfs_cb cb, void *private_data);
 int nfs3_unlink_async(struct nfs_context *nfs, const char *path, nfs_cb cb,
                       void *private_data);
 int nfs3_utime_async(struct nfs_context *nfs, const char *path,

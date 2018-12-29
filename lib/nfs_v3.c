@@ -1152,6 +1152,92 @@ nfs3_mount_async(struct nfs_context *nfs, const char *server,
 	return 0;
 }
 
+static void
+nfs3_umount_2_cb(struct rpc_context *rpc, int status, void *command_data,
+                void *private_data)
+{
+	struct nfs_cb_data *data = private_data;
+	struct nfs_context *nfs = data->nfs;
+
+	assert(rpc->magic == RPC_CONTEXT_MAGIC);
+
+	if (check_nfs3_error(nfs, status, data, command_data)) {
+		free_nfs_cb_data(data);
+		return;
+	}
+
+	rpc_disconnect(rpc, "umount");
+	data->cb(0, nfs, NULL, data->private_data);
+	free_nfs_cb_data(data);
+}
+
+static void
+nfs3_umount_1_cb(struct rpc_context *rpc, int status, void *command_data,
+                void *private_data)
+{
+	struct nfs_cb_data *data = private_data;
+	struct nfs_context *nfs = data->nfs;
+
+	assert(rpc->magic == RPC_CONTEXT_MAGIC);
+
+	if (check_nfs3_error(nfs, status, data, command_data)) {
+		free_nfs_cb_data(data);
+		return;
+	}
+
+	if (rpc_mount3_umnt_async(rpc, nfs3_umount_2_cb, nfs->export,
+                                 data) != 0) {
+                nfs_set_error(nfs, "%s: %s.", __FUNCTION__, nfs_get_error(nfs));
+		data->cb(-ENOMEM, nfs, nfs_get_error(nfs), data->private_data);
+		free_nfs_cb_data(data);
+		return;
+	}
+}
+
+int
+nfs3_umount_async(struct nfs_context *nfs, nfs_cb cb, void *private_data)
+{
+	struct nfs_cb_data *data;
+
+	data = malloc(sizeof(struct nfs_cb_data));
+	if (data == NULL) {
+		nfs_set_error(nfs, "out of memory. failed to allocate "
+			      "memory for nfs mount data");
+		return -1;
+	}
+	memset(data, 0, sizeof(struct nfs_cb_data));
+
+	data->nfs          = nfs;
+	data->cb           = cb;
+	data->private_data = private_data;
+
+	rpc_disconnect(nfs->rpc, "umount");
+
+        if (nfs->mountport) {
+                if (rpc_connect_port_async(nfs->rpc, nfs->server,
+                                           nfs->mountport,
+                                           MOUNT_PROGRAM, MOUNT_V3,
+                                           nfs3_umount_1_cb, data) != 0) {
+                        nfs_set_error(nfs, "Failed to start connection. %s",
+                                      nfs_get_error(nfs));
+                        free_nfs_cb_data(data);
+                        return -1;
+                }
+                return 0;
+        }
+
+	if (rpc_connect_program_async(nfs->rpc, nfs->server,
+				      MOUNT_PROGRAM, MOUNT_V3,
+				      nfs3_umount_1_cb, data) != 0) {
+		nfs_set_error(nfs, "Failed to start connection. %s",
+                              nfs_get_error(nfs));
+		free_nfs_cb_data(data);
+		return -1;
+	}
+
+	return 0;
+}
+
 
 struct nfs_link_data {
        char *oldpath;

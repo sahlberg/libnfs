@@ -101,6 +101,8 @@ nfs_symlink
 nfs_symlink_async
 nfs_truncate
 nfs_truncate_async
+nfs_umount
+nfs_umount_async
 nfs_unlink
 nfs_unlink_async
 nfs_utime

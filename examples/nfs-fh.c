@@ -122,6 +122,7 @@ int main(int argc, char *argv[])
 	if (nfsfh) {
 		nfs_close(nfs, nfsfh);
 	}
+        nfs_umount(nfs);
 	if (url) {
 		nfs_destroy_url(url);
 	}
