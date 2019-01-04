@@ -4287,6 +4287,11 @@ nfs3_close_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_cb cb,
 {
         struct nfs_cb_data *data;
 
+        if (!nfsfh->is_dirty) {
+                cb(0, nfs, NULL, private_data);
+                return 0;
+        }
+
         data = malloc(sizeof(struct nfs_cb_data));
         if (data == NULL) {
                 nfs_set_error(nfs, "out of memory: failed to allocate "
@@ -4459,6 +4464,7 @@ nfs3_pwrite_async_internal(struct nfs_context *nfs, struct nfsfh *nfsfh,
 {
 	struct nfs_cb_data *data;
 
+        nfsfh->is_dirty = 1;
 	data = malloc(sizeof(struct nfs_cb_data));
 	if (data == NULL) {
 		nfs_set_error(nfs, "out of memory: failed to allocate "
