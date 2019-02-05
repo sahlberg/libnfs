@@ -43,7 +43,7 @@ int main(int argc, char *argv[])
 	struct nfs_context *nfs = NULL;
 	struct nfs_url *url = NULL;
 	int ret = 0;
-        int flags = 0, count;
+        int flags = 0, count, res, pos;
         struct nfsfh *fh;
         char buf[1024];
 
@@ -111,7 +111,17 @@ int main(int argc, char *argv[])
 		goto finished;
 	}
 
-        write(1, buf, count);
+        pos = 0;
+        while (count) {
+                res = write(1, &buf[pos], count);
+                if (res < 0) {
+                        fprintf(stderr, "write() failed\n");
+                        ret = 1;
+                        goto finished;
+                }
+                count -= res;
+                pos += res;
+        }
 
 	if (nfs_close(nfs, fh)) {
  		fprintf(stderr, "Failed to close(): %s\n",
