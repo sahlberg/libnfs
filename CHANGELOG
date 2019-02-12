@@ -1,3 +1,16 @@
+Changes since 3.0.0
+
+Fix the versioning in makerpms.sh
+Fix some compile issues in the test programs.
+NFSv3: skip commit on close if the file has not been written to.
+Add nfs_umount() to NFSv3
+Add nfs_statvfs64()
+Fix invalid shift of pid_t when generating rpc->xid
+Compile fixes for Mac OSX
+Fix for dup2() on Windows
+NFSv4 fix for directory handling
+Improvements to configure/bulding
+
 Changes since 2.0.0
 
 NFSv4 support.
