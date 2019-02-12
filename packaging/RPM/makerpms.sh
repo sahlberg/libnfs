@@ -50,7 +50,7 @@ RPMBUILD="rpmbuild"
 #
 # If we're not directly on a tag, this is a devel release; we append
 # .0.<patchnum>.<checksum>.devel to the release.
-TAG=`git describe`
+TAG=`git describe --tags`
 case "$TAG" in
     libnfs-*)
 	TAG=${TAG##libnfs-}
