@@ -4288,6 +4288,7 @@ nfs3_close_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_cb cb,
         struct nfs_cb_data *data;
 
         if (!nfsfh->is_dirty) {
+                nfs_free_nfsfh(nfsfh);
                 cb(0, nfs, NULL, private_data);
                 return 0;
         }
