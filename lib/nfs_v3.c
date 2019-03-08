@@ -470,7 +470,7 @@ nfs3_lookuppath_async(struct nfs_context *nfs, const char *path, int no_follow,
 		path = ".";
 	}
 
-	data = malloc(sizeof(struct nfs_cb_data));
+	data = calloc(1, sizeof(struct nfs_cb_data));
 	if (data == NULL) {
 		nfs_set_error(nfs, "Out of memory: failed to allocate "
 			"nfs_cb_data structure");
@@ -479,7 +479,6 @@ nfs3_lookuppath_async(struct nfs_context *nfs, const char *path, int no_follow,
                 }
 		return -1;
 	}
-	memset(data, 0, sizeof(struct nfs_cb_data));
 	data->nfs                = nfs;
 	data->cb                 = cb;
 	data->continue_cb        = continue_cb;
