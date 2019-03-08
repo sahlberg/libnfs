@@ -505,6 +505,11 @@ int rpc_process_pdu(struct rpc_context *rpc, char *buf, int size)
 		zdr_destroy(&zdr);
 		for (fragment = rpc->fragments; fragment; fragment = fragment->next) {
 			total += fragment->size;
+                        if (total < fragment->size) {
+                                rpc_set_error(rpc, "Fragments too large");
+                                rpc_free_all_fragments(rpc);
+                                return -1;
+                        }
 		}
 
 		reasbuf = malloc(total);
