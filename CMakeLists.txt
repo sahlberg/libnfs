@@ -47,6 +47,8 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL aros)
   add_definitions("-D_U_=__attribute__((unused))")
   add_definitions(-DAROS)
   add_subdirectory(aros)
+else()
+  add_definitions("-D_U_=__attribute__((unused))")
 endif()
 
 add_subdirectory(mount)
