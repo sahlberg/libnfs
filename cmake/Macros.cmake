@@ -5,11 +5,11 @@
 #   SOURCES the sources of the library
 #   HEADERS the headers of the library (only for IDE support)
 # On return:
-#   Library will be built and added to ${core_DEPENDS}
+#   Library will be built and added to ${CORE_LIBRARIES}
 function(core_add_library name)
   set(name core_${name})
   set(CMAKE_POSITION_INDEPENDENT_CODE ON)
   add_library(${name} STATIC ${SOURCES} ${HEADERS})
   target_include_directories(${name} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
-  set(core_DEPENDS ${name} ${core_DEPENDS} CACHE STRING "" FORCE)
+  set(CORE_LIBRARIES "${name};${CORE_LIBRARIES}" CACHE INTERNAL "")
 endfunction()

@@ -132,7 +132,7 @@ int win32_poll(struct pollfd *fds, unsigned int nfds, int timo)
   {
     for (i = 0; i < nfds; ++i) 
     {
-      int fd = fds[i].fd;
+      SOCKET fd = fds[i].fd;
       if(fds[i].events & (POLLIN|POLLPRI) && FD_ISSET(fd, &ifds))
         fds[i].revents |= POLLIN;
       if(fds[i].events & POLLOUT && FD_ISSET(fd, &ofds))
