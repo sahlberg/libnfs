@@ -1,12 +1,20 @@
-add_library(nfs init.c
-                libnfs.c
-                libnfs-sync.c
-                libnfs-zdr.c
-                nfs_v3.c
-                nfs_v4.c
-                pdu.c
-                socket.c)
+set(SOURCES init.c
+            libnfs.c
+            libnfs-sync.c
+            libnfs-zdr.c
+            nfs_v3.c
+            nfs_v4.c
+            pdu.c
+            socket.c
+)
 
+# deal with version info in "dll" case
+if(WIN32 AND BUILD_SHARED_LIBS)
+  configure_file(../win32/version.rc.template version.rc @ONLY)
+  list(APPEND SOURCES ${CMAKE_CURRENT_BINARY_DIR}/version.rc)
+endif()
+
+add_library(nfs ${SOURCES})
 target_include_directories(nfs PUBLIC ../include)
 target_link_libraries(nfs PUBLIC ${CORE_LIBRARIES} ${SYSTEM_LIBRARIES})
 set_target_properties(nfs PROPERTIES
