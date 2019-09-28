@@ -317,17 +317,23 @@ bool_t libnfs_zdr_string(ZDR *zdrs, char **strp, uint32_t maxsize)
 bool_t libnfs_zdr_array(ZDR *zdrs, char **arrp, uint32_t *size, uint32_t maxsize, uint32_t elsize, zdrproc_t proc)
 {
 	int  i;
+        uint32_t s;
+
+        s = (*size * elsize) & 0xffffffff;
+        if (*size * elsize > s) {
+                return FALSE;
+        }
 
 	if (!libnfs_zdr_u_int(zdrs, size)) {
 		return FALSE;
 	}
 
 	if (zdrs->x_op == ZDR_DECODE) {
-		*arrp = zdr_malloc(zdrs, *size * elsize);
+		*arrp = zdr_malloc(zdrs, s);
 		if (*arrp == NULL) {
 			return FALSE;
 		}
-		memset(*arrp, 0, *size * elsize);
+		memset(*arrp, 0, s);
 	}
 
 	for (i = 0; i < (int)*size; i++) {
