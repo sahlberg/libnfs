@@ -122,7 +122,7 @@ set_nonblocking(int fd)
 #else
 	v = fcntl(fd, F_GETFL, 0);
 	v = fcntl(fd, F_SETFL, v | O_NONBLOCK);
-#endif //FIXME
+#endif
 	return v;
 }
 
