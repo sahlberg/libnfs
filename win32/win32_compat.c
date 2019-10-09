@@ -50,7 +50,7 @@ int win32_inet_pton(int af, const char * src, void * dst)
   struct sockaddr_in sa;
   int len = sizeof(SOCKADDR);
   int ret = -1;
-  int strLen = strlen(src) + 1;
+  size_t strLen = strlen(src) + 1;
 #ifdef UNICODE
   wchar_t *srcNonConst = (wchar_t *)malloc(strLen*sizeof(wchar_t));
   memset(srcNonConst, 0, strLen);

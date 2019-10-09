@@ -889,7 +889,7 @@ int
 nfs_normalize_path(struct nfs_context *nfs, char *path)
 {
 	char *str;
-	int len;
+	size_t len;
 
 	/* // -> / */
 	while ((str = strstr(path, "//"))) {

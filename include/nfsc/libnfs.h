@@ -52,7 +52,7 @@ struct nfs_url {
 	char *file;
 };
 
-#if defined(WIN32) && defined(nfs_EXPORTS)
+#if defined(WIN32) && defined(libnfs_EXPORTS)
 #define EXTERN __declspec( dllexport )
 #else
 #ifndef EXTERN
