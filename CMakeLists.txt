@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.2)
 
 project(libnfs
         LANGUAGES C
-        VERSION 2.0.0)
+        VERSION 4.0.0)
 
 set(SOVERSION 11.0.0 CACHE STRING "" FORCE)
 
@@ -29,20 +29,41 @@ include_directories(${CMAKE_CURRENT_BINARY_DIR}
                     include
                     include/nfsc)
 
-set(CORE_LIBRARIES nfs)
-set(core_DEPENDS "" CACHE STRING "" FORCE)
+# list of system libs (sockets/etc) to be linked on this system
+set(SYSTEM_LIBRARIES "")
+# list of core (static) libraries built in current configuration (used by lib/CMakeLists.txt)
+set(CORE_LIBRARIES "" CACHE INTERNAL "")
+
+# make sure related functions are exported in final dll
+if(WIN32 AND BUILD_SHARED_LIBS)
+  add_definitions(-Dlibnfs_EXPORTS)
+endif()
 
 if(CMAKE_SYSTEM_NAME STREQUAL Windows)
-  list(APPEND CORE_LIBRARIES -lws2_32.lib)
+  add_definitions("-D_U_=" -D_CRT_SECURE_NO_WARNINGS -D_CRT_NONSTDC_NO_DEPRECATE)
+  list(APPEND SYSTEM_LIBRARIES ws2_32)
   add_subdirectory(win32)
 elseif(CMAKE_SYSTEM_NAME STREQUAL Solaris)
+  add_definitions("-D_U_=__attribute__((unused))")
   find_library(SOCKET_LIBRARY socket)
   find_library(NSL_LIBRARY nsl)
-  list(APPEND CORE_LIBRARIES ${SOCKET_LIBRARY} ${NSL_LIBRARY})
+  list(APPEND SYSTEM_LIBRARIES ${SOCKET_LIBRARY} ${NSL_LIBRARY})
 elseif(CMAKE_SYSTEM_NAME STREQUAL aros)
+  add_definitions("-D_U_=__attribute__((unused))")
   add_definitions(-DAROS)
   add_subdirectory(aros)
+else()
+  add_definitions("-D_U_=__attribute__((unused))")
 endif()
+
+add_subdirectory(mount)
+add_subdirectory(nfs)
+add_subdirectory(nfs4)
+add_subdirectory(nlm)
+add_subdirectory(nsm)
+add_subdirectory(portmap)
+add_subdirectory(rquota)
+add_subdirectory(lib)   # this has to be last (it links all static libs mentioned in CORE_LIBRARIES)
 
 if(ENABLE_DOCUMENTATION)
   add_subdirectory(doc)
@@ -60,15 +81,6 @@ endif()
 if(ENABLE_UTILS)
   add_subdirectory(utils)
 endif()
-
-add_subdirectory(mount)
-add_subdirectory(nfs)
-add_subdirectory(nfs4)
-add_subdirectory(nlm)
-add_subdirectory(nsm)
-add_subdirectory(portmap)
-add_subdirectory(rquota)
-add_subdirectory(lib)
 
 include(CMakePackageConfigHelpers)
 write_basic_package_version_file(${CMAKE_CURRENT_BINARY_DIR}/libnfs-config-version.cmake

@@ -50,7 +50,7 @@ int win32_inet_pton(int af, const char * src, void * dst)
   struct sockaddr_in sa;
   int len = sizeof(SOCKADDR);
   int ret = -1;
-  int strLen = strlen(src) + 1;
+  size_t strLen = strlen(src) + 1;
 #ifdef UNICODE
   wchar_t *srcNonConst = (wchar_t *)malloc(strLen*sizeof(wchar_t));
   memset(srcNonConst, 0, strLen);
@@ -132,7 +132,7 @@ int win32_poll(struct pollfd *fds, unsigned int nfds, int timo)
   {
     for (i = 0; i < nfds; ++i) 
     {
-      int fd = fds[i].fd;
+      SOCKET fd = fds[i].fd;
       if(fds[i].events & (POLLIN|POLLPRI) && FD_ISSET(fd, &ifds))
         fds[i].revents |= POLLIN;
       if(fds[i].events & POLLOUT && FD_ISSET(fd, &ofds))

@@ -36,11 +36,24 @@ WSADATA wsaData;
 #include <netinet/in.h>
 #endif
 
+#ifdef HAVE_NETDB_H
 #include <netdb.h>
+#endif
+
 #include <stdio.h>
+
+#ifdef HAVE_STDLIB_H
 #include <stdlib.h>
+#endif
+
+#ifdef HAVE_STRING_H
 #include <string.h>
+#endif
+
+#ifdef HAVE_SYS_SOCKET_H
 #include <sys/socket.h>
+#endif
+
 #include <time.h>
 #include "libnfs.h"
 #include "libnfs-raw.h"
