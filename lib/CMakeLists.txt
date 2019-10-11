@@ -15,13 +15,12 @@ if(WIN32 AND BUILD_SHARED_LIBS)
 endif()
 
 add_library(nfs ${SOURCES})
-target_include_directories(nfs PUBLIC ../include)
-target_link_libraries(nfs PUBLIC ${CORE_LIBRARIES} ${SYSTEM_LIBRARIES})
+target_link_libraries(nfs PRIVATE ${CORE_LIBRARIES} PUBLIC ${SYSTEM_LIBRARIES})
 set_target_properties(nfs PROPERTIES
                           VERSION ${PROJECT_VERSION}
                           SOVERSION ${SOVERSION})
 
-install(TARGETS nfs EXPORT nfs
+install(TARGETS nfs EXPORT libnfs
                     RUNTIME DESTINATION bin
                     ARCHIVE DESTINATION lib
                     LIBRARY DESTINATION lib)
