@@ -6,5 +6,5 @@ endif()
 
 foreach(TARGET ${UTILITIES})
   add_executable(${TARGET} ${TARGET}.c)
-  target_link_libraries(${TARGET} nfs)
+  target_link_libraries(${TARGET} nfs nfs_mount)
 endforeach()
