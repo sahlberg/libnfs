@@ -82,14 +82,35 @@ if(ENABLE_UTILS)
   add_subdirectory(utils)
 endif()
 
+# this will create build-tree-specific config file (so downstream client can use this specific build without having to install package)
+export(EXPORT libnfs
+       NAMESPACE libnfs::
+       FILE "${CMAKE_CURRENT_BINARY_DIR}/libnfs-config.cmake")
+
+# this will create relocatable config file in installation directory
+install(EXPORT libnfs
+        DESTINATION "${INSTALL_CMAKE_DIR}"
+        NAMESPACE libnfs::
+        FILE libnfs-config.cmake)
+
+# handle version file
 include(CMakePackageConfigHelpers)
 write_basic_package_version_file(${CMAKE_CURRENT_BINARY_DIR}/libnfs-config-version.cmake
                                  VERSION ${PROJECT_VERSION}
                                  COMPATIBILITY AnyNewerVersion)
 
+install(FILES cmake/FindNFS.cmake
+              ${CMAKE_CURRENT_BINARY_DIR}/libnfs-config-version.cmake
+        DESTINATION ${INSTALL_CMAKE_DIR})
+
+# handle pc-config files
 configure_file(cmake/libnfs.pc.cmake
                ${CMAKE_CURRENT_BINARY_DIR}/libnfs.pc @ONLY)
 
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/libnfs.pc
+        DESTINATION ${INSTALL_PKGCONFIG_DIR})
+
+# handle headers installation
 install(DIRECTORY include/nfsc
         DESTINATION ${INSTALL_INC_DIR})
 
@@ -100,10 +121,3 @@ install(FILES mount/libnfs-raw-mount.h
               portmap/libnfs-raw-portmap.h
               rquota/libnfs-raw-rquota.h
         DESTINATION ${INSTALL_INC_DIR}/nfsc)
-
-install(FILES cmake/FindNFS.cmake
-              ${CMAKE_CURRENT_BINARY_DIR}/libnfs-config-version.cmake
-        DESTINATION ${INSTALL_CMAKE_DIR})
-
-install(FILES ${CMAKE_CURRENT_BINARY_DIR}/libnfs.pc
-        DESTINATION ${INSTALL_PKGCONFIG_DIR})
