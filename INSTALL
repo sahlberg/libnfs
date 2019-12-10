@@ -1,0 +1,7 @@
+To install
+
+./bootstrap
+./configure (plus arguments)
+make
+sudo make install
+
