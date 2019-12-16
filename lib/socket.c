@@ -795,6 +795,7 @@ rpc_disconnect(struct rpc_context *rpc, const char *error)
                 rpc_error_all_pdus(rpc, error);
         }
 
+        maybe_call_connect_cb(rpc, RPC_STATUS_CANCEL);
 	return 0;
 }
 
