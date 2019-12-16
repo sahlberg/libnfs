@@ -261,7 +261,7 @@ char *rpc_get_error(struct rpc_context *rpc)
 {
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
-	return rpc->error_string;
+	return rpc->error_string ? rpc->error_string : "";
 }
 
 static void rpc_purge_all_pdus(struct rpc_context *rpc, int status, const char *error)
