@@ -202,14 +202,17 @@ rpc_nfs4_null_async(struct rpc_context *rpc, rpc_cb cb, void *private_data)
 }
 
 int
-rpc_nfs4_compound_async(struct rpc_context *rpc, rpc_cb cb,
-                        struct COMPOUND4args *args, void *private_data)
+rpc_nfs4_compound_async2(struct rpc_context *rpc, rpc_cb cb,
+                        struct COMPOUND4args *args,
+                        void *private_data,
+                        size_t alloc_hint)
 {
 	struct rpc_pdu *pdu;
 
-	pdu = rpc_allocate_pdu(rpc, NFS4_PROGRAM, NFS_V4, NFSPROC4_COMPOUND,
+	pdu = rpc_allocate_pdu2(rpc, NFS4_PROGRAM, NFS_V4, NFSPROC4_COMPOUND,
                                cb, private_data, (zdrproc_t)zdr_COMPOUND4res,
-                               sizeof(COMPOUND4res));
+                               sizeof(COMPOUND4res),
+                               alloc_hint);
 	if (pdu == NULL) {
 		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu for "
                               "NFS4/COMPOUND call");
@@ -229,4 +232,13 @@ rpc_nfs4_compound_async(struct rpc_context *rpc, rpc_cb cb,
 	}
 
 	return 0;
+}
+
+
+int
+rpc_nfs4_compound_async(struct rpc_context *rpc, rpc_cb cb,
+                        struct COMPOUND4args *args,
+                        void *private_data)
+{
+        return rpc_nfs4_compound_async2(rpc, cb, args, private_data, 0);
 }
