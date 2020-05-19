@@ -732,8 +732,10 @@ nfs4_op_chmod(struct nfs_context *nfs, nfs_argop4 *op, struct nfsfh *fh,
 
         op[0].argop = OP_SETATTR;
         saargs = &op[0].nfs_argop4_u.opsetattr;
-        saargs->stateid.seqid = fh->stateid.seqid;
-        memcpy(saargs->stateid.other, fh->stateid.other, 12);
+        if (fh) {
+                saargs->stateid.seqid = fh->stateid.seqid;
+                memcpy(saargs->stateid.other, fh->stateid.other, 12);
+        }
 
         saargs->obj_attributes.attrmask.bitmap4_len = 2;
         saargs->obj_attributes.attrmask.bitmap4_val = mask;
@@ -755,8 +757,10 @@ nfs4_op_chown(struct nfs_context *nfs, nfs_argop4 *op, struct nfsfh *fh,
 
         op[0].argop = OP_SETATTR;
         saargs = &op[0].nfs_argop4_u.opsetattr;
-        saargs->stateid.seqid = fh->stateid.seqid;
-        memcpy(saargs->stateid.other, fh->stateid.other, 12);
+        if (fh) {
+                saargs->stateid.seqid = fh->stateid.seqid;
+                memcpy(saargs->stateid.other, fh->stateid.other, 12);
+        }
 
         saargs->obj_attributes.attrmask.bitmap4_len = 2;
         saargs->obj_attributes.attrmask.bitmap4_val = mask;
@@ -778,8 +782,10 @@ nfs4_op_utimes(struct nfs_context *nfs, nfs_argop4 *op, struct nfsfh *fh,
 
         op[0].argop = OP_SETATTR;
         saargs = &op[0].nfs_argop4_u.opsetattr;
-        saargs->stateid.seqid = fh->stateid.seqid;
-        memcpy(saargs->stateid.other, fh->stateid.other, 12);
+        if (fh) {
+                saargs->stateid.seqid = fh->stateid.seqid;
+                memcpy(saargs->stateid.other, fh->stateid.other, 12);
+        }
 
         saargs->obj_attributes.attrmask.bitmap4_len = 2;
         saargs->obj_attributes.attrmask.bitmap4_val = mask;
@@ -4581,36 +4587,25 @@ nfs4_statvfs64_async(struct nfs_context *nfs, const char *path, nfs_cb cb,
 }
 
 static void
-nfs4_chmod_open_cb(struct rpc_context *rpc, int status, void *command_data,
+nfs4_chmod_cb(struct rpc_context *rpc, int status, void *command_data,
                    void *private_data)
 {
         struct nfs4_cb_data *data = private_data;
         struct nfs_context *nfs = data->nfs;
-        struct nfsfh *fh = data->filler.blob0.val;
         COMPOUND4res *res = command_data;
-        COMPOUND4args args;
-        nfs_argop4 op[4];
-        int i;
 
-        if (check_nfs4_error(nfs, status, data, res, "OPEN")) {
+        if (check_nfs4_error(nfs, status, data, res, "CHMOD")) {
                 return;
         }
 
-        i = nfs4_op_putfh(nfs, &op[0], fh);
-        i += nfs4_op_chmod(nfs, &op[i], fh, data->filler.blob3.val);
-        i += nfs4_op_close(nfs, &op[i], fh);
+        data->cb(0, nfs, NULL, data->private_data);
+        free_nfs4_cb_data(data);
+}
 
-        memset(&args, 0, sizeof(args));
-        args.argarray.argarray_len = i;
-        args.argarray.argarray_val = op;
-
-        if (rpc_nfs4_compound_async(nfs->rpc, nfs4_close_cb, &args,
-                                    data) != 0) {
-                /* Not much we can do but leak one fd on the server :( */
-                data->cb(-ENOMEM, nfs, nfs_get_error(nfs), data->private_data);
-                free_nfs4_cb_data(data);
-                return;
-        }
+static int
+nfs4_populate_chmod(struct nfs4_cb_data *data, nfs_argop4 *op)
+{
+        return nfs4_op_chmod(data->nfs, op, NULL, data->filler.blob3.val);
 }
 
 int
@@ -4621,14 +4616,15 @@ nfs4_chmod_async_internal(struct nfs_context *nfs, const char *path,
         struct nfs4_cb_data *data;
         uint32_t m;
 
-        data = init_cb_data_split_path(nfs, path);
+        data = init_cb_data_full_path(nfs, path);
         if (data == NULL) {
                 return -1;
         }
 
         data->cb           = cb;
         data->private_data = private_data;
-        data->open_cb      = nfs4_chmod_open_cb;
+        data->filler.func = nfs4_populate_chmod;
+        data->filler.max_op = 1;
 
         if (no_follow) {
                 data->flags |= LOOKUP_FLAG_NO_FOLLOW;
@@ -4645,7 +4641,7 @@ nfs4_chmod_async_internal(struct nfs_context *nfs, const char *path,
         m = htonl(mode);
         memcpy(data->filler.blob3.val, &m, sizeof(uint32_t));
 
-        if (nfs4_open_async_internal(nfs, data, O_WRONLY, 0) < 0) {
+        if (nfs4_lookup_path_async(nfs, data, nfs4_chmod_cb) < 0) {
                 return -1;
         }
 
@@ -4754,37 +4750,26 @@ nfs4_create_chown_buffer(struct nfs_context *nfs, struct nfs4_cb_data *data,
 }
 
 static void
-nfs4_chown_open_cb(struct rpc_context *rpc, int status, void *command_data,
+nfs4_chown_cb(struct rpc_context *rpc, int status, void *command_data,
                    void *private_data)
 {
         struct nfs4_cb_data *data = private_data;
         struct nfs_context *nfs = data->nfs;
-        struct nfsfh *fh = data->filler.blob0.val;
         COMPOUND4res *res = command_data;
-        COMPOUND4args args;
-        nfs_argop4 op[4];
-        int i;
 
         if (check_nfs4_error(nfs, status, data, res, "OPEN")) {
                 return;
         }
 
-        i = nfs4_op_putfh(nfs, &op[0], fh);
-        i += nfs4_op_chown(nfs, &op[i], fh, data->filler.blob3.val,
+        data->cb(0, nfs, NULL, data->private_data);
+        free_nfs4_cb_data(data);
+}
+
+static int
+nfs4_populate_chown(struct nfs4_cb_data *data, nfs_argop4 *op)
+{
+        return nfs4_op_chown(data->nfs, op, NULL, data->filler.blob3.val,
                            data->filler.blob3.len);
-        i += nfs4_op_close(nfs, &op[i], fh);
-
-        memset(&args, 0, sizeof(args));
-        args.argarray.argarray_len = i;
-        args.argarray.argarray_val = op;
-
-        if (rpc_nfs4_compound_async(nfs->rpc, nfs4_close_cb, &args,
-                                    data) != 0) {
-                /* Not much we can do but leak one fd on the server :( */
-                data->cb(-ENOMEM, nfs, nfs_get_error(nfs), data->private_data);
-                free_nfs4_cb_data(data);
-                return;
-        }
 }
 
 int
@@ -4801,7 +4786,8 @@ nfs4_chown_async_internal(struct nfs_context *nfs, const char *path,
 
         data->cb           = cb;
         data->private_data = private_data;
-        data->open_cb      = nfs4_chown_open_cb;
+        data->filler.func = nfs4_populate_chown;
+        data->filler.max_op = 1;
 
         if (no_follow) {
                 data->flags |= LOOKUP_FLAG_NO_FOLLOW;
@@ -4812,7 +4798,7 @@ nfs4_chown_async_internal(struct nfs_context *nfs, const char *path,
                 return -1;
         }
 
-        if (nfs4_open_async_internal(nfs, data, O_WRONLY, 0) < 0) {
+        if (nfs4_lookup_path_async(nfs, data, nfs4_chown_cb) < 0) {
                 return -1;
         }
 
@@ -4976,37 +4962,28 @@ nfs4_access2_async(struct nfs_context *nfs, const char *path, nfs_cb cb,
 }
 
 static void
-nfs4_utimes_open_cb(struct rpc_context *rpc, int status, void *command_data,
+nfs4_utimes_cb(struct rpc_context *rpc, int status, void *command_data,
                    void *private_data)
 {
         struct nfs4_cb_data *data = private_data;
         struct nfs_context *nfs = data->nfs;
-        struct nfsfh *fh = data->filler.blob0.val;
         COMPOUND4res *res = command_data;
-        COMPOUND4args args;
-        nfs_argop4 op[4];
-        int i;
 
-        if (check_nfs4_error(nfs, status, data, res, "OPEN")) {
+        assert(rpc->magic == RPC_CONTEXT_MAGIC);
+
+        if (check_nfs4_error(nfs, status, data, res, "UTIMES")) {
                 return;
         }
 
-        i = nfs4_op_putfh(nfs, &op[0], fh);
-        i += nfs4_op_utimes(nfs, &op[i], fh, data->filler.blob3.val,
+        data->cb(0, nfs, NULL, data->private_data);
+        free_nfs4_cb_data(data);
+}
+
+static int
+nfs4_populate_utimes(struct nfs4_cb_data *data, nfs_argop4 *op)
+{
+        return nfs4_op_utimes(data->nfs, op, NULL, data->filler.blob3.val,
                             data->filler.blob3.len);
-        i += nfs4_op_close(nfs, &op[i], fh);
-
-        memset(&args, 0, sizeof(args));
-        args.argarray.argarray_len = i;
-        args.argarray.argarray_val = op;
-
-        if (rpc_nfs4_compound_async(nfs->rpc, nfs4_close_cb, &args,
-                                    data) != 0) {
-                /* Not much we can do but leak one fd on the server :( */
-                data->cb(-ENOMEM, nfs, nfs_get_error(nfs), data->private_data);
-                free_nfs4_cb_data(data);
-                return;
-        }
 }
 
 int
@@ -5019,14 +4996,15 @@ nfs4_utimes_async_internal(struct nfs_context *nfs, const char *path,
         uint32_t u32;
         uint64_t u64;
 
-        data = init_cb_data_split_path(nfs, path);
+        data = init_cb_data_full_path(nfs, path);
         if (data == NULL) {
                 return -1;
         }
 
         data->cb           = cb;
         data->private_data = private_data;
-        data->open_cb      = nfs4_utimes_open_cb;
+        data->filler.func = nfs4_populate_utimes;
+        data->filler.max_op = 1;
 
         if (no_follow) {
                 data->flags |= LOOKUP_FLAG_NO_FOLLOW;
@@ -5038,25 +5016,37 @@ nfs4_utimes_async_internal(struct nfs_context *nfs, const char *path,
                 nfs_set_error(nfs, "Out of memory");
                 return -1;
         }
+        memset(buf, 0, data->filler.blob3.len);
         data->filler.blob3.free = free;
 
-        /* atime */
-        u32 = htonl(SET_TO_CLIENT_TIME4);
-        memcpy(buf, &u32, sizeof(uint32_t));
-        u64 = nfs_hton64(times[0].tv_sec);
-        memcpy(buf + 4, &u64, sizeof(uint64_t));
-        u32 = htonl(times[0].tv_usec * 1000);
-        memcpy(buf + 12, &u32, sizeof(uint32_t));
-        buf += 16;
-        /* mtime */
-        u32 = htonl(SET_TO_CLIENT_TIME4);
-        memcpy(buf, &u32, sizeof(uint32_t));
-        u64 = nfs_hton64(times[1].tv_sec);
-        memcpy(buf + 4, &u64, sizeof(uint64_t));
-        u32 = htonl(times[1].tv_usec * 1000);
-        memcpy(buf + 12, &u32, sizeof(uint32_t));
+        if (times != NULL) {
+                /* atime */
+                u32 = htonl(SET_TO_CLIENT_TIME4);
+                memcpy(buf, &u32, sizeof(uint32_t));
+                u64 = nfs_hton64(times[0].tv_sec);
+                memcpy(buf + 4, &u64, sizeof(uint64_t));
+                u32 = htonl(times[0].tv_usec * 1000);
+                memcpy(buf + 12, &u32, sizeof(uint32_t));
+                buf += 16;
+                /* mtime */
+                u32 = htonl(SET_TO_CLIENT_TIME4);
+                memcpy(buf, &u32, sizeof(uint32_t));
+                u64 = nfs_hton64(times[1].tv_sec);
+                memcpy(buf + 4, &u64, sizeof(uint64_t));
+                u32 = htonl(times[1].tv_usec * 1000);
+                memcpy(buf + 12, &u32, sizeof(uint32_t));
+        } else {
+                /* atime */
+                u32 = htonl(SET_TO_SERVER_TIME4);
+                memcpy(buf, &u32, sizeof(uint32_t));
+                /* mtime */
+                u32 = htonl(SET_TO_SERVER_TIME4);
+                memcpy(buf + 4, &u32, sizeof(uint32_t));
+                data->filler.blob3.len = 8;
+        }
 
-        if (nfs4_open_async_internal(nfs, data, O_WRONLY, 0) < 0) {
+        if (nfs4_lookup_path_async(nfs, data, nfs4_utimes_cb) < 0) {
+                free_nfs4_cb_data(data);
                 return -1;
         }
 
@@ -5067,6 +5057,10 @@ int
 nfs4_utime_async(struct nfs_context *nfs, const char *path,
                  struct utimbuf *times, nfs_cb cb, void *private_data)
 {
+        if (times == NULL) {
+                return nfs4_utimes_async_internal(nfs, path, 0, NULL,
+                                          cb, private_data);
+        }
 	struct timeval new_times[2];
 
         new_times[0].tv_sec  = times->actime;

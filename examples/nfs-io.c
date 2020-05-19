@@ -35,6 +35,7 @@ WSADATA wsaData;
 #include <inttypes.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <sys/time.h>
 #include <sys/statvfs.h>
 #ifndef AROS
 #include <sys/statvfs.h>
@@ -51,13 +52,13 @@ WSADATA wsaData;
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
-#include "libnfs.h"
-#include "libnfs-raw.h"
-#include "libnfs-raw-mount.h"
+#include "../include/nfsc/libnfs.h"
+#include "../include/nfsc/libnfs-raw.h"
+#include "../mount/libnfs-raw-mount.h"
 
 void print_usage(void)
 {
-	fprintf(stderr, "Usage: nfs-io [-?|--help|--usage] [stat|creat|trunc|unlink|mkdir|rmdir] <url>\n");
+	fprintf(stderr, "Usage: nfs-io [-?|--help|--usage] [stat|creat|trunc|unlink|mkdir|rmdir|touch|chmod] <url>\n");
 }
 
 int main(int argc, char *argv[])
@@ -110,6 +111,26 @@ int main(int argc, char *argv[])
 		ret = nfs_rmdir(nfs, url->file);
 	} else if (!strncmp(argv[1], "trunc", 5)) {
 		ret = nfs_truncate(nfs, url->file, 0);
+	} else if (!strncmp(argv[1], "touch", 5)) {
+		struct timeval times[2];
+		gettimeofday(&times[0], NULL);
+		gettimeofday(&times[1], NULL);
+		ret = nfs_utimes(nfs, url->file, times);
+	} else if (!strncmp(argv[1], "chmod", 5)) {
+		if (argc < 4) {
+			fprintf(stderr, "Invalid arguments for chmod");
+			goto finished;
+		}
+		int mode = strtol(argv[2], NULL, 8);
+		ret = nfs_chmod(nfs, url->file, mode);
+	} else if (!strncmp(argv[1], "chown", 5)) {
+		if (argc < 5) {
+			fprintf(stderr, "Invalid arguments for chown");
+			goto finished;
+		}
+		int uid = strtol(argv[2], NULL, 10);
+		int gid = strtol(argv[3], NULL, 10);
+		ret = nfs_chown(nfs, url->file, uid, gid);
 	} else if (!strncmp(argv[1], "stat", 4)) {
 		struct nfs_stat_64 st;
 		ret = nfs_stat64(nfs, url->file, &st);
@@ -151,7 +172,8 @@ int main(int argc, char *argv[])
 			printf(" %2d", (int)st.nfs_nlink);
 			printf(" %5d", (int)st.nfs_uid);
 			printf(" %5d", (int)st.nfs_gid);
-			printf(" %12" PRId64, st.nfs_size);
+			printf(" size: %12" PRId64, st.nfs_size);
+			printf(" mtime: %lu %lu", st.nfs_mtime, st.nfs_mtime_nsec);
 			printf("\n");
 		}
 	} else {
