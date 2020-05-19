@@ -2858,10 +2858,12 @@ nfs4_pwrite_async_internal(struct nfs_context *nfs, struct nfsfh *nfsfh,
         args.argarray.argarray_len = i;
         args.argarray.argarray_val = op;
 
-        if (rpc_nfs4_compound_async(nfs->rpc, nfs4_pwrite_cb, &args,
-                                    data) != 0) {
+        if (rpc_nfs4_compound_async2(nfs->rpc, nfs4_pwrite_cb, &args,
+                                    data, count) != 0) {
+                nfs_set_error(nfs, "PWRITE "
+                        "failed: %s", rpc_get_error(nfs->rpc));
                 free_nfs4_cb_data(data);
-                return -1;
+                return -EIO;
         }
 
         return 0;
@@ -2963,10 +2965,12 @@ nfs4_write_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t count,
                 data->filler.blob1.len = (int)count;
                 data->filler.blob1.free = NULL;
 
-                if (rpc_nfs4_compound_async(nfs->rpc, nfs4_write_append_cb,
-                                            &args, data) != 0) {
+                if (rpc_nfs4_compound_async2(nfs->rpc, nfs4_write_append_cb,
+                                            &args, data, count) != 0) {
+                        nfs_set_error(nfs, "PWRITE "
+                                "failed: %s", rpc_get_error(nfs->rpc));
                         free_nfs4_cb_data(data);
-                        return -1;
+                        return -EIO;
                 }
 
                 return 0;
