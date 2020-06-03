@@ -1868,6 +1868,7 @@ mount_getexports(const char *server)
 	cb_data.return_data = NULL;
 
 	rpc = rpc_init_context();
+        rpc_set_timeout(rpc, 2000);
 	if (mount_getexports_async(rpc, server, mount_getexports_cb,
                                    &cb_data) != 0) {
 		rpc_destroy_context(rpc);
