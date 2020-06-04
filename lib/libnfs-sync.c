@@ -114,8 +114,26 @@ wait_for_reply(struct rpc_context *rpc, struct sync_cb_data *cb_data)
 	struct pollfd pfd;
 	int revents;
 	int ret;
+	uint64_t timeout;
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
+
+	if (rpc->timeout > 0) {
+		timeout = rpc_current_time() + rpc->timeout;
+#ifndef HAVE_CLOCK_GETTIME
+		/* If we do not have GETTIME we fallback to time() which
+		 * has 1s granularity for its timestamps.
+		 * We thus need to bump the timeout by 1000ms
+		 * so that we break if timeout is within 1.0 - 2.0 seconds.
+		 * Otherwise setting a 1s timeout would trigger within
+		 * 0.001 - 1.0s.
+		 */
+		timeout += 1000;
+#endif
+	}
+	else {
+		timeout = 0;
+	}
 
 	while (!cb_data->is_finished) {
 
@@ -140,6 +158,11 @@ wait_for_reply(struct rpc_context *rpc, struct sync_cb_data *cb_data)
 
 		if (rpc_get_fd(rpc) == -1) {
 			rpc_set_error(rpc, "Socket closed");
+			break;
+		}
+
+		if (timeout > 0 && rpc_current_time() > timeout) {
+			rpc_set_error(rpc, "Timeout reached");
 			break;
 		}
 	}
@@ -1858,7 +1881,7 @@ mount_getexports_cb(struct rpc_context *mount_context, int status, void *data,
 }
 
 struct exportnode *
-mount_getexports(const char *server)
+mount_getexports_timeout(const char *server, int timeout)
 {
 	struct sync_cb_data cb_data;
 	struct rpc_context *rpc;
@@ -1868,7 +1891,7 @@ mount_getexports(const char *server)
 	cb_data.return_data = NULL;
 
 	rpc = rpc_init_context();
-        rpc_set_timeout(rpc, 2000);
+	rpc_set_timeout(rpc, timeout);
 	if (mount_getexports_async(rpc, server, mount_getexports_cb,
                                    &cb_data) != 0) {
 		rpc_destroy_context(rpc);
@@ -1879,6 +1902,12 @@ mount_getexports(const char *server)
 	rpc_destroy_context(rpc);
 
 	return cb_data.return_data;
+}
+
+struct exportnode *
+mount_getexports(const char *server)
+{
+	mount_getexports_timeout(server, -1);
 }
 
 void

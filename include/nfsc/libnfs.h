@@ -1904,6 +1904,16 @@ EXTERN int mount_getexports_async(struct rpc_context *rpc, const char *server,
  */
 EXTERN struct exportnode *mount_getexports(const char *server);
 
+/*
+ * Sync getexports_timeout(<server>, <timeout>)
+ * Function returns
+ *            NULL : something failed
+ *  exports export : a linked list of exported directories
+ *
+ * returned data must be freed by calling mount_free_export_list(exportnode);
+ */
+EXTERN struct exportnode *mount_getexports_timeout(const char *server, int timeout);
+
 EXTERN void mount_free_export_list(struct exportnode *exports);
 
 
