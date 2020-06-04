@@ -1907,7 +1907,7 @@ mount_getexports_timeout(const char *server, int timeout)
 struct exportnode *
 mount_getexports(const char *server)
 {
-	mount_getexports_timeout(server, -1);
+	return mount_getexports_timeout(server, -1);
 }
 
 void
