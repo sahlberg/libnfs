@@ -94,6 +94,16 @@ zdr_clientid4 (ZDR *zdrs, clientid4 *objp)
 }
 
 uint32_t
+zdr_sequenceid4 (ZDR *zdrs, sequenceid4 *objp)
+{
+	
+
+	 if (!zdr_uint32_t (zdrs, objp))
+		 return FALSE;
+	return TRUE;
+}
+
+uint32_t
 zdr_seqid4 (ZDR *zdrs, seqid4 *objp)
 {
 	
@@ -240,6 +250,35 @@ zdr_verifier4 (ZDR *zdrs, verifier4 objp)
 	
 
 	 if (!zdr_opaque (zdrs, objp, NFS4_VERIFIER_SIZE))
+		 return FALSE;
+	return TRUE;
+}
+
+uint32_t
+zdr_sessionid4 (ZDR *zdrs, sessionid4 objp)
+{
+	
+
+	 if (!zdr_opaque (zdrs, objp, NFS4_SESSIONID_SIZE))
+		 return FALSE;
+	return TRUE;
+}
+
+uint32_t
+zdr_authsys_parms (ZDR *zdrs, authsys_parms *objp)
+{
+	
+
+	 if (!zdr_u_int (zdrs, &objp->stamp))
+		 return FALSE;
+	 if (!zdr_string (zdrs, &objp->machinename, 255))
+		 return FALSE;
+	 if (!zdr_u_int (zdrs, &objp->uid))
+		 return FALSE;
+	 if (!zdr_u_int (zdrs, &objp->gid))
+		 return FALSE;
+	 if (!zdr_array (zdrs, (char **)&objp->gids.gids_val, (u_int *) &objp->gids.gids_len, 16,
+		sizeof (u_int), (zdrproc_t) zdr_u_int))
 		 return FALSE;
 	return TRUE;
 }
@@ -2515,6 +2554,108 @@ zdr_RELEASE_LOCKOWNER4res (ZDR *zdrs, RELEASE_LOCKOWNER4res *objp)
 }
 
 uint32_t
+zdr_callback_sec_parms4 (ZDR *zdrs, callback_sec_parms4 *objp)
+{
+	
+
+	 if (!zdr_uint32_t (zdrs, &objp->cb_secflavor))
+		 return FALSE;
+	switch (objp->cb_secflavor) {
+	case AUTH_NONE:
+		break;
+	case AUTH_SYS:
+		 if (!zdr_authsys_parms (zdrs, &objp->callback_sec_parms4_u.cbsp_sys_cred))
+			 return FALSE;
+		break;
+	default:
+		return FALSE;
+	}
+	return TRUE;
+}
+
+uint32_t
+zdr_channel_attrs4 (ZDR *zdrs, channel_attrs4 *objp)
+{
+	
+
+	 if (!zdr_count4 (zdrs, &objp->ca_headerpadsize))
+		 return FALSE;
+	 if (!zdr_count4 (zdrs, &objp->ca_maxrequestsize))
+		 return FALSE;
+	 if (!zdr_count4 (zdrs, &objp->ca_maxresponsesize))
+		 return FALSE;
+	 if (!zdr_count4 (zdrs, &objp->ca_maxresponsesize_cached))
+		 return FALSE;
+	 if (!zdr_count4 (zdrs, &objp->ca_maxoperations))
+		 return FALSE;
+	 if (!zdr_count4 (zdrs, &objp->ca_maxrequests))
+		 return FALSE;
+	 if (!zdr_array (zdrs, (char **)&objp->ca_rdma_ird.ca_rdma_ird_val, (u_int *) &objp->ca_rdma_ird.ca_rdma_ird_len, 1,
+		sizeof (uint32_t), (zdrproc_t) zdr_uint32_t))
+		 return FALSE;
+	return TRUE;
+}
+
+uint32_t
+zdr_CREATE_SESSION4args (ZDR *zdrs, CREATE_SESSION4args *objp)
+{
+	
+
+	 if (!zdr_clientid4 (zdrs, &objp->csa_clientid))
+		 return FALSE;
+	 if (!zdr_sequenceid4 (zdrs, &objp->csa_sequence))
+		 return FALSE;
+	 if (!zdr_uint32_t (zdrs, &objp->csa_flags))
+		 return FALSE;
+	 if (!zdr_channel_attrs4 (zdrs, &objp->csa_fore_chan_attrs))
+		 return FALSE;
+	 if (!zdr_channel_attrs4 (zdrs, &objp->csa_back_chan_attrs))
+		 return FALSE;
+	 if (!zdr_uint32_t (zdrs, &objp->csa_cb_program))
+		 return FALSE;
+	 if (!zdr_array (zdrs, (char **)&objp->csa_sec_parms.csa_sec_parms_val, (u_int *) &objp->csa_sec_parms.csa_sec_parms_len, ~0,
+		sizeof (callback_sec_parms4), (zdrproc_t) zdr_callback_sec_parms4))
+		 return FALSE;
+	return TRUE;
+}
+
+uint32_t
+zdr_CREATE_SESSION4resok (ZDR *zdrs, CREATE_SESSION4resok *objp)
+{
+	
+
+	 if (!zdr_sessionid4 (zdrs, objp->csr_sessionid))
+		 return FALSE;
+	 if (!zdr_sequenceid4 (zdrs, &objp->csr_sequence))
+		 return FALSE;
+	 if (!zdr_uint32_t (zdrs, &objp->csr_flags))
+		 return FALSE;
+	 if (!zdr_channel_attrs4 (zdrs, &objp->csr_fore_chan_attrs))
+		 return FALSE;
+	 if (!zdr_channel_attrs4 (zdrs, &objp->csr_back_chan_attrs))
+		 return FALSE;
+	return TRUE;
+}
+
+uint32_t
+zdr_CREATE_SESSION4res (ZDR *zdrs, CREATE_SESSION4res *objp)
+{
+	
+
+	 if (!zdr_nfsstat4 (zdrs, &objp->csr_status))
+		 return FALSE;
+	switch (objp->csr_status) {
+	case NFS4_OK:
+		 if (!zdr_CREATE_SESSION4resok (zdrs, &objp->CREATE_SESSION4res_u.csr_resok4))
+			 return FALSE;
+		break;
+	default:
+		break;
+	}
+	return TRUE;
+}
+
+uint32_t
 zdr_ILLEGAL4res (ZDR *zdrs, ILLEGAL4res *objp)
 {
 	
@@ -2670,6 +2811,10 @@ zdr_nfs_argop4 (ZDR *zdrs, nfs_argop4 *objp)
 		break;
 	case OP_RELEASE_LOCKOWNER:
 		 if (!zdr_RELEASE_LOCKOWNER4args (zdrs, &objp->nfs_argop4_u.oprelease_lockowner))
+			 return FALSE;
+		break;
+	case OP_CREATE_SESSION:
+		 if (!zdr_CREATE_SESSION4args (zdrs, &objp->nfs_argop4_u.opcreatesession))
 			 return FALSE;
 		break;
 	case OP_ILLEGAL:
@@ -2830,6 +2975,10 @@ zdr_nfs_resop4 (ZDR *zdrs, nfs_resop4 *objp)
 		break;
 	case OP_RELEASE_LOCKOWNER:
 		 if (!zdr_RELEASE_LOCKOWNER4res (zdrs, &objp->nfs_resop4_u.oprelease_lockowner))
+			 return FALSE;
+		break;
+	case OP_CREATE_SESSION:
+		 if (!zdr_CREATE_SESSION4res (zdrs, &objp->nfs_resop4_u.opcreatesession))
 			 return FALSE;
 		break;
 	case OP_ILLEGAL:

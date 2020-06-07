@@ -32,6 +32,7 @@ extern "C" {
 #define NFS4_FHSIZE 128
 #define NFS4_VERIFIER_SIZE 8
 #define NFS4_OPAQUE_LIMIT 1024
+#define NFS4_SESSIONID_SIZE 16
 
 enum nfs_ftype4 {
 	NF4REG = 1,
@@ -129,6 +130,8 @@ typedef uint64_t length4;
 
 typedef uint64_t clientid4;
 
+typedef uint32_t sequenceid4;
+
 typedef uint32_t seqid4;
 
 typedef struct {
@@ -167,6 +170,20 @@ typedef uint32_t mode4;
 typedef uint64_t changeid4;
 
 typedef char verifier4[NFS4_VERIFIER_SIZE];
+
+typedef char sessionid4[NFS4_SESSIONID_SIZE];
+
+struct authsys_parms {
+	u_int stamp;
+	char *machinename;
+	u_int uid;
+	u_int gid;
+	struct {
+		u_int gids_len;
+		u_int *gids_val;
+	} gids;
+};
+typedef struct authsys_parms authsys_parms;
 
 struct nfstime4 {
 	int64_t seconds;
@@ -1243,6 +1260,62 @@ struct RELEASE_LOCKOWNER4res {
 };
 typedef struct RELEASE_LOCKOWNER4res RELEASE_LOCKOWNER4res;
 
+struct callback_sec_parms4 {
+	uint32_t cb_secflavor;
+	union {
+		authsys_parms cbsp_sys_cred;
+	} callback_sec_parms4_u;
+};
+typedef struct callback_sec_parms4 callback_sec_parms4;
+
+struct channel_attrs4 {
+	count4 ca_headerpadsize;
+	count4 ca_maxrequestsize;
+	count4 ca_maxresponsesize;
+	count4 ca_maxresponsesize_cached;
+	count4 ca_maxoperations;
+	count4 ca_maxrequests;
+	struct {
+		u_int ca_rdma_ird_len;
+		uint32_t *ca_rdma_ird_val;
+	} ca_rdma_ird;
+};
+typedef struct channel_attrs4 channel_attrs4;
+#define CREATE_SESSION4_FLAG_PERSIST 0x00000001
+#define CREATE_SESSION4_FLAG_CONN_BACK_CHAN 0x00000002
+#define CREATE_SESSION4_FLAG_CONN_RDMA 0x00000004
+
+struct CREATE_SESSION4args {
+	clientid4 csa_clientid;
+	sequenceid4 csa_sequence;
+	uint32_t csa_flags;
+	channel_attrs4 csa_fore_chan_attrs;
+	channel_attrs4 csa_back_chan_attrs;
+	uint32_t csa_cb_program;
+	struct {
+		u_int csa_sec_parms_len;
+		callback_sec_parms4 *csa_sec_parms_val;
+	} csa_sec_parms;
+};
+typedef struct CREATE_SESSION4args CREATE_SESSION4args;
+
+struct CREATE_SESSION4resok {
+	sessionid4 csr_sessionid;
+	sequenceid4 csr_sequence;
+	uint32_t csr_flags;
+	channel_attrs4 csr_fore_chan_attrs;
+	channel_attrs4 csr_back_chan_attrs;
+};
+typedef struct CREATE_SESSION4resok CREATE_SESSION4resok;
+
+struct CREATE_SESSION4res {
+	nfsstat4 csr_status;
+	union {
+		CREATE_SESSION4resok csr_resok4;
+	} CREATE_SESSION4res_u;
+};
+typedef struct CREATE_SESSION4res CREATE_SESSION4res;
+
 struct ILLEGAL4res {
 	nfsstat4 status;
 };
@@ -1286,6 +1359,7 @@ enum nfs_opnum4 {
 	OP_VERIFY = 37,
 	OP_WRITE = 38,
 	OP_RELEASE_LOCKOWNER = 39,
+	OP_CREATE_SESSION = 43,
 	OP_ILLEGAL = 10044,
 };
 typedef enum nfs_opnum4 nfs_opnum4;
@@ -1322,6 +1396,7 @@ struct nfs_argop4 {
 		VERIFY4args opverify;
 		WRITE4args opwrite;
 		RELEASE_LOCKOWNER4args oprelease_lockowner;
+		CREATE_SESSION4args opcreatesession;
 	} nfs_argop4_u;
 };
 typedef struct nfs_argop4 nfs_argop4;
@@ -1365,6 +1440,7 @@ struct nfs_resop4 {
 		VERIFY4res opverify;
 		WRITE4res opwrite;
 		RELEASE_LOCKOWNER4res oprelease_lockowner;
+		CREATE_SESSION4res opcreatesession;
 		ILLEGAL4res opillegal;
 	} nfs_resop4_u;
 };
@@ -1527,6 +1603,7 @@ extern  uint32_t zdr_offset4 (ZDR *, offset4*);
 extern  uint32_t zdr_count4 (ZDR *, count4*);
 extern  uint32_t zdr_length4 (ZDR *, length4*);
 extern  uint32_t zdr_clientid4 (ZDR *, clientid4*);
+extern  uint32_t zdr_sequenceid4 (ZDR *, sequenceid4*);
 extern  uint32_t zdr_seqid4 (ZDR *, seqid4*);
 extern  uint32_t zdr_utf8string (ZDR *, utf8string*);
 extern  uint32_t zdr_utf8str_cis (ZDR *, utf8str_cis*);
@@ -1542,6 +1619,8 @@ extern  uint32_t zdr_qop4 (ZDR *, qop4*);
 extern  uint32_t zdr_mode4 (ZDR *, mode4*);
 extern  uint32_t zdr_changeid4 (ZDR *, changeid4*);
 extern  uint32_t zdr_verifier4 (ZDR *, verifier4);
+extern  uint32_t zdr_sessionid4 (ZDR *, sessionid4);
+extern  uint32_t zdr_authsys_parms (ZDR *, authsys_parms*);
 extern  uint32_t zdr_nfstime4 (ZDR *, nfstime4*);
 extern  uint32_t zdr_time_how4 (ZDR *, time_how4*);
 extern  uint32_t zdr_settime4 (ZDR *, settime4*);
@@ -1724,6 +1803,11 @@ extern  uint32_t zdr_WRITE4resok (ZDR *, WRITE4resok*);
 extern  uint32_t zdr_WRITE4res (ZDR *, WRITE4res*);
 extern  uint32_t zdr_RELEASE_LOCKOWNER4args (ZDR *, RELEASE_LOCKOWNER4args*);
 extern  uint32_t zdr_RELEASE_LOCKOWNER4res (ZDR *, RELEASE_LOCKOWNER4res*);
+extern  uint32_t zdr_callback_sec_parms4 (ZDR *, callback_sec_parms4*);
+extern  uint32_t zdr_channel_attrs4 (ZDR *, channel_attrs4*);
+extern  uint32_t zdr_CREATE_SESSION4args (ZDR *, CREATE_SESSION4args*);
+extern  uint32_t zdr_CREATE_SESSION4resok (ZDR *, CREATE_SESSION4resok*);
+extern  uint32_t zdr_CREATE_SESSION4res (ZDR *, CREATE_SESSION4res*);
 extern  uint32_t zdr_ILLEGAL4res (ZDR *, ILLEGAL4res*);
 extern  uint32_t zdr_nfs_opnum4 (ZDR *, nfs_opnum4*);
 extern  uint32_t zdr_nfs_argop4 (ZDR *, nfs_argop4*);
@@ -1750,6 +1834,7 @@ extern uint32_t zdr_offset4 ();
 extern uint32_t zdr_count4 ();
 extern uint32_t zdr_length4 ();
 extern uint32_t zdr_clientid4 ();
+extern uint32_t zdr_sequenceid4 ();
 extern uint32_t zdr_seqid4 ();
 extern uint32_t zdr_utf8string ();
 extern uint32_t zdr_utf8str_cis ();
@@ -1765,6 +1850,8 @@ extern uint32_t zdr_qop4 ();
 extern uint32_t zdr_mode4 ();
 extern uint32_t zdr_changeid4 ();
 extern uint32_t zdr_verifier4 ();
+extern uint32_t zdr_sessionid4 ();
+extern uint32_t zdr_authsys_parms ();
 extern uint32_t zdr_nfstime4 ();
 extern uint32_t zdr_time_how4 ();
 extern uint32_t zdr_settime4 ();
@@ -1947,6 +2034,11 @@ extern uint32_t zdr_WRITE4resok ();
 extern uint32_t zdr_WRITE4res ();
 extern uint32_t zdr_RELEASE_LOCKOWNER4args ();
 extern uint32_t zdr_RELEASE_LOCKOWNER4res ();
+extern uint32_t zdr_callback_sec_parms4 ();
+extern uint32_t zdr_channel_attrs4 ();
+extern uint32_t zdr_CREATE_SESSION4args ();
+extern uint32_t zdr_CREATE_SESSION4resok ();
+extern uint32_t zdr_CREATE_SESSION4res ();
 extern uint32_t zdr_ILLEGAL4res ();
 extern uint32_t zdr_nfs_opnum4 ();
 extern uint32_t zdr_nfs_argop4 ();

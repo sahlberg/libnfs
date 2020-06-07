@@ -100,6 +100,7 @@ typedef uint32_t (*zdrproc_t) (ZDR *, void *,...);
 
 #define AUTH_NONE 0
 #define AUTH_NULL 0
+#define AUTH_SYS  1
 #define AUTH_UNIX 1
 
 struct opaque_auth {

@@ -21,7 +21,7 @@
 const NFS4_FHSIZE               = 128;
 const NFS4_VERIFIER_SIZE        = 8;
 const NFS4_OPAQUE_LIMIT         = 1024;
-
+const NFS4_SESSIONID_SIZE       = 16;
 /*
  * File types
  */
@@ -118,6 +118,7 @@ typedef uint64_t        offset4;
 typedef uint32_t        count4;
 typedef uint64_t        length4;
 typedef uint64_t        clientid4;
+typedef uint32_t	sequenceid4;
 typedef uint32_t        seqid4;
 typedef opaque          utf8string<>;
 typedef utf8string      utf8str_cis;
@@ -133,6 +134,17 @@ typedef uint32_t        qop4;
 typedef uint32_t        mode4;
 typedef uint64_t        changeid4;
 typedef opaque          verifier4[NFS4_VERIFIER_SIZE];
+typedef opaque          sessionid4[NFS4_SESSIONID_SIZE];
+/*
+ * Authsys_parms
+ */
+struct authsys_parms {
+     unsigned int stamp;
+     string machinename<255>;
+     unsigned int uid;
+     unsigned int gid;
+     unsigned int gids<16>;
+};
 
 /*
  * Timeval
@@ -1373,6 +1385,79 @@ struct RELEASE_LOCKOWNER4res {
 };
 
 /*
+ * BACKCHANNEL_CTL
+ */
+/*
+typedef opaque gsshandle4_t<>;
+
+struct gss_cb_handles4 {
+       rpc_gss_svc_t           gcbp_service; RFC 2203
+       gsshandle4_t            gcbp_handle_from_server;
+       gsshandle4_t            gcbp_handle_from_client;
+};
+*/
+
+union callback_sec_parms4 switch (uint32_t cb_secflavor) {
+case AUTH_NONE:
+       void;
+case AUTH_SYS:
+       authsys_parms   cbsp_sys_cred; /* RFC 1831 */
+/*
+ * case RPCSEC_GSS:
+ *     gss_cb_handles4 cbsp_gss_handles;
+ */
+};
+
+/*
+struct BACKCHANNEL_CTL4args {
+       uint32_t                bca_cb_program;
+       callback_sec_parms4     bca_sec_parms<>;
+};
+*/
+
+/*
+ * CREATE_SESSION
+ */
+struct channel_attrs4 {
+       count4                  ca_headerpadsize;
+       count4                  ca_maxrequestsize;
+       count4                  ca_maxresponsesize;
+       count4                  ca_maxresponsesize_cached;
+       count4                  ca_maxoperations;
+       count4                  ca_maxrequests;
+       uint32_t                ca_rdma_ird<1>;
+};
+
+const CREATE_SESSION4_FLAG_PERSIST              = 0x00000001;
+const CREATE_SESSION4_FLAG_CONN_BACK_CHAN       = 0x00000002;
+const CREATE_SESSION4_FLAG_CONN_RDMA            = 0x00000004;
+
+struct CREATE_SESSION4args {
+       clientid4               csa_clientid;
+       sequenceid4             csa_sequence;
+       uint32_t                csa_flags;
+       channel_attrs4          csa_fore_chan_attrs;
+       channel_attrs4          csa_back_chan_attrs;
+       uint32_t                csa_cb_program;
+       callback_sec_parms4     csa_sec_parms<>;
+};
+
+struct CREATE_SESSION4resok {
+       sessionid4              csr_sessionid;
+       sequenceid4             csr_sequence;
+       uint32_t                csr_flags;
+       channel_attrs4          csr_fore_chan_attrs;
+       channel_attrs4          csr_back_chan_attrs;
+};
+
+union CREATE_SESSION4res switch (nfsstat4 csr_status) {
+case NFS4_OK:
+       CREATE_SESSION4resok    csr_resok4;
+default:
+       void;
+};
+
+/*
  * ILLEGAL: Response for illegal operation numbers
  */
 struct ILLEGAL4res {
@@ -1421,6 +1506,7 @@ enum nfs_opnum4 {
         OP_VERIFY               = 37,
         OP_WRITE                = 38,
         OP_RELEASE_LOCKOWNER    = 39,
+        OP_CREATE_SESSION       = 43,
         OP_ILLEGAL              = 10044
 };
 
@@ -1466,6 +1552,7 @@ union nfs_argop4 switch (nfs_opnum4 argop) {
  case OP_WRITE:         WRITE4args opwrite;
  case OP_RELEASE_LOCKOWNER:     RELEASE_LOCKOWNER4args
                                     oprelease_lockowner;
+ case OP_CREATE_SESSION:CREATE_SESSION4args opcreatesession;
  case OP_ILLEGAL:       void;
 };
 
@@ -1511,6 +1598,7 @@ union nfs_resop4 switch (nfs_opnum4 resop){
  case OP_WRITE:         WRITE4res opwrite;
  case OP_RELEASE_LOCKOWNER:     RELEASE_LOCKOWNER4res
                                     oprelease_lockowner;
+ case OP_CREATE_SESSION:        CREATE_SESSION4res opcreatesession;
  case OP_ILLEGAL:       ILLEGAL4res opillegal;
 };
 
