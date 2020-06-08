@@ -3464,6 +3464,26 @@ zdr_WANT_DELEGATION4res (ZDR *zdrs, WANT_DELEGATION4res *objp)
 }
 
 uint32_t
+zdr_DESTROY_CLIENTID4args (ZDR *zdrs, DESTROY_CLIENTID4args *objp)
+{
+	
+
+	 if (!zdr_clientid4 (zdrs, &objp->dca_clientid))
+		 return FALSE;
+	return TRUE;
+}
+
+uint32_t
+zdr_DESTROY_CLIENTID4res (ZDR *zdrs, DESTROY_CLIENTID4res *objp)
+{
+	
+
+	 if (!zdr_nfsstat4 (zdrs, &objp->dcr_status))
+		 return FALSE;
+	return TRUE;
+}
+
+uint32_t
 zdr_ILLEGAL4res (ZDR *zdrs, ILLEGAL4res *objp)
 {
 	
@@ -3671,6 +3691,10 @@ zdr_nfs_argop4 (ZDR *zdrs, nfs_argop4 *objp)
 		break;
 	case OP_WANT_DELEGATION:
 		 if (!zdr_WANT_DELEGATION4args (zdrs, &objp->nfs_argop4_u.opwantdelegation))
+			 return FALSE;
+		break;
+	case OP_DESTROY_CLIENTID:
+		 if (!zdr_DESTROY_CLIENTID4args (zdrs, &objp->nfs_argop4_u.opdestroyclientid))
 			 return FALSE;
 		break;
 	case OP_ILLEGAL:
@@ -3883,6 +3907,10 @@ zdr_nfs_resop4 (ZDR *zdrs, nfs_resop4 *objp)
 		break;
 	case OP_WANT_DELEGATION:
 		 if (!zdr_WANT_DELEGATION4res (zdrs, &objp->nfs_resop4_u.opwantdelegation))
+			 return FALSE;
+		break;
+	case OP_DESTROY_CLIENTID:
+		 if (!zdr_DESTROY_CLIENTID4res (zdrs, &objp->nfs_resop4_u.opdestroyclientid))
 			 return FALSE;
 		break;
 	case OP_ILLEGAL:

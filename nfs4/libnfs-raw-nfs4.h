@@ -1756,6 +1756,16 @@ struct WANT_DELEGATION4res {
 };
 typedef struct WANT_DELEGATION4res WANT_DELEGATION4res;
 
+struct DESTROY_CLIENTID4args {
+	clientid4 dca_clientid;
+};
+typedef struct DESTROY_CLIENTID4args DESTROY_CLIENTID4args;
+
+struct DESTROY_CLIENTID4res {
+	nfsstat4 dcr_status;
+};
+typedef struct DESTROY_CLIENTID4res DESTROY_CLIENTID4res;
+
 struct ILLEGAL4res {
 	nfsstat4 status;
 };
@@ -1812,6 +1822,7 @@ enum nfs_opnum4 {
 	OP_SET_SSV = 54,
 	OP_TEST_STATEID = 55,
 	OP_WANT_DELEGATION = 56,
+	OP_DESTROY_CLIENTID = 57,
 	OP_ILLEGAL = 10044,
 };
 typedef enum nfs_opnum4 nfs_opnum4;
@@ -1861,6 +1872,7 @@ struct nfs_argop4 {
 		SET_SSV4args opsetssv;
 		TEST_STATEID4args opteststateid;
 		WANT_DELEGATION4args opwantdelegation;
+		DESTROY_CLIENTID4args opdestroyclientid;
 	} nfs_argop4_u;
 };
 typedef struct nfs_argop4 nfs_argop4;
@@ -1917,6 +1929,7 @@ struct nfs_resop4 {
 		SET_SSV4res opsetssv;
 		TEST_STATEID4res opteststateid;
 		WANT_DELEGATION4res opwantdelegation;
+		DESTROY_CLIENTID4res opdestroyclientid;
 		ILLEGAL4res opillegal;
 	} nfs_resop4_u;
 };
@@ -2337,6 +2350,8 @@ extern  uint32_t zdr_TEST_STATEID4res (ZDR *, TEST_STATEID4res*);
 extern  uint32_t zdr_deleg_claim4 (ZDR *, deleg_claim4*);
 extern  uint32_t zdr_WANT_DELEGATION4args (ZDR *, WANT_DELEGATION4args*);
 extern  uint32_t zdr_WANT_DELEGATION4res (ZDR *, WANT_DELEGATION4res*);
+extern  uint32_t zdr_DESTROY_CLIENTID4args (ZDR *, DESTROY_CLIENTID4args*);
+extern  uint32_t zdr_DESTROY_CLIENTID4res (ZDR *, DESTROY_CLIENTID4res*);
 extern  uint32_t zdr_ILLEGAL4res (ZDR *, ILLEGAL4res*);
 extern  uint32_t zdr_nfs_opnum4 (ZDR *, nfs_opnum4*);
 extern  uint32_t zdr_nfs_argop4 (ZDR *, nfs_argop4*);
@@ -2621,6 +2636,8 @@ extern uint32_t zdr_TEST_STATEID4res ();
 extern uint32_t zdr_deleg_claim4 ();
 extern uint32_t zdr_WANT_DELEGATION4args ();
 extern uint32_t zdr_WANT_DELEGATION4res ();
+extern uint32_t zdr_DESTROY_CLIENTID4args ();
+extern uint32_t zdr_DESTROY_CLIENTID4res ();
 extern uint32_t zdr_ILLEGAL4res ();
 extern uint32_t zdr_nfs_opnum4 ();
 extern uint32_t zdr_nfs_argop4 ();

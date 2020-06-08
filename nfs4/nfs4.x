@@ -1857,6 +1857,17 @@ default:
 };
 
 /*
+ * DESTROY_CLIENTID
+ */
+struct DESTROY_CLIENTID4args {
+       clientid4       dca_clientid;
+};
+
+struct DESTROY_CLIENTID4res {
+       nfsstat4        dcr_status;
+};
+
+/*
  * ILLEGAL: Response for illegal operation numbers
  */
 struct ILLEGAL4res {
@@ -1918,6 +1929,7 @@ enum nfs_opnum4 {
         OP_SET_SSV              = 54,
         OP_TEST_STATEID         = 55,
         OP_WANT_DELEGATION      = 56,
+        OP_DESTROY_CLIENTID     = 57,
         OP_ILLEGAL              = 10044
 };
 
@@ -1976,6 +1988,7 @@ union nfs_argop4 switch (nfs_opnum4 argop) {
  case OP_SET_SSV:               SET_SSV4args opsetssv;
  case OP_TEST_STATEID:          TEST_STATEID4args opteststateid;
  case OP_WANT_DELEGATION:       WANT_DELEGATION4args opwantdelegation;
+ case OP_DESTROY_CLIENTID:      DESTROY_CLIENTID4args opdestroyclientid;
  case OP_ILLEGAL:       void;
 };
 
@@ -2034,6 +2047,7 @@ union nfs_resop4 switch (nfs_opnum4 resop){
  case OP_SET_SSV:               SET_SSV4res opsetssv;
  case OP_TEST_STATEID:          TEST_STATEID4res opteststateid;
  case OP_WANT_DELEGATION:       WANT_DELEGATION4res opwantdelegation;
+ case OP_DESTROY_CLIENTID:      DESTROY_CLIENTID4res opdestroyclientid;
  case OP_ILLEGAL:       ILLEGAL4res opillegal;
 };
 
