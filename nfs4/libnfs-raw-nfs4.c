@@ -2454,6 +2454,87 @@ zdr_SAVEFH4res (ZDR *zdrs, SAVEFH4res *objp)
 }
 
 uint32_t
+zdr_SECINFO4args (ZDR *zdrs, SECINFO4args *objp)
+{
+	
+
+	 if (!zdr_component4 (zdrs, &objp->name))
+		 return FALSE;
+	return TRUE;
+}
+
+uint32_t
+zdr_rpc_gss_svc_t (ZDR *zdrs, rpc_gss_svc_t *objp)
+{
+	
+
+	 if (!zdr_enum (zdrs, (enum_t *) objp))
+		 return FALSE;
+	return TRUE;
+}
+
+uint32_t
+zdr_rpcsec_gss_info (ZDR *zdrs, rpcsec_gss_info *objp)
+{
+	
+
+	 if (!zdr_sec_oid4 (zdrs, &objp->oid))
+		 return FALSE;
+	 if (!zdr_qop4 (zdrs, &objp->qop))
+		 return FALSE;
+	 if (!zdr_rpc_gss_svc_t (zdrs, &objp->service))
+		 return FALSE;
+	return TRUE;
+}
+
+uint32_t
+zdr_secinfo4 (ZDR *zdrs, secinfo4 *objp)
+{
+	
+
+	 if (!zdr_uint32_t (zdrs, &objp->flavor))
+		 return FALSE;
+	switch (objp->flavor) {
+	case RPCSEC_GSS:
+		 if (!zdr_rpcsec_gss_info (zdrs, &objp->secinfo4_u.flavor_info))
+			 return FALSE;
+		break;
+	default:
+		break;
+	}
+	return TRUE;
+}
+
+uint32_t
+zdr_SECINFO4resok (ZDR *zdrs, SECINFO4resok *objp)
+{
+	
+
+	 if (!zdr_array (zdrs, (char **)&objp->SECINFO4resok_val, (u_int *) &objp->SECINFO4resok_len, ~0,
+		sizeof (secinfo4), (zdrproc_t) zdr_secinfo4))
+		 return FALSE;
+	return TRUE;
+}
+
+uint32_t
+zdr_SECINFO4res (ZDR *zdrs, SECINFO4res *objp)
+{
+	
+
+	 if (!zdr_nfsstat4 (zdrs, &objp->status))
+		 return FALSE;
+	switch (objp->status) {
+	case NFS4_OK:
+		 if (!zdr_SECINFO4resok (zdrs, &objp->SECINFO4res_u.resok4))
+			 return FALSE;
+		break;
+	default:
+		break;
+	}
+	return TRUE;
+}
+
+uint32_t
 zdr_SETATTR4args (ZDR *zdrs, SETATTR4args *objp)
 {
 	
@@ -3256,6 +3337,36 @@ zdr_LAYOUTRETURN4res (ZDR *zdrs, LAYOUTRETURN4res *objp)
 }
 
 uint32_t
+zdr_secinfo_style4 (ZDR *zdrs, secinfo_style4 *objp)
+{
+	
+
+	 if (!zdr_enum (zdrs, (enum_t *) objp))
+		 return FALSE;
+	return TRUE;
+}
+
+uint32_t
+zdr_SECINFO_NO_NAME4args (ZDR *zdrs, SECINFO_NO_NAME4args *objp)
+{
+	
+
+	 if (!zdr_secinfo_style4 (zdrs, objp))
+		 return FALSE;
+	return TRUE;
+}
+
+uint32_t
+zdr_SECINFO_NO_NAME4res (ZDR *zdrs, SECINFO_NO_NAME4res *objp)
+{
+	
+
+	 if (!zdr_SECINFO4res (zdrs, objp))
+		 return FALSE;
+	return TRUE;
+}
+
+uint32_t
 zdr_SEQUENCE4args (ZDR *zdrs, SEQUENCE4args *objp)
 {
 	
@@ -3637,6 +3748,10 @@ zdr_nfs_argop4 (ZDR *zdrs, nfs_argop4 *objp)
 		break;
 	case OP_SAVEFH:
 		break;
+	case OP_SECINFO:
+		 if (!zdr_SECINFO4args (zdrs, &objp->nfs_argop4_u.opsecinfo))
+			 return FALSE;
+		break;
 	case OP_SETATTR:
 		 if (!zdr_SETATTR4args (zdrs, &objp->nfs_argop4_u.opsetattr))
 			 return FALSE;
@@ -3695,6 +3810,10 @@ zdr_nfs_argop4 (ZDR *zdrs, nfs_argop4 *objp)
 		break;
 	case OP_LAYOUTRETURN:
 		 if (!zdr_LAYOUTRETURN4args (zdrs, &objp->nfs_argop4_u.oplayoutreturn))
+			 return FALSE;
+		break;
+	case OP_SECINFO_NO_NAME:
+		 if (!zdr_SECINFO_NO_NAME4args (zdrs, &objp->nfs_argop4_u.opsecinfononame))
 			 return FALSE;
 		break;
 	case OP_SEQUENCE:
@@ -3857,6 +3976,10 @@ zdr_nfs_resop4 (ZDR *zdrs, nfs_resop4 *objp)
 		 if (!zdr_SAVEFH4res (zdrs, &objp->nfs_resop4_u.opsavefh))
 			 return FALSE;
 		break;
+	case OP_SECINFO:
+		 if (!zdr_SECINFO4res (zdrs, &objp->nfs_resop4_u.opsecinfo))
+			 return FALSE;
+		break;
 	case OP_SETATTR:
 		 if (!zdr_SETATTR4res (zdrs, &objp->nfs_resop4_u.opsetattr))
 			 return FALSE;
@@ -3915,6 +4038,10 @@ zdr_nfs_resop4 (ZDR *zdrs, nfs_resop4 *objp)
 		break;
 	case OP_LAYOUTRETURN:
 		 if (!zdr_LAYOUTRETURN4res (zdrs, &objp->nfs_resop4_u.oplayoutreturn))
+			 return FALSE;
+		break;
+	case OP_SECINFO_NO_NAME:
+		 if (!zdr_SECINFO_NO_NAME4res (zdrs, &objp->nfs_resop4_u.opsecinfononame))
 			 return FALSE;
 		break;
 	case OP_SEQUENCE:

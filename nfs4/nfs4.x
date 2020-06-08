@@ -1297,19 +1297,13 @@ struct SAVEFH4res {
         nfsstat4        status;
 };
 
-#if 0
 /*
  * SECINFO: Obtain Available Security Mechanisms
  */
 struct SECINFO4args {
-        /* CURRENT_FH: directory */
         component4      name;
 };
 
-/*
-
- * From RFC 2203
- */
 enum rpc_gss_svc_t {
         RPC_GSS_SVC_NONE        = 1,
         RPC_GSS_SVC_INTEGRITY   = 2,
@@ -1322,7 +1316,8 @@ struct rpcsec_gss_info {
         rpc_gss_svc_t   service;
 };
 
-/* RPCSEC_GSS has a value of '6' - See RFC 2203 */
+const RPCSEC_GSS = 6;
+
 union secinfo4 switch (uint32_t flavor) {
  case RPCSEC_GSS:
          rpcsec_gss_info        flavor_info;
@@ -1338,7 +1333,6 @@ union SECINFO4res switch (nfsstat4 status) {
  default:
          void;
 };
-#endif
 
 /*
  * SETATTR: Set attributes
@@ -1747,6 +1741,18 @@ default:
 };
 
 /*
+ * SECINFO_NO_NAME
+ */
+enum secinfo_style4 {
+       SECINFO_STYLE4_CURRENT_FH       = 0,
+       SECINFO_STYLE4_PARENT           = 1
+};
+
+typedef secinfo_style4 SECINFO_NO_NAME4args;
+
+typedef SECINFO4res SECINFO_NO_NAME4res;
+
+/*
  * SEQUENCE
  */
 struct SEQUENCE4args {
@@ -1936,6 +1942,7 @@ enum nfs_opnum4 {
         OP_LAYOUTCOMMIT         = 49,
         OP_LAYOUTGET            = 50,
         OP_LAYOUTRETURN         = 51,
+        OP_SECINFO_NO_NAME      = 52,
         OP_SEQUENCE             = 53,
         OP_SET_SSV              = 54,
         OP_TEST_STATEID         = 55,
@@ -1976,9 +1983,7 @@ union nfs_argop4 switch (nfs_opnum4 argop) {
  case OP_RENEW:         RENEW4args oprenew;
  case OP_RESTOREFH:     void;
  case OP_SAVEFH:        void;
-#if 0
  case OP_SECINFO:       SECINFO4args opsecinfo;
-#endif
  case OP_SETATTR:       SETATTR4args opsetattr;
  case OP_SETCLIENTID:   SETCLIENTID4args opsetclientid;
  case OP_SETCLIENTID_CONFIRM:   SETCLIENTID_CONFIRM4args
@@ -1996,6 +2001,7 @@ union nfs_argop4 switch (nfs_opnum4 argop) {
  case OP_LAYOUTCOMMIT:          LAYOUTCOMMIT4args oplayoutcommit;
  case OP_LAYOUTGET:             LAYOUTGET4args oplayoutget;
  case OP_LAYOUTRETURN:          LAYOUTRETURN4args oplayoutreturn;
+ case OP_SECINFO_NO_NAME:       SECINFO_NO_NAME4args opsecinfononame;
  case OP_SEQUENCE:              SEQUENCE4args opsequence;
  case OP_SET_SSV:               SET_SSV4args opsetssv;
  case OP_TEST_STATEID:          TEST_STATEID4args opteststateid;
@@ -2036,9 +2042,7 @@ union nfs_resop4 switch (nfs_opnum4 resop){
  case OP_RENEW:         RENEW4res oprenew;
  case OP_RESTOREFH:     RESTOREFH4res oprestorefh;
  case OP_SAVEFH:        SAVEFH4res opsavefh;
-#if 0
  case OP_SECINFO:       SECINFO4res opsecinfo;
-#endif
  case OP_SETATTR:       SETATTR4res opsetattr;
  case OP_SETCLIENTID:   SETCLIENTID4res opsetclientid;
  case OP_SETCLIENTID_CONFIRM:   SETCLIENTID_CONFIRM4res
@@ -2056,6 +2060,7 @@ union nfs_resop4 switch (nfs_opnum4 resop){
  case OP_LAYOUTCOMMIT:          LAYOUTCOMMIT4res oplayoutcommit;
  case OP_LAYOUTGET:             LAYOUTGET4res oplayoutget;
  case OP_LAYOUTRETURN:          LAYOUTRETURN4res oplayoutreturn;
+ case OP_SECINFO_NO_NAME:       SECINFO_NO_NAME4res opsecinfononame;
  case OP_SEQUENCE:              SEQUENCE4res opsequence;
  case OP_SET_SSV:               SET_SSV4res opsetssv;
  case OP_TEST_STATEID:          TEST_STATEID4res opteststateid;

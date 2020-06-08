@@ -1232,6 +1232,47 @@ struct SAVEFH4res {
 };
 typedef struct SAVEFH4res SAVEFH4res;
 
+struct SECINFO4args {
+	component4 name;
+};
+typedef struct SECINFO4args SECINFO4args;
+
+enum rpc_gss_svc_t {
+	RPC_GSS_SVC_NONE = 1,
+	RPC_GSS_SVC_INTEGRITY = 2,
+	RPC_GSS_SVC_PRIVACY = 3,
+};
+typedef enum rpc_gss_svc_t rpc_gss_svc_t;
+
+struct rpcsec_gss_info {
+	sec_oid4 oid;
+	qop4 qop;
+	rpc_gss_svc_t service;
+};
+typedef struct rpcsec_gss_info rpcsec_gss_info;
+#define RPCSEC_GSS 6
+
+struct secinfo4 {
+	uint32_t flavor;
+	union {
+		rpcsec_gss_info flavor_info;
+	} secinfo4_u;
+};
+typedef struct secinfo4 secinfo4;
+
+typedef struct {
+	u_int SECINFO4resok_len;
+	secinfo4 *SECINFO4resok_val;
+} SECINFO4resok;
+
+struct SECINFO4res {
+	nfsstat4 status;
+	union {
+		SECINFO4resok resok4;
+	} SECINFO4res_u;
+};
+typedef struct SECINFO4res SECINFO4res;
+
 struct SETATTR4args {
 	stateid4 stateid;
 	fattr4 obj_attributes;
@@ -1632,6 +1673,16 @@ struct LAYOUTRETURN4res {
 };
 typedef struct LAYOUTRETURN4res LAYOUTRETURN4res;
 
+enum secinfo_style4 {
+	SECINFO_STYLE4_CURRENT_FH = 0,
+	SECINFO_STYLE4_PARENT = 1,
+};
+typedef enum secinfo_style4 secinfo_style4;
+
+typedef secinfo_style4 SECINFO_NO_NAME4args;
+
+typedef SECINFO4res SECINFO_NO_NAME4res;
+
 struct SEQUENCE4args {
 	sessionid4 sa_sessionid;
 	sequenceid4 sa_sequenceid;
@@ -1828,6 +1879,7 @@ enum nfs_opnum4 {
 	OP_LAYOUTCOMMIT = 49,
 	OP_LAYOUTGET = 50,
 	OP_LAYOUTRETURN = 51,
+	OP_SECINFO_NO_NAME = 52,
 	OP_SEQUENCE = 53,
 	OP_SET_SSV = 54,
 	OP_TEST_STATEID = 55,
@@ -1864,6 +1916,7 @@ struct nfs_argop4 {
 		REMOVE4args opremove;
 		RENAME4args oprename;
 		RENEW4args oprenew;
+		SECINFO4args opsecinfo;
 		SETATTR4args opsetattr;
 		SETCLIENTID4args opsetclientid;
 		SETCLIENTID_CONFIRM4args opsetclientid_confirm;
@@ -1879,6 +1932,7 @@ struct nfs_argop4 {
 		LAYOUTCOMMIT4args oplayoutcommit;
 		LAYOUTGET4args oplayoutget;
 		LAYOUTRETURN4args oplayoutreturn;
+		SECINFO_NO_NAME4args opsecinfononame;
 		SEQUENCE4args opsequence;
 		SET_SSV4args opsetssv;
 		TEST_STATEID4args opteststateid;
@@ -1922,6 +1976,7 @@ struct nfs_resop4 {
 		RENEW4res oprenew;
 		RESTOREFH4res oprestorefh;
 		SAVEFH4res opsavefh;
+		SECINFO4res opsecinfo;
 		SETATTR4res opsetattr;
 		SETCLIENTID4res opsetclientid;
 		SETCLIENTID_CONFIRM4res opsetclientid_confirm;
@@ -1937,6 +1992,7 @@ struct nfs_resop4 {
 		LAYOUTCOMMIT4res oplayoutcommit;
 		LAYOUTGET4res oplayoutget;
 		LAYOUTRETURN4res oplayoutreturn;
+		SECINFO_NO_NAME4res opsecinfononame;
 		SEQUENCE4res opsequence;
 		SET_SSV4res opsetssv;
 		TEST_STATEID4res opteststateid;
@@ -2298,6 +2354,12 @@ extern  uint32_t zdr_RENEW4args (ZDR *, RENEW4args*);
 extern  uint32_t zdr_RENEW4res (ZDR *, RENEW4res*);
 extern  uint32_t zdr_RESTOREFH4res (ZDR *, RESTOREFH4res*);
 extern  uint32_t zdr_SAVEFH4res (ZDR *, SAVEFH4res*);
+extern  uint32_t zdr_SECINFO4args (ZDR *, SECINFO4args*);
+extern  uint32_t zdr_rpc_gss_svc_t (ZDR *, rpc_gss_svc_t*);
+extern  uint32_t zdr_rpcsec_gss_info (ZDR *, rpcsec_gss_info*);
+extern  uint32_t zdr_secinfo4 (ZDR *, secinfo4*);
+extern  uint32_t zdr_SECINFO4resok (ZDR *, SECINFO4resok*);
+extern  uint32_t zdr_SECINFO4res (ZDR *, SECINFO4res*);
 extern  uint32_t zdr_SETATTR4args (ZDR *, SETATTR4args*);
 extern  uint32_t zdr_SETATTR4res (ZDR *, SETATTR4res*);
 extern  uint32_t zdr_SETCLIENTID4args (ZDR *, SETCLIENTID4args*);
@@ -2349,6 +2411,9 @@ extern  uint32_t zdr_layoutreturn4 (ZDR *, layoutreturn4*);
 extern  uint32_t zdr_LAYOUTRETURN4args (ZDR *, LAYOUTRETURN4args*);
 extern  uint32_t zdr_layoutreturn_stateid (ZDR *, layoutreturn_stateid*);
 extern  uint32_t zdr_LAYOUTRETURN4res (ZDR *, LAYOUTRETURN4res*);
+extern  uint32_t zdr_secinfo_style4 (ZDR *, secinfo_style4*);
+extern  uint32_t zdr_SECINFO_NO_NAME4args (ZDR *, SECINFO_NO_NAME4args*);
+extern  uint32_t zdr_SECINFO_NO_NAME4res (ZDR *, SECINFO_NO_NAME4res*);
 extern  uint32_t zdr_SEQUENCE4args (ZDR *, SEQUENCE4args*);
 extern  uint32_t zdr_SEQUENCE4resok (ZDR *, SEQUENCE4resok*);
 extern  uint32_t zdr_SEQUENCE4res (ZDR *, SEQUENCE4res*);
@@ -2586,6 +2651,12 @@ extern uint32_t zdr_RENEW4args ();
 extern uint32_t zdr_RENEW4res ();
 extern uint32_t zdr_RESTOREFH4res ();
 extern uint32_t zdr_SAVEFH4res ();
+extern uint32_t zdr_SECINFO4args ();
+extern uint32_t zdr_rpc_gss_svc_t ();
+extern uint32_t zdr_rpcsec_gss_info ();
+extern uint32_t zdr_secinfo4 ();
+extern uint32_t zdr_SECINFO4resok ();
+extern uint32_t zdr_SECINFO4res ();
 extern uint32_t zdr_SETATTR4args ();
 extern uint32_t zdr_SETATTR4res ();
 extern uint32_t zdr_SETCLIENTID4args ();
@@ -2637,6 +2708,9 @@ extern uint32_t zdr_layoutreturn4 ();
 extern uint32_t zdr_LAYOUTRETURN4args ();
 extern uint32_t zdr_layoutreturn_stateid ();
 extern uint32_t zdr_LAYOUTRETURN4res ();
+extern uint32_t zdr_secinfo_style4 ();
+extern uint32_t zdr_SECINFO_NO_NAME4args ();
+extern uint32_t zdr_SECINFO_NO_NAME4res ();
 extern uint32_t zdr_SEQUENCE4args ();
 extern uint32_t zdr_SEQUENCE4resok ();
 extern uint32_t zdr_SEQUENCE4res ();
