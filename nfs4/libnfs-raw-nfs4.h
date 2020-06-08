@@ -147,6 +147,8 @@ typedef uint32_t sequenceid4;
 
 typedef uint32_t seqid4;
 
+typedef uint32_t slotid4;
+
 typedef struct {
 	u_int utf8string_len;
 	char *utf8string_val;
@@ -1627,6 +1629,46 @@ struct LAYOUTRETURN4res {
 };
 typedef struct LAYOUTRETURN4res LAYOUTRETURN4res;
 
+struct SEQUENCE4args {
+	sessionid4 sa_sessionid;
+	sequenceid4 sa_sequenceid;
+	slotid4 sa_slotid;
+	slotid4 sa_highest_slotid;
+	uint32_t sa_cachethis;
+};
+typedef struct SEQUENCE4args SEQUENCE4args;
+#define SEQ4_STATUS_CB_PATH_DOWN 0x00000001
+#define SEQ4_STATUS_CB_GSS_CONTEXTS_EXPIRING 0x00000002
+#define SEQ4_STATUS_CB_GSS_CONTEXTS_EXPIRED 0x00000004
+#define SEQ4_STATUS_EXPIRED_ALL_STATE_REVOKED 0x00000008
+#define SEQ4_STATUS_EXPIRED_SOME_STATE_REVOKED 0x00000010
+#define SEQ4_STATUS_ADMIN_STATE_REVOKED 0x00000020
+#define SEQ4_STATUS_RECALLABLE_STATE_REVOKED 0x00000040
+#define SEQ4_STATUS_LEASE_MOVED 0x00000080
+#define SEQ4_STATUS_RESTART_RECLAIM_NEEDED 0x00000100
+#define SEQ4_STATUS_CB_PATH_DOWN_SESSION 0x00000200
+#define SEQ4_STATUS_BACKCHANNEL_FAULT 0x00000400
+#define SEQ4_STATUS_DEVID_CHANGED 0x00000800
+#define SEQ4_STATUS_DEVID_DELETED 0x00001000
+
+struct SEQUENCE4resok {
+	sessionid4 sr_sessionid;
+	sequenceid4 sr_sequenceid;
+	slotid4 sr_slotid;
+	slotid4 sr_highest_slotid;
+	slotid4 sr_target_highest_slotid;
+	uint32_t sr_status_flags;
+};
+typedef struct SEQUENCE4resok SEQUENCE4resok;
+
+struct SEQUENCE4res {
+	nfsstat4 sr_status;
+	union {
+		SEQUENCE4resok sr_resok4;
+	} SEQUENCE4res_u;
+};
+typedef struct SEQUENCE4res SEQUENCE4res;
+
 struct ILLEGAL4res {
 	nfsstat4 status;
 };
@@ -1679,6 +1721,7 @@ enum nfs_opnum4 {
 	OP_LAYOUTCOMMIT = 49,
 	OP_LAYOUTGET = 50,
 	OP_LAYOUTRETURN = 51,
+	OP_SEQUENCE = 53,
 	OP_ILLEGAL = 10044,
 };
 typedef enum nfs_opnum4 nfs_opnum4;
@@ -1724,6 +1767,7 @@ struct nfs_argop4 {
 		LAYOUTCOMMIT4args oplayoutcommit;
 		LAYOUTGET4args oplayoutget;
 		LAYOUTRETURN4args oplayoutreturn;
+		SEQUENCE4args opsequence;
 	} nfs_argop4_u;
 };
 typedef struct nfs_argop4 nfs_argop4;
@@ -1776,6 +1820,7 @@ struct nfs_resop4 {
 		LAYOUTCOMMIT4res oplayoutcommit;
 		LAYOUTGET4res oplayoutget;
 		LAYOUTRETURN4res oplayoutreturn;
+		SEQUENCE4res opsequence;
 		ILLEGAL4res opillegal;
 	} nfs_resop4_u;
 };
@@ -1940,6 +1985,7 @@ extern  uint32_t zdr_length4 (ZDR *, length4*);
 extern  uint32_t zdr_clientid4 (ZDR *, clientid4*);
 extern  uint32_t zdr_sequenceid4 (ZDR *, sequenceid4*);
 extern  uint32_t zdr_seqid4 (ZDR *, seqid4*);
+extern  uint32_t zdr_slotid4 (ZDR *, slotid4*);
 extern  uint32_t zdr_utf8string (ZDR *, utf8string*);
 extern  uint32_t zdr_utf8str_cis (ZDR *, utf8str_cis*);
 extern  uint32_t zdr_utf8str_cs (ZDR *, utf8str_cs*);
@@ -2181,6 +2227,9 @@ extern  uint32_t zdr_layoutreturn4 (ZDR *, layoutreturn4*);
 extern  uint32_t zdr_LAYOUTRETURN4args (ZDR *, LAYOUTRETURN4args*);
 extern  uint32_t zdr_layoutreturn_stateid (ZDR *, layoutreturn_stateid*);
 extern  uint32_t zdr_LAYOUTRETURN4res (ZDR *, LAYOUTRETURN4res*);
+extern  uint32_t zdr_SEQUENCE4args (ZDR *, SEQUENCE4args*);
+extern  uint32_t zdr_SEQUENCE4resok (ZDR *, SEQUENCE4resok*);
+extern  uint32_t zdr_SEQUENCE4res (ZDR *, SEQUENCE4res*);
 extern  uint32_t zdr_ILLEGAL4res (ZDR *, ILLEGAL4res*);
 extern  uint32_t zdr_nfs_opnum4 (ZDR *, nfs_opnum4*);
 extern  uint32_t zdr_nfs_argop4 (ZDR *, nfs_argop4*);
@@ -2209,6 +2258,7 @@ extern uint32_t zdr_length4 ();
 extern uint32_t zdr_clientid4 ();
 extern uint32_t zdr_sequenceid4 ();
 extern uint32_t zdr_seqid4 ();
+extern uint32_t zdr_slotid4 ();
 extern uint32_t zdr_utf8string ();
 extern uint32_t zdr_utf8str_cis ();
 extern uint32_t zdr_utf8str_cs ();
@@ -2450,6 +2500,9 @@ extern uint32_t zdr_layoutreturn4 ();
 extern uint32_t zdr_LAYOUTRETURN4args ();
 extern uint32_t zdr_layoutreturn_stateid ();
 extern uint32_t zdr_LAYOUTRETURN4res ();
+extern uint32_t zdr_SEQUENCE4args ();
+extern uint32_t zdr_SEQUENCE4resok ();
+extern uint32_t zdr_SEQUENCE4res ();
 extern uint32_t zdr_ILLEGAL4res ();
 extern uint32_t zdr_nfs_opnum4 ();
 extern uint32_t zdr_nfs_argop4 ();

@@ -133,6 +133,7 @@ typedef uint64_t        length4;
 typedef uint64_t        clientid4;
 typedef uint32_t	sequenceid4;
 typedef uint32_t        seqid4;
+typedef uint32_t        slotid4;
 typedef opaque          utf8string<>;
 typedef utf8string      utf8str_cis;
 typedef utf8string      utf8str_cs;
@@ -1743,6 +1744,47 @@ default:
 };
 
 /*
+ * SEQUENCE
+ */
+struct SEQUENCE4args {
+       sessionid4     sa_sessionid;
+       sequenceid4    sa_sequenceid;
+       slotid4        sa_slotid;
+       slotid4        sa_highest_slotid;
+       bool           sa_cachethis;
+};
+
+const SEQ4_STATUS_CB_PATH_DOWN                  = 0x00000001;
+const SEQ4_STATUS_CB_GSS_CONTEXTS_EXPIRING      = 0x00000002;
+const SEQ4_STATUS_CB_GSS_CONTEXTS_EXPIRED       = 0x00000004;
+const SEQ4_STATUS_EXPIRED_ALL_STATE_REVOKED     = 0x00000008;
+const SEQ4_STATUS_EXPIRED_SOME_STATE_REVOKED    = 0x00000010;
+const SEQ4_STATUS_ADMIN_STATE_REVOKED           = 0x00000020;
+const SEQ4_STATUS_RECALLABLE_STATE_REVOKED      = 0x00000040;
+const SEQ4_STATUS_LEASE_MOVED                   = 0x00000080;
+const SEQ4_STATUS_RESTART_RECLAIM_NEEDED        = 0x00000100;
+const SEQ4_STATUS_CB_PATH_DOWN_SESSION          = 0x00000200;
+const SEQ4_STATUS_BACKCHANNEL_FAULT             = 0x00000400;
+const SEQ4_STATUS_DEVID_CHANGED                 = 0x00000800;
+const SEQ4_STATUS_DEVID_DELETED                 = 0x00001000;
+
+struct SEQUENCE4resok {
+       sessionid4      sr_sessionid;
+       sequenceid4     sr_sequenceid;
+       slotid4         sr_slotid;
+       slotid4         sr_highest_slotid;
+       slotid4         sr_target_highest_slotid;
+       uint32_t        sr_status_flags;
+};
+
+union SEQUENCE4res switch (nfsstat4 sr_status) {
+case NFS4_OK:
+       SEQUENCE4resok  sr_resok4;
+default:
+       void;
+};
+
+/*
  * ILLEGAL: Response for illegal operation numbers
  */
 struct ILLEGAL4res {
@@ -1800,6 +1842,7 @@ enum nfs_opnum4 {
         OP_LAYOUTCOMMIT         = 49,
         OP_LAYOUTGET            = 50,
         OP_LAYOUTRETURN         = 51,
+        OP_SEQUENCE             = 53,
         OP_ILLEGAL              = 10044
 };
 
@@ -1854,6 +1897,7 @@ union nfs_argop4 switch (nfs_opnum4 argop) {
  case OP_LAYOUTCOMMIT:          LAYOUTCOMMIT4args oplayoutcommit;
  case OP_LAYOUTGET:             LAYOUTGET4args oplayoutget;
  case OP_LAYOUTRETURN:          LAYOUTRETURN4args oplayoutreturn;
+ case OP_SEQUENCE:              SEQUENCE4args opsequence;
  case OP_ILLEGAL:       void;
 };
 
@@ -1908,6 +1952,7 @@ union nfs_resop4 switch (nfs_opnum4 resop){
  case OP_LAYOUTCOMMIT:          LAYOUTCOMMIT4res oplayoutcommit;
  case OP_LAYOUTGET:             LAYOUTGET4res oplayoutget;
  case OP_LAYOUTRETURN:          LAYOUTRETURN4res oplayoutreturn;
+ case OP_SEQUENCE:              SEQUENCE4res opsequence;
  case OP_ILLEGAL:       ILLEGAL4res opillegal;
 };
 

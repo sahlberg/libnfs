@@ -114,6 +114,16 @@ zdr_seqid4 (ZDR *zdrs, seqid4 *objp)
 }
 
 uint32_t
+zdr_slotid4 (ZDR *zdrs, slotid4 *objp)
+{
+	
+
+	 if (!zdr_uint32_t (zdrs, objp))
+		 return FALSE;
+	return TRUE;
+}
+
+uint32_t
 zdr_utf8string (ZDR *zdrs, utf8string *objp)
 {
 	
@@ -3246,6 +3256,62 @@ zdr_LAYOUTRETURN4res (ZDR *zdrs, LAYOUTRETURN4res *objp)
 }
 
 uint32_t
+zdr_SEQUENCE4args (ZDR *zdrs, SEQUENCE4args *objp)
+{
+	
+
+	 if (!zdr_sessionid4 (zdrs, objp->sa_sessionid))
+		 return FALSE;
+	 if (!zdr_sequenceid4 (zdrs, &objp->sa_sequenceid))
+		 return FALSE;
+	 if (!zdr_slotid4 (zdrs, &objp->sa_slotid))
+		 return FALSE;
+	 if (!zdr_slotid4 (zdrs, &objp->sa_highest_slotid))
+		 return FALSE;
+	 if (!zdr_bool (zdrs, &objp->sa_cachethis))
+		 return FALSE;
+	return TRUE;
+}
+
+uint32_t
+zdr_SEQUENCE4resok (ZDR *zdrs, SEQUENCE4resok *objp)
+{
+	
+
+	 if (!zdr_sessionid4 (zdrs, objp->sr_sessionid))
+		 return FALSE;
+	 if (!zdr_sequenceid4 (zdrs, &objp->sr_sequenceid))
+		 return FALSE;
+	 if (!zdr_slotid4 (zdrs, &objp->sr_slotid))
+		 return FALSE;
+	 if (!zdr_slotid4 (zdrs, &objp->sr_highest_slotid))
+		 return FALSE;
+	 if (!zdr_slotid4 (zdrs, &objp->sr_target_highest_slotid))
+		 return FALSE;
+	 if (!zdr_uint32_t (zdrs, &objp->sr_status_flags))
+		 return FALSE;
+	return TRUE;
+}
+
+uint32_t
+zdr_SEQUENCE4res (ZDR *zdrs, SEQUENCE4res *objp)
+{
+	
+
+	 if (!zdr_nfsstat4 (zdrs, &objp->sr_status))
+		 return FALSE;
+	switch (objp->sr_status) {
+	case NFS4_OK:
+		 if (!zdr_SEQUENCE4resok (zdrs, &objp->SEQUENCE4res_u.sr_resok4))
+			 return FALSE;
+		break;
+	default:
+		break;
+	}
+	return TRUE;
+}
+
+uint32_t
 zdr_ILLEGAL4res (ZDR *zdrs, ILLEGAL4res *objp)
 {
 	
@@ -3437,6 +3503,10 @@ zdr_nfs_argop4 (ZDR *zdrs, nfs_argop4 *objp)
 		break;
 	case OP_LAYOUTRETURN:
 		 if (!zdr_LAYOUTRETURN4args (zdrs, &objp->nfs_argop4_u.oplayoutreturn))
+			 return FALSE;
+		break;
+	case OP_SEQUENCE:
+		 if (!zdr_SEQUENCE4args (zdrs, &objp->nfs_argop4_u.opsequence))
 			 return FALSE;
 		break;
 	case OP_ILLEGAL:
@@ -3633,6 +3703,10 @@ zdr_nfs_resop4 (ZDR *zdrs, nfs_resop4 *objp)
 		break;
 	case OP_LAYOUTRETURN:
 		 if (!zdr_LAYOUTRETURN4res (zdrs, &objp->nfs_resop4_u.oplayoutreturn))
+			 return FALSE;
+		break;
+	case OP_SEQUENCE:
+		 if (!zdr_SEQUENCE4res (zdrs, &objp->nfs_resop4_u.opsequence))
 			 return FALSE;
 		break;
 	case OP_ILLEGAL:
