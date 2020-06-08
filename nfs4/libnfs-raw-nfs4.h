@@ -1669,6 +1669,44 @@ struct SEQUENCE4res {
 };
 typedef struct SEQUENCE4res SEQUENCE4res;
 
+struct ssa_digest_input4 {
+	SEQUENCE4args sdi_seqargs;
+};
+typedef struct ssa_digest_input4 ssa_digest_input4;
+
+struct SET_SSV4args {
+	struct {
+		u_int ssa_ssv_len;
+		char *ssa_ssv_val;
+	} ssa_ssv;
+	struct {
+		u_int ssa_digest_len;
+		char *ssa_digest_val;
+	} ssa_digest;
+};
+typedef struct SET_SSV4args SET_SSV4args;
+
+struct ssr_digest_input4 {
+	SEQUENCE4res sdi_seqres;
+};
+typedef struct ssr_digest_input4 ssr_digest_input4;
+
+struct SET_SSV4resok {
+	struct {
+		u_int ssr_digest_len;
+		char *ssr_digest_val;
+	} ssr_digest;
+};
+typedef struct SET_SSV4resok SET_SSV4resok;
+
+struct SET_SSV4res {
+	nfsstat4 ssr_status;
+	union {
+		SET_SSV4resok ssr_resok4;
+	} SET_SSV4res_u;
+};
+typedef struct SET_SSV4res SET_SSV4res;
+
 struct ILLEGAL4res {
 	nfsstat4 status;
 };
@@ -1722,6 +1760,7 @@ enum nfs_opnum4 {
 	OP_LAYOUTGET = 50,
 	OP_LAYOUTRETURN = 51,
 	OP_SEQUENCE = 53,
+	OP_SET_SSV = 54,
 	OP_ILLEGAL = 10044,
 };
 typedef enum nfs_opnum4 nfs_opnum4;
@@ -1768,6 +1807,7 @@ struct nfs_argop4 {
 		LAYOUTGET4args oplayoutget;
 		LAYOUTRETURN4args oplayoutreturn;
 		SEQUENCE4args opsequence;
+		SET_SSV4args opsetssv;
 	} nfs_argop4_u;
 };
 typedef struct nfs_argop4 nfs_argop4;
@@ -1821,6 +1861,7 @@ struct nfs_resop4 {
 		LAYOUTGET4res oplayoutget;
 		LAYOUTRETURN4res oplayoutreturn;
 		SEQUENCE4res opsequence;
+		SET_SSV4res opsetssv;
 		ILLEGAL4res opillegal;
 	} nfs_resop4_u;
 };
@@ -2230,6 +2271,11 @@ extern  uint32_t zdr_LAYOUTRETURN4res (ZDR *, LAYOUTRETURN4res*);
 extern  uint32_t zdr_SEQUENCE4args (ZDR *, SEQUENCE4args*);
 extern  uint32_t zdr_SEQUENCE4resok (ZDR *, SEQUENCE4resok*);
 extern  uint32_t zdr_SEQUENCE4res (ZDR *, SEQUENCE4res*);
+extern  uint32_t zdr_ssa_digest_input4 (ZDR *, ssa_digest_input4*);
+extern  uint32_t zdr_SET_SSV4args (ZDR *, SET_SSV4args*);
+extern  uint32_t zdr_ssr_digest_input4 (ZDR *, ssr_digest_input4*);
+extern  uint32_t zdr_SET_SSV4resok (ZDR *, SET_SSV4resok*);
+extern  uint32_t zdr_SET_SSV4res (ZDR *, SET_SSV4res*);
 extern  uint32_t zdr_ILLEGAL4res (ZDR *, ILLEGAL4res*);
 extern  uint32_t zdr_nfs_opnum4 (ZDR *, nfs_opnum4*);
 extern  uint32_t zdr_nfs_argop4 (ZDR *, nfs_argop4*);
@@ -2503,6 +2549,11 @@ extern uint32_t zdr_LAYOUTRETURN4res ();
 extern uint32_t zdr_SEQUENCE4args ();
 extern uint32_t zdr_SEQUENCE4resok ();
 extern uint32_t zdr_SEQUENCE4res ();
+extern uint32_t zdr_ssa_digest_input4 ();
+extern uint32_t zdr_SET_SSV4args ();
+extern uint32_t zdr_ssr_digest_input4 ();
+extern uint32_t zdr_SET_SSV4resok ();
+extern uint32_t zdr_SET_SSV4res ();
 extern uint32_t zdr_ILLEGAL4res ();
 extern uint32_t zdr_nfs_opnum4 ();
 extern uint32_t zdr_nfs_argop4 ();

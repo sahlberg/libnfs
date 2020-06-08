@@ -1785,6 +1785,33 @@ default:
 };
 
 /*
+ * SET_SSV
+ */
+struct ssa_digest_input4 {
+       SEQUENCE4args sdi_seqargs;
+};
+
+struct SET_SSV4args {
+       opaque          ssa_ssv<>;
+       opaque          ssa_digest<>;
+};
+
+struct ssr_digest_input4 {
+       SEQUENCE4res sdi_seqres;
+};
+
+struct SET_SSV4resok {
+       opaque          ssr_digest<>;
+};
+
+union SET_SSV4res switch (nfsstat4 ssr_status) {
+case NFS4_OK:
+       SET_SSV4resok   ssr_resok4;
+default:
+       void;
+};
+
+/*
  * ILLEGAL: Response for illegal operation numbers
  */
 struct ILLEGAL4res {
@@ -1843,6 +1870,7 @@ enum nfs_opnum4 {
         OP_LAYOUTGET            = 50,
         OP_LAYOUTRETURN         = 51,
         OP_SEQUENCE             = 53,
+        OP_SET_SSV              = 54,
         OP_ILLEGAL              = 10044
 };
 
@@ -1898,6 +1926,7 @@ union nfs_argop4 switch (nfs_opnum4 argop) {
  case OP_LAYOUTGET:             LAYOUTGET4args oplayoutget;
  case OP_LAYOUTRETURN:          LAYOUTRETURN4args oplayoutreturn;
  case OP_SEQUENCE:              SEQUENCE4args opsequence;
+ case OP_SET_SSV:               SET_SSV4args opsetssv;
  case OP_ILLEGAL:       void;
 };
 
@@ -1953,6 +1982,7 @@ union nfs_resop4 switch (nfs_opnum4 resop){
  case OP_LAYOUTGET:             LAYOUTGET4res oplayoutget;
  case OP_LAYOUTRETURN:          LAYOUTRETURN4res oplayoutreturn;
  case OP_SEQUENCE:              SEQUENCE4res opsequence;
+ case OP_SET_SSV:               SET_SSV4res opsetssv;
  case OP_ILLEGAL:       ILLEGAL4res opillegal;
 };
 

@@ -3312,6 +3312,66 @@ zdr_SEQUENCE4res (ZDR *zdrs, SEQUENCE4res *objp)
 }
 
 uint32_t
+zdr_ssa_digest_input4 (ZDR *zdrs, ssa_digest_input4 *objp)
+{
+	
+
+	 if (!zdr_SEQUENCE4args (zdrs, &objp->sdi_seqargs))
+		 return FALSE;
+	return TRUE;
+}
+
+uint32_t
+zdr_SET_SSV4args (ZDR *zdrs, SET_SSV4args *objp)
+{
+	
+
+	 if (!zdr_bytes (zdrs, (char **)&objp->ssa_ssv.ssa_ssv_val, (u_int *) &objp->ssa_ssv.ssa_ssv_len, ~0))
+		 return FALSE;
+	 if (!zdr_bytes (zdrs, (char **)&objp->ssa_digest.ssa_digest_val, (u_int *) &objp->ssa_digest.ssa_digest_len, ~0))
+		 return FALSE;
+	return TRUE;
+}
+
+uint32_t
+zdr_ssr_digest_input4 (ZDR *zdrs, ssr_digest_input4 *objp)
+{
+	
+
+	 if (!zdr_SEQUENCE4res (zdrs, &objp->sdi_seqres))
+		 return FALSE;
+	return TRUE;
+}
+
+uint32_t
+zdr_SET_SSV4resok (ZDR *zdrs, SET_SSV4resok *objp)
+{
+	
+
+	 if (!zdr_bytes (zdrs, (char **)&objp->ssr_digest.ssr_digest_val, (u_int *) &objp->ssr_digest.ssr_digest_len, ~0))
+		 return FALSE;
+	return TRUE;
+}
+
+uint32_t
+zdr_SET_SSV4res (ZDR *zdrs, SET_SSV4res *objp)
+{
+	
+
+	 if (!zdr_nfsstat4 (zdrs, &objp->ssr_status))
+		 return FALSE;
+	switch (objp->ssr_status) {
+	case NFS4_OK:
+		 if (!zdr_SET_SSV4resok (zdrs, &objp->SET_SSV4res_u.ssr_resok4))
+			 return FALSE;
+		break;
+	default:
+		break;
+	}
+	return TRUE;
+}
+
+uint32_t
 zdr_ILLEGAL4res (ZDR *zdrs, ILLEGAL4res *objp)
 {
 	
@@ -3507,6 +3567,10 @@ zdr_nfs_argop4 (ZDR *zdrs, nfs_argop4 *objp)
 		break;
 	case OP_SEQUENCE:
 		 if (!zdr_SEQUENCE4args (zdrs, &objp->nfs_argop4_u.opsequence))
+			 return FALSE;
+		break;
+	case OP_SET_SSV:
+		 if (!zdr_SET_SSV4args (zdrs, &objp->nfs_argop4_u.opsetssv))
 			 return FALSE;
 		break;
 	case OP_ILLEGAL:
@@ -3707,6 +3771,10 @@ zdr_nfs_resop4 (ZDR *zdrs, nfs_resop4 *objp)
 		break;
 	case OP_SEQUENCE:
 		 if (!zdr_SEQUENCE4res (zdrs, &objp->nfs_resop4_u.opsequence))
+			 return FALSE;
+		break;
+	case OP_SET_SSV:
+		 if (!zdr_SET_SSV4res (zdrs, &objp->nfs_resop4_u.opsetssv))
 			 return FALSE;
 		break;
 	case OP_ILLEGAL:
