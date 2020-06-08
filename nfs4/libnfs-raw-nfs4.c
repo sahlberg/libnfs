@@ -350,6 +350,44 @@ zdr_time_how4 (ZDR *zdrs, time_how4 *objp)
 }
 
 uint32_t
+zdr_layoutiomode4 (ZDR *zdrs, layoutiomode4 *objp)
+{
+	
+
+	 if (!zdr_enum (zdrs, (enum_t *) objp))
+		 return FALSE;
+	return TRUE;
+}
+
+uint32_t
+zdr_layout_content4 (ZDR *zdrs, layout_content4 *objp)
+{
+	
+
+	 if (!zdr_layouttype4 (zdrs, &objp->loc_type))
+		 return FALSE;
+	 if (!zdr_bytes (zdrs, (char **)&objp->loc_body.loc_body_val, (u_int *) &objp->loc_body.loc_body_len, ~0))
+		 return FALSE;
+	return TRUE;
+}
+
+uint32_t
+zdr_layout4 (ZDR *zdrs, layout4 *objp)
+{
+	
+
+	 if (!zdr_offset4 (zdrs, &objp->lo_offset))
+		 return FALSE;
+	 if (!zdr_length4 (zdrs, &objp->lo_length))
+		 return FALSE;
+	 if (!zdr_layoutiomode4 (zdrs, &objp->lo_iomode))
+		 return FALSE;
+	 if (!zdr_layout_content4 (zdrs, &objp->lo_content))
+		 return FALSE;
+	return TRUE;
+}
+
+uint32_t
 zdr_settime4 (ZDR *zdrs, settime4 *objp)
 {
 	
@@ -3049,6 +3087,67 @@ zdr_LAYOUTCOMMIT4res (ZDR *zdrs, LAYOUTCOMMIT4res *objp)
 }
 
 uint32_t
+zdr_LAYOUTGET4args (ZDR *zdrs, LAYOUTGET4args *objp)
+{
+	
+
+	 if (!zdr_bool (zdrs, &objp->loga_signal_layout_avail))
+		 return FALSE;
+	 if (!zdr_layouttype4 (zdrs, &objp->loga_layout_type))
+		 return FALSE;
+	 if (!zdr_layoutiomode4 (zdrs, &objp->loga_iomode))
+		 return FALSE;
+	 if (!zdr_offset4 (zdrs, &objp->loga_offset))
+		 return FALSE;
+	 if (!zdr_length4 (zdrs, &objp->loga_length))
+		 return FALSE;
+	 if (!zdr_length4 (zdrs, &objp->loga_minlength))
+		 return FALSE;
+	 if (!zdr_stateid4 (zdrs, &objp->loga_stateid))
+		 return FALSE;
+	 if (!zdr_count4 (zdrs, &objp->loga_maxcount))
+		 return FALSE;
+	return TRUE;
+}
+
+uint32_t
+zdr_LAYOUTGET4resok (ZDR *zdrs, LAYOUTGET4resok *objp)
+{
+	
+
+	 if (!zdr_bool (zdrs, &objp->logr_return_on_close))
+		 return FALSE;
+	 if (!zdr_stateid4 (zdrs, &objp->logr_stateid))
+		 return FALSE;
+	 if (!zdr_array (zdrs, (char **)&objp->logr_layout.logr_layout_val, (u_int *) &objp->logr_layout.logr_layout_len, ~0,
+		sizeof (layout4), (zdrproc_t) zdr_layout4))
+		 return FALSE;
+	return TRUE;
+}
+
+uint32_t
+zdr_LAYOUTGET4res (ZDR *zdrs, LAYOUTGET4res *objp)
+{
+	
+
+	 if (!zdr_nfsstat4 (zdrs, &objp->logr_status))
+		 return FALSE;
+	switch (objp->logr_status) {
+	case NFS4_OK:
+		 if (!zdr_LAYOUTGET4resok (zdrs, &objp->LAYOUTGET4res_u.logr_resok4))
+			 return FALSE;
+		break;
+	case NFS4ERR_LAYOUTTRYLATER:
+		 if (!zdr_bool (zdrs, &objp->LAYOUTGET4res_u.logr_will_signal_layout_avail))
+			 return FALSE;
+		break;
+	default:
+		break;
+	}
+	return TRUE;
+}
+
+uint32_t
 zdr_ILLEGAL4res (ZDR *zdrs, ILLEGAL4res *objp)
 {
 	
@@ -3232,6 +3331,10 @@ zdr_nfs_argop4 (ZDR *zdrs, nfs_argop4 *objp)
 		break;
 	case OP_LAYOUTCOMMIT:
 		 if (!zdr_LAYOUTCOMMIT4args (zdrs, &objp->nfs_argop4_u.oplayoutcommit))
+			 return FALSE;
+		break;
+	case OP_LAYOUTGET:
+		 if (!zdr_LAYOUTGET4args (zdrs, &objp->nfs_argop4_u.oplayoutget))
 			 return FALSE;
 		break;
 	case OP_ILLEGAL:
@@ -3420,6 +3523,10 @@ zdr_nfs_resop4 (ZDR *zdrs, nfs_resop4 *objp)
 		break;
 	case OP_LAYOUTCOMMIT:
 		 if (!zdr_LAYOUTCOMMIT4res (zdrs, &objp->nfs_resop4_u.oplayoutcommit))
+			 return FALSE;
+		break;
+	case OP_LAYOUTGET:
+		 if (!zdr_LAYOUTGET4res (zdrs, &objp->nfs_resop4_u.oplayoutget))
 			 return FALSE;
 		break;
 	case OP_ILLEGAL:

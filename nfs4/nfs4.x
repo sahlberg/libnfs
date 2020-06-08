@@ -107,7 +107,20 @@ enum nfsstat4 {
      NFS4ERR_DEADLOCK        = 10045,/* file locking deadlock   */
      NFS4ERR_FILE_OPEN       = 10046,/* open file blocks op.    */
      NFS4ERR_ADMIN_REVOKED   = 10047,/* lockowner state revoked */
-     NFS4ERR_CB_PATH_DOWN    = 10048 /* callback path down      */
+     NFS4ERR_CB_PATH_DOWN    = 10048,/* callback path down      */
+     NFS4ERR_BADIOMODE       = 10049,
+     NFS4ERR_BADLAYOUT       = 10050,
+     NFS4ERR_BAD_SESSION_DIGEST = 10051,
+     NFS4ERR_BADSESSION      = 10052,
+     NFS4ERR_BADSLOT         = 10053,
+     NFS4ERR_COMPLETE_ALREADY = 10054,
+     NFS4ERR_CONN_NOT_BOUND_TO_SESSION = 10055,
+     NFS4ERR_DELEG_ALREADY_WANTED = 10056,
+     NFS4ERR_BACK_CHAN_BUSY  = 10057,
+     NFS4ERR_LAYOUTTRYLATER  = 10058,
+     NFS4ERR_LAYOUTUNAVAILABLE = 10059,
+     NFS4ERR_NOMATCHING_LAYOUT = 10060,
+     NFS4ERR_RECALLCONFLICT  = 10061
 };
 
 /*
@@ -161,6 +174,7 @@ struct layoutupdate4 {
        opaque                  lou_body<>;
 };
 
+
 struct device_addr4 {
        layouttype4             da_layout_type;
        opaque                  da_addr_body<>;
@@ -177,6 +191,24 @@ struct nfstime4 {
 enum time_how4 {
      SET_TO_SERVER_TIME4 = 0,
      SET_TO_CLIENT_TIME4 = 1
+};
+
+enum layoutiomode4 {
+       LAYOUTIOMODE4_READ      = 1,
+       LAYOUTIOMODE4_RW        = 2,
+       LAYOUTIOMODE4_ANY       = 3
+};
+
+struct layout_content4 {
+       layouttype4 loc_type;
+       opaque      loc_body<>;
+};
+
+struct layout4 {
+       offset4                 lo_offset;
+       length4                 lo_length;
+       layoutiomode4           lo_iomode;
+       layout_content4         lo_content;
 };
 
 union settime4 switch (time_how4 set_it) {
@@ -1634,6 +1666,35 @@ default:
 };
 
 /*
+ * LAYOUTGET
+ */
+struct LAYOUTGET4args {
+       bool                    loga_signal_layout_avail;
+       layouttype4             loga_layout_type;
+       layoutiomode4           loga_iomode;
+       offset4                 loga_offset;
+       length4                 loga_length;
+       length4                 loga_minlength;
+       stateid4                loga_stateid;
+       count4                  loga_maxcount;
+};
+
+struct LAYOUTGET4resok {
+       bool               logr_return_on_close;
+       stateid4           logr_stateid;
+       layout4            logr_layout<>;
+};
+
+union LAYOUTGET4res switch (nfsstat4 logr_status) {
+case NFS4_OK:
+       LAYOUTGET4resok     logr_resok4;
+case NFS4ERR_LAYOUTTRYLATER:
+       bool                logr_will_signal_layout_avail;
+default:
+       void;
+};
+
+/*
  * ILLEGAL: Response for illegal operation numbers
  */
 struct ILLEGAL4res {
@@ -1689,6 +1750,7 @@ enum nfs_opnum4 {
         OP_GETDEVICEINFO        = 47,
         OP_GETDEVICELIST        = 48,
         OP_LAYOUTCOMMIT         = 49,
+        OP_LAYOUTGET            = 50,
         OP_ILLEGAL              = 10044
 };
 
@@ -1741,6 +1803,7 @@ union nfs_argop4 switch (nfs_opnum4 argop) {
  case OP_GETDEVICEINFO:         GETDEVICEINFO4args opgetdeviceinfo;
  case OP_GETDEVICELIST:         GETDEVICELIST4args opgetdevicelist;
  case OP_LAYOUTCOMMIT:          LAYOUTCOMMIT4args oplayoutcommit;
+ case OP_LAYOUTGET:             LAYOUTGET4args oplayoutget;
  case OP_ILLEGAL:       void;
 };
 
@@ -1793,6 +1856,7 @@ union nfs_resop4 switch (nfs_opnum4 resop){
  case OP_GETDEVICEINFO:         GETDEVICEINFO4res opgetdeviceinfo;
  case OP_GETDEVICELIST:         GETDEVICELIST4res opgetdevicelist;
  case OP_LAYOUTCOMMIT:          LAYOUTCOMMIT4res oplayoutcommit;
+ case OP_LAYOUTGET:             LAYOUTGET4res oplayoutget;
  case OP_ILLEGAL:       ILLEGAL4res opillegal;
 };
 

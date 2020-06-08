@@ -114,6 +114,19 @@ enum nfsstat4 {
 	NFS4ERR_FILE_OPEN = 10046,
 	NFS4ERR_ADMIN_REVOKED = 10047,
 	NFS4ERR_CB_PATH_DOWN = 10048,
+	NFS4ERR_BADIOMODE = 10049,
+	NFS4ERR_BADLAYOUT = 10050,
+	NFS4ERR_BAD_SESSION_DIGEST = 10051,
+	NFS4ERR_BADSESSION = 10052,
+	NFS4ERR_BADSLOT = 10053,
+	NFS4ERR_COMPLETE_ALREADY = 10054,
+	NFS4ERR_CONN_NOT_BOUND_TO_SESSION = 10055,
+	NFS4ERR_DELEG_ALREADY_WANTED = 10056,
+	NFS4ERR_BACK_CHAN_BUSY = 10057,
+	NFS4ERR_LAYOUTTRYLATER = 10058,
+	NFS4ERR_LAYOUTUNAVAILABLE = 10059,
+	NFS4ERR_NOMATCHING_LAYOUT = 10060,
+	NFS4ERR_RECALLCONFLICT = 10061,
 };
 typedef enum nfsstat4 nfsstat4;
 
@@ -224,6 +237,30 @@ enum time_how4 {
 	SET_TO_CLIENT_TIME4 = 1,
 };
 typedef enum time_how4 time_how4;
+
+enum layoutiomode4 {
+	LAYOUTIOMODE4_READ = 1,
+	LAYOUTIOMODE4_RW = 2,
+	LAYOUTIOMODE4_ANY = 3,
+};
+typedef enum layoutiomode4 layoutiomode4;
+
+struct layout_content4 {
+	layouttype4 loc_type;
+	struct {
+		u_int loc_body_len;
+		char *loc_body_val;
+	} loc_body;
+};
+typedef struct layout_content4 layout_content4;
+
+struct layout4 {
+	offset4 lo_offset;
+	length4 lo_length;
+	layoutiomode4 lo_iomode;
+	layout_content4 lo_content;
+};
+typedef struct layout4 layout4;
 
 struct settime4 {
 	time_how4 set_it;
@@ -1506,6 +1543,37 @@ struct LAYOUTCOMMIT4res {
 };
 typedef struct LAYOUTCOMMIT4res LAYOUTCOMMIT4res;
 
+struct LAYOUTGET4args {
+	uint32_t loga_signal_layout_avail;
+	layouttype4 loga_layout_type;
+	layoutiomode4 loga_iomode;
+	offset4 loga_offset;
+	length4 loga_length;
+	length4 loga_minlength;
+	stateid4 loga_stateid;
+	count4 loga_maxcount;
+};
+typedef struct LAYOUTGET4args LAYOUTGET4args;
+
+struct LAYOUTGET4resok {
+	uint32_t logr_return_on_close;
+	stateid4 logr_stateid;
+	struct {
+		u_int logr_layout_len;
+		layout4 *logr_layout_val;
+	} logr_layout;
+};
+typedef struct LAYOUTGET4resok LAYOUTGET4resok;
+
+struct LAYOUTGET4res {
+	nfsstat4 logr_status;
+	union {
+		LAYOUTGET4resok logr_resok4;
+		uint32_t logr_will_signal_layout_avail;
+	} LAYOUTGET4res_u;
+};
+typedef struct LAYOUTGET4res LAYOUTGET4res;
+
 struct ILLEGAL4res {
 	nfsstat4 status;
 };
@@ -1556,6 +1624,7 @@ enum nfs_opnum4 {
 	OP_GETDEVICEINFO = 47,
 	OP_GETDEVICELIST = 48,
 	OP_LAYOUTCOMMIT = 49,
+	OP_LAYOUTGET = 50,
 	OP_ILLEGAL = 10044,
 };
 typedef enum nfs_opnum4 nfs_opnum4;
@@ -1599,6 +1668,7 @@ struct nfs_argop4 {
 		GETDEVICEINFO4args opgetdeviceinfo;
 		GETDEVICELIST4args opgetdevicelist;
 		LAYOUTCOMMIT4args oplayoutcommit;
+		LAYOUTGET4args oplayoutget;
 	} nfs_argop4_u;
 };
 typedef struct nfs_argop4 nfs_argop4;
@@ -1649,6 +1719,7 @@ struct nfs_resop4 {
 		GETDEVICEINFO4res opgetdeviceinfo;
 		GETDEVICELIST4res opgetdevicelist;
 		LAYOUTCOMMIT4res oplayoutcommit;
+		LAYOUTGET4res oplayoutget;
 		ILLEGAL4res opillegal;
 	} nfs_resop4_u;
 };
@@ -1835,6 +1906,9 @@ extern  uint32_t zdr_layoutupdate4 (ZDR *, layoutupdate4*);
 extern  uint32_t zdr_device_addr4 (ZDR *, device_addr4*);
 extern  uint32_t zdr_nfstime4 (ZDR *, nfstime4*);
 extern  uint32_t zdr_time_how4 (ZDR *, time_how4*);
+extern  uint32_t zdr_layoutiomode4 (ZDR *, layoutiomode4*);
+extern  uint32_t zdr_layout_content4 (ZDR *, layout_content4*);
+extern  uint32_t zdr_layout4 (ZDR *, layout4*);
 extern  uint32_t zdr_settime4 (ZDR *, settime4*);
 extern  uint32_t zdr_nfs_fh4 (ZDR *, nfs_fh4*);
 extern  uint32_t zdr_fsid4 (ZDR *, fsid4*);
@@ -2042,6 +2116,9 @@ extern  uint32_t zdr_LAYOUTCOMMIT4args (ZDR *, LAYOUTCOMMIT4args*);
 extern  uint32_t zdr_newsize4 (ZDR *, newsize4*);
 extern  uint32_t zdr_LAYOUTCOMMIT4resok (ZDR *, LAYOUTCOMMIT4resok*);
 extern  uint32_t zdr_LAYOUTCOMMIT4res (ZDR *, LAYOUTCOMMIT4res*);
+extern  uint32_t zdr_LAYOUTGET4args (ZDR *, LAYOUTGET4args*);
+extern  uint32_t zdr_LAYOUTGET4resok (ZDR *, LAYOUTGET4resok*);
+extern  uint32_t zdr_LAYOUTGET4res (ZDR *, LAYOUTGET4res*);
 extern  uint32_t zdr_ILLEGAL4res (ZDR *, ILLEGAL4res*);
 extern  uint32_t zdr_nfs_opnum4 (ZDR *, nfs_opnum4*);
 extern  uint32_t zdr_nfs_argop4 (ZDR *, nfs_argop4*);
@@ -2092,6 +2169,9 @@ extern uint32_t zdr_layoutupdate4 ();
 extern uint32_t zdr_device_addr4 ();
 extern uint32_t zdr_nfstime4 ();
 extern uint32_t zdr_time_how4 ();
+extern uint32_t zdr_layoutiomode4 ();
+extern uint32_t zdr_layout_content4 ();
+extern uint32_t zdr_layout4 ();
 extern uint32_t zdr_settime4 ();
 extern uint32_t zdr_nfs_fh4 ();
 extern uint32_t zdr_fsid4 ();
@@ -2299,6 +2379,9 @@ extern uint32_t zdr_LAYOUTCOMMIT4args ();
 extern uint32_t zdr_newsize4 ();
 extern uint32_t zdr_LAYOUTCOMMIT4resok ();
 extern uint32_t zdr_LAYOUTCOMMIT4res ();
+extern uint32_t zdr_LAYOUTGET4args ();
+extern uint32_t zdr_LAYOUTGET4resok ();
+extern uint32_t zdr_LAYOUTGET4res ();
 extern uint32_t zdr_ILLEGAL4res ();
 extern uint32_t zdr_nfs_opnum4 ();
 extern uint32_t zdr_nfs_argop4 ();
