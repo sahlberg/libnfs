@@ -2656,6 +2656,26 @@ zdr_CREATE_SESSION4res (ZDR *zdrs, CREATE_SESSION4res *objp)
 }
 
 uint32_t
+zdr_DESTROY_SESSION4args (ZDR *zdrs, DESTROY_SESSION4args *objp)
+{
+	
+
+	 if (!zdr_sessionid4 (zdrs, objp->dsa_sessionid))
+		 return FALSE;
+	return TRUE;
+}
+
+uint32_t
+zdr_DESTROY_SESSION4res (ZDR *zdrs, DESTROY_SESSION4res *objp)
+{
+	
+
+	 if (!zdr_nfsstat4 (zdrs, &objp->dsr_status))
+		 return FALSE;
+	return TRUE;
+}
+
+uint32_t
 zdr_ILLEGAL4res (ZDR *zdrs, ILLEGAL4res *objp)
 {
 	
@@ -2815,6 +2835,10 @@ zdr_nfs_argop4 (ZDR *zdrs, nfs_argop4 *objp)
 		break;
 	case OP_CREATE_SESSION:
 		 if (!zdr_CREATE_SESSION4args (zdrs, &objp->nfs_argop4_u.opcreatesession))
+			 return FALSE;
+		break;
+	case OP_DESTROY_SESSION:
+		 if (!zdr_DESTROY_SESSION4args (zdrs, &objp->nfs_argop4_u.opdestroysession))
 			 return FALSE;
 		break;
 	case OP_ILLEGAL:
@@ -2979,6 +3003,10 @@ zdr_nfs_resop4 (ZDR *zdrs, nfs_resop4 *objp)
 		break;
 	case OP_CREATE_SESSION:
 		 if (!zdr_CREATE_SESSION4res (zdrs, &objp->nfs_resop4_u.opcreatesession))
+			 return FALSE;
+		break;
+	case OP_DESTROY_SESSION:
+		 if (!zdr_DESTROY_SESSION4res (zdrs, &objp->nfs_resop4_u.opdestroysession))
 			 return FALSE;
 		break;
 	case OP_ILLEGAL:

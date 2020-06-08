@@ -1458,6 +1458,17 @@ default:
 };
 
 /*
+ * DESTROY_SESSION
+ */
+struct DESTROY_SESSION4args {
+       sessionid4      dsa_sessionid;
+};
+
+struct DESTROY_SESSION4res {
+       nfsstat4        dsr_status;
+};
+
+/*
  * ILLEGAL: Response for illegal operation numbers
  */
 struct ILLEGAL4res {
@@ -1507,6 +1518,7 @@ enum nfs_opnum4 {
         OP_WRITE                = 38,
         OP_RELEASE_LOCKOWNER    = 39,
         OP_CREATE_SESSION       = 43,
+        OP_DESTROY_SESSION      = 44,
         OP_ILLEGAL              = 10044
 };
 
@@ -1552,7 +1564,8 @@ union nfs_argop4 switch (nfs_opnum4 argop) {
  case OP_WRITE:         WRITE4args opwrite;
  case OP_RELEASE_LOCKOWNER:     RELEASE_LOCKOWNER4args
                                     oprelease_lockowner;
- case OP_CREATE_SESSION:CREATE_SESSION4args opcreatesession;
+ case OP_CREATE_SESSION:        CREATE_SESSION4args opcreatesession;
+ case OP_DESTROY_SESSION:       DESTROY_SESSION4args opdestroysession;
  case OP_ILLEGAL:       void;
 };
 
@@ -1599,6 +1612,7 @@ union nfs_resop4 switch (nfs_opnum4 resop){
  case OP_RELEASE_LOCKOWNER:     RELEASE_LOCKOWNER4res
                                     oprelease_lockowner;
  case OP_CREATE_SESSION:        CREATE_SESSION4res opcreatesession;
+ case OP_DESTROY_SESSION:       DESTROY_SESSION4res opdestroysession;
  case OP_ILLEGAL:       ILLEGAL4res opillegal;
 };
 

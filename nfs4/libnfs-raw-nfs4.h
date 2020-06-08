@@ -1316,6 +1316,16 @@ struct CREATE_SESSION4res {
 };
 typedef struct CREATE_SESSION4res CREATE_SESSION4res;
 
+struct DESTROY_SESSION4args {
+	sessionid4 dsa_sessionid;
+};
+typedef struct DESTROY_SESSION4args DESTROY_SESSION4args;
+
+struct DESTROY_SESSION4res {
+	nfsstat4 dsr_status;
+};
+typedef struct DESTROY_SESSION4res DESTROY_SESSION4res;
+
 struct ILLEGAL4res {
 	nfsstat4 status;
 };
@@ -1360,6 +1370,7 @@ enum nfs_opnum4 {
 	OP_WRITE = 38,
 	OP_RELEASE_LOCKOWNER = 39,
 	OP_CREATE_SESSION = 43,
+	OP_DESTROY_SESSION = 44,
 	OP_ILLEGAL = 10044,
 };
 typedef enum nfs_opnum4 nfs_opnum4;
@@ -1397,6 +1408,7 @@ struct nfs_argop4 {
 		WRITE4args opwrite;
 		RELEASE_LOCKOWNER4args oprelease_lockowner;
 		CREATE_SESSION4args opcreatesession;
+		DESTROY_SESSION4args opdestroysession;
 	} nfs_argop4_u;
 };
 typedef struct nfs_argop4 nfs_argop4;
@@ -1441,6 +1453,7 @@ struct nfs_resop4 {
 		WRITE4res opwrite;
 		RELEASE_LOCKOWNER4res oprelease_lockowner;
 		CREATE_SESSION4res opcreatesession;
+		DESTROY_SESSION4res opdestroysession;
 		ILLEGAL4res opillegal;
 	} nfs_resop4_u;
 };
@@ -1808,6 +1821,8 @@ extern  uint32_t zdr_channel_attrs4 (ZDR *, channel_attrs4*);
 extern  uint32_t zdr_CREATE_SESSION4args (ZDR *, CREATE_SESSION4args*);
 extern  uint32_t zdr_CREATE_SESSION4resok (ZDR *, CREATE_SESSION4resok*);
 extern  uint32_t zdr_CREATE_SESSION4res (ZDR *, CREATE_SESSION4res*);
+extern  uint32_t zdr_DESTROY_SESSION4args (ZDR *, DESTROY_SESSION4args*);
+extern  uint32_t zdr_DESTROY_SESSION4res (ZDR *, DESTROY_SESSION4res*);
 extern  uint32_t zdr_ILLEGAL4res (ZDR *, ILLEGAL4res*);
 extern  uint32_t zdr_nfs_opnum4 (ZDR *, nfs_opnum4*);
 extern  uint32_t zdr_nfs_argop4 (ZDR *, nfs_argop4*);
@@ -2039,6 +2054,8 @@ extern uint32_t zdr_channel_attrs4 ();
 extern uint32_t zdr_CREATE_SESSION4args ();
 extern uint32_t zdr_CREATE_SESSION4resok ();
 extern uint32_t zdr_CREATE_SESSION4res ();
+extern uint32_t zdr_DESTROY_SESSION4args ();
+extern uint32_t zdr_DESTROY_SESSION4res ();
 extern uint32_t zdr_ILLEGAL4res ();
 extern uint32_t zdr_nfs_opnum4 ();
 extern uint32_t zdr_nfs_argop4 ();
