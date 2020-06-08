@@ -1480,6 +1480,47 @@ struct FREE_STATEID4res {
 };
 
 /*
+ * GET_DIR_DELEGATION
+ */
+typedef nfstime4 attr_notice4;
+
+struct GET_DIR_DELEGATION4args {
+       bool            gdda_signal_deleg_avail;
+       bitmap4         gdda_notification_types;
+       attr_notice4    gdda_child_attr_delay;
+       attr_notice4    gdda_dir_attr_delay;
+       bitmap4         gdda_child_attributes;
+       bitmap4         gdda_dir_attributes;
+};
+
+struct GET_DIR_DELEGATION4resok {
+       verifier4       gddr_cookieverf;
+       stateid4        gddr_stateid;
+       bitmap4         gddr_notification;
+       bitmap4         gddr_child_attributes;
+       bitmap4         gddr_dir_attributes;
+};
+
+enum gddrnf4_status {
+       GDD4_OK         = 0,
+       GDD4_UNAVAIL    = 1
+};
+
+union GET_DIR_DELEGATION4res_non_fatal switch (gddrnf4_status gddrnf_status) {
+ case GDD4_OK:
+     GET_DIR_DELEGATION4resok      gddrnf_resok4;
+ case GDD4_UNAVAIL:
+     bool                          gddrnf_will_signal_deleg_avail;
+};
+
+union GET_DIR_DELEGATION4res switch (nfsstat4 gddr_status) {
+ case NFS4_OK:
+     GET_DIR_DELEGATION4res_non_fatal      gddr_res_non_fatal4;
+ default:
+     void;
+};
+
+/*
  * ILLEGAL: Response for illegal operation numbers
  */
 struct ILLEGAL4res {
@@ -1531,6 +1572,7 @@ enum nfs_opnum4 {
         OP_CREATE_SESSION       = 43,
         OP_DESTROY_SESSION      = 44,
         OP_FREE_STATEID         = 45,
+        OP_GET_DIR_DELEGATION   = 46,
         OP_ILLEGAL              = 10044
 };
 
@@ -1579,6 +1621,7 @@ union nfs_argop4 switch (nfs_opnum4 argop) {
  case OP_CREATE_SESSION:        CREATE_SESSION4args opcreatesession;
  case OP_DESTROY_SESSION:       DESTROY_SESSION4args opdestroysession;
  case OP_FREE_STATEID:          FREE_STATEID4args opfreestateid;
+ case OP_GET_DIR_DELEGATION:    GET_DIR_DELEGATION4args opgetdirdelegation;
  case OP_ILLEGAL:       void;
 };
 
@@ -1627,6 +1670,7 @@ union nfs_resop4 switch (nfs_opnum4 resop){
  case OP_CREATE_SESSION:        CREATE_SESSION4res opcreatesession;
  case OP_DESTROY_SESSION:       DESTROY_SESSION4res opdestroysession;
  case OP_FREE_STATEID:          FREE_STATEID4res opfreestateid;
+ case OP_GET_DIR_DELEGATION:    GET_DIR_DELEGATION4res opgetdirdelegation;
  case OP_ILLEGAL:       ILLEGAL4res opillegal;
 };
 

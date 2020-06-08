@@ -2696,6 +2696,104 @@ zdr_FREE_STATEID4res (ZDR *zdrs, FREE_STATEID4res *objp)
 }
 
 uint32_t
+zdr_attr_notice4 (ZDR *zdrs, attr_notice4 *objp)
+{
+	
+
+	 if (!zdr_nfstime4 (zdrs, objp))
+		 return FALSE;
+	return TRUE;
+}
+
+uint32_t
+zdr_GET_DIR_DELEGATION4args (ZDR *zdrs, GET_DIR_DELEGATION4args *objp)
+{
+	
+
+	 if (!zdr_bool (zdrs, &objp->gdda_signal_deleg_avail))
+		 return FALSE;
+	 if (!zdr_bitmap4 (zdrs, &objp->gdda_notification_types))
+		 return FALSE;
+	 if (!zdr_attr_notice4 (zdrs, &objp->gdda_child_attr_delay))
+		 return FALSE;
+	 if (!zdr_attr_notice4 (zdrs, &objp->gdda_dir_attr_delay))
+		 return FALSE;
+	 if (!zdr_bitmap4 (zdrs, &objp->gdda_child_attributes))
+		 return FALSE;
+	 if (!zdr_bitmap4 (zdrs, &objp->gdda_dir_attributes))
+		 return FALSE;
+	return TRUE;
+}
+
+uint32_t
+zdr_GET_DIR_DELEGATION4resok (ZDR *zdrs, GET_DIR_DELEGATION4resok *objp)
+{
+	
+
+	 if (!zdr_verifier4 (zdrs, objp->gddr_cookieverf))
+		 return FALSE;
+	 if (!zdr_stateid4 (zdrs, &objp->gddr_stateid))
+		 return FALSE;
+	 if (!zdr_bitmap4 (zdrs, &objp->gddr_notification))
+		 return FALSE;
+	 if (!zdr_bitmap4 (zdrs, &objp->gddr_child_attributes))
+		 return FALSE;
+	 if (!zdr_bitmap4 (zdrs, &objp->gddr_dir_attributes))
+		 return FALSE;
+	return TRUE;
+}
+
+uint32_t
+zdr_gddrnf4_status (ZDR *zdrs, gddrnf4_status *objp)
+{
+	
+
+	 if (!zdr_enum (zdrs, (enum_t *) objp))
+		 return FALSE;
+	return TRUE;
+}
+
+uint32_t
+zdr_GET_DIR_DELEGATION4res_non_fatal (ZDR *zdrs, GET_DIR_DELEGATION4res_non_fatal *objp)
+{
+	
+
+	 if (!zdr_gddrnf4_status (zdrs, &objp->gddrnf_status))
+		 return FALSE;
+	switch (objp->gddrnf_status) {
+	case GDD4_OK:
+		 if (!zdr_GET_DIR_DELEGATION4resok (zdrs, &objp->GET_DIR_DELEGATION4res_non_fatal_u.gddrnf_resok4))
+			 return FALSE;
+		break;
+	case GDD4_UNAVAIL:
+		 if (!zdr_bool (zdrs, &objp->GET_DIR_DELEGATION4res_non_fatal_u.gddrnf_will_signal_deleg_avail))
+			 return FALSE;
+		break;
+	default:
+		return FALSE;
+	}
+	return TRUE;
+}
+
+uint32_t
+zdr_GET_DIR_DELEGATION4res (ZDR *zdrs, GET_DIR_DELEGATION4res *objp)
+{
+	
+
+	 if (!zdr_nfsstat4 (zdrs, &objp->gddr_status))
+		 return FALSE;
+	switch (objp->gddr_status) {
+	case NFS4_OK:
+		 if (!zdr_GET_DIR_DELEGATION4res_non_fatal (zdrs, &objp->GET_DIR_DELEGATION4res_u.gddr_res_non_fatal4))
+			 return FALSE;
+		break;
+	default:
+		break;
+	}
+	return TRUE;
+}
+
+uint32_t
 zdr_ILLEGAL4res (ZDR *zdrs, ILLEGAL4res *objp)
 {
 	
@@ -2863,6 +2961,10 @@ zdr_nfs_argop4 (ZDR *zdrs, nfs_argop4 *objp)
 		break;
 	case OP_FREE_STATEID:
 		 if (!zdr_FREE_STATEID4args (zdrs, &objp->nfs_argop4_u.opfreestateid))
+			 return FALSE;
+		break;
+	case OP_GET_DIR_DELEGATION:
+		 if (!zdr_GET_DIR_DELEGATION4args (zdrs, &objp->nfs_argop4_u.opgetdirdelegation))
 			 return FALSE;
 		break;
 	case OP_ILLEGAL:
@@ -3035,6 +3137,10 @@ zdr_nfs_resop4 (ZDR *zdrs, nfs_resop4 *objp)
 		break;
 	case OP_FREE_STATEID:
 		 if (!zdr_FREE_STATEID4res (zdrs, &objp->nfs_resop4_u.opfreestateid))
+			 return FALSE;
+		break;
+	case OP_GET_DIR_DELEGATION:
+		 if (!zdr_GET_DIR_DELEGATION4res (zdrs, &objp->nfs_resop4_u.opgetdirdelegation))
 			 return FALSE;
 		break;
 	case OP_ILLEGAL:

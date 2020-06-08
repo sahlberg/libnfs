@@ -1336,6 +1336,50 @@ struct FREE_STATEID4res {
 };
 typedef struct FREE_STATEID4res FREE_STATEID4res;
 
+typedef nfstime4 attr_notice4;
+
+struct GET_DIR_DELEGATION4args {
+	uint32_t gdda_signal_deleg_avail;
+	bitmap4 gdda_notification_types;
+	attr_notice4 gdda_child_attr_delay;
+	attr_notice4 gdda_dir_attr_delay;
+	bitmap4 gdda_child_attributes;
+	bitmap4 gdda_dir_attributes;
+};
+typedef struct GET_DIR_DELEGATION4args GET_DIR_DELEGATION4args;
+
+struct GET_DIR_DELEGATION4resok {
+	verifier4 gddr_cookieverf;
+	stateid4 gddr_stateid;
+	bitmap4 gddr_notification;
+	bitmap4 gddr_child_attributes;
+	bitmap4 gddr_dir_attributes;
+};
+typedef struct GET_DIR_DELEGATION4resok GET_DIR_DELEGATION4resok;
+
+enum gddrnf4_status {
+	GDD4_OK = 0,
+	GDD4_UNAVAIL = 1,
+};
+typedef enum gddrnf4_status gddrnf4_status;
+
+struct GET_DIR_DELEGATION4res_non_fatal {
+	gddrnf4_status gddrnf_status;
+	union {
+		GET_DIR_DELEGATION4resok gddrnf_resok4;
+		uint32_t gddrnf_will_signal_deleg_avail;
+	} GET_DIR_DELEGATION4res_non_fatal_u;
+};
+typedef struct GET_DIR_DELEGATION4res_non_fatal GET_DIR_DELEGATION4res_non_fatal;
+
+struct GET_DIR_DELEGATION4res {
+	nfsstat4 gddr_status;
+	union {
+		GET_DIR_DELEGATION4res_non_fatal gddr_res_non_fatal4;
+	} GET_DIR_DELEGATION4res_u;
+};
+typedef struct GET_DIR_DELEGATION4res GET_DIR_DELEGATION4res;
+
 struct ILLEGAL4res {
 	nfsstat4 status;
 };
@@ -1382,6 +1426,7 @@ enum nfs_opnum4 {
 	OP_CREATE_SESSION = 43,
 	OP_DESTROY_SESSION = 44,
 	OP_FREE_STATEID = 45,
+	OP_GET_DIR_DELEGATION = 46,
 	OP_ILLEGAL = 10044,
 };
 typedef enum nfs_opnum4 nfs_opnum4;
@@ -1421,6 +1466,7 @@ struct nfs_argop4 {
 		CREATE_SESSION4args opcreatesession;
 		DESTROY_SESSION4args opdestroysession;
 		FREE_STATEID4args opfreestateid;
+		GET_DIR_DELEGATION4args opgetdirdelegation;
 	} nfs_argop4_u;
 };
 typedef struct nfs_argop4 nfs_argop4;
@@ -1467,6 +1513,7 @@ struct nfs_resop4 {
 		CREATE_SESSION4res opcreatesession;
 		DESTROY_SESSION4res opdestroysession;
 		FREE_STATEID4res opfreestateid;
+		GET_DIR_DELEGATION4res opgetdirdelegation;
 		ILLEGAL4res opillegal;
 	} nfs_resop4_u;
 };
@@ -1838,6 +1885,12 @@ extern  uint32_t zdr_DESTROY_SESSION4args (ZDR *, DESTROY_SESSION4args*);
 extern  uint32_t zdr_DESTROY_SESSION4res (ZDR *, DESTROY_SESSION4res*);
 extern  uint32_t zdr_FREE_STATEID4args (ZDR *, FREE_STATEID4args*);
 extern  uint32_t zdr_FREE_STATEID4res (ZDR *, FREE_STATEID4res*);
+extern  uint32_t zdr_attr_notice4 (ZDR *, attr_notice4*);
+extern  uint32_t zdr_GET_DIR_DELEGATION4args (ZDR *, GET_DIR_DELEGATION4args*);
+extern  uint32_t zdr_GET_DIR_DELEGATION4resok (ZDR *, GET_DIR_DELEGATION4resok*);
+extern  uint32_t zdr_gddrnf4_status (ZDR *, gddrnf4_status*);
+extern  uint32_t zdr_GET_DIR_DELEGATION4res_non_fatal (ZDR *, GET_DIR_DELEGATION4res_non_fatal*);
+extern  uint32_t zdr_GET_DIR_DELEGATION4res (ZDR *, GET_DIR_DELEGATION4res*);
 extern  uint32_t zdr_ILLEGAL4res (ZDR *, ILLEGAL4res*);
 extern  uint32_t zdr_nfs_opnum4 (ZDR *, nfs_opnum4*);
 extern  uint32_t zdr_nfs_argop4 (ZDR *, nfs_argop4*);
@@ -2073,6 +2126,12 @@ extern uint32_t zdr_DESTROY_SESSION4args ();
 extern uint32_t zdr_DESTROY_SESSION4res ();
 extern uint32_t zdr_FREE_STATEID4args ();
 extern uint32_t zdr_FREE_STATEID4res ();
+extern uint32_t zdr_attr_notice4 ();
+extern uint32_t zdr_GET_DIR_DELEGATION4args ();
+extern uint32_t zdr_GET_DIR_DELEGATION4resok ();
+extern uint32_t zdr_gddrnf4_status ();
+extern uint32_t zdr_GET_DIR_DELEGATION4res_non_fatal ();
+extern uint32_t zdr_GET_DIR_DELEGATION4res ();
 extern uint32_t zdr_ILLEGAL4res ();
 extern uint32_t zdr_nfs_opnum4 ();
 extern uint32_t zdr_nfs_argop4 ();
