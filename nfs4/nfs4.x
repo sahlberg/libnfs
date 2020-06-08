@@ -156,6 +156,11 @@ enum layouttype4 {
        LAYOUT4_BLOCK_VOLUME    = 0x3
 };
 
+struct layoutupdate4 {
+       layouttype4             lou_type;
+       opaque                  lou_body<>;
+};
+
 struct device_addr4 {
        layouttype4             da_layout_type;
        opaque                  da_addr_body<>;
@@ -1584,6 +1589,51 @@ default:
 };
 
 /*
+ * LAYOUTCOMMIT
+ */
+union newtime4 switch (bool nt_timechanged) {
+case TRUE:
+       nfstime4           nt_time;
+case FALSE:
+       void;
+};
+
+union newoffset4 switch (bool no_newoffset) {
+case TRUE:
+       offset4           no_offset;
+case FALSE:
+       void;
+};
+
+struct LAYOUTCOMMIT4args {
+       offset4                 loca_offset;
+       length4                 loca_length;
+       bool                    loca_reclaim;
+       stateid4                loca_stateid;
+       newoffset4              loca_last_write_offset;
+       newtime4                loca_time_modify;
+       layoutupdate4           loca_layoutupdate;
+};
+
+union newsize4 switch (bool ns_sizechanged) {
+case TRUE:
+       length4         ns_size;
+case FALSE:
+       void;
+};
+
+struct LAYOUTCOMMIT4resok {
+       newsize4                locr_newsize;
+};
+
+union LAYOUTCOMMIT4res switch (nfsstat4 locr_status) {
+case NFS4_OK:
+       LAYOUTCOMMIT4resok      locr_resok4;
+default:
+       void;
+};
+
+/*
  * ILLEGAL: Response for illegal operation numbers
  */
 struct ILLEGAL4res {
@@ -1638,6 +1688,7 @@ enum nfs_opnum4 {
         OP_GET_DIR_DELEGATION   = 46,
         OP_GETDEVICEINFO        = 47,
         OP_GETDEVICELIST        = 48,
+        OP_LAYOUTCOMMIT         = 49,
         OP_ILLEGAL              = 10044
 };
 
@@ -1689,6 +1740,7 @@ union nfs_argop4 switch (nfs_opnum4 argop) {
  case OP_GET_DIR_DELEGATION:    GET_DIR_DELEGATION4args opgetdirdelegation;
  case OP_GETDEVICEINFO:         GETDEVICEINFO4args opgetdeviceinfo;
  case OP_GETDEVICELIST:         GETDEVICELIST4args opgetdevicelist;
+ case OP_LAYOUTCOMMIT:          LAYOUTCOMMIT4args oplayoutcommit;
  case OP_ILLEGAL:       void;
 };
 
@@ -1740,6 +1792,7 @@ union nfs_resop4 switch (nfs_opnum4 resop){
  case OP_GET_DIR_DELEGATION:    GET_DIR_DELEGATION4res opgetdirdelegation;
  case OP_GETDEVICEINFO:         GETDEVICEINFO4res opgetdeviceinfo;
  case OP_GETDEVICELIST:         GETDEVICELIST4res opgetdevicelist;
+ case OP_LAYOUTCOMMIT:          LAYOUTCOMMIT4res oplayoutcommit;
  case OP_ILLEGAL:       ILLEGAL4res opillegal;
 };
 

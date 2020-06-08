@@ -304,6 +304,18 @@ zdr_layouttype4 (ZDR *zdrs, layouttype4 *objp)
 }
 
 uint32_t
+zdr_layoutupdate4 (ZDR *zdrs, layoutupdate4 *objp)
+{
+	
+
+	 if (!zdr_layouttype4 (zdrs, &objp->lou_type))
+		 return FALSE;
+	 if (!zdr_bytes (zdrs, (char **)&objp->lou_body.lou_body_val, (u_int *) &objp->lou_body.lou_body_len, ~0))
+		 return FALSE;
+	return TRUE;
+}
+
+uint32_t
 zdr_device_addr4 (ZDR *zdrs, device_addr4 *objp)
 {
 	
@@ -2927,6 +2939,116 @@ zdr_GETDEVICELIST4res (ZDR *zdrs, GETDEVICELIST4res *objp)
 }
 
 uint32_t
+zdr_newtime4 (ZDR *zdrs, newtime4 *objp)
+{
+	
+
+	 if (!zdr_bool (zdrs, &objp->nt_timechanged))
+		 return FALSE;
+	switch (objp->nt_timechanged) {
+	case TRUE:
+		 if (!zdr_nfstime4 (zdrs, &objp->newtime4_u.nt_time))
+			 return FALSE;
+		break;
+	case FALSE:
+		break;
+	default:
+		return FALSE;
+	}
+	return TRUE;
+}
+
+uint32_t
+zdr_newoffset4 (ZDR *zdrs, newoffset4 *objp)
+{
+	
+
+	 if (!zdr_bool (zdrs, &objp->no_newoffset))
+		 return FALSE;
+	switch (objp->no_newoffset) {
+	case TRUE:
+		 if (!zdr_offset4 (zdrs, &objp->newoffset4_u.no_offset))
+			 return FALSE;
+		break;
+	case FALSE:
+		break;
+	default:
+		return FALSE;
+	}
+	return TRUE;
+}
+
+uint32_t
+zdr_LAYOUTCOMMIT4args (ZDR *zdrs, LAYOUTCOMMIT4args *objp)
+{
+	
+
+	 if (!zdr_offset4 (zdrs, &objp->loca_offset))
+		 return FALSE;
+	 if (!zdr_length4 (zdrs, &objp->loca_length))
+		 return FALSE;
+	 if (!zdr_bool (zdrs, &objp->loca_reclaim))
+		 return FALSE;
+	 if (!zdr_stateid4 (zdrs, &objp->loca_stateid))
+		 return FALSE;
+	 if (!zdr_newoffset4 (zdrs, &objp->loca_last_write_offset))
+		 return FALSE;
+	 if (!zdr_newtime4 (zdrs, &objp->loca_time_modify))
+		 return FALSE;
+	 if (!zdr_layoutupdate4 (zdrs, &objp->loca_layoutupdate))
+		 return FALSE;
+	return TRUE;
+}
+
+uint32_t
+zdr_newsize4 (ZDR *zdrs, newsize4 *objp)
+{
+	
+
+	 if (!zdr_bool (zdrs, &objp->ns_sizechanged))
+		 return FALSE;
+	switch (objp->ns_sizechanged) {
+	case TRUE:
+		 if (!zdr_length4 (zdrs, &objp->newsize4_u.ns_size))
+			 return FALSE;
+		break;
+	case FALSE:
+		break;
+	default:
+		return FALSE;
+	}
+	return TRUE;
+}
+
+uint32_t
+zdr_LAYOUTCOMMIT4resok (ZDR *zdrs, LAYOUTCOMMIT4resok *objp)
+{
+	
+
+	 if (!zdr_newsize4 (zdrs, &objp->locr_newsize))
+		 return FALSE;
+	return TRUE;
+}
+
+uint32_t
+zdr_LAYOUTCOMMIT4res (ZDR *zdrs, LAYOUTCOMMIT4res *objp)
+{
+	
+
+	 if (!zdr_nfsstat4 (zdrs, &objp->locr_status))
+		 return FALSE;
+	switch (objp->locr_status) {
+	case NFS4_OK:
+		 if (!zdr_LAYOUTCOMMIT4resok (zdrs, &objp->LAYOUTCOMMIT4res_u.locr_resok4))
+			 return FALSE;
+		break;
+	default:
+		break;
+	}
+	return TRUE;
+}
+
+uint32_t
 zdr_ILLEGAL4res (ZDR *zdrs, ILLEGAL4res *objp)
 {
 	
@@ -3106,6 +3228,10 @@ zdr_nfs_argop4 (ZDR *zdrs, nfs_argop4 *objp)
 		break;
 	case OP_GETDEVICELIST:
 		 if (!zdr_GETDEVICELIST4args (zdrs, &objp->nfs_argop4_u.opgetdevicelist))
+			 return FALSE;
+		break;
+	case OP_LAYOUTCOMMIT:
+		 if (!zdr_LAYOUTCOMMIT4args (zdrs, &objp->nfs_argop4_u.oplayoutcommit))
 			 return FALSE;
 		break;
 	case OP_ILLEGAL:
@@ -3290,6 +3416,10 @@ zdr_nfs_resop4 (ZDR *zdrs, nfs_resop4 *objp)
 		break;
 	case OP_GETDEVICELIST:
 		 if (!zdr_GETDEVICELIST4res (zdrs, &objp->nfs_resop4_u.opgetdevicelist))
+			 return FALSE;
+		break;
+	case OP_LAYOUTCOMMIT:
+		 if (!zdr_LAYOUTCOMMIT4res (zdrs, &objp->nfs_resop4_u.oplayoutcommit))
 			 return FALSE;
 		break;
 	case OP_ILLEGAL:
