@@ -19,7 +19,7 @@ nfs4-stamp : nfs4.x
 	touch nfs4-stamp
 
 compile_rpc:	
-	cat nfs4.x | head -29 >libnfs-raw-nfs4.h
+	cat nfs4.x | head -16 >libnfs-raw-nfs4.h
 	rpcgen -h nfs4.x | sed \
 -e "s/#include <rpc\/rpc.h>/#include <nfsc\/libnfs-zdr.h>/" \
 -e "s/xdr/zdr/g" \
@@ -29,7 +29,7 @@ compile_rpc:
 -e "s/ CLIENT / void /g" \
 -e "s/SVCXPRT /void /g" \
 -e "s/bool_t/uint32_t/g" >> libnfs-raw-nfs4.h
-	cat nfs4.x | head -29 >libnfs-raw-nfs4.c
+	cat nfs4.x | head -16 >libnfs-raw-nfs4.c
 	rpcgen -c nfs4.x | sed \
 -e "s/#include \".*nfs4.h\"/#include \"libnfs-xdr.h\"\n#include \"libnfs-raw-nfs4.h\"/" \
 -e "s/xdr/zdr/g" \
