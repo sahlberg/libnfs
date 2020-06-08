@@ -1560,6 +1560,30 @@ default:
 };
 
 /*
+ * GETDEVICELIST
+ */
+struct GETDEVICELIST4args {
+        layouttype4     gdla_layout_type;
+        count4          gdla_maxdevices;
+        nfs_cookie4     gdla_cookie;
+        verifier4       gdla_cookieverf;
+};
+
+struct GETDEVICELIST4resok {
+       nfs_cookie4             gdlr_cookie;
+       verifier4               gdlr_cookieverf;
+       deviceid4               gdlr_deviceid_list<>;
+       bool                    gdlr_eof;
+};
+
+union GETDEVICELIST4res switch (nfsstat4 gdlr_status) {
+case NFS4_OK:
+       GETDEVICELIST4resok     gdlr_resok4;
+default:
+       void;
+};
+
+/*
  * ILLEGAL: Response for illegal operation numbers
  */
 struct ILLEGAL4res {
@@ -1613,6 +1637,7 @@ enum nfs_opnum4 {
         OP_FREE_STATEID         = 45,
         OP_GET_DIR_DELEGATION   = 46,
         OP_GETDEVICEINFO        = 47,
+        OP_GETDEVICELIST        = 48,
         OP_ILLEGAL              = 10044
 };
 
@@ -1663,6 +1688,7 @@ union nfs_argop4 switch (nfs_opnum4 argop) {
  case OP_FREE_STATEID:          FREE_STATEID4args opfreestateid;
  case OP_GET_DIR_DELEGATION:    GET_DIR_DELEGATION4args opgetdirdelegation;
  case OP_GETDEVICEINFO:         GETDEVICEINFO4args opgetdeviceinfo;
+ case OP_GETDEVICELIST:         GETDEVICELIST4args opgetdevicelist;
  case OP_ILLEGAL:       void;
 };
 
@@ -1713,6 +1739,7 @@ union nfs_resop4 switch (nfs_opnum4 resop){
  case OP_FREE_STATEID:          FREE_STATEID4res opfreestateid;
  case OP_GET_DIR_DELEGATION:    GET_DIR_DELEGATION4res opgetdirdelegation;
  case OP_GETDEVICEINFO:         GETDEVICEINFO4res opgetdeviceinfo;
+ case OP_GETDEVICELIST:         GETDEVICELIST4res opgetdevicelist;
  case OP_ILLEGAL:       ILLEGAL4res opillegal;
 };
 

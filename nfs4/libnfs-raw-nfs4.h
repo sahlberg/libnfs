@@ -1422,6 +1422,33 @@ struct GETDEVICEINFO4res {
 };
 typedef struct GETDEVICEINFO4res GETDEVICEINFO4res;
 
+struct GETDEVICELIST4args {
+	layouttype4 gdla_layout_type;
+	count4 gdla_maxdevices;
+	nfs_cookie4 gdla_cookie;
+	verifier4 gdla_cookieverf;
+};
+typedef struct GETDEVICELIST4args GETDEVICELIST4args;
+
+struct GETDEVICELIST4resok {
+	nfs_cookie4 gdlr_cookie;
+	verifier4 gdlr_cookieverf;
+	struct {
+		u_int gdlr_deviceid_list_len;
+		deviceid4 *gdlr_deviceid_list_val;
+	} gdlr_deviceid_list;
+	uint32_t gdlr_eof;
+};
+typedef struct GETDEVICELIST4resok GETDEVICELIST4resok;
+
+struct GETDEVICELIST4res {
+	nfsstat4 gdlr_status;
+	union {
+		GETDEVICELIST4resok gdlr_resok4;
+	} GETDEVICELIST4res_u;
+};
+typedef struct GETDEVICELIST4res GETDEVICELIST4res;
+
 struct ILLEGAL4res {
 	nfsstat4 status;
 };
@@ -1470,6 +1497,7 @@ enum nfs_opnum4 {
 	OP_FREE_STATEID = 45,
 	OP_GET_DIR_DELEGATION = 46,
 	OP_GETDEVICEINFO = 47,
+	OP_GETDEVICELIST = 48,
 	OP_ILLEGAL = 10044,
 };
 typedef enum nfs_opnum4 nfs_opnum4;
@@ -1511,6 +1539,7 @@ struct nfs_argop4 {
 		FREE_STATEID4args opfreestateid;
 		GET_DIR_DELEGATION4args opgetdirdelegation;
 		GETDEVICEINFO4args opgetdeviceinfo;
+		GETDEVICELIST4args opgetdevicelist;
 	} nfs_argop4_u;
 };
 typedef struct nfs_argop4 nfs_argop4;
@@ -1559,6 +1588,7 @@ struct nfs_resop4 {
 		FREE_STATEID4res opfreestateid;
 		GET_DIR_DELEGATION4res opgetdirdelegation;
 		GETDEVICEINFO4res opgetdeviceinfo;
+		GETDEVICELIST4res opgetdevicelist;
 		ILLEGAL4res opillegal;
 	} nfs_resop4_u;
 };
@@ -1942,6 +1972,9 @@ extern  uint32_t zdr_GET_DIR_DELEGATION4res (ZDR *, GET_DIR_DELEGATION4res*);
 extern  uint32_t zdr_GETDEVICEINFO4args (ZDR *, GETDEVICEINFO4args*);
 extern  uint32_t zdr_GETDEVICEINFO4resok (ZDR *, GETDEVICEINFO4resok*);
 extern  uint32_t zdr_GETDEVICEINFO4res (ZDR *, GETDEVICEINFO4res*);
+extern  uint32_t zdr_GETDEVICELIST4args (ZDR *, GETDEVICELIST4args*);
+extern  uint32_t zdr_GETDEVICELIST4resok (ZDR *, GETDEVICELIST4resok*);
+extern  uint32_t zdr_GETDEVICELIST4res (ZDR *, GETDEVICELIST4res*);
 extern  uint32_t zdr_ILLEGAL4res (ZDR *, ILLEGAL4res*);
 extern  uint32_t zdr_nfs_opnum4 (ZDR *, nfs_opnum4*);
 extern  uint32_t zdr_nfs_argop4 (ZDR *, nfs_argop4*);
@@ -2189,6 +2222,9 @@ extern uint32_t zdr_GET_DIR_DELEGATION4res ();
 extern uint32_t zdr_GETDEVICEINFO4args ();
 extern uint32_t zdr_GETDEVICEINFO4resok ();
 extern uint32_t zdr_GETDEVICEINFO4res ();
+extern uint32_t zdr_GETDEVICELIST4args ();
+extern uint32_t zdr_GETDEVICELIST4resok ();
+extern uint32_t zdr_GETDEVICELIST4res ();
 extern uint32_t zdr_ILLEGAL4res ();
 extern uint32_t zdr_nfs_opnum4 ();
 extern uint32_t zdr_nfs_argop4 ();

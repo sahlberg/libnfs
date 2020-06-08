@@ -2876,6 +2876,57 @@ zdr_GETDEVICEINFO4res (ZDR *zdrs, GETDEVICEINFO4res *objp)
 }
 
 uint32_t
+zdr_GETDEVICELIST4args (ZDR *zdrs, GETDEVICELIST4args *objp)
+{
+	
+
+	 if (!zdr_layouttype4 (zdrs, &objp->gdla_layout_type))
+		 return FALSE;
+	 if (!zdr_count4 (zdrs, &objp->gdla_maxdevices))
+		 return FALSE;
+	 if (!zdr_nfs_cookie4 (zdrs, &objp->gdla_cookie))
+		 return FALSE;
+	 if (!zdr_verifier4 (zdrs, objp->gdla_cookieverf))
+		 return FALSE;
+	return TRUE;
+}
+
+uint32_t
+zdr_GETDEVICELIST4resok (ZDR *zdrs, GETDEVICELIST4resok *objp)
+{
+	
+
+	 if (!zdr_nfs_cookie4 (zdrs, &objp->gdlr_cookie))
+		 return FALSE;
+	 if (!zdr_verifier4 (zdrs, objp->gdlr_cookieverf))
+		 return FALSE;
+	 if (!zdr_array (zdrs, (char **)&objp->gdlr_deviceid_list.gdlr_deviceid_list_val, (u_int *) &objp->gdlr_deviceid_list.gdlr_deviceid_list_len, ~0,
+		sizeof (deviceid4), (zdrproc_t) zdr_deviceid4))
+		 return FALSE;
+	 if (!zdr_bool (zdrs, &objp->gdlr_eof))
+		 return FALSE;
+	return TRUE;
+}
+
+uint32_t
+zdr_GETDEVICELIST4res (ZDR *zdrs, GETDEVICELIST4res *objp)
+{
+	
+
+	 if (!zdr_nfsstat4 (zdrs, &objp->gdlr_status))
+		 return FALSE;
+	switch (objp->gdlr_status) {
+	case NFS4_OK:
+		 if (!zdr_GETDEVICELIST4resok (zdrs, &objp->GETDEVICELIST4res_u.gdlr_resok4))
+			 return FALSE;
+		break;
+	default:
+		break;
+	}
+	return TRUE;
+}
+
+uint32_t
 zdr_ILLEGAL4res (ZDR *zdrs, ILLEGAL4res *objp)
 {
 	
@@ -3051,6 +3102,10 @@ zdr_nfs_argop4 (ZDR *zdrs, nfs_argop4 *objp)
 		break;
 	case OP_GETDEVICEINFO:
 		 if (!zdr_GETDEVICEINFO4args (zdrs, &objp->nfs_argop4_u.opgetdeviceinfo))
+			 return FALSE;
+		break;
+	case OP_GETDEVICELIST:
+		 if (!zdr_GETDEVICELIST4args (zdrs, &objp->nfs_argop4_u.opgetdevicelist))
 			 return FALSE;
 		break;
 	case OP_ILLEGAL:
@@ -3231,6 +3286,10 @@ zdr_nfs_resop4 (ZDR *zdrs, nfs_resop4 *objp)
 		break;
 	case OP_GETDEVICEINFO:
 		 if (!zdr_GETDEVICEINFO4res (zdrs, &objp->nfs_resop4_u.opgetdeviceinfo))
+			 return FALSE;
+		break;
+	case OP_GETDEVICELIST:
+		 if (!zdr_GETDEVICELIST4res (zdrs, &objp->nfs_resop4_u.opgetdevicelist))
 			 return FALSE;
 		break;
 	case OP_ILLEGAL:
