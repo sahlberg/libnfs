@@ -284,6 +284,38 @@ zdr_authsys_parms (ZDR *zdrs, authsys_parms *objp)
 }
 
 uint32_t
+zdr_deviceid4 (ZDR *zdrs, deviceid4 objp)
+{
+	
+
+	 if (!zdr_opaque (zdrs, objp, NFS4_DEVICEID4_SIZE))
+		 return FALSE;
+	return TRUE;
+}
+
+uint32_t
+zdr_layouttype4 (ZDR *zdrs, layouttype4 *objp)
+{
+	
+
+	 if (!zdr_enum (zdrs, (enum_t *) objp))
+		 return FALSE;
+	return TRUE;
+}
+
+uint32_t
+zdr_device_addr4 (ZDR *zdrs, device_addr4 *objp)
+{
+	
+
+	 if (!zdr_layouttype4 (zdrs, &objp->da_layout_type))
+		 return FALSE;
+	 if (!zdr_bytes (zdrs, (char **)&objp->da_addr_body.da_addr_body_val, (u_int *) &objp->da_addr_body.da_addr_body_len, ~0))
+		 return FALSE;
+	return TRUE;
+}
+
+uint32_t
 zdr_nfstime4 (ZDR *zdrs, nfstime4 *objp)
 {
 	
@@ -2794,6 +2826,56 @@ zdr_GET_DIR_DELEGATION4res (ZDR *zdrs, GET_DIR_DELEGATION4res *objp)
 }
 
 uint32_t
+zdr_GETDEVICEINFO4args (ZDR *zdrs, GETDEVICEINFO4args *objp)
+{
+	
+
+	 if (!zdr_deviceid4 (zdrs, objp->gdia_device_id))
+		 return FALSE;
+	 if (!zdr_layouttype4 (zdrs, &objp->gdia_layout_type))
+		 return FALSE;
+	 if (!zdr_count4 (zdrs, &objp->gdia_maxcount))
+		 return FALSE;
+	 if (!zdr_bitmap4 (zdrs, &objp->gdia_notify_types))
+		 return FALSE;
+	return TRUE;
+}
+
+uint32_t
+zdr_GETDEVICEINFO4resok (ZDR *zdrs, GETDEVICEINFO4resok *objp)
+{
+	
+
+	 if (!zdr_device_addr4 (zdrs, &objp->gdir_device_addr))
+		 return FALSE;
+	 if (!zdr_bitmap4 (zdrs, &objp->gdir_notification))
+		 return FALSE;
+	return TRUE;
+}
+
+uint32_t
+zdr_GETDEVICEINFO4res (ZDR *zdrs, GETDEVICEINFO4res *objp)
+{
+	
+
+	 if (!zdr_nfsstat4 (zdrs, &objp->gdir_status))
+		 return FALSE;
+	switch (objp->gdir_status) {
+	case NFS4_OK:
+		 if (!zdr_GETDEVICEINFO4resok (zdrs, &objp->GETDEVICEINFO4res_u.gdir_resok4))
+			 return FALSE;
+		break;
+	case NFS4ERR_TOOSMALL:
+		 if (!zdr_count4 (zdrs, &objp->GETDEVICEINFO4res_u.gdir_mincount))
+			 return FALSE;
+		break;
+	default:
+		break;
+	}
+	return TRUE;
+}
+
+uint32_t
 zdr_ILLEGAL4res (ZDR *zdrs, ILLEGAL4res *objp)
 {
 	
@@ -2965,6 +3047,10 @@ zdr_nfs_argop4 (ZDR *zdrs, nfs_argop4 *objp)
 		break;
 	case OP_GET_DIR_DELEGATION:
 		 if (!zdr_GET_DIR_DELEGATION4args (zdrs, &objp->nfs_argop4_u.opgetdirdelegation))
+			 return FALSE;
+		break;
+	case OP_GETDEVICEINFO:
+		 if (!zdr_GETDEVICEINFO4args (zdrs, &objp->nfs_argop4_u.opgetdeviceinfo))
 			 return FALSE;
 		break;
 	case OP_ILLEGAL:
@@ -3141,6 +3227,10 @@ zdr_nfs_resop4 (ZDR *zdrs, nfs_resop4 *objp)
 		break;
 	case OP_GET_DIR_DELEGATION:
 		 if (!zdr_GET_DIR_DELEGATION4res (zdrs, &objp->nfs_resop4_u.opgetdirdelegation))
+			 return FALSE;
+		break;
+	case OP_GETDEVICEINFO:
+		 if (!zdr_GETDEVICEINFO4res (zdrs, &objp->nfs_resop4_u.opgetdeviceinfo))
 			 return FALSE;
 		break;
 	case OP_ILLEGAL:

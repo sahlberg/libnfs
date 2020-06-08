@@ -146,6 +146,21 @@ struct authsys_parms {
      unsigned int gids<16>;
 };
 
+const NFS4_DEVICEID4_SIZE = 16;
+
+typedef opaque  deviceid4[NFS4_DEVICEID4_SIZE];
+
+enum layouttype4 {
+       LAYOUT4_NFSV4_1_FILES   = 0x1,
+       LAYOUT4_OSD2_OBJECTS    = 0x2,
+       LAYOUT4_BLOCK_VOLUME    = 0x3
+};
+
+struct device_addr4 {
+       layouttype4             da_layout_type;
+       opaque                  da_addr_body<>;
+};
+
 /*
  * Timeval
  */
@@ -1521,6 +1536,30 @@ union GET_DIR_DELEGATION4res switch (nfsstat4 gddr_status) {
 };
 
 /*
+ * GETDEVICEINFO
+ */
+struct GETDEVICEINFO4args {
+       deviceid4       gdia_device_id;
+       layouttype4     gdia_layout_type;
+       count4          gdia_maxcount;
+       bitmap4         gdia_notify_types;
+};
+
+struct GETDEVICEINFO4resok {
+       device_addr4    gdir_device_addr;
+       bitmap4         gdir_notification;
+};
+
+union GETDEVICEINFO4res switch (nfsstat4 gdir_status) {
+case NFS4_OK:
+       GETDEVICEINFO4resok     gdir_resok4;
+case NFS4ERR_TOOSMALL:
+       count4                  gdir_mincount;
+default:
+       void;
+};
+
+/*
  * ILLEGAL: Response for illegal operation numbers
  */
 struct ILLEGAL4res {
@@ -1573,6 +1612,7 @@ enum nfs_opnum4 {
         OP_DESTROY_SESSION      = 44,
         OP_FREE_STATEID         = 45,
         OP_GET_DIR_DELEGATION   = 46,
+        OP_GETDEVICEINFO        = 47,
         OP_ILLEGAL              = 10044
 };
 
@@ -1622,6 +1662,7 @@ union nfs_argop4 switch (nfs_opnum4 argop) {
  case OP_DESTROY_SESSION:       DESTROY_SESSION4args opdestroysession;
  case OP_FREE_STATEID:          FREE_STATEID4args opfreestateid;
  case OP_GET_DIR_DELEGATION:    GET_DIR_DELEGATION4args opgetdirdelegation;
+ case OP_GETDEVICEINFO:         GETDEVICEINFO4args opgetdeviceinfo;
  case OP_ILLEGAL:       void;
 };
 
@@ -1671,6 +1712,7 @@ union nfs_resop4 switch (nfs_opnum4 resop){
  case OP_DESTROY_SESSION:       DESTROY_SESSION4res opdestroysession;
  case OP_FREE_STATEID:          FREE_STATEID4res opfreestateid;
  case OP_GET_DIR_DELEGATION:    GET_DIR_DELEGATION4res opgetdirdelegation;
+ case OP_GETDEVICEINFO:         GETDEVICEINFO4res opgetdeviceinfo;
  case OP_ILLEGAL:       ILLEGAL4res opillegal;
 };
 

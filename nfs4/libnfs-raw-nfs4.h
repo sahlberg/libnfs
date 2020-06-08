@@ -184,6 +184,25 @@ struct authsys_parms {
 	} gids;
 };
 typedef struct authsys_parms authsys_parms;
+#define NFS4_DEVICEID4_SIZE 16
+
+typedef char deviceid4[NFS4_DEVICEID4_SIZE];
+
+enum layouttype4 {
+	LAYOUT4_NFSV4_1_FILES = 0x1,
+	LAYOUT4_OSD2_OBJECTS = 0x2,
+	LAYOUT4_BLOCK_VOLUME = 0x3,
+};
+typedef enum layouttype4 layouttype4;
+
+struct device_addr4 {
+	layouttype4 da_layout_type;
+	struct {
+		u_int da_addr_body_len;
+		char *da_addr_body_val;
+	} da_addr_body;
+};
+typedef struct device_addr4 device_addr4;
 
 struct nfstime4 {
 	int64_t seconds;
@@ -1380,6 +1399,29 @@ struct GET_DIR_DELEGATION4res {
 };
 typedef struct GET_DIR_DELEGATION4res GET_DIR_DELEGATION4res;
 
+struct GETDEVICEINFO4args {
+	deviceid4 gdia_device_id;
+	layouttype4 gdia_layout_type;
+	count4 gdia_maxcount;
+	bitmap4 gdia_notify_types;
+};
+typedef struct GETDEVICEINFO4args GETDEVICEINFO4args;
+
+struct GETDEVICEINFO4resok {
+	device_addr4 gdir_device_addr;
+	bitmap4 gdir_notification;
+};
+typedef struct GETDEVICEINFO4resok GETDEVICEINFO4resok;
+
+struct GETDEVICEINFO4res {
+	nfsstat4 gdir_status;
+	union {
+		GETDEVICEINFO4resok gdir_resok4;
+		count4 gdir_mincount;
+	} GETDEVICEINFO4res_u;
+};
+typedef struct GETDEVICEINFO4res GETDEVICEINFO4res;
+
 struct ILLEGAL4res {
 	nfsstat4 status;
 };
@@ -1427,6 +1469,7 @@ enum nfs_opnum4 {
 	OP_DESTROY_SESSION = 44,
 	OP_FREE_STATEID = 45,
 	OP_GET_DIR_DELEGATION = 46,
+	OP_GETDEVICEINFO = 47,
 	OP_ILLEGAL = 10044,
 };
 typedef enum nfs_opnum4 nfs_opnum4;
@@ -1467,6 +1510,7 @@ struct nfs_argop4 {
 		DESTROY_SESSION4args opdestroysession;
 		FREE_STATEID4args opfreestateid;
 		GET_DIR_DELEGATION4args opgetdirdelegation;
+		GETDEVICEINFO4args opgetdeviceinfo;
 	} nfs_argop4_u;
 };
 typedef struct nfs_argop4 nfs_argop4;
@@ -1514,6 +1558,7 @@ struct nfs_resop4 {
 		DESTROY_SESSION4res opdestroysession;
 		FREE_STATEID4res opfreestateid;
 		GET_DIR_DELEGATION4res opgetdirdelegation;
+		GETDEVICEINFO4res opgetdeviceinfo;
 		ILLEGAL4res opillegal;
 	} nfs_resop4_u;
 };
@@ -1694,6 +1739,9 @@ extern  uint32_t zdr_changeid4 (ZDR *, changeid4*);
 extern  uint32_t zdr_verifier4 (ZDR *, verifier4);
 extern  uint32_t zdr_sessionid4 (ZDR *, sessionid4);
 extern  uint32_t zdr_authsys_parms (ZDR *, authsys_parms*);
+extern  uint32_t zdr_deviceid4 (ZDR *, deviceid4);
+extern  uint32_t zdr_layouttype4 (ZDR *, layouttype4*);
+extern  uint32_t zdr_device_addr4 (ZDR *, device_addr4*);
 extern  uint32_t zdr_nfstime4 (ZDR *, nfstime4*);
 extern  uint32_t zdr_time_how4 (ZDR *, time_how4*);
 extern  uint32_t zdr_settime4 (ZDR *, settime4*);
@@ -1891,6 +1939,9 @@ extern  uint32_t zdr_GET_DIR_DELEGATION4resok (ZDR *, GET_DIR_DELEGATION4resok*)
 extern  uint32_t zdr_gddrnf4_status (ZDR *, gddrnf4_status*);
 extern  uint32_t zdr_GET_DIR_DELEGATION4res_non_fatal (ZDR *, GET_DIR_DELEGATION4res_non_fatal*);
 extern  uint32_t zdr_GET_DIR_DELEGATION4res (ZDR *, GET_DIR_DELEGATION4res*);
+extern  uint32_t zdr_GETDEVICEINFO4args (ZDR *, GETDEVICEINFO4args*);
+extern  uint32_t zdr_GETDEVICEINFO4resok (ZDR *, GETDEVICEINFO4resok*);
+extern  uint32_t zdr_GETDEVICEINFO4res (ZDR *, GETDEVICEINFO4res*);
 extern  uint32_t zdr_ILLEGAL4res (ZDR *, ILLEGAL4res*);
 extern  uint32_t zdr_nfs_opnum4 (ZDR *, nfs_opnum4*);
 extern  uint32_t zdr_nfs_argop4 (ZDR *, nfs_argop4*);
@@ -1935,6 +1986,9 @@ extern uint32_t zdr_changeid4 ();
 extern uint32_t zdr_verifier4 ();
 extern uint32_t zdr_sessionid4 ();
 extern uint32_t zdr_authsys_parms ();
+extern uint32_t zdr_deviceid4 ();
+extern uint32_t zdr_layouttype4 ();
+extern uint32_t zdr_device_addr4 ();
 extern uint32_t zdr_nfstime4 ();
 extern uint32_t zdr_time_how4 ();
 extern uint32_t zdr_settime4 ();
@@ -2132,6 +2186,9 @@ extern uint32_t zdr_GET_DIR_DELEGATION4resok ();
 extern uint32_t zdr_gddrnf4_status ();
 extern uint32_t zdr_GET_DIR_DELEGATION4res_non_fatal ();
 extern uint32_t zdr_GET_DIR_DELEGATION4res ();
+extern uint32_t zdr_GETDEVICEINFO4args ();
+extern uint32_t zdr_GETDEVICEINFO4resok ();
+extern uint32_t zdr_GETDEVICEINFO4res ();
 extern uint32_t zdr_ILLEGAL4res ();
 extern uint32_t zdr_nfs_opnum4 ();
 extern uint32_t zdr_nfs_argop4 ();
