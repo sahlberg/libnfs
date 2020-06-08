@@ -3148,6 +3148,104 @@ zdr_LAYOUTGET4res (ZDR *zdrs, LAYOUTGET4res *objp)
 }
 
 uint32_t
+zdr_layoutreturn_type4 (ZDR *zdrs, layoutreturn_type4 *objp)
+{
+	
+
+	 if (!zdr_enum (zdrs, (enum_t *) objp))
+		 return FALSE;
+	return TRUE;
+}
+
+uint32_t
+zdr_layoutreturn_file4 (ZDR *zdrs, layoutreturn_file4 *objp)
+{
+	
+
+	 if (!zdr_offset4 (zdrs, &objp->lrf_offset))
+		 return FALSE;
+	 if (!zdr_length4 (zdrs, &objp->lrf_length))
+		 return FALSE;
+	 if (!zdr_stateid4 (zdrs, &objp->lrf_stateid))
+		 return FALSE;
+	 if (!zdr_bytes (zdrs, (char **)&objp->lrf_body.lrf_body_val, (u_int *) &objp->lrf_body.lrf_body_len, ~0))
+		 return FALSE;
+	return TRUE;
+}
+
+uint32_t
+zdr_layoutreturn4 (ZDR *zdrs, layoutreturn4 *objp)
+{
+	
+
+	 if (!zdr_layoutreturn_type4 (zdrs, &objp->lr_returntype))
+		 return FALSE;
+	switch (objp->lr_returntype) {
+	case LAYOUTRETURN4_FILE:
+		 if (!zdr_layoutreturn_file4 (zdrs, &objp->layoutreturn4_u.lr_layout))
+			 return FALSE;
+		break;
+	default:
+		break;
+	}
+	return TRUE;
+}
+
+uint32_t
+zdr_LAYOUTRETURN4args (ZDR *zdrs, LAYOUTRETURN4args *objp)
+{
+	
+
+	 if (!zdr_bool (zdrs, &objp->lora_reclaim))
+		 return FALSE;
+	 if (!zdr_layouttype4 (zdrs, &objp->lora_layout_type))
+		 return FALSE;
+	 if (!zdr_layoutiomode4 (zdrs, &objp->lora_iomode))
+		 return FALSE;
+	 if (!zdr_layoutreturn4 (zdrs, &objp->lora_layoutreturn))
+		 return FALSE;
+	return TRUE;
+}
+
+uint32_t
+zdr_layoutreturn_stateid (ZDR *zdrs, layoutreturn_stateid *objp)
+{
+	
+
+	 if (!zdr_bool (zdrs, &objp->lrs_present))
+		 return FALSE;
+	switch (objp->lrs_present) {
+	case TRUE:
+		 if (!zdr_stateid4 (zdrs, &objp->layoutreturn_stateid_u.lrs_stateid))
+			 return FALSE;
+		break;
+	case FALSE:
+		break;
+	default:
+		return FALSE;
+	}
+	return TRUE;
+}
+
+uint32_t
+zdr_LAYOUTRETURN4res (ZDR *zdrs, LAYOUTRETURN4res *objp)
+{
+	
+
+	 if (!zdr_nfsstat4 (zdrs, &objp->lorr_status))
+		 return FALSE;
+	switch (objp->lorr_status) {
+	case NFS4_OK:
+		 if (!zdr_layoutreturn_stateid (zdrs, &objp->LAYOUTRETURN4res_u.lorr_stateid))
+			 return FALSE;
+		break;
+	default:
+		break;
+	}
+	return TRUE;
+}
+
+uint32_t
 zdr_ILLEGAL4res (ZDR *zdrs, ILLEGAL4res *objp)
 {
 	
@@ -3335,6 +3433,10 @@ zdr_nfs_argop4 (ZDR *zdrs, nfs_argop4 *objp)
 		break;
 	case OP_LAYOUTGET:
 		 if (!zdr_LAYOUTGET4args (zdrs, &objp->nfs_argop4_u.oplayoutget))
+			 return FALSE;
+		break;
+	case OP_LAYOUTRETURN:
+		 if (!zdr_LAYOUTRETURN4args (zdrs, &objp->nfs_argop4_u.oplayoutreturn))
 			 return FALSE;
 		break;
 	case OP_ILLEGAL:
@@ -3527,6 +3629,10 @@ zdr_nfs_resop4 (ZDR *zdrs, nfs_resop4 *objp)
 		break;
 	case OP_LAYOUTGET:
 		 if (!zdr_LAYOUTGET4res (zdrs, &objp->nfs_resop4_u.oplayoutget))
+			 return FALSE;
+		break;
+	case OP_LAYOUTRETURN:
+		 if (!zdr_LAYOUTRETURN4res (zdrs, &objp->nfs_resop4_u.oplayoutreturn))
 			 return FALSE;
 		break;
 	case OP_ILLEGAL:

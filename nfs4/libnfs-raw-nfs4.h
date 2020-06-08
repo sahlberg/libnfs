@@ -1573,6 +1573,59 @@ struct LAYOUTGET4res {
 	} LAYOUTGET4res_u;
 };
 typedef struct LAYOUTGET4res LAYOUTGET4res;
+#define LAYOUT4_RET_REC_FILE 1
+#define LAYOUT4_RET_REC_FSID 2
+#define LAYOUT4_RET_REC_ALL 3
+
+enum layoutreturn_type4 {
+	LAYOUTRETURN4_FILE = LAYOUT4_RET_REC_FILE,
+	LAYOUTRETURN4_FSID = LAYOUT4_RET_REC_FSID,
+	LAYOUTRETURN4_ALL = LAYOUT4_RET_REC_ALL,
+};
+typedef enum layoutreturn_type4 layoutreturn_type4;
+
+struct layoutreturn_file4 {
+	offset4 lrf_offset;
+	length4 lrf_length;
+	stateid4 lrf_stateid;
+	struct {
+		u_int lrf_body_len;
+		char *lrf_body_val;
+	} lrf_body;
+};
+typedef struct layoutreturn_file4 layoutreturn_file4;
+
+struct layoutreturn4 {
+	layoutreturn_type4 lr_returntype;
+	union {
+		layoutreturn_file4 lr_layout;
+	} layoutreturn4_u;
+};
+typedef struct layoutreturn4 layoutreturn4;
+
+struct LAYOUTRETURN4args {
+	uint32_t lora_reclaim;
+	layouttype4 lora_layout_type;
+	layoutiomode4 lora_iomode;
+	layoutreturn4 lora_layoutreturn;
+};
+typedef struct LAYOUTRETURN4args LAYOUTRETURN4args;
+
+struct layoutreturn_stateid {
+	uint32_t lrs_present;
+	union {
+		stateid4 lrs_stateid;
+	} layoutreturn_stateid_u;
+};
+typedef struct layoutreturn_stateid layoutreturn_stateid;
+
+struct LAYOUTRETURN4res {
+	nfsstat4 lorr_status;
+	union {
+		layoutreturn_stateid lorr_stateid;
+	} LAYOUTRETURN4res_u;
+};
+typedef struct LAYOUTRETURN4res LAYOUTRETURN4res;
 
 struct ILLEGAL4res {
 	nfsstat4 status;
@@ -1625,6 +1678,7 @@ enum nfs_opnum4 {
 	OP_GETDEVICELIST = 48,
 	OP_LAYOUTCOMMIT = 49,
 	OP_LAYOUTGET = 50,
+	OP_LAYOUTRETURN = 51,
 	OP_ILLEGAL = 10044,
 };
 typedef enum nfs_opnum4 nfs_opnum4;
@@ -1669,6 +1723,7 @@ struct nfs_argop4 {
 		GETDEVICELIST4args opgetdevicelist;
 		LAYOUTCOMMIT4args oplayoutcommit;
 		LAYOUTGET4args oplayoutget;
+		LAYOUTRETURN4args oplayoutreturn;
 	} nfs_argop4_u;
 };
 typedef struct nfs_argop4 nfs_argop4;
@@ -1720,6 +1775,7 @@ struct nfs_resop4 {
 		GETDEVICELIST4res opgetdevicelist;
 		LAYOUTCOMMIT4res oplayoutcommit;
 		LAYOUTGET4res oplayoutget;
+		LAYOUTRETURN4res oplayoutreturn;
 		ILLEGAL4res opillegal;
 	} nfs_resop4_u;
 };
@@ -2119,6 +2175,12 @@ extern  uint32_t zdr_LAYOUTCOMMIT4res (ZDR *, LAYOUTCOMMIT4res*);
 extern  uint32_t zdr_LAYOUTGET4args (ZDR *, LAYOUTGET4args*);
 extern  uint32_t zdr_LAYOUTGET4resok (ZDR *, LAYOUTGET4resok*);
 extern  uint32_t zdr_LAYOUTGET4res (ZDR *, LAYOUTGET4res*);
+extern  uint32_t zdr_layoutreturn_type4 (ZDR *, layoutreturn_type4*);
+extern  uint32_t zdr_layoutreturn_file4 (ZDR *, layoutreturn_file4*);
+extern  uint32_t zdr_layoutreturn4 (ZDR *, layoutreturn4*);
+extern  uint32_t zdr_LAYOUTRETURN4args (ZDR *, LAYOUTRETURN4args*);
+extern  uint32_t zdr_layoutreturn_stateid (ZDR *, layoutreturn_stateid*);
+extern  uint32_t zdr_LAYOUTRETURN4res (ZDR *, LAYOUTRETURN4res*);
 extern  uint32_t zdr_ILLEGAL4res (ZDR *, ILLEGAL4res*);
 extern  uint32_t zdr_nfs_opnum4 (ZDR *, nfs_opnum4*);
 extern  uint32_t zdr_nfs_argop4 (ZDR *, nfs_argop4*);
@@ -2382,6 +2444,12 @@ extern uint32_t zdr_LAYOUTCOMMIT4res ();
 extern uint32_t zdr_LAYOUTGET4args ();
 extern uint32_t zdr_LAYOUTGET4resok ();
 extern uint32_t zdr_LAYOUTGET4res ();
+extern uint32_t zdr_layoutreturn_type4 ();
+extern uint32_t zdr_layoutreturn_file4 ();
+extern uint32_t zdr_layoutreturn4 ();
+extern uint32_t zdr_LAYOUTRETURN4args ();
+extern uint32_t zdr_layoutreturn_stateid ();
+extern uint32_t zdr_LAYOUTRETURN4res ();
 extern uint32_t zdr_ILLEGAL4res ();
 extern uint32_t zdr_nfs_opnum4 ();
 extern uint32_t zdr_nfs_argop4 ();

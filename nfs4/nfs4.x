@@ -1695,6 +1695,54 @@ default:
 };
 
 /*
+ * LAYOUTRETURN
+ */
+const LAYOUT4_RET_REC_FILE      = 1;
+const LAYOUT4_RET_REC_FSID      = 2;
+const LAYOUT4_RET_REC_ALL       = 3;
+
+enum layoutreturn_type4 {
+       LAYOUTRETURN4_FILE = LAYOUT4_RET_REC_FILE,
+       LAYOUTRETURN4_FSID = LAYOUT4_RET_REC_FSID,
+       LAYOUTRETURN4_ALL  = LAYOUT4_RET_REC_ALL
+};
+
+struct layoutreturn_file4 {
+       offset4         lrf_offset;
+       length4         lrf_length;
+       stateid4        lrf_stateid;
+       opaque          lrf_body<>;
+};
+
+union layoutreturn4 switch(layoutreturn_type4 lr_returntype) {
+       case LAYOUTRETURN4_FILE:
+               layoutreturn_file4      lr_layout;
+       default:
+               void;
+};
+
+struct LAYOUTRETURN4args {
+       bool                    lora_reclaim;
+       layouttype4             lora_layout_type;
+       layoutiomode4           lora_iomode;
+       layoutreturn4           lora_layoutreturn;
+};
+
+union layoutreturn_stateid switch (bool lrs_present) {
+case TRUE:
+       stateid4                lrs_stateid;
+case FALSE:
+       void;
+};
+
+union LAYOUTRETURN4res switch (nfsstat4 lorr_status) {
+case NFS4_OK:
+       layoutreturn_stateid    lorr_stateid;
+default:
+       void;
+};
+
+/*
  * ILLEGAL: Response for illegal operation numbers
  */
 struct ILLEGAL4res {
@@ -1751,6 +1799,7 @@ enum nfs_opnum4 {
         OP_GETDEVICELIST        = 48,
         OP_LAYOUTCOMMIT         = 49,
         OP_LAYOUTGET            = 50,
+        OP_LAYOUTRETURN         = 51,
         OP_ILLEGAL              = 10044
 };
 
@@ -1804,6 +1853,7 @@ union nfs_argop4 switch (nfs_opnum4 argop) {
  case OP_GETDEVICELIST:         GETDEVICELIST4args opgetdevicelist;
  case OP_LAYOUTCOMMIT:          LAYOUTCOMMIT4args oplayoutcommit;
  case OP_LAYOUTGET:             LAYOUTGET4args oplayoutget;
+ case OP_LAYOUTRETURN:          LAYOUTRETURN4args oplayoutreturn;
  case OP_ILLEGAL:       void;
 };
 
@@ -1857,6 +1907,7 @@ union nfs_resop4 switch (nfs_opnum4 resop){
  case OP_GETDEVICELIST:         GETDEVICELIST4res opgetdevicelist;
  case OP_LAYOUTCOMMIT:          LAYOUTCOMMIT4res oplayoutcommit;
  case OP_LAYOUTGET:             LAYOUTGET4res oplayoutget;
+ case OP_LAYOUTRETURN:          LAYOUTRETURN4res oplayoutreturn;
  case OP_ILLEGAL:       ILLEGAL4res opillegal;
 };
 
