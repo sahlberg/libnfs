@@ -3372,6 +3372,46 @@ zdr_SET_SSV4res (ZDR *zdrs, SET_SSV4res *objp)
 }
 
 uint32_t
+zdr_TEST_STATEID4args (ZDR *zdrs, TEST_STATEID4args *objp)
+{
+	
+
+	 if (!zdr_array (zdrs, (char **)&objp->ts_stateids.ts_stateids_val, (u_int *) &objp->ts_stateids.ts_stateids_len, ~0,
+		sizeof (stateid4), (zdrproc_t) zdr_stateid4))
+		 return FALSE;
+	return TRUE;
+}
+
+uint32_t
+zdr_TEST_STATEID4resok (ZDR *zdrs, TEST_STATEID4resok *objp)
+{
+	
+
+	 if (!zdr_array (zdrs, (char **)&objp->tsr_status_codes.tsr_status_codes_val, (u_int *) &objp->tsr_status_codes.tsr_status_codes_len, ~0,
+		sizeof (nfsstat4), (zdrproc_t) zdr_nfsstat4))
+		 return FALSE;
+	return TRUE;
+}
+
+uint32_t
+zdr_TEST_STATEID4res (ZDR *zdrs, TEST_STATEID4res *objp)
+{
+	
+
+	 if (!zdr_nfsstat4 (zdrs, &objp->tsr_status))
+		 return FALSE;
+	switch (objp->tsr_status) {
+	case NFS4_OK:
+		 if (!zdr_TEST_STATEID4resok (zdrs, &objp->TEST_STATEID4res_u.tsr_resok4))
+			 return FALSE;
+		break;
+	default:
+		break;
+	}
+	return TRUE;
+}
+
+uint32_t
 zdr_ILLEGAL4res (ZDR *zdrs, ILLEGAL4res *objp)
 {
 	
@@ -3571,6 +3611,10 @@ zdr_nfs_argop4 (ZDR *zdrs, nfs_argop4 *objp)
 		break;
 	case OP_SET_SSV:
 		 if (!zdr_SET_SSV4args (zdrs, &objp->nfs_argop4_u.opsetssv))
+			 return FALSE;
+		break;
+	case OP_TEST_STATEID:
+		 if (!zdr_TEST_STATEID4args (zdrs, &objp->nfs_argop4_u.opteststateid))
 			 return FALSE;
 		break;
 	case OP_ILLEGAL:
@@ -3775,6 +3819,10 @@ zdr_nfs_resop4 (ZDR *zdrs, nfs_resop4 *objp)
 		break;
 	case OP_SET_SSV:
 		 if (!zdr_SET_SSV4res (zdrs, &objp->nfs_resop4_u.opsetssv))
+			 return FALSE;
+		break;
+	case OP_TEST_STATEID:
+		 if (!zdr_TEST_STATEID4res (zdrs, &objp->nfs_resop4_u.opteststateid))
 			 return FALSE;
 		break;
 	case OP_ILLEGAL:

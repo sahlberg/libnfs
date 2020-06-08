@@ -1812,6 +1812,24 @@ default:
 };
 
 /*
+ * TEST_STATEID
+ */
+struct TEST_STATEID4args {
+       stateid4        ts_stateids<>;
+};
+
+struct TEST_STATEID4resok {
+       nfsstat4        tsr_status_codes<>;
+};
+
+union TEST_STATEID4res switch (nfsstat4 tsr_status) {
+   case NFS4_OK:
+       TEST_STATEID4resok tsr_resok4;
+   default:
+       void;
+};
+
+/*
  * ILLEGAL: Response for illegal operation numbers
  */
 struct ILLEGAL4res {
@@ -1871,6 +1889,7 @@ enum nfs_opnum4 {
         OP_LAYOUTRETURN         = 51,
         OP_SEQUENCE             = 53,
         OP_SET_SSV              = 54,
+        OP_TEST_STATEID         = 55,
         OP_ILLEGAL              = 10044
 };
 
@@ -1927,6 +1946,7 @@ union nfs_argop4 switch (nfs_opnum4 argop) {
  case OP_LAYOUTRETURN:          LAYOUTRETURN4args oplayoutreturn;
  case OP_SEQUENCE:              SEQUENCE4args opsequence;
  case OP_SET_SSV:               SET_SSV4args opsetssv;
+ case OP_TEST_STATEID:          TEST_STATEID4args opteststateid;
  case OP_ILLEGAL:       void;
 };
 
@@ -1983,6 +2003,7 @@ union nfs_resop4 switch (nfs_opnum4 resop){
  case OP_LAYOUTRETURN:          LAYOUTRETURN4res oplayoutreturn;
  case OP_SEQUENCE:              SEQUENCE4res opsequence;
  case OP_SET_SSV:               SET_SSV4res opsetssv;
+ case OP_TEST_STATEID:          TEST_STATEID4res opteststateid;
  case OP_ILLEGAL:       ILLEGAL4res opillegal;
 };
 
