@@ -950,7 +950,10 @@ enum open_claim_type4 {
         CLAIM_NULL              = 0,
         CLAIM_PREVIOUS          = 1,
         CLAIM_DELEGATE_CUR      = 2,
-        CLAIM_DELEGATE_PREV     = 3
+        CLAIM_DELEGATE_PREV     = 3,
+        CLAIM_FH                = 4, /* new to v4.1 */
+        CLAIM_DELEG_CUR_FH      = 5, /* new to v4.1 */
+        CLAIM_DELEG_PREV_FH     = 6 /* new to v4.1 */
 };
 
 struct open_claim_delegate_cur4 {
@@ -1830,6 +1833,30 @@ union TEST_STATEID4res switch (nfsstat4 tsr_status) {
 };
 
 /*
+ * WANT_DELEGATION
+ */
+union deleg_claim4 switch (open_claim_type4 dc_claim) {
+case CLAIM_FH:
+       void;
+case CLAIM_DELEG_PREV_FH:
+       void;
+case CLAIM_PREVIOUS:
+       open_delegation_type4   dc_delegate_type;
+};
+
+struct WANT_DELEGATION4args {
+       uint32_t        wda_want;
+       deleg_claim4    wda_claim;
+};
+
+union WANT_DELEGATION4res switch (nfsstat4 wdr_status) {
+case NFS4_OK:
+       open_delegation4 wdr_resok4;
+default:
+       void;
+};
+
+/*
  * ILLEGAL: Response for illegal operation numbers
  */
 struct ILLEGAL4res {
@@ -1890,6 +1917,7 @@ enum nfs_opnum4 {
         OP_SEQUENCE             = 53,
         OP_SET_SSV              = 54,
         OP_TEST_STATEID         = 55,
+        OP_WANT_DELEGATION      = 56,
         OP_ILLEGAL              = 10044
 };
 
@@ -1947,6 +1975,7 @@ union nfs_argop4 switch (nfs_opnum4 argop) {
  case OP_SEQUENCE:              SEQUENCE4args opsequence;
  case OP_SET_SSV:               SET_SSV4args opsetssv;
  case OP_TEST_STATEID:          TEST_STATEID4args opteststateid;
+ case OP_WANT_DELEGATION:       WANT_DELEGATION4args opwantdelegation;
  case OP_ILLEGAL:       void;
 };
 
@@ -2004,6 +2033,7 @@ union nfs_resop4 switch (nfs_opnum4 resop){
  case OP_SEQUENCE:              SEQUENCE4res opsequence;
  case OP_SET_SSV:               SET_SSV4res opsetssv;
  case OP_TEST_STATEID:          TEST_STATEID4res opteststateid;
+ case OP_WANT_DELEGATION:       WANT_DELEGATION4res opwantdelegation;
  case OP_ILLEGAL:       ILLEGAL4res opillegal;
 };
 

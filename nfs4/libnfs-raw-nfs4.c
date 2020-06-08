@@ -3412,6 +3412,58 @@ zdr_TEST_STATEID4res (ZDR *zdrs, TEST_STATEID4res *objp)
 }
 
 uint32_t
+zdr_deleg_claim4 (ZDR *zdrs, deleg_claim4 *objp)
+{
+	
+
+	 if (!zdr_open_claim_type4 (zdrs, &objp->dc_claim))
+		 return FALSE;
+	switch (objp->dc_claim) {
+	case CLAIM_FH:
+		break;
+	case CLAIM_DELEG_PREV_FH:
+		break;
+	case CLAIM_PREVIOUS:
+		 if (!zdr_open_delegation_type4 (zdrs, &objp->deleg_claim4_u.dc_delegate_type))
+			 return FALSE;
+		break;
+	default:
+		return FALSE;
+	}
+	return TRUE;
+}
+
+uint32_t
+zdr_WANT_DELEGATION4args (ZDR *zdrs, WANT_DELEGATION4args *objp)
+{
+	
+
+	 if (!zdr_uint32_t (zdrs, &objp->wda_want))
+		 return FALSE;
+	 if (!zdr_deleg_claim4 (zdrs, &objp->wda_claim))
+		 return FALSE;
+	return TRUE;
+}
+
+uint32_t
+zdr_WANT_DELEGATION4res (ZDR *zdrs, WANT_DELEGATION4res *objp)
+{
+	
+
+	 if (!zdr_nfsstat4 (zdrs, &objp->wdr_status))
+		 return FALSE;
+	switch (objp->wdr_status) {
+	case NFS4_OK:
+		 if (!zdr_open_delegation4 (zdrs, &objp->WANT_DELEGATION4res_u.wdr_resok4))
+			 return FALSE;
+		break;
+	default:
+		break;
+	}
+	return TRUE;
+}
+
+uint32_t
 zdr_ILLEGAL4res (ZDR *zdrs, ILLEGAL4res *objp)
 {
 	
@@ -3615,6 +3667,10 @@ zdr_nfs_argop4 (ZDR *zdrs, nfs_argop4 *objp)
 		break;
 	case OP_TEST_STATEID:
 		 if (!zdr_TEST_STATEID4args (zdrs, &objp->nfs_argop4_u.opteststateid))
+			 return FALSE;
+		break;
+	case OP_WANT_DELEGATION:
+		 if (!zdr_WANT_DELEGATION4args (zdrs, &objp->nfs_argop4_u.opwantdelegation))
 			 return FALSE;
 		break;
 	case OP_ILLEGAL:
@@ -3823,6 +3879,10 @@ zdr_nfs_resop4 (ZDR *zdrs, nfs_resop4 *objp)
 		break;
 	case OP_TEST_STATEID:
 		 if (!zdr_TEST_STATEID4res (zdrs, &objp->nfs_resop4_u.opteststateid))
+			 return FALSE;
+		break;
+	case OP_WANT_DELEGATION:
+		 if (!zdr_WANT_DELEGATION4res (zdrs, &objp->nfs_resop4_u.opwantdelegation))
 			 return FALSE;
 		break;
 	case OP_ILLEGAL:

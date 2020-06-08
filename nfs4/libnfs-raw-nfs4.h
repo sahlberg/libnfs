@@ -954,6 +954,9 @@ enum open_claim_type4 {
 	CLAIM_PREVIOUS = 1,
 	CLAIM_DELEGATE_CUR = 2,
 	CLAIM_DELEGATE_PREV = 3,
+	CLAIM_FH = 4,
+	CLAIM_DELEG_CUR_FH = 5,
+	CLAIM_DELEG_PREV_FH = 6,
 };
 typedef enum open_claim_type4 open_claim_type4;
 
@@ -1731,6 +1734,28 @@ struct TEST_STATEID4res {
 };
 typedef struct TEST_STATEID4res TEST_STATEID4res;
 
+struct deleg_claim4 {
+	open_claim_type4 dc_claim;
+	union {
+		open_delegation_type4 dc_delegate_type;
+	} deleg_claim4_u;
+};
+typedef struct deleg_claim4 deleg_claim4;
+
+struct WANT_DELEGATION4args {
+	uint32_t wda_want;
+	deleg_claim4 wda_claim;
+};
+typedef struct WANT_DELEGATION4args WANT_DELEGATION4args;
+
+struct WANT_DELEGATION4res {
+	nfsstat4 wdr_status;
+	union {
+		open_delegation4 wdr_resok4;
+	} WANT_DELEGATION4res_u;
+};
+typedef struct WANT_DELEGATION4res WANT_DELEGATION4res;
+
 struct ILLEGAL4res {
 	nfsstat4 status;
 };
@@ -1786,6 +1811,7 @@ enum nfs_opnum4 {
 	OP_SEQUENCE = 53,
 	OP_SET_SSV = 54,
 	OP_TEST_STATEID = 55,
+	OP_WANT_DELEGATION = 56,
 	OP_ILLEGAL = 10044,
 };
 typedef enum nfs_opnum4 nfs_opnum4;
@@ -1834,6 +1860,7 @@ struct nfs_argop4 {
 		SEQUENCE4args opsequence;
 		SET_SSV4args opsetssv;
 		TEST_STATEID4args opteststateid;
+		WANT_DELEGATION4args opwantdelegation;
 	} nfs_argop4_u;
 };
 typedef struct nfs_argop4 nfs_argop4;
@@ -1889,6 +1916,7 @@ struct nfs_resop4 {
 		SEQUENCE4res opsequence;
 		SET_SSV4res opsetssv;
 		TEST_STATEID4res opteststateid;
+		WANT_DELEGATION4res opwantdelegation;
 		ILLEGAL4res opillegal;
 	} nfs_resop4_u;
 };
@@ -2306,6 +2334,9 @@ extern  uint32_t zdr_SET_SSV4res (ZDR *, SET_SSV4res*);
 extern  uint32_t zdr_TEST_STATEID4args (ZDR *, TEST_STATEID4args*);
 extern  uint32_t zdr_TEST_STATEID4resok (ZDR *, TEST_STATEID4resok*);
 extern  uint32_t zdr_TEST_STATEID4res (ZDR *, TEST_STATEID4res*);
+extern  uint32_t zdr_deleg_claim4 (ZDR *, deleg_claim4*);
+extern  uint32_t zdr_WANT_DELEGATION4args (ZDR *, WANT_DELEGATION4args*);
+extern  uint32_t zdr_WANT_DELEGATION4res (ZDR *, WANT_DELEGATION4res*);
 extern  uint32_t zdr_ILLEGAL4res (ZDR *, ILLEGAL4res*);
 extern  uint32_t zdr_nfs_opnum4 (ZDR *, nfs_opnum4*);
 extern  uint32_t zdr_nfs_argop4 (ZDR *, nfs_argop4*);
@@ -2587,6 +2618,9 @@ extern uint32_t zdr_SET_SSV4res ();
 extern uint32_t zdr_TEST_STATEID4args ();
 extern uint32_t zdr_TEST_STATEID4resok ();
 extern uint32_t zdr_TEST_STATEID4res ();
+extern uint32_t zdr_deleg_claim4 ();
+extern uint32_t zdr_WANT_DELEGATION4args ();
+extern uint32_t zdr_WANT_DELEGATION4res ();
 extern uint32_t zdr_ILLEGAL4res ();
 extern uint32_t zdr_nfs_opnum4 ();
 extern uint32_t zdr_nfs_argop4 ();
