@@ -1868,6 +1868,17 @@ struct DESTROY_CLIENTID4res {
 };
 
 /*
+ * RECLAIM_COMPLETE
+ */
+struct RECLAIM_COMPLETE4args {
+       bool            rca_one_fs;
+};
+
+struct RECLAIM_COMPLETE4res {
+       nfsstat4        rcr_status;
+};
+
+/*
  * ILLEGAL: Response for illegal operation numbers
  */
 struct ILLEGAL4res {
@@ -1930,6 +1941,7 @@ enum nfs_opnum4 {
         OP_TEST_STATEID         = 55,
         OP_WANT_DELEGATION      = 56,
         OP_DESTROY_CLIENTID     = 57,
+        OP_RECLAIM_COMPLETE     = 58,
         OP_ILLEGAL              = 10044
 };
 
@@ -1989,6 +2001,7 @@ union nfs_argop4 switch (nfs_opnum4 argop) {
  case OP_TEST_STATEID:          TEST_STATEID4args opteststateid;
  case OP_WANT_DELEGATION:       WANT_DELEGATION4args opwantdelegation;
  case OP_DESTROY_CLIENTID:      DESTROY_CLIENTID4args opdestroyclientid;
+ case OP_RECLAIM_COMPLETE:      RECLAIM_COMPLETE4args opreclaimcomplete;
  case OP_ILLEGAL:       void;
 };
 
@@ -2048,6 +2061,7 @@ union nfs_resop4 switch (nfs_opnum4 resop){
  case OP_TEST_STATEID:          TEST_STATEID4res opteststateid;
  case OP_WANT_DELEGATION:       WANT_DELEGATION4res opwantdelegation;
  case OP_DESTROY_CLIENTID:      DESTROY_CLIENTID4res opdestroyclientid;
+ case OP_RECLAIM_COMPLETE:      RECLAIM_COMPLETE4res opreclaimcomplete;
  case OP_ILLEGAL:       ILLEGAL4res opillegal;
 };
 

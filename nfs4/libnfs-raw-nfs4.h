@@ -1766,6 +1766,16 @@ struct DESTROY_CLIENTID4res {
 };
 typedef struct DESTROY_CLIENTID4res DESTROY_CLIENTID4res;
 
+struct RECLAIM_COMPLETE4args {
+	uint32_t rca_one_fs;
+};
+typedef struct RECLAIM_COMPLETE4args RECLAIM_COMPLETE4args;
+
+struct RECLAIM_COMPLETE4res {
+	nfsstat4 rcr_status;
+};
+typedef struct RECLAIM_COMPLETE4res RECLAIM_COMPLETE4res;
+
 struct ILLEGAL4res {
 	nfsstat4 status;
 };
@@ -1823,6 +1833,7 @@ enum nfs_opnum4 {
 	OP_TEST_STATEID = 55,
 	OP_WANT_DELEGATION = 56,
 	OP_DESTROY_CLIENTID = 57,
+	OP_RECLAIM_COMPLETE = 58,
 	OP_ILLEGAL = 10044,
 };
 typedef enum nfs_opnum4 nfs_opnum4;
@@ -1873,6 +1884,7 @@ struct nfs_argop4 {
 		TEST_STATEID4args opteststateid;
 		WANT_DELEGATION4args opwantdelegation;
 		DESTROY_CLIENTID4args opdestroyclientid;
+		RECLAIM_COMPLETE4args opreclaimcomplete;
 	} nfs_argop4_u;
 };
 typedef struct nfs_argop4 nfs_argop4;
@@ -1930,6 +1942,7 @@ struct nfs_resop4 {
 		TEST_STATEID4res opteststateid;
 		WANT_DELEGATION4res opwantdelegation;
 		DESTROY_CLIENTID4res opdestroyclientid;
+		RECLAIM_COMPLETE4res opreclaimcomplete;
 		ILLEGAL4res opillegal;
 	} nfs_resop4_u;
 };
@@ -2352,6 +2365,8 @@ extern  uint32_t zdr_WANT_DELEGATION4args (ZDR *, WANT_DELEGATION4args*);
 extern  uint32_t zdr_WANT_DELEGATION4res (ZDR *, WANT_DELEGATION4res*);
 extern  uint32_t zdr_DESTROY_CLIENTID4args (ZDR *, DESTROY_CLIENTID4args*);
 extern  uint32_t zdr_DESTROY_CLIENTID4res (ZDR *, DESTROY_CLIENTID4res*);
+extern  uint32_t zdr_RECLAIM_COMPLETE4args (ZDR *, RECLAIM_COMPLETE4args*);
+extern  uint32_t zdr_RECLAIM_COMPLETE4res (ZDR *, RECLAIM_COMPLETE4res*);
 extern  uint32_t zdr_ILLEGAL4res (ZDR *, ILLEGAL4res*);
 extern  uint32_t zdr_nfs_opnum4 (ZDR *, nfs_opnum4*);
 extern  uint32_t zdr_nfs_argop4 (ZDR *, nfs_argop4*);
@@ -2638,6 +2653,8 @@ extern uint32_t zdr_WANT_DELEGATION4args ();
 extern uint32_t zdr_WANT_DELEGATION4res ();
 extern uint32_t zdr_DESTROY_CLIENTID4args ();
 extern uint32_t zdr_DESTROY_CLIENTID4res ();
+extern uint32_t zdr_RECLAIM_COMPLETE4args ();
+extern uint32_t zdr_RECLAIM_COMPLETE4res ();
 extern uint32_t zdr_ILLEGAL4res ();
 extern uint32_t zdr_nfs_opnum4 ();
 extern uint32_t zdr_nfs_argop4 ();

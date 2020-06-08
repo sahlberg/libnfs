@@ -3484,6 +3484,26 @@ zdr_DESTROY_CLIENTID4res (ZDR *zdrs, DESTROY_CLIENTID4res *objp)
 }
 
 uint32_t
+zdr_RECLAIM_COMPLETE4args (ZDR *zdrs, RECLAIM_COMPLETE4args *objp)
+{
+	
+
+	 if (!zdr_bool (zdrs, &objp->rca_one_fs))
+		 return FALSE;
+	return TRUE;
+}
+
+uint32_t
+zdr_RECLAIM_COMPLETE4res (ZDR *zdrs, RECLAIM_COMPLETE4res *objp)
+{
+	
+
+	 if (!zdr_nfsstat4 (zdrs, &objp->rcr_status))
+		 return FALSE;
+	return TRUE;
+}
+
+uint32_t
 zdr_ILLEGAL4res (ZDR *zdrs, ILLEGAL4res *objp)
 {
 	
@@ -3695,6 +3715,10 @@ zdr_nfs_argop4 (ZDR *zdrs, nfs_argop4 *objp)
 		break;
 	case OP_DESTROY_CLIENTID:
 		 if (!zdr_DESTROY_CLIENTID4args (zdrs, &objp->nfs_argop4_u.opdestroyclientid))
+			 return FALSE;
+		break;
+	case OP_RECLAIM_COMPLETE:
+		 if (!zdr_RECLAIM_COMPLETE4args (zdrs, &objp->nfs_argop4_u.opreclaimcomplete))
 			 return FALSE;
 		break;
 	case OP_ILLEGAL:
@@ -3911,6 +3935,10 @@ zdr_nfs_resop4 (ZDR *zdrs, nfs_resop4 *objp)
 		break;
 	case OP_DESTROY_CLIENTID:
 		 if (!zdr_DESTROY_CLIENTID4res (zdrs, &objp->nfs_resop4_u.opdestroyclientid))
+			 return FALSE;
+		break;
+	case OP_RECLAIM_COMPLETE:
+		 if (!zdr_RECLAIM_COMPLETE4res (zdrs, &objp->nfs_resop4_u.opreclaimcomplete))
 			 return FALSE;
 		break;
 	case OP_ILLEGAL:
