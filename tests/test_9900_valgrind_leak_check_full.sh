@@ -16,10 +16,6 @@ for IDX in `seq 1 100`; do
 done
 success
 
-echo -n "Testing server discovery for memory leaks ... "
-libtool --mode=execute valgrind --leak-check=full --error-exitcode=1 ../utils/nfs-ls -D nfs:// > "${TESTDIR}/output?version=${VERS}" 2>/dev/null || failure
-success
-
 echo -n "Testing share enumeration for memory leaks ... "
 libtool --mode=execute valgrind --leak-check=full --error-exitcode=1 ../utils/nfs-ls -D nfs://127.0.0.1 > "${TESTDIR}/output?version=${VERS}" 2>/dev/null || failure
 success
