@@ -1396,8 +1396,8 @@ nfs_seekdir(struct nfs_context *nfs _U_, struct nfsdir *nfsdir, long loc)
                 return;
         }
         for (nfsdir->current = nfsdir->entries;
-             nfsdir && loc--;
-             nfsdir = nfsdir->next) {
+             nfsdir->current && loc--;
+             nfsdir->current = nfsdir->current->next) {
         }
 }
 
