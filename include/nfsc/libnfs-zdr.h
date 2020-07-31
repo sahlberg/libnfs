@@ -92,7 +92,6 @@ struct ZDR {
 typedef struct ZDR ZDR;
 
 
-typedef uint32_t u_int;
 typedef uint32_t enum_t;
 typedef uint32_t bool_t;
 
