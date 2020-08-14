@@ -30,6 +30,10 @@
 #include "aros_compat.h"
 #endif
 
+#ifdef PS3_PPU
+#include "ps3_compat.h"
+#endif
+
 #ifdef WIN32
 #include <win32/win32_compat.h>
 #endif
