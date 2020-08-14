@@ -32,7 +32,7 @@ endif
 
 TARGET		:=	libnfs
 BUILD		:=	build-ppu
-SOURCE		:=	lib mount portmap nfs rquota nlm ps3_ppu
+SOURCE		:=	lib mount portmap nfs nfs4 nsm rquota nlm ps3_ppu
 INCLUDE		:=	include include/nfsc ps3_ppu nfs mount portmap
 DATA		:=	data
 LIBS		:=	
@@ -75,8 +75,15 @@ $(BUILD):
 
 install: $(BUILD)
 	@echo Copying...
-	@[ -d $(PORTLIBS)/include/smb2 ] || mkdir -p $(PORTLIBS)/include/smb2
-	@cp -frv ../include/smb2/*.h $(PORTLIBS)/include/smb2
+	@[ -d $(PORTLIBS)/include/nfsc ] || mkdir -p $(PORTLIBS)/include/nfsc
+	@cp -frv include/nfsc/libnfs.h $(PORTLIBS)/include/nfsc
+	@cp -frv include/nfsc/libnfs-raw.h $(PORTLIBS)/include/nfsc
+	@cp -frv include/nfsc/libnfs-zdr.h $(PORTLIBS)/include/nfsc
+	@cp -frv mount/libnfs-raw-mount.h $(PORTLIBS)/include/nfsc
+	@cp -frv nlm/libnfs-raw-nlm.h $(PORTLIBS)/include/nfsc
+	@cp -frv nfs/libnfs-raw-nfs.h $(PORTLIBS)/include/nfsc
+	@cp -frv portmap/libnfs-raw-portmap.h $(PORTLIBS)/include/nfsc
+	@cp -frv rquota/libnfs-raw-rquota.h $(PORTLIBS)/include/nfsc
 	@cp -frv *.a $(PORTLIBS)/lib
 	@echo Done!
 

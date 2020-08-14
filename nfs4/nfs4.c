@@ -22,6 +22,10 @@
 #include <sys/stat.h>
 #endif/*WIN32*/
 
+#ifdef PS3_PPU
+#include "ps3_compat.h"
+#endif
+
 #include <stdio.h>
 #include <errno.h>
 #include <string.h>

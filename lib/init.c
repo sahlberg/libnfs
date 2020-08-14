@@ -92,7 +92,7 @@ struct rpc_context *rpc_init_context(void)
 	rpc->fd = -1;
 	rpc->tcp_syncnt = RPC_PARAM_UNDEFINED;
 	rpc->pagecache_ttl = NFS_PAGECACHE_DEFAULT_TTL;
-#if defined(WIN32) || defined(ANDROID)
+#if defined(WIN32) || defined(ANDROID) || defined(PS3_PPU)
 	rpc->uid = 65534;
 	rpc->gid = 65534;
 #else

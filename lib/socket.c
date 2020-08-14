@@ -601,7 +601,7 @@ rpc_connect_sockaddr_async(struct rpc_context *rpc)
 	}
 
 	if (rpc->old_fd) {
-#if !defined(WIN32)
+#if !defined(WIN32) && !defined(PS3_PPU)
 		if (dup2(rpc->fd, rpc->old_fd) == -1) {
 			return -1;
 		}
