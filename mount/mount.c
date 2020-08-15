@@ -20,7 +20,7 @@
 #endif/*WIN32*/
 
 #ifdef PS3_PPU
-#include "ps3_compat.h"
+#include <sys/time.h>
 #endif
 
 #include <stdio.h>

@@ -1,5 +1,5 @@
 /*
-   Copyright (C) 2013 by Ronnie Sahlberg <ronniesahlberg@gmail.com>
+   Copyright (C) 2020 by Damian Parrino <www.bucanero.com.ar>
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU Lesser General Public License as published by

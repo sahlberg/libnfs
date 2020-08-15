@@ -35,6 +35,10 @@
 #define IFNAMSIZ 255
 #endif
 
+#if defined(PS3_PPU) && !defined(IFNAMSIZ)
+#define IFNAMSIZ 16
+#endif
+
 #include "libnfs-zdr.h"
 #include "../nfs/libnfs-raw-nfs.h"
 #include "../nfs4/libnfs-raw-nfs4.h"
