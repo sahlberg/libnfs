@@ -18,6 +18,10 @@
 #include <win32/win32_compat.h>
 #endif/*WIN32*/
 
+#ifdef PS3_PPU
+#include <sys/time.h>
+#endif
+
 #include <stdio.h>
 #include <errno.h>
 #include <sys/stat.h>

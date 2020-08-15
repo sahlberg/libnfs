@@ -33,6 +33,10 @@
 #include "aros_compat.h"
 #endif
 
+#ifdef PS3_PPU
+#include "ps3_compat.h"
+#endif
+
 #ifdef HAVE_ARPA_INET_H
 #include <arpa/inet.h>
 #endif
@@ -595,7 +599,7 @@ struct AUTH *libnfs_authunix_create(const char *host, uint32_t uid, uint32_t gid
 
 struct AUTH *libnfs_authunix_create_default(void)
 {
-#ifdef WIN32
+#if defined(WIN32) || defined(PS3_PPU)
 	return libnfs_authunix_create("libnfs", 65534, 65534, 0, NULL);
 #else
 	return libnfs_authunix_create("libnfs", getuid(), getgid(), 0, NULL);

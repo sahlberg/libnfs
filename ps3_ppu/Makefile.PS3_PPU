@@ -1,0 +1,103 @@
+#---------------------------------------------------------------------------------
+# Clear the implicit built in rules
+#---------------------------------------------------------------------------------
+.SUFFIXES:
+#---------------------------------------------------------------------------------
+
+ifeq ($(strip $(PSL1GHT)),)
+$(error "Please set PSL1GHT in your environment. export PSL1GHT=<path>")
+endif
+
+include	$(PSL1GHT)/ppu_rules
+
+
+
+#---------------------------------------------------------------------------------
+ifeq ($(strip $(PLATFORM)),)
+#---------------------------------------------------------------------------------
+export BASEDIR		:= $(CURDIR)
+export DEPS			:= $(BASEDIR)/deps
+export LIBS			:=	$(BASEDIR)/lib
+
+#---------------------------------------------------------------------------------
+else
+#---------------------------------------------------------------------------------
+
+export LIBDIR		:= $(LIBS)/$(PLATFORM)
+export DEPSDIR		:=	$(DEPS)/$(PLATFORM)
+
+#---------------------------------------------------------------------------------
+endif
+#---------------------------------------------------------------------------------
+
+TARGET		:=	libnfs
+BUILD		:=	build-ppu
+SOURCE		:=	lib mount portmap nfs nfs4 nsm rquota nlm ps3_ppu
+INCLUDE		:=	include include/nfsc ps3_ppu nfs mount portmap
+DATA		:=	data
+LIBS		:=	
+
+MACHDEP		:= -DPS3_PPU=1 -DHAVE_CONFIG_H -D_U_=" "
+
+CFLAGS		+= -O2 -Wall -mcpu=cell $(MACHDEP) -fno-strict-aliasing $(INCLUDES)
+
+LD			:=	ppu-ld
+
+ifneq ($(BUILD),$(notdir $(CURDIR)))
+
+export OUTPUT	:=	$(CURDIR)/$(TARGET)
+export VPATH	:=	$(foreach dir,$(SOURCE),$(CURDIR)/$(dir)) \
+					$(foreach dir,$(DATA),$(CURDIR)/$(dir))
+export BUILDDIR	:=	$(CURDIR)/$(BUILD)
+export DEPSDIR	:=	$(BUILDDIR)
+
+CFILES		:= $(foreach dir,$(SOURCE),$(notdir $(wildcard $(dir)/*.c)))
+CXXFILES	:= $(foreach dir,$(SOURCE),$(notdir $(wildcard $(dir)/*.cpp)))
+SFILES		:= $(foreach dir,$(SOURCE),$(notdir $(wildcard $(dir)/*.S)))
+BINFILES	:= $(foreach dir,$(DATA),$(notdir $(wildcard $(dir)/*.bin)))
+
+
+export OFILES	:=	$(CFILES:.c=.o) \
+					$(CXXFILES:.cpp=.o) \
+					$(SFILES:.S=.o) \
+					$(BINFILES:.bin=.bin.o)
+
+export BINFILES	:=	$(BINFILES:.bin=.bin.h)
+
+export INCLUDES	=	$(foreach dir,$(INCLUDE),-I$(CURDIR)/$(dir)) \
+					-I$(CURDIR)/$(BUILD) -I$(PSL1GHT)/ppu/include -I$(PORTLIBS)/include
+
+.PHONY: $(BUILD) install clean
+
+$(BUILD):
+	@[ -d $@ ] || mkdir -p $@
+	@make --no-print-directory -C $(BUILD) -f $(CURDIR)/ps3_ppu/Makefile.PS3_PPU
+
+install: $(BUILD)
+	@echo Copying...
+	@[ -d $(PORTLIBS)/include/nfsc ] || mkdir -p $(PORTLIBS)/include/nfsc
+	@cp -frv include/nfsc/libnfs.h $(PORTLIBS)/include/nfsc
+	@cp -frv include/nfsc/libnfs-raw.h $(PORTLIBS)/include/nfsc
+	@cp -frv include/nfsc/libnfs-zdr.h $(PORTLIBS)/include/nfsc
+	@cp -frv mount/libnfs-raw-mount.h $(PORTLIBS)/include/nfsc
+	@cp -frv nlm/libnfs-raw-nlm.h $(PORTLIBS)/include/nfsc
+	@cp -frv nfs/libnfs-raw-nfs.h $(PORTLIBS)/include/nfsc
+	@cp -frv portmap/libnfs-raw-portmap.h $(PORTLIBS)/include/nfsc
+	@cp -frv rquota/libnfs-raw-rquota.h $(PORTLIBS)/include/nfsc
+	@cp -frv *.a $(PORTLIBS)/lib
+	@echo Done!
+
+clean:
+	@echo Clean...
+	@rm -rf $(BUILD) $(OUTPUT).elf $(OUTPUT).self $(OUTPUT).a
+
+else
+
+DEPENDS	:= $(OFILES:.o=.d)
+
+$(OUTPUT).a: $(OFILES)
+$(OFILES): $(BINFILES)
+
+-include $(DEPENDS)
+
+endif

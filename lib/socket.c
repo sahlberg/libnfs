@@ -23,6 +23,10 @@
 #include "aros_compat.h"
 #endif
 
+#ifdef PS3_PPU
+#include "ps3_compat.h"
+#endif
+
 #ifdef WIN32
 #include <win32/win32_compat.h>
 #endif
@@ -597,7 +601,7 @@ rpc_connect_sockaddr_async(struct rpc_context *rpc)
 	}
 
 	if (rpc->old_fd) {
-#if !defined(WIN32)
+#if !defined(WIN32) && !defined(PS3_PPU)
 		if (dup2(rpc->fd, rpc->old_fd) == -1) {
 			return -1;
 		}
@@ -663,6 +667,7 @@ rpc_connect_sockaddr_async(struct rpc_context *rpc)
                                                 sizeof(struct sockaddr_in);
 #endif
 					break;
+#ifndef PS3_PPU
 				case AF_INET6:
 					sin6->sin6_port = port;
 					sin6->sin6_family = AF_INET6;
@@ -671,6 +676,7 @@ rpc_connect_sockaddr_async(struct rpc_context *rpc)
                                                 sizeof(struct sockaddr_in6);
 #endif
 					break;
+#endif
 				}
 
 				rc = bind(rpc->fd, (struct sockaddr *)&ss,
@@ -719,6 +725,7 @@ rpc_set_sockaddr(struct rpc_context *rpc, const char *server, int port)
                         sizeof(struct sockaddr_in);
 #endif
 		break;
+#ifndef PS3_PPU
 	case AF_INET6:
 		((struct sockaddr_in6 *)&rpc->s)->sin6_family = ai->ai_family;
 		((struct sockaddr_in6 *)&rpc->s)->sin6_port = htons(port);
@@ -729,6 +736,7 @@ rpc_set_sockaddr(struct rpc_context *rpc, const char *server, int port)
                         sizeof(struct sockaddr_in6);
 #endif
 		break;
+#endif
 	}
 	freeaddrinfo(ai);
 

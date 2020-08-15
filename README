@@ -136,6 +136,7 @@ Windows:- tested on Windows 7 64 and Windows XP 32 using Visual Studio 10 (see R
         - tested on Windows 7 64 using MingW on Linux to cross-compile (Debian and Ubuntu tested)
 Android:- tested with NDK r10e - running on Android 4.4 (should work starting from 2.3.3)
 AROS: - Build with 'make -f aros/Makefile.AROS'
+PlayStation 3: - Build and install the library with 'make -f ps3_ppu/Makefile.PS3_PPU install'
 
 
 LD_PRELOAD
