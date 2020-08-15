@@ -1,5 +1,4 @@
 /* config.h.  Generated from config.h.in by configure.  */
-/* config.h.in.  Generated from configure.ac by autoheader.  */
 
 /* Define to 1 if you have the <arpa/inet.h> header file. */
 #define HAVE_ARPA_INET_H 1
@@ -48,30 +47,3 @@
 
 /* Define to 1 if you have the <utime.h> header file. */
 #define HAVE_UTIME_H 1
-
-/* Name of package */
-#define PACKAGE "libnfs"
-
-/* Define to the address where bug reports for this package should be sent. */
-#define PACKAGE_BUGREPORT "ronniesahlberg@gmail.com"
-
-/* Define to the full name of this package. */
-#define PACKAGE_NAME "libnfs"
-
-/* Define to the full name and version of this package. */
-#define PACKAGE_STRING "libnfs 4.0.0"
-
-/* Define to the one symbol short name of this package. */
-#define PACKAGE_TARNAME "libnfs"
-
-/* Define to the home page for this package. */
-#define PACKAGE_URL ""
-
-/* Define to the version of this package. */
-#define PACKAGE_VERSION "4.0.0"
-
-/* Define to 1 if you have the ANSI C header files. */
-#define STDC_HEADERS 1
-
-/* Version number of package */
-#define VERSION "4.0.0"
