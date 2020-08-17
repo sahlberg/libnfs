@@ -25,7 +25,7 @@
 #include <arpa/inet.h>
 #include "ps3_compat.h"
 
-int getnameinfo(const struct sockaddr *sa, socklen_t salen,
+int nfs_getnameinfo(const struct sockaddr *sa, socklen_t salen,
 char *host, size_t hostlen,
 char *serv, size_t servlen, int flags)
 {
@@ -38,7 +38,7 @@ char *serv, size_t servlen, int flags)
   return 0;
 }
 
-int getaddrinfo(const char *node, const char*service,
+int nfs_getaddrinfo(const char *node, const char*service,
 const struct addrinfo *hints,
 struct addrinfo **res)
 {
@@ -65,7 +65,7 @@ struct addrinfo **res)
   return 0;
 }
 
-void freeaddrinfo(struct addrinfo *res)
+void nfs_freeaddrinfo(struct addrinfo *res)
 {
   free(res->ai_addr);
   free(res);
