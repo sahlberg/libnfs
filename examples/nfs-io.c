@@ -157,17 +157,20 @@ int main(int argc, char *argv[])
 			printf("%c%c%c",
 			       "-r"[!!(st.nfs_mode & S_IRUSR)],
 			       "-w"[!!(st.nfs_mode & S_IWUSR)],
-			       "-x"[!!(st.nfs_mode & S_IXUSR)]
-			);
+			       "-xSs"[  !!(st.nfs_mode & S_IXUSR) +
+				      2*!!(st.nfs_mode & S_ISUID)]
+			       );
 			printf("%c%c%c",
 			       "-r"[!!(st.nfs_mode & S_IRGRP)],
 			       "-w"[!!(st.nfs_mode & S_IWGRP)],
-			       "-x"[!!(st.nfs_mode & S_IXGRP)]
+			       "-xSs"[  !!(st.nfs_mode & S_IXGRP) +
+				      2*!!(st.nfs_mode & S_ISGID)]
 			);
 			printf("%c%c%c",
 			       "-r"[!!(st.nfs_mode & S_IROTH)],
 			       "-w"[!!(st.nfs_mode & S_IWOTH)],
-			       "-x"[!!(st.nfs_mode & S_IXOTH)]
+			       "-xTt"[  !!(st.nfs_mode & S_IXOTH) +
+				      2*!!(st.nfs_mode & S_ISVTX)]
 			);
 			printf(" %2d", (int)st.nfs_nlink);
 			printf(" %5d", (int)st.nfs_uid);
