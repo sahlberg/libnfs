@@ -1,4 +1,4 @@
-set(UTILITIES nfs-cat nfs-ls)
+set(UTILITIES nfs-cat nfs-ls nfs-stat)
 
 if(NOT CMAKE_SYSTEM_NAME STREQUAL Windows)
   list(APPEND UTILITIES nfs-cp)

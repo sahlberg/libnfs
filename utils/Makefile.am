@@ -1,4 +1,4 @@
-bin_PROGRAMS = nfs-cat nfs-ls
+bin_PROGRAMS = nfs-cat nfs-ls nfs-stat
 
 if !HAVE_WIN32
 bin_PROGRAMS += nfs-cp
@@ -16,3 +16,4 @@ COMMON_LIBS = ../lib/libnfs.la $(LIBSOCKET)
 nfs_cat_LDADD = $(COMMON_LIBS)
 nfs_ls_LDADD = $(COMMON_LIBS)
 nfs_cp_LDADD = $(COMMON_LIBS)
+nfs_stat_LDADD = $(COMMON_LIBS)
