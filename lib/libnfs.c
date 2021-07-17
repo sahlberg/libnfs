@@ -358,6 +358,12 @@ nfs_parse_url(struct nfs_context *nfs, const char *url, int dir, int incomplete)
 	}
 	*strp = 0;
 
+	strp = strchr(urls->server, ':');
+        if (strp) {
+                *strp++ = 0;
+		nfs->nfsport =  atoi(strp);
+        }
+
 	if (dir) {
 		flagsp = strchr(urls->path, '?');
 		goto flags;

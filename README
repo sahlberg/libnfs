@@ -40,7 +40,7 @@ URL-FORMAT:
 Libnfs uses RFC2224 style URLs extended with some minor libnfs extensions.
 The basic syntax of these URLs is :
 
-nfs://<server|ipv4|ipv6>/path[?arg=val[&arg=val]*]
+nfs://<server|ipv4|ipv6>[:<port>]/path[?arg=val[&arg=val]*]
 
 Arguments supported by libnfs are :
  tcp-syncnt=<int>  : Number of SYNs to send during the session establish
