@@ -1848,6 +1848,11 @@ nfs_set_version(struct nfs_context *nfs, int version) {
 	return 0;
 }
 
+int
+nfs_get_version(struct nfs_context *nfs) {
+        return nfs->version;
+}
+
 void
 nfs_set_error(struct nfs_context *nfs, char *error_string, ...)
 {

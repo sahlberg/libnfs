@@ -99,6 +99,7 @@
 #include "slist.h"
 #include "libnfs.h"
 #include "libnfs-raw.h"
+#include "libnfs-raw-nfs4.h"
 #include "libnfs-private.h"
 
 #ifndef discard_const
@@ -191,6 +192,10 @@ static uint32_t statvfs_attributes[2] = {
         (1 << (FATTR4_SPACE_AVAIL - 32) |
          1 << (FATTR4_SPACE_FREE - 32) |
          1 << (FATTR4_SPACE_TOTAL - 32))
+};
+
+static uint32_t getacl_attributes[1] = {
+        (1 << FATTR4_ACL )
 };
 
 static int
@@ -2529,6 +2534,86 @@ nfs4_fstat64_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_cb cb,
 
         return 0;
 }
+
+static void
+nfs4_getacl_cb(struct rpc_context *rpc, int status, void *command_data,
+               void *private_data)
+{
+        struct nfs4_cb_data *data = private_data;
+        struct nfs_context *nfs = data->nfs;
+        COMPOUND4res *res = command_data;
+        GETATTR4resok *garesok;
+        fattr4_acl acl;
+        ZDR zdr;
+        int i;
+
+        assert(rpc->magic == RPC_CONTEXT_MAGIC);
+
+        if (check_nfs4_error(nfs, status, data, res, "GETACL")) {
+                data->cb(-EIO, nfs, "GETACL failed", data->private_data);
+                free_nfs4_cb_data(data);
+                return;
+        }
+
+        if ((i = nfs4_find_op(nfs, data, res, OP_GETATTR, "GETATTR")) < 0) {
+                data->cb(-EIO, nfs, "GETACL failed", data->private_data);
+                free_nfs4_cb_data(data);
+                return;
+        }
+        garesok = &res->resarray.resarray_val[i].nfs_resop4_u.opgetattr.GETATTR4res_u.resok4;
+
+        memset(&acl, 0, sizeof(acl));
+        zdrmem_create(&zdr,
+                      garesok->obj_attributes.attr_vals.attrlist4_val,
+                      garesok->obj_attributes.attr_vals.attrlist4_len,
+                      ZDR_DECODE);
+        if (zdr_fattr4_acl(&zdr, &acl)) {
+                data->cb(0, nfs, &acl, data->private_data);
+        } else {
+                data->cb(-EIO, nfs, "Failed to unmarshall fattr4_acl", data->private_data);
+        }
+
+        zdr_destroy(&zdr);
+        free_nfs4_cb_data(data);
+}
+
+int
+nfs4_getacl_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_cb cb,
+                   void *private_data)
+{
+        COMPOUND4args args;
+        nfs_argop4 op[2];
+        struct nfs4_cb_data *data;
+        int i;
+
+        data = malloc(sizeof(*data));
+        if (data == NULL) {
+                nfs_set_error(nfs, "Out of memory. Failed to allocate "
+                              "cb data");
+                return -1;
+        }
+        memset(data, 0, sizeof(*data));
+
+        data->nfs          = nfs;
+        data->cb           = cb;
+        data->private_data = private_data;
+
+        i = nfs4_op_putfh(nfs, &op[0], nfsfh);
+        i += nfs4_op_getattr(nfs, &op[i], getacl_attributes, 1);
+
+        memset(&args, 0, sizeof(args));
+        args.argarray.argarray_len = i;
+        args.argarray.argarray_val = op;
+
+        if (rpc_nfs4_compound_async(nfs->rpc, nfs4_getacl_cb, &args,
+                                    data) != 0) {
+                free_nfs4_cb_data(data);
+                return -1;
+        }
+
+        return 0;
+}
+
 
 static void
 nfs4_close_cb(struct rpc_context *rpc, int status, void *command_data,

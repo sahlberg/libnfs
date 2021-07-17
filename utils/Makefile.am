@@ -1,7 +1,7 @@
-bin_PROGRAMS = nfs-cat nfs-ls nfs-stat
+bin_PROGRAMS = nfs-cat nfs-ls
 
 if !HAVE_WIN32
-bin_PROGRAMS += nfs-cp
+bin_PROGRAMS += nfs-cp nfs-stat
 endif
 
 AM_CPPFLAGS = \

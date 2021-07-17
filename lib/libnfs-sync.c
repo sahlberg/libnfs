@@ -100,6 +100,7 @@
 #include "libnfs-raw.h"
 #include "libnfs-raw-mount.h"
 #include "libnfs-raw-nfs.h"
+#include "libnfs-raw-nfs4.h"
 #include "libnfs-private.h"
 
 struct sync_cb_data {
@@ -1842,6 +1843,81 @@ nfs_link(struct nfs_context *nfs, const char *oldpath, const char *newpath)
 	if (nfs_link_async(nfs, oldpath, newpath, link_cb, &cb_data) != 0) {
 		nfs_set_error(nfs, "nfs_link_async failed: %s",
 			      nfs_get_error(nfs));
+		return -1;
+	}
+
+	wait_for_nfs_reply(nfs, &cb_data);
+
+	return cb_data.status;
+}
+
+
+/*
+ * nfs4_getacl()
+ */
+void nfs4_acl_free(fattr4_acl *acl)
+{
+        int i;
+
+        for (i = 0; i < acl->fattr4_acl_len; i++) {
+                free(acl->fattr4_acl_val[i].who.utf8string_val);
+        }
+        free(acl->fattr4_acl_val);
+}
+
+static void
+nfs4_getacl_cb(int status, struct nfs_context *nfs, void *data, void *private_data)
+{
+	struct sync_cb_data *cb_data = private_data;
+        fattr4_acl *src = data;
+        fattr4_acl *dst = cb_data->return_data;
+        int i;
+
+	cb_data->is_finished = 1;
+	cb_data->status = status;
+
+	if (status < 0) {
+		nfs_set_error(nfs, "getacl call failed with \"%s\"",
+                              (char *)data);
+		return;
+	}
+        dst->fattr4_acl_len = src->fattr4_acl_len;
+        dst->fattr4_acl_val = calloc(dst->fattr4_acl_len, sizeof(nfsace4));
+        if (dst->fattr4_acl_val == NULL) {
+                cb_data->status = -ENOMEM;
+		nfs_set_error(nfs, "Failed to allocate fattr4_acl_val");
+		return;
+        }                
+        for (i = 0; i < dst->fattr4_acl_len; i++) {
+                dst->fattr4_acl_val[i].type = src->fattr4_acl_val[i].type;
+                dst->fattr4_acl_val[i].flag = src->fattr4_acl_val[i].flag;
+                dst->fattr4_acl_val[i].access_mask = src->fattr4_acl_val[i].access_mask;
+                dst->fattr4_acl_val[i].who.utf8string_len = src->fattr4_acl_val[i].who.utf8string_len;
+                dst->fattr4_acl_val[i].who.utf8string_val = calloc(dst->fattr4_acl_val[i].who.utf8string_len + 1, 1);
+                if (dst->fattr4_acl_val[i].who.utf8string_val == NULL) {
+                        cb_data->status = -ENOMEM;
+                        nfs4_acl_free(dst);
+                        nfs_set_error(nfs, "Failed to allocate acl name");
+                        return;
+                }
+                memcpy(dst->fattr4_acl_val[i].who.utf8string_val,
+                       src->fattr4_acl_val[i].who.utf8string_val,
+                       dst->fattr4_acl_val[i].who.utf8string_len);
+        }
+}
+
+int
+nfs4_getacl(struct nfs_context *nfs, struct nfsfh *nfsfh,
+            fattr4_acl *acl)
+{
+	struct sync_cb_data cb_data;
+
+	cb_data.is_finished = 0;
+	cb_data.return_data = acl;
+
+	if (nfs4_getacl_async(nfs, nfsfh, nfs4_getacl_cb, &cb_data) != 0) {
+		nfs_set_error(nfs, "nfs_getacl_async failed. %s",
+                              nfs_get_error(nfs));
 		return -1;
 	}
 

@@ -1,7 +1,7 @@
-set(UTILITIES nfs-cat nfs-ls nfs-stat)
+set(UTILITIES nfs-cat nfs-ls)
 
 if(NOT CMAKE_SYSTEM_NAME STREQUAL Windows)
-  list(APPEND UTILITIES nfs-cp)
+  list(APPEND UTILITIES nfs-cp nfs-stat)
 endif()
 
 foreach(TARGET ${UTILITIES})

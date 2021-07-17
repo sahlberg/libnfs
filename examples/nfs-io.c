@@ -55,6 +55,7 @@ WSADATA wsaData;
 #include "../include/nfsc/libnfs.h"
 #include "../include/nfsc/libnfs-raw.h"
 #include "../mount/libnfs-raw-mount.h"
+#include "../nfs4/libnfs-raw-nfs4.h"
 
 void print_usage(void)
 {
@@ -67,6 +68,8 @@ int main(int argc, char *argv[])
 	struct nfs_context *nfs = NULL;
 	struct nfsfh *nfsfh = NULL;
 	struct nfs_url *url = NULL;
+	fattr4_acl acl4;
+	int i;
 
 #ifdef WIN32
 	if (WSAStartup(MAKEWORD(2,2), &wsaData) != 0) {
@@ -179,6 +182,32 @@ int main(int argc, char *argv[])
 			printf(" mtime: %lu %lu", st.nfs_mtime, st.nfs_mtime_nsec);
 			printf("\n");
 		}
+	} else if (!strncmp(argv[1], "acl", 3)) {
+		printf("ACL version:%d\n", nfs_get_version(nfs));
+		if (nfs_get_version(nfs) != NFS_V4) {
+			printf("acl support only for nfsv4 for now\n");
+			goto finished;
+		}
+
+		/* NFS_V4 */
+		ret = nfs_open(nfs, url->file, 0600, &nfsfh);
+		if (ret != 0) {
+			printf("failed to open %s\n", url->file);
+			goto finished;
+		}
+		if (nfs4_getacl(nfs, nfsfh, &acl4)) {
+			printf("Failed to read ACLs %s\n", nfs_get_error(nfs));
+			goto finished;
+		}
+		for (i = 0; i < acl4.fattr4_acl_len; i++) {
+			printf("Type:%d Flag:%d Mask:0x%08x Who:%s\n",
+			       acl4.fattr4_acl_val[i].type,
+			       acl4.fattr4_acl_val[i].flag,
+			       acl4.fattr4_acl_val[i].access_mask,
+			       acl4.fattr4_acl_val[i].who.utf8string_val);
+		}
+		nfs4_acl_free(&acl4);
+		ret = 0;
 	} else {
 		goto finished;
 	}

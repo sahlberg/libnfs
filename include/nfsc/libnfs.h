@@ -275,6 +275,12 @@ EXTERN void nfs_set_autoreconnect(struct nfs_context *nfs, int num_retries);
  * NFS_V4
  */
 EXTERN int nfs_set_version(struct nfs_context *nfs, int version);
+/*
+ * Get NFS version of a connected share. Supported versions are
+ * NFS_V3
+ * NFS_V4
+ */
+EXTERN int nfs_get_version(struct nfs_context *nfs);
 
 /*
  *  Invalidate the pagecache
