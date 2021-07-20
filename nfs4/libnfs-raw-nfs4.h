@@ -2749,11 +2749,6 @@ extern uint32_t zdr_CB_COMPOUND4res ();
 
 #endif /* K&R C */
 
-#ifdef __cplusplus
-}
-#endif
-
-#endif /* !_NFS4_H_RPCGEN */
 #include <nfsc/libnfs.h>
 
 #if defined(WIN32) && defined(libnfs_EXPORTS)
@@ -2797,3 +2792,10 @@ EXTERN int nfs4_getacl(struct nfs_context *nfs, struct nfsfh *nfsfh,
                        fattr4_acl *nfs4acl);
 
 EXTERN void nfs4_acl_free(fattr4_acl *nfs4acl);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif /* !_NFS4_H_RPCGEN */
+  
