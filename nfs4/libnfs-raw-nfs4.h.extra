@@ -41,3 +41,9 @@ EXTERN int nfs4_getacl(struct nfs_context *nfs, struct nfsfh *nfsfh,
                        fattr4_acl *nfs4acl);
 
 EXTERN void nfs4_acl_free(fattr4_acl *nfs4acl);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif /* !_NFS4_H_RPCGEN */
