@@ -1778,21 +1778,31 @@ nfs_link_async(struct nfs_context *nfs, const char *oldpath,
 }
 
 /*
- * Get the maximum supported READ3 size by the server
+ * Get/Set the maximum supported READ size by the server
  */
 uint64_t
 nfs_get_readmax(struct nfs_context *nfs)
 {
 	return nfs->readmax;
 }
+void
+nfs_set_readmax(struct nfs_context *nfs, uint64_t readmax)
+{
+	nfs->readmax = readmax;
+}
 
 /*
- * Get the maximum supported WRITE3 size by the server
+ * Get/Set the maximum supported WRITE size by the server
  */
 uint64_t
 nfs_get_writemax(struct nfs_context *nfs)
 {
 	return nfs->writemax;
+}
+void
+nfs_set_writemax(struct nfs_context *nfs, uint64_t writemax)
+{
+	nfs->writemax = writemax;
 }
 
 void

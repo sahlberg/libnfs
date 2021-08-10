@@ -246,15 +246,25 @@ EXTERN void nfs_destroy_url(struct nfs_url *url);
 struct nfsfh;
 
 /*
- * Get the maximum supported READ3 size by the server
+ * Get the maximum supported READ size by the server
  */
 EXTERN uint64_t nfs_get_readmax(struct nfs_context *nfs);
 
 /*
- * Get the maximum supported WRITE3 size by the server
+ * Get the maximum supported WRITE size by the server
  */
 EXTERN uint64_t nfs_get_writemax(struct nfs_context *nfs);
 
+/*
+ * Set the maximum supported READ size by the server
+ */
+EXTERN void nfs_set_readmax(struct nfs_context *nfs, uint64_t readmax);
+
+/*
+ * Set the maximum supported WRITE size by the server
+ */
+EXTERN void nfs_set_writemax(struct nfs_context *nfs, uint64_t writemax);
+        
 /*
  *  MODIFY CONNECT PARAMETERS
  */

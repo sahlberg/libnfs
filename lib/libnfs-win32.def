@@ -86,10 +86,12 @@ nfs_set_gid
 nfs_set_pagecache
 nfs_set_pagecache_ttl
 nfs_set_readahead
+nfs_set_readmax
 nfs_set_tcp_syncnt
 nfs_set_timeout
 nfs_set_uid
 nfs_set_version
+nfs_set_writemax
 nfs_stat
 nfs_stat_async
 nfs_stat64

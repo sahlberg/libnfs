@@ -27,8 +27,8 @@
 #pragma comment(lib, "ws2_32.lib")
 WSADATA wsaData;
 #endif
-#define SERVER "10.1.1.27"
-#define EXPORT "/shared"
+#define SERVER "10.10.10.11"
+#define EXPORT "/data/SNAP-4"
 
 #ifdef HAVE_POLL_H
 #include <poll.h>
