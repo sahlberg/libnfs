@@ -4640,6 +4640,13 @@ nfs3_pread_mcb(struct rpc_context *rpc, int status, void *command_data,
 					data->buffer = res->READ3res_u.resok.data.data_val;
 					data->not_my_buffer = 1;
 				} else if (count <= mdata->count) {
+                                        if (data->buffer == NULL) {
+                                                data->buffer = malloc(data->org_count);
+                                                if (data->buffer == NULL) {
+                                                        data->oom = 1;
+                                                        goto out;
+                                                }
+                                        }
 					/* copy data into reassembly buffer */
 					memcpy(&data->buffer[mdata->offset - data->offset], res->READ3res_u.resok.data.data_val, count);
 				} else {
@@ -4741,7 +4748,7 @@ nfs3_pread_async_internal(struct nfs_context *nfs, struct nfsfh *nfsfh,
 	data->private_data = private_data;
 	data->nfsfh        = nfsfh;
 	data->org_offset   = offset;
-	data->org_count    = (count3)count;
+	data->org_count    = count;
 	data->update_pos   = update_pos;
 
 	assert(data->num_calls == 0);
