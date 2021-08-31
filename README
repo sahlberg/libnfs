@@ -42,6 +42,16 @@ The basic syntax of these URLs is :
 
 nfs://<server|ipv4|ipv6>[:<port>]/path[?arg=val[&arg=val]*]
 
+Special characters in 'path' are escaped using %-hex-hex syntax.
+
+For example '?' must be escaped if it occurs in a path as '?' is also used to
+separate the path from the optional list of url arguments.
+
+Example:
+nfs://127.0.0.1/my?path/?version=4
+must be escaped as
+nfs://127.0.0.1/my%3Fpath/?version=4
+
 Arguments supported by libnfs are :
  tcp-syncnt=<int>  : Number of SYNs to send during the session establish
                      before failing setting up the tcp connection to the

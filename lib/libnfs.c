@@ -303,11 +303,25 @@ nfs_set_context_args(struct nfs_context *nfs, const char *arg, const char *val)
 	return 0;
 }
 
+static int
+tohex(char ch)
+{
+        if (ch >= '0' && ch <= '9') {
+                return ch - '0';
+        }
+        ch &= 0xDF;
+        if (ch >= 'A' && ch <= 'F') {
+                return ch - 'A' + 10;
+        }
+        return -1;
+}
+
 static struct nfs_url *
 nfs_parse_url(struct nfs_context *nfs, const char *url, int dir, int incomplete)
 {
 	struct nfs_url *urls;
-	char *strp, *flagsp, *strp2;
+	char *strp, *flagsp, *strp2, ch;
+        int tmp;
 
 	if (strncmp(url, "nfs://", 6)) {
 		nfs_set_error(nfs, "Invalid URL specified");
@@ -328,6 +342,30 @@ nfs_parse_url(struct nfs_context *nfs, const char *url, int dir, int incomplete)
 		return NULL;
 	}
 
+        /* unescape all % hex hex characters */
+        strp = urls->server;
+        while (strp && *strp) {
+                strp = strchr(strp, '%');
+                if (strp == NULL) {
+                        break;
+                }
+                tmp = tohex(strp[1]);
+                if (tmp < 0) {
+                        strp++;
+                        continue;
+                }
+                ch = (tmp & 0x0f) << 4;
+                tmp = tohex(strp[2]);
+                if (tmp < 0) {
+                        strp++;
+                        continue;
+                }
+                ch |= tmp & 0x0f;
+                *strp = ch;
+                strcpy(strp + 1, strp + 3);
+                strp++;
+        }
+       
 	if (urls->server[0] == '/' || urls->server[0] == '\0' ||
 		urls->server[0] == '?') {
 		if (incomplete) {
