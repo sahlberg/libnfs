@@ -1185,7 +1185,7 @@ nfs4_lookup_path_2_cb(struct rpc_context *rpc, int status, void *command_data,
         }
         rlres = &res->resarray.resarray_val[i].nfs_resop4_u.opreadlink;
         
-        tmp = malloc(strlen(data->path) + 3 + strlen(rlres->READLINK4res_u.resok4.link.utf8string_val));
+        tmp = malloc(strlen(data->path) + 3 + rlres->READLINK4res_u.resok4.link.utf8string_len);
         if (tmp == NULL) {
                 nfs_set_error(nfs, "Out of memory duplicating path.");
                 data->cb(-ENOMEM, nfs, nfs_get_error(nfs),
@@ -1195,7 +1195,9 @@ nfs4_lookup_path_2_cb(struct rpc_context *rpc, int status, void *command_data,
                 return;
         }
 
-        sprintf(tmp, "%s/%s/%s", path, rlres->READLINK4res_u.resok4.link.utf8string_val, end);
+        sprintf(tmp, "%s/%.*s/%s",
+                path, rlres->READLINK4res_u.resok4.link.utf8string_len,
+                rlres->READLINK4res_u.resok4.link.utf8string_val, end);
         free(path);
         free(data->path);
         data->path = tmp;
@@ -2286,7 +2288,7 @@ nfs4_open_readlink_cb(struct rpc_context *rpc, int status, void *command_data,
         rlresok = &res->resarray.resarray_val[i].nfs_resop4_u.opreadlink.READLINK4res_u.resok4;
 
         path = malloc(2 + strlen(data->path) +
-                      strlen(rlresok->link.utf8string_val));
+                      rlresok->link.utf8string_len);
         if (path == NULL) {
                 nfs_set_error(nfs, "Out of memory. Failed to allocate "
                               "path");
@@ -2295,8 +2297,8 @@ nfs4_open_readlink_cb(struct rpc_context *rpc, int status, void *command_data,
                 free_nfs4_cb_data(data);
                 return;
         }
-        sprintf(path, "%s/%s", data->path, rlresok->link.utf8string_val);
-
+        sprintf(path, "%s/%.*s", data->path,
+                rlresok->link.utf8string_len, rlresok->link.utf8string_val);
 
 
         free(data->path);
@@ -2825,6 +2827,7 @@ nfs4_readlink_cb(struct rpc_context *rpc, int status, void *command_data,
         struct nfs_context *nfs = data->nfs;
         COMPOUND4res *res = command_data;
         READLINK4resok *rlresok;
+        char* target;
         int i;
 
         assert(rpc->magic == RPC_CONTEXT_MAGIC);
@@ -2839,7 +2842,17 @@ nfs4_readlink_cb(struct rpc_context *rpc, int status, void *command_data,
 
         rlresok = &res->resarray.resarray_val[i].nfs_resop4_u.opreadlink.READLINK4res_u.resok4;
 
-        data->cb(0, nfs, rlresok->link.utf8string_val, data->private_data);
+        target = strndup(rlresok->link.utf8string_val,
+                         rlresok->link.utf8string_len);
+        if (target == NULL) {
+                data->cb(-ENOMEM, nfs, "Failed to allocate memory",
+                         data->private_data);
+                free_nfs4_cb_data(data);
+                return;
+        }
+        data->filler.blob0.val  = target;
+        data->filler.blob0.free = free;        
+        data->cb(0, nfs, target, data->private_data);
         free_nfs4_cb_data(data);
 }
 
@@ -3573,6 +3586,7 @@ nfs4_parse_readdir(struct nfs_context *nfs, struct nfs4_cb_data *data,
                         return;
                 }
 
+                nfsdirent->inode = st.nfs_ino;
                 nfsdirent->mode = (uint32_t)st.nfs_mode;
                 switch (st.nfs_mode & S_IFMT) {
                 case S_IFREG:
