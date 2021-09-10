@@ -1,0 +1,40 @@
+EE_CFLAGS = -DPS2_EE \
+	  -D_U_=/**/ -I../include -I../include/nfsc \
+	  -I../mount -I../nfs -I../nfs4 -I../portmap
+
+EE_LIB = libnfs.a
+EE_INCS = 
+EE_OBJS = ../lib/init.o ../lib/pdu.o ../lib/socket.o \
+	../lib/nfs_v3.o ../lib/nfs_v4.o \
+	../lib/libnfs.o ../lib/libnfs-sync.o ../lib/libnfs-zdr.o \
+	../mount/mount.o ../mount/libnfs-raw-mount.o \
+	../portmap/portmap.o ../portmap/libnfs-raw-portmap.o \
+	../nfs/nfs.o ../nfs/libnfs-raw-nfs.o \
+	../nfs4/nfs4.o ../nfs4/libnfs-raw-nfs4.o
+
+all: $(EE_LIB) $(EE_OBJS)
+
+install: all
+ifeq ($(PS2SDK),)
+	@echo "$PS2SDK is not set. Can not install libnfs."
+	@exit 1
+endif
+	@echo Copying...
+	@[ -d $(PS2SDK)/ee/include/nfsc ] || mkdir -p $(PS2SDK)/ee/include/nfsc
+	@cp -frv ../include/nfsc/*.h $(PS2SDK)/ee/include/nfsc
+	@cp -frv ../mount/*.h $(PS2SDK)/ee/include/nfsc
+	@cp -frv ../portmap/*.h $(PS2SDK)/ee/include/nfsc
+	@cp -frv ../nfs/*.h $(PS2SDK)/ee/include/nfsc
+	@cp -frv ../nfs4/*.h $(PS2SDK)/ee/include/nfsc
+	@cp -frv *.a $(PS2SDK)/ee/lib
+	@echo Done!
+
+clean:
+	rm -rf *.a $(EE_OBJS)
+
+reset:
+	ps2client reset
+
+include $(PS2SDK)/samples/Makefile.pref
+include $(PS2SDK)/samples/Makefile.eeglobal
+

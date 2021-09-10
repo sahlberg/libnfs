@@ -27,7 +27,7 @@
 #include <net/if.h>
 #endif
 
-#ifndef WIN32
+#if !defined(WIN32) && !defined(PS2_EE)
 #include <sys/socket.h>  /* struct sockaddr_storage */
 #endif
 
@@ -36,6 +36,10 @@
 #endif
 
 #if defined(PS3_PPU) && !defined(IFNAMSIZ)
+#define IFNAMSIZ 16
+#endif
+
+#if defined(PS2_EE) && !defined(IFNAMSIZ)
 #define IFNAMSIZ 16
 #endif
 
@@ -54,7 +58,7 @@ extern "C" {
 #define MAX(a, b) (((a) > (b)) ? (a) : (b))
 #endif
 
-#if !defined(HAVE_SOCKADDR_STORAGE) && !defined(WIN32)
+#if !defined(HAVE_SOCKADDR_STORAGE) && !defined(WIN32) && !defined(PS2_EE)
 /*
  * RFC 2553: protocol-independent placeholder for socket addresses
  */

@@ -23,6 +23,10 @@
 #ifndef _LIBNFS_H_
 #define _LIBNFS_H_
 
+#ifdef PS2_EE
+#include "ps2_compat.h"
+#endif
+
 #include <stdint.h>
 #if defined(__ANDROID__) || defined(AROS) || defined(__PPU__) \
  || ( defined(__APPLE__) && defined(__MACH__) )

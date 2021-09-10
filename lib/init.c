@@ -22,6 +22,10 @@
 #include "aros_compat.h"
 #endif
 
+#ifdef PS2_EE
+#include "ps2_compat.h"
+#endif
+
 #ifdef PS3_PPU
 #include "ps3_compat.h"
 #endif

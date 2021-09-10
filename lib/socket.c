@@ -23,6 +23,10 @@
 #include "aros_compat.h"
 #endif
 
+#ifdef PS2_EE
+#include "ps2_compat.h"
+#endif
+
 #ifdef PS3_PPU
 #include "ps3_compat.h"
 #endif
@@ -91,7 +95,7 @@
 #endif
 
 #ifndef MSG_NOSIGNAL
-#if (defined(__APPLE__) && defined(__MACH__))
+#if (defined(__APPLE__) && defined(__MACH__)) || defined(PS2_EE)
 #define MSG_NOSIGNAL 0
 #endif
 #endif
@@ -133,10 +137,12 @@ set_nonblocking(int fd)
 static void
 set_nolinger(int fd)
 {
+#if !defined(PS2_EE)        
 	struct linger lng;
 	lng.l_onoff = 1;
 	lng.l_linger = 0;
 	setsockopt(fd, SOL_SOCKET, SO_LINGER, (char *)&lng, sizeof(lng));
+#endif
 }
 
 static int
@@ -601,7 +607,7 @@ rpc_connect_sockaddr_async(struct rpc_context *rpc)
 	}
 
 	if (rpc->old_fd) {
-#if !defined(WIN32) && !defined(PS3_PPU)
+#if !defined(WIN32) && !defined(PS3_PPU) && !defined(PS2_EE)
 		if (dup2(rpc->fd, rpc->old_fd) == -1) {
 			return -1;
 		}
@@ -667,7 +673,7 @@ rpc_connect_sockaddr_async(struct rpc_context *rpc)
                                                 sizeof(struct sockaddr_in);
 #endif
 					break;
-#ifndef PS3_PPU
+#if !defined(PS3_PPU) && !defined(PS2_EE)
 				case AF_INET6:
 					sin6->sin6_port = port;
 					sin6->sin6_family = AF_INET6;
@@ -725,7 +731,7 @@ rpc_set_sockaddr(struct rpc_context *rpc, const char *server, int port)
                         sizeof(struct sockaddr_in);
 #endif
 		break;
-#ifndef PS3_PPU
+#if !defined(PS3_PPU) && !defined(PS2_EE)
 	case AF_INET6:
 		((struct sockaddr_in6 *)&rpc->s)->sin6_family = ai->ai_family;
 		((struct sockaddr_in6 *)&rpc->s)->sin6_port = htons(port);
