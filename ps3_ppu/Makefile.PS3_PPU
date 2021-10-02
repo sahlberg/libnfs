@@ -33,7 +33,7 @@ endif
 TARGET		:=	libnfs
 BUILD		:=	build-ppu
 SOURCE		:=	lib mount portmap nfs nfs4 nsm rquota nlm ps3_ppu
-INCLUDE		:=	include include/nfsc ps3_ppu nfs mount portmap
+INCLUDE		:=	include include/nfsc ps3_ppu nfs nfs4 mount portmap
 DATA		:=	data
 LIBS		:=	
 
