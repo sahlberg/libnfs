@@ -33,6 +33,7 @@ THE SOFTWARE.
 #include <io.h>
 #include <sys/stat.h>
 #include <time.h>
+#include <stddef.h> // For size_t type
 
 typedef unsigned long fsblkcnt_t;
 typedef unsigned long fsfilcnt_t;
@@ -150,5 +151,9 @@ int     win32_gettimeofday(struct timeval *tv, struct timezone *tz);
 #endif
 
 #define DllExport
+
+#ifdef __MINGW32__
+char* strndup(const char *s, size_t n);
+#endif
 
 #endif//win32_COMPAT_H_
