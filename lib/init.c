@@ -1,3 +1,4 @@
+/* -*-  mode:c; tab-width:8; c-basic-offset:8; indent-tabs-mode:nil;  -*- */
 /*
    Copyright (C) 2010 by Ronnie Sahlberg <ronniesahlberg@gmail.com>
 
@@ -103,12 +104,21 @@ struct rpc_context *rpc_init_context(void)
 	rpc->uid = getuid();
 	rpc->gid = getgid();
 #endif
+#ifdef HAVE_MULTITHREADING
+        nfs_mt_mutex_lock(&rpc->rpc_mutex);
+#endif /* HAVE_MULTITHREADING */
 	rpc_reset_queue(&rpc->outqueue);
 	for (i = 0; i < HASHES; i++)
 		rpc_reset_queue(&rpc->waitpdu[i]);
+#ifdef HAVE_MULTITHREADING
+        nfs_mt_mutex_unlock(&rpc->rpc_mutex);
+#endif /* HAVE_MULTITHREADING */
 
 	/* Default is no timeout */
 	rpc->timeout = -1;
+#ifdef HAVE_MULTITHREADING
+        nfs_mt_mutex_init(&rpc->rpc_mutex);
+#endif /* HAVE_MULTITHREADING */
 
 	return rpc;
 }
@@ -131,6 +141,9 @@ struct rpc_context *rpc_init_server_context(int s)
         rpc->is_udp = rpc_is_udp_socket(rpc);
 	rpc_reset_queue(&rpc->outqueue);
 
+#ifdef HAVE_MULTITHREADING
+        nfs_mt_mutex_init(&rpc->rpc_mutex);
+#endif /* HAVE_MULTITHREADING */
 	return rpc;
 }
 
@@ -249,10 +262,12 @@ void rpc_set_gid(struct rpc_context *rpc, int gid) {
 void rpc_set_error(struct rpc_context *rpc, const char *error_string, ...)
 {
         va_list ap;
-	char *old_error_string = rpc->error_string;
+	char *old_error_string;
 
-	assert(rpc->magic == RPC_CONTEXT_MAGIC);
-
+#ifdef HAVE_MULTITHREADING
+        nfs_mt_mutex_lock(&rpc->rpc_mutex);
+#endif /* HAVE_MULTITHREADING */
+        old_error_string = rpc->error_string;
         va_start(ap, error_string);
 	rpc->error_string = malloc(1024);
 	vsnprintf(rpc->error_string, 1024, error_string, ap);
@@ -263,6 +278,9 @@ void rpc_set_error(struct rpc_context *rpc, const char *error_string, ...)
 	if (old_error_string != NULL) {
 		free(old_error_string);
 	}
+#ifdef HAVE_MULTITHREADING
+        nfs_mt_mutex_unlock(&rpc->rpc_mutex);
+#endif /* HAVE_MULTITHREADING */
 }
 
 char *rpc_get_error(struct rpc_context *rpc)
@@ -287,20 +305,33 @@ static void rpc_purge_all_pdus(struct rpc_context *rpc, int status, const char *
 	 * pdus when called.
 	 */
 
+#ifdef HAVE_MULTITHREADING
+	nfs_mt_mutex_lock(&rpc->rpc_mutex);
+#endif /* HAVE_MULTITHREADING */
 	outqueue = rpc->outqueue;
 
 	rpc_reset_queue(&rpc->outqueue);
 	while ((pdu = outqueue.head) != NULL) {
 		outqueue.head = pdu->next;
-		pdu->next = NULL;
+                pdu->next = NULL;
 		pdu->cb(rpc, status, (void *) error, pdu->private_data);
 		rpc_free_pdu(rpc, pdu);
 	}
+#ifdef HAVE_MULTITHREADING
+	nfs_mt_mutex_unlock(&rpc->rpc_mutex);
+#endif /* HAVE_MULTITHREADING */
 
 	for (i = 0; i < HASHES; i++) {
-		struct rpc_queue waitqueue = rpc->waitpdu[i];
+		struct rpc_queue waitqueue;
 
+#ifdef HAVE_MULTITHREADING
+		nfs_mt_mutex_lock(&rpc->rpc_mutex);
+#endif /* HAVE_MULTITHREADING */
+		waitqueue = rpc->waitpdu[i];
 		rpc_reset_queue(&rpc->waitpdu[i]);
+#ifdef HAVE_MULTITHREADING
+		nfs_mt_mutex_unlock(&rpc->rpc_mutex);
+#endif /* HAVE_MULTITHREADING */
 		while((pdu = waitqueue.head) != NULL) {
 			waitqueue.head = pdu->next;
 			pdu->next = NULL;
@@ -310,8 +341,6 @@ static void rpc_purge_all_pdus(struct rpc_context *rpc, int status, const char *
 	}
 
 	assert(!rpc->outqueue.head);
-	for (i = 0; i < HASHES; i++)
-		assert(!rpc->waitpdu[i].head);
 }
 
 void rpc_error_all_pdus(struct rpc_context *rpc, const char *error)
@@ -388,6 +417,9 @@ void rpc_destroy_context(struct rpc_context *rpc)
 	rpc->inbuf = NULL;
 
 	rpc->magic = 0;
+#ifdef HAVE_MULTITHREADING
+        nfs_mt_mutex_destroy(&rpc->rpc_mutex);
+#endif /* HAVE_MULTITHREADING */
 	free(rpc);
 }
 

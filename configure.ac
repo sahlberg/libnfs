@@ -70,6 +70,26 @@ fi
 
 AC_SUBST(MAYBE_EXAMPLES)
 
+#option: examples
+AC_ARG_ENABLE([pthread],
+              [AC_HELP_STRING([--enable-pthread],
+                              [Build with pthread multithreading support])],
+	      [ENABLE_PTHREAD=$enableval],
+	      [ENABLE_THREAD="no"])
+if test x$ENABLE_PTHREAD = xyes; then
+# check for lpthread
+AC_CACHE_CHECK([for pthread support],libnfs_cv_HAVE_PTHREAD,[
+AC_TRY_COMPILE([
+#include <pthread.h>],
+[pthread_t thread1, thread2;],
+libnfs_cv_HAVE_PTHREAD=yes,libnfs_cv_HAVE_PTHREAD=no)])
+if test x"$libnfs_cv_HAVE_PTHREAD" = x"yes"; then
+    AC_DEFINE(HAVE_PTHREAD,1,[Whether we have pthread support])
+    AC_DEFINE(HAVE_MULTITHREADING,1,[Whether we have multithreading support])
+fi
+fi
+AM_CONDITIONAL([HAVE_PTHREAD], [test $libnfs_cv_HAVE_PTHREAD = yes])
+
 AC_MSG_CHECKING(whether SO_BINDTODEVICE is available)
 AC_TRY_COMPILE([#include <net/if.h>], [
         int i = SO_BINDTODEVICE;

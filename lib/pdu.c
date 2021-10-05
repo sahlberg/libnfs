@@ -160,7 +160,13 @@ struct rpc_pdu *rpc_allocate_pdu2(struct rpc_context *rpc, int program, int vers
 		return NULL;
 	}
 	memset(pdu, 0, pdu_size);
+#ifdef HAVE_MULTITHREADING
+        nfs_mt_mutex_lock(&rpc->rpc_mutex);
+#endif /* HAVE_MULTITHREADING */
 	pdu->xid                = rpc->xid++;
+#ifdef HAVE_MULTITHREADING
+        nfs_mt_mutex_unlock(&rpc->rpc_mutex);
+#endif /* HAVE_MULTITHREADING */
 	pdu->cb                 = cb;
 	pdu->private_data       = private_data;
 	pdu->zdr_decode_fn      = zdr_decode_fn;
@@ -222,7 +228,13 @@ void rpc_free_pdu(struct rpc_context *rpc, struct rpc_pdu *pdu)
 
 void rpc_set_next_xid(struct rpc_context *rpc, uint32_t xid)
 {
+#ifdef HAVE_MULTITHREADING
+        nfs_mt_mutex_lock(&rpc->rpc_mutex);
+#endif /* HAVE_MULTITHREADING */
 	rpc->xid = xid;
+#ifdef HAVE_MULTITHREADING
+        nfs_mt_mutex_unlock(&rpc->rpc_mutex);
+#endif /* HAVE_MULTITHREADING */
 }
 
 int rpc_queue_pdu(struct rpc_context *rpc, struct rpc_pdu *pdu)
@@ -263,8 +275,14 @@ int rpc_queue_pdu(struct rpc_context *rpc, struct rpc_pdu *pdu)
 		}
 
 		hash = rpc_hash_xid(pdu->xid);
+#ifdef HAVE_MULTITHREADING
+		nfs_mt_mutex_lock(&rpc->rpc_mutex);
+#endif /* HAVE_MULTITHREADING */
 		rpc_enqueue(&rpc->waitpdu[hash], pdu);
 		rpc->waitpdu_len++;
+#ifdef HAVE_MULTITHREADING
+		nfs_mt_mutex_unlock(&rpc->rpc_mutex);
+#endif /* HAVE_MULTITHREADING */
 		return 0;
 	}
 
@@ -274,7 +292,13 @@ int rpc_queue_pdu(struct rpc_context *rpc, struct rpc_pdu *pdu)
 	zdr_int(&pdu->zdr, &recordmarker);
 
 	pdu->outdata.size = size;
+#ifdef HAVE_MULTITHREADING
+        nfs_mt_mutex_lock(&rpc->rpc_mutex);
+#endif /* HAVE_MULTITHREADING */
 	rpc_enqueue(&rpc->outqueue, pdu);
+#ifdef HAVE_MULTITHREADING
+        nfs_mt_mutex_unlock(&rpc->rpc_mutex);
+#endif /* HAVE_MULTITHREADING */
 
 	return 0;
 }
@@ -560,6 +584,9 @@ int rpc_process_pdu(struct rpc_context *rpc, char *buf, int size)
 
 	/* Look up the transaction in a hash table of our requests */
 	hash = rpc_hash_xid(xid);
+#ifdef HAVE_MULTITHREADING
+        nfs_mt_mutex_lock(&rpc->rpc_mutex);
+#endif /* HAVE_MULTITHREADING */
 	q = &rpc->waitpdu[hash];
 
 	/* Follow the hash chain.  Linear traverse singly-linked list,
@@ -580,6 +607,9 @@ int rpc_process_pdu(struct rpc_context *rpc, char *buf, int size)
 				prev_pdu->next = pdu->next;
 			rpc->waitpdu_len--;
 		}
+#ifdef HAVE_MULTITHREADING
+                nfs_mt_mutex_unlock(&rpc->rpc_mutex);
+#endif /* HAVE_MULTITHREADING */
 		if (rpc_process_reply(rpc, pdu, &zdr) != 0) {
 			rpc_set_error(rpc, "rpc_procdess_reply failed");
 		}
@@ -592,6 +622,9 @@ int rpc_process_pdu(struct rpc_context *rpc, char *buf, int size)
 		}
 		return 0;
 	}
+#ifdef HAVE_MULTITHREADING
+        nfs_mt_mutex_unlock(&rpc->rpc_mutex);
+#endif /* HAVE_MULTITHREADING */
 
 	zdr_destroy(&zdr);
 	if (reasbuf != NULL) {

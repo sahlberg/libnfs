@@ -52,6 +52,8 @@ nfs_mknod
 nfs_mknod_async
 nfs_mount
 nfs_mount_async
+nfs_mt_service_thread_start
+nfs_mt_service_thread_stop
 nfs_open
 nfs_open_async
 nfs_open2

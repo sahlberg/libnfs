@@ -4,6 +4,11 @@ if HAVE_TALLOC_TEVENT
 noinst_PROGRAMS += nfs4-cat-talloc
 endif
 
+if HAVE_PTHREAD
+LIBS += -lpthread
+noinst_PROGRAMS += nfs-pthreads-example
+endif
+
 AM_CPPFLAGS = \
 	-I$(abs_top_srcdir)/include \
 	-I$(abs_top_srcdir)/include/nfsc \
@@ -28,3 +33,4 @@ nfs4_cat_LDADD = $(COMMON_LIBS) -levent
 nfs4_cat_talloc_LDADD = $(COMMON_LIBS) -ltevent -ltalloc
 portmap_client_LDADD = $(COMMON_LIBS)
 portmap_server_LDADD = $(COMMON_LIBS) -levent
+nfs_pthreads_example_LDADD = $(COMMON_LIBS)
