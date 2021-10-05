@@ -43,6 +43,7 @@
 #define IFNAMSIZ 16
 #endif
 
+#include "libnfs-multithreading.h"
 #include "libnfs-zdr.h"
 #include "../nfs/libnfs-raw-nfs.h"
 #include "../nfs4/libnfs-raw-nfs4.h"
@@ -131,6 +132,9 @@ struct rpc_context {
 	struct sockaddr_storage udp_src;
 	struct rpc_queue waitpdu[HASHES];
 	uint32_t waitpdu_len;
+#ifdef HAVE_MULTITHREADING
+        libnfs_mutex_t rpc_mutex;
+#endif /* HAVE_MULTITHREADING */
 
 	uint32_t inpos;
 	char rm_buf[4];
@@ -306,6 +310,11 @@ struct nfs_context {
         verifier4 setclientid_confirm;
         uint32_t seqid;
         int has_lock_owner;
+#ifdef HAVE_MULTITHREADING
+        int multithreading_enabled;
+        libnfs_mutex_t nfs_mutex;
+        libnfs_thread_t service_thread;
+#endif /* HAVE_MULTITHREADING */
 };
 
 typedef int (*continue_func)(struct nfs_context *nfs, struct nfs_attr *attr,

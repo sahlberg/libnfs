@@ -1,5 +1,9 @@
 bin_PROGRAMS = nfs-cat nfs-ls
 
+if HAVE_PTHREAD
+LIBS += -lpthread
+endif
+
 if !HAVE_WIN32
 bin_PROGRAMS += nfs-cp nfs-stat
 endif

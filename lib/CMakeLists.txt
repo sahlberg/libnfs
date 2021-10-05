@@ -2,6 +2,7 @@ set(SOURCES init.c
             libnfs.c
             libnfs-sync.c
             libnfs-zdr.c
+            multithreading.c
             nfs_v3.c
             nfs_v4.c
             pdu.c

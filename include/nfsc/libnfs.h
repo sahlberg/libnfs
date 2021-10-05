@@ -1991,6 +1991,20 @@ EXTERN void nfs4_set_client_name(struct nfs_context *nfs, const char *id);
  */
 EXTERN void nfs4_set_verifier(struct nfs_context *nfs, const char *verifier);
 
+/*
+ * MULTITHREADING
+ */        
+/*
+ * This function starts a separate service thread for multithreading support.
+ * When multithreading is enabled the eventdriven async API is no longer
+ * supported and you can only use the synchronous API.
+ */
+EXTERN int nfs_mt_service_thread_start(struct nfs_context *nfs);
+/*
+ * Shutdown multithreading support.
+ */
+EXTERN void nfs_mt_service_thread_stop(struct nfs_context *nfs);
+        
 #ifdef __cplusplus
 }
 #endif

@@ -1,0 +1,56 @@
+/* -*-  mode:c; tab-width:8; c-basic-offset:8; indent-tabs-mode:nil;  -*- */
+/*
+   Copyright (C) 2021 by Ronnie Sahlberg <ronniesahlberg@gmail.com>
+
+   This program is free software; you can redistribute it and/or modify
+   it under the terms of the GNU Lesser General Public License as published by
+   the Free Software Foundation; either version 2.1 of the License, or
+   (at your option) any later version.
+
+   This program is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+   GNU Lesser General Public License for more details.
+
+   You should have received a copy of the GNU Lesser General Public License
+   along with this program; if not, see <http://www.gnu.org/licenses/>.
+*/
+
+#ifndef _LIBNFS_MULTITHREADING_H_
+#define _LIBNFS_MULTITHREADING_H_
+
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#ifdef HAVE_MULTITHREADING
+
+#ifdef HAVE_PTHREAD
+#include <semaphore.h>
+#include <pthread.h>
+typedef pthread_t libnfs_thread_t;
+typedef pthread_mutex_t libnfs_mutex_t;
+typedef sem_t libnfs_sem_t;
+#endif /* HAVE_PTHREAD */
+
+int nfs_mt_mutex_init(libnfs_mutex_t *mutex);
+int nfs_mt_mutex_destroy(libnfs_mutex_t *mutex);
+int nfs_mt_mutex_lock(libnfs_mutex_t *mutex);
+int nfs_mt_mutex_unlock(libnfs_mutex_t *mutex);
+
+int nfs_mt_sem_init(libnfs_sem_t *sem, int value);
+int nfs_mt_sem_destroy(libnfs_sem_t *sem);
+int nfs_mt_sem_post(libnfs_sem_t *sem);
+int nfs_mt_sem_wait(libnfs_sem_t *sem);
+
+#endif /* HAVE_MULTITHREADING */
+        
+#ifdef __cplusplus
+}
+#endif
+
+#endif /* !_LIBNFS_MULTITHREADING_H_ */

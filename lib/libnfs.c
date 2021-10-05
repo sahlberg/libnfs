@@ -542,6 +542,9 @@ nfs_init_context(void)
                  (int)time(NULL));
         nfs4_set_client_name(nfs, client_name);
 
+#ifdef HAVE_MULTITHREADING
+        nfs_mt_mutex_init(&nfs->nfs_mutex);
+#endif /* HAVE_MULTITHREADING */
 	return nfs;
 }
 
@@ -594,6 +597,9 @@ nfs_destroy_context(struct nfs_context *nfs)
 		nfs_free_nfsdir(nfsdir);
 	}
 
+#ifdef HAVE_MULTITHREADING
+        nfs_mt_mutex_destroy(&nfs->nfs_mutex);
+#endif /* HAVE_MULTITHREADING */
 	free(nfs);
 }
 
@@ -1917,6 +1923,9 @@ nfs_set_error(struct nfs_context *nfs, char *error_string, ...)
         va_list ap;
 	char *str = NULL;
 
+#ifdef HAVE_MULTITHREADING
+        nfs_mt_mutex_lock(&nfs->rpc->rpc_mutex);
+#endif /* HAVE_MULTITHREADING */
         va_start(ap, error_string);
 	str = malloc(1024);
 	vsnprintf(str, 1024, error_string, ap);
@@ -1925,6 +1934,9 @@ nfs_set_error(struct nfs_context *nfs, char *error_string, ...)
 	}
 	nfs->rpc->error_string = str;
 	va_end(ap);
+#ifdef HAVE_MULTITHREADING
+        nfs_mt_mutex_unlock(&nfs->rpc->rpc_mutex);
+#endif /* HAVE_MULTITHREADING */
 }
 
 struct mount_cb_data {
