@@ -257,6 +257,11 @@ nfs_service(struct nfs_context *nfs, int revents)
 char *
 nfs_get_error(struct nfs_context *nfs)
 {
+#ifdef HAVE_MULTITHREADING
+        if(nfs->multithreading_enabled) {
+                return "nfs_get_error disabled while multithreading is active";
+        }
+#endif /* HAVE_MULTITHREADING */
 	return rpc_get_error(nfs->rpc);
 };
 
