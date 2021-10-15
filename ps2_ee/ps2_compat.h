@@ -30,7 +30,6 @@
 #include <ps2ip.h>
 
 typedef unsigned long int fsfilcnt_t;
-typedef unsigned long int fsblkcnt_t;
 
 #define getservbyport(a,b) NULL
 #define major(a) 0
@@ -64,8 +63,6 @@ struct statvfs {
 #define close(a) lwip_close(a)
 
 #define getlogin_r(a,b) ENXIO
-#define srandom srand
-#define random rand
 
 #define POLLIN      0x0001    /* There is data to read */
 #define POLLPRI     0x0002    /* There is urgent data to read */

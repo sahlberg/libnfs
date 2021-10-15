@@ -351,7 +351,7 @@ rpc_read_from_socket(struct rpc_context *rpc)
                                                       "buffer of %d bytes for "
                                                       "pdu, errno:%d. Closing "
                                                       "socket.",
-                                                      pdu_size, errno);
+                                                      (int)pdu_size, errno);
 					return -1;
 				}
 				memcpy(rpc->inbuf, &rpc->rm_buf, 4);

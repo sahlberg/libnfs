@@ -410,7 +410,8 @@ nfs_pntoh64(const uint32_t *buf)
 {
         uint64_t val;
 
-        val   = ntohl(*(uint32_t *)(void *)buf++);
+        val   = ntohl(*(uint32_t *)(void *)buf);
+        buf++;
         val <<= 32;
         val  |= ntohl(*(uint32_t *)(void *)buf);
 

@@ -239,7 +239,8 @@ void rpc_set_next_xid(struct rpc_context *rpc, uint32_t xid)
 
 int rpc_queue_pdu(struct rpc_context *rpc, struct rpc_pdu *pdu)
 {
-	int size, recordmarker;
+	int size;
+        int32_t recordmarker;
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
@@ -472,7 +473,8 @@ static int rpc_process_call(struct rpc_context *rpc, ZDR *zdr)
         if (endpoint == NULL) {
 		rpc_set_error(rpc, "No endpoint found for CALL "
                               "program:0x%08x version:%d\n",
-                              call.body.cbody.prog, call.body.cbody.vers);
+                              (int)call.body.cbody.prog,
+                              (int)call.body.cbody.vers);
                 if (!found_program) {
                         return rpc_send_error_reply(rpc, &call, PROG_UNAVAIL,
                                                     0, 0);
@@ -502,7 +504,8 @@ int rpc_process_pdu(struct rpc_context *rpc, char *buf, int size)
 	struct rpc_pdu *pdu, *prev_pdu;
 	struct rpc_queue *q;
 	ZDR zdr;
-	int pos, recordmarker = 0;
+	int pos;
+        int32_t recordmarker = 0;
 	unsigned int hash;
 	uint32_t xid;
 	char *reasbuf = NULL;
@@ -572,7 +575,7 @@ int rpc_process_pdu(struct rpc_context *rpc, char *buf, int size)
         }
 
 	pos = zdr_getpos(&zdr);
-	if (zdr_int(&zdr, (int *)&xid) == 0) {
+	if (zdr_u_int(&zdr, &xid) == 0) {
 		rpc_set_error(rpc, "zdr_int reading xid failed");
 		zdr_destroy(&zdr);
 		if (reasbuf != NULL) {
