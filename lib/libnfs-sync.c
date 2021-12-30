@@ -270,13 +270,14 @@ mount_cb(int status, struct nfs_context *nfs, void *data, void *private_data)
 {
 	struct sync_cb_data *cb_data = private_data;
 
-        cb_data_is_finished(cb_data, status);
-
 	if (status < 0) {
 		nfs_set_error(nfs, "%s: %s",
                               __FUNCTION__, nfs_get_error(nfs));
-		return;
+                goto finished;
 	}
+
+ finished:
+        cb_data_is_finished(cb_data, status);
 }
 
 int
@@ -324,13 +325,14 @@ umount_cb(int status, struct nfs_context *nfs, void *data, void *private_data)
 {
 	struct sync_cb_data *cb_data = private_data;
 
-        cb_data_is_finished(cb_data, status);
-
 	if (status < 0) {
 		nfs_set_error(nfs, "%s: %s",
                               __FUNCTION__, nfs_get_error(nfs));
-		return;
+                goto finished;
 	}
+
+ finished:
+        cb_data_is_finished(cb_data, status);
 }
 
 int
@@ -378,18 +380,19 @@ stat_cb(int status, struct nfs_context *nfs, void *data, void *private_data)
 {
 	struct sync_cb_data *cb_data = private_data;
 
-        cb_data_is_finished(cb_data, status);
-
 	if (status < 0) {
 		nfs_set_error(nfs, "stat call failed with \"%s\"",
                               (char *)data);
-		return;
+                goto finished;
 	}
 #ifdef WIN32
 	memcpy(cb_data->return_data, data, sizeof(struct __stat64));
 #else
         memcpy(cb_data->return_data, data, sizeof(struct stat));
 #endif
+
+ finished:
+        cb_data_is_finished(cb_data, status);
 }
 
 int
@@ -423,14 +426,15 @@ stat64_cb(int status, struct nfs_context *nfs, void *data, void *private_data)
 {
 	struct sync_cb_data *cb_data = private_data;
 
-        cb_data_is_finished(cb_data, status);
-
 	if (status < 0) {
 		nfs_set_error(nfs, "stat call failed with \"%s\"",
                               (char *)data);
-		return;
+                goto finished;
 	}
 	memcpy(cb_data->return_data, data, sizeof(struct nfs_stat_64));
+
+ finished:
+        cb_data_is_finished(cb_data, status);
 }
 
 int
@@ -488,17 +492,18 @@ open_cb(int status, struct nfs_context *nfs, void *data, void *private_data)
 	struct sync_cb_data *cb_data = private_data;
 	struct nfsfh *fh, **nfsfh;
 
-        cb_data_is_finished(cb_data, status);
-
 	if (status < 0) {
 		nfs_set_error(nfs, "open call failed with \"%s\"",
                               (char *)data);
-		return;
+                goto finished;
 	}
 
 	fh    = data;
 	nfsfh = cb_data->return_data;
 	*nfsfh = fh;
+
+ finished:
+        cb_data_is_finished(cb_data, status);
 }
 
 int
@@ -557,13 +562,14 @@ chdir_cb(int status, struct nfs_context *nfs, void *data, void *private_data)
 {
 	struct sync_cb_data *cb_data = private_data;
 
-        cb_data_is_finished(cb_data, status);
-
 	if (status < 0) {
 		nfs_set_error(nfs, "chdir call failed with \"%s\"",
                               (char *)data);
-		return;
+                goto finished;
 	}
+
+ finished:
+        cb_data_is_finished(cb_data, status);
 }
 
 int
@@ -598,16 +604,17 @@ pread_cb(int status, struct nfs_context *nfs, void *data, void *private_data)
 	struct sync_cb_data *cb_data = private_data;
 	char *buffer;
 
-        cb_data_is_finished(cb_data, status);
-
 	if (status < 0) {
 		nfs_set_error(nfs, "%s call failed with \"%s\"", cb_data->call,
                               (char *)data);
-		return;
+                goto finished;
 	}
 
 	buffer = cb_data->return_data;
 	memcpy(buffer, (char *)data, status);
+
+ finished:
+        cb_data_is_finished(cb_data, status);
 }
 
 int
@@ -672,13 +679,14 @@ close_cb(int status, struct nfs_context *nfs, void *data, void *private_data)
 {
 	struct sync_cb_data *cb_data = private_data;
 
-        cb_data_is_finished(cb_data, status);
-
 	if (status < 0) {
 		nfs_set_error(nfs, "close call failed with \"%s\"",
                               (char *)data);
-		return;
+                goto finished;
 	}
+
+ finished:
+        cb_data_is_finished(cb_data, status);
 }
 
 int
@@ -769,11 +777,14 @@ pwrite_cb(int status, struct nfs_context *nfs, void *data, void *private_data)
 {
 	struct sync_cb_data *cb_data = private_data;
 
-        cb_data_is_finished(cb_data, status);
-
-	if (status < 0)
+	if (status < 0) {
 		nfs_set_error(nfs, "%s call failed with \"%s\"",
                               cb_data->call, (char *)data);
+                goto finished;
+	}
+
+ finished:
+        cb_data_is_finished(cb_data, status);
 }
 
 int
@@ -837,13 +848,14 @@ fsync_cb(int status, struct nfs_context *nfs, void *data, void *private_data)
 {
 	struct sync_cb_data *cb_data = private_data;
 
-        cb_data_is_finished(cb_data, status);
-
 	if (status < 0) {
 		nfs_set_error(nfs, "fsync call failed with \"%s\"",
                               (char *)data);
-		return;
+                goto finished;
 	}
+
+ finished:
+        cb_data_is_finished(cb_data, status);
 }
 
 int
@@ -878,13 +890,14 @@ ftruncate_cb(int status, struct nfs_context *nfs, void *data,
 {
 	struct sync_cb_data *cb_data = private_data;
 
-        cb_data_is_finished(cb_data, status);
-
 	if (status < 0) {
 		nfs_set_error(nfs, "ftruncate call failed with \"%s\"",
                               (char *)data);
-		return;
+                goto finished;
 	}
+
+ finished:
+        cb_data_is_finished(cb_data, status);
 }
 
 int
@@ -920,13 +933,14 @@ truncate_cb(int status, struct nfs_context *nfs, void *data, void *private_data)
 {
 	struct sync_cb_data *cb_data = private_data;
 
-        cb_data_is_finished(cb_data, status);
-
 	if (status < 0) {
 		nfs_set_error(nfs, "truncate call failed with \"%s\"",
                               (char *)data);
-		return;
+                goto finished;
 	}
+
+ finished:
+        cb_data_is_finished(cb_data, status);
 }
 
 int nfs_truncate(struct nfs_context *nfs, const char *path, uint64_t length)
@@ -959,13 +973,14 @@ mkdir_cb(int status, struct nfs_context *nfs, void *data, void *private_data)
 {
 	struct sync_cb_data *cb_data = private_data;
 
-        cb_data_is_finished(cb_data, status);
-
 	if (status < 0) {
 		nfs_set_error(nfs, "mkdir call failed with \"%s\"",
                               (char *)data);
-		return;
+                goto finished;
 	}
+
+ finished:
+        cb_data_is_finished(cb_data, status);
 }
 
 int
@@ -1022,13 +1037,14 @@ rmdir_cb(int status, struct nfs_context *nfs, void *data, void *private_data)
 {
 	struct sync_cb_data *cb_data = private_data;
 
-        cb_data_is_finished(cb_data, status);
-
 	if (status < 0) {
 		nfs_set_error(nfs, "rmdir call failed with \"%s\"",
                               (char *)data);
-		return;
+                goto finished;
 	}
+
+ finished:
+        cb_data_is_finished(cb_data, status);
 }
 
 int nfs_rmdir(struct nfs_context *nfs, const char *path)
@@ -1063,17 +1079,18 @@ creat_cb(int status, struct nfs_context *nfs, void *data, void *private_data)
 	struct sync_cb_data *cb_data = private_data;
 	struct nfsfh *fh, **nfsfh;
 
-        cb_data_is_finished(cb_data, status);
-
 	if (status < 0) {
 		nfs_set_error(nfs, "creat call failed with \"%s\"",
                               (char *)data);
-		return;
+                goto finished;
 	}
 
 	fh    = data;
 	nfsfh = cb_data->return_data;
 	*nfsfh = fh;
+
+ finished:
+        cb_data_is_finished(cb_data, status);
 }
 
 int
@@ -1115,13 +1132,14 @@ mknod_cb(int status, struct nfs_context *nfs, void *data, void *private_data)
 {
 	struct sync_cb_data *cb_data = private_data;
 
-        cb_data_is_finished(cb_data, status);
-
 	if (status < 0) {
 		nfs_set_error(nfs, "mknod call failed with \"%s\"",
                               (char *)data);
-		return;
+                goto finished;
 	}
+
+ finished:
+        cb_data_is_finished(cb_data, status);
 }
 
 int
@@ -1155,13 +1173,14 @@ unlink_cb(int status, struct nfs_context *nfs, void *data, void *private_data)
 {
 	struct sync_cb_data *cb_data = private_data;
 
-        cb_data_is_finished(cb_data, status);
-
 	if (status < 0) {
 		nfs_set_error(nfs, "unlink call failed with \"%s\"",
                               (char *)data);
-		return;
+                goto finished;
 	}
+
+ finished:
+        cb_data_is_finished(cb_data, status);
 }
 
 int
@@ -1197,17 +1216,18 @@ opendir_cb(int status, struct nfs_context *nfs, void *data, void *private_data)
 	struct sync_cb_data *cb_data = private_data;
 	struct nfsdir *dir, **nfsdir;
 
-        cb_data_is_finished(cb_data, status);
-
 	if (status < 0) {
 		nfs_set_error(nfs, "opendir call failed with \"%s\"",
                               (char *)data);
-		return;
+                goto finished;
 	}
 
 	dir     = data;
 	nfsdir  = cb_data->return_data;
 	*nfsdir = dir;
+
+ finished:
+        cb_data_is_finished(cb_data, status);
 }
 
 int
@@ -1242,17 +1262,18 @@ lseek_cb(int status, struct nfs_context *nfs, void *data, void *private_data)
 {
 	struct sync_cb_data *cb_data = private_data;
 
-        cb_data_is_finished(cb_data, status);
-
 	if (status < 0) {
 		nfs_set_error(nfs, "lseek call failed with \"%s\"",
                               nfs_get_error(nfs));
-		return;
+                goto finished;
 	}
 
 	if (cb_data->return_data != NULL) {
 		memcpy(cb_data->return_data, data, sizeof(uint64_t));
 	}
+
+ finished:
+        cb_data_is_finished(cb_data, status);
 }
 
 int
@@ -1288,13 +1309,14 @@ lockf_cb(int status, struct nfs_context *nfs, void *data, void *private_data)
 {
 	struct sync_cb_data *cb_data = private_data;
 
-        cb_data_is_finished(cb_data, status);
-
 	if (status < 0) {
 		nfs_set_error(nfs, "lockf call failed with \"%s\"",
                               nfs_get_error(nfs));
-		return;
+                goto finished;
 	}
+
+ finished:
+        cb_data_is_finished(cb_data, status);
 }
 
 int
@@ -1329,13 +1351,14 @@ fcntl_cb(int status, struct nfs_context *nfs, void *data, void *private_data)
 {
 	struct sync_cb_data *cb_data = private_data;
 
-        cb_data_is_finished(cb_data, status);
-
 	if (status < 0) {
 		nfs_set_error(nfs, "fcntl call failed with \"%s\"",
                               nfs_get_error(nfs));
-		return;
+                goto finished;
 	}
+
+ finished:
+        cb_data_is_finished(cb_data, status);
 }
 
 int
@@ -1370,15 +1393,16 @@ statvfs_cb(int status, struct nfs_context *nfs, void *data, void *private_data)
 {
 	struct sync_cb_data *cb_data = private_data;
 
-        cb_data_is_finished(cb_data, status);
-
 	if (status < 0) {
 		nfs_set_error(nfs, "statvfs call failed with \"%s\"",
                               (char *)data);
-		return;
+                goto finished;
 	}
 
 	memcpy(cb_data->return_data, data, sizeof(struct statvfs));
+
+ finished:
+        cb_data_is_finished(cb_data, status);
 }
 
 int
@@ -1413,15 +1437,16 @@ statvfs64_cb(int status, struct nfs_context *nfs, void *data,
 {
 	struct sync_cb_data *cb_data = private_data;
 
-        cb_data_is_finished(cb_data, status);
-
 	if (status < 0) {
 		nfs_set_error(nfs, "statvfs64 call failed with \"%s\"",
                               (char *)data);
-		return;
+                goto finished;
 	}
 
 	memcpy(cb_data->return_data, data, sizeof(struct nfs_statvfs_64));
+
+ finished:
+        cb_data_is_finished(cb_data, status);
 }
 
 int
@@ -1456,21 +1481,22 @@ readlink_cb(int status, struct nfs_context *nfs, void *data, void *private_data)
 {
 	struct sync_cb_data *cb_data = private_data;
 
-        cb_data_is_finished(cb_data, status);
-
 	if (status < 0) {
 		nfs_set_error(nfs, "readlink call failed with \"%s\"",
                               (char *)data);
-		return;
+                goto finished;
 	}
 
 	if (strlen(data) > (size_t)cb_data->return_int) {
 		nfs_set_error(nfs, "Too small buffer for readlink");
 		cb_data->status = -ENAMETOOLONG;
-		return;
+                goto finished;
 	}
 
 	memcpy(cb_data->return_data, data, strlen(data)+1);
+
+ finished:
+        cb_data_is_finished(cb_data, status);
 }
 
 int
@@ -1504,23 +1530,24 @@ readlink2_cb(int status, struct nfs_context *nfs, void *data, void *private_data
 	char **bufptr;
 	char *buf;
 
-        cb_data_is_finished(cb_data, status);
-
 	if (status < 0) {
 		nfs_set_error(nfs, "readlink call failed with \"%s\"",
                               (char *)data);
-		return;
+                goto finished;
 	}
 
 	buf = strdup(data);
 	if (buf == NULL) {
 		cb_data->status = errno ? -errno : -ENOMEM;
-		return;
+                goto finished;
 	}
 
 	bufptr = cb_data->return_data;
 	if (bufptr)
 		*bufptr = buf;
+
+ finished:
+        cb_data_is_finished(cb_data, status);
 }
 
 int
@@ -1556,13 +1583,14 @@ chmod_cb(int status, struct nfs_context *nfs, void *data, void *private_data)
 {
 	struct sync_cb_data *cb_data = private_data;
 
-        cb_data_is_finished(cb_data, status);
-
 	if (status < 0) {
 		nfs_set_error(nfs, "chmod call failed with \"%s\"",
                               (char *)data);
-		return;
+                goto finished;
 	}
+
+ finished:
+        cb_data_is_finished(cb_data, status);
 }
 
 int
@@ -1620,13 +1648,14 @@ fchmod_cb(int status, struct nfs_context *nfs, void *data, void *private_data)
 {
 	struct sync_cb_data *cb_data = private_data;
 
-        cb_data_is_finished(cb_data, status);
-
 	if (status < 0) {
 		nfs_set_error(nfs, "fchmod call failed with \"%s\"",
                               (char *)data);
-		return;
+                goto finished;
 	}
+
+ finished:
+        cb_data_is_finished(cb_data, status);
 }
 
 int
@@ -1662,13 +1691,14 @@ chown_cb(int status, struct nfs_context *nfs, void *data, void *private_data)
 {
 	struct sync_cb_data *cb_data = private_data;
 
-        cb_data_is_finished(cb_data, status);
-
 	if (status < 0) {
 		nfs_set_error(nfs, "chown call failed with \"%s\"",
                               (char *)data);
-		return;
+                goto finished;
 	}
+
+ finished:
+        cb_data_is_finished(cb_data, status);
 }
 
 int
@@ -1726,13 +1756,14 @@ fchown_cb(int status, struct nfs_context *nfs, void *data, void *private_data)
 {
 	struct sync_cb_data *cb_data = private_data;
 
-        cb_data_is_finished(cb_data, status);
-
 	if (status < 0) {
 		nfs_set_error(nfs, "fchown call failed with \"%s\"",
                               (char *)data);
-		return;
+                goto finished;
 	}
+
+ finished:
+        cb_data_is_finished(cb_data, status);
 }
 
 int
@@ -1767,13 +1798,14 @@ utimes_cb(int status, struct nfs_context *nfs, void *data, void *private_data)
 {
 	struct sync_cb_data *cb_data = private_data;
 
-        cb_data_is_finished(cb_data, status);
-
 	if (status < 0) {
 		nfs_set_error(nfs, "utimes call failed with \"%s\"",
                               (char *)data);
-		return;
+                goto finished;
 	}
+
+ finished:
+        cb_data_is_finished(cb_data, status);
 }
 
 int
@@ -1830,13 +1862,14 @@ utime_cb(int status, struct nfs_context *nfs, void *data, void *private_data)
 {
 	struct sync_cb_data *cb_data = private_data;
 
-        cb_data_is_finished(cb_data, status);
-
 	if (status < 0) {
 		nfs_set_error(nfs, "utime call failed with \"%s\"",
                               (char *)data);
-		return;
+                goto finished;
 	}
+
+ finished:
+        cb_data_is_finished(cb_data, status);
 }
 
 int
@@ -1869,13 +1902,14 @@ access_cb(int status, struct nfs_context *nfs, void *data, void *private_data)
 {
 	struct sync_cb_data *cb_data = private_data;
 
-        cb_data_is_finished(cb_data, status);
-
 	if (status < 0) {
 		nfs_set_error(nfs, "access call failed with \"%s\"",
                               (char *)data);
-		return;
+                goto finished;
 	}
+
+ finished:
+        cb_data_is_finished(cb_data, status);
 }
 
 int
@@ -1910,13 +1944,14 @@ access2_cb(int status, struct nfs_context *nfs, void *data, void *private_data)
 {
 	struct sync_cb_data *cb_data = private_data;
 
-        cb_data_is_finished(cb_data, status);
-
 	if (status < 0) {
 		nfs_set_error(nfs, "access2 call failed with \"%s\"",
                               (char *)data);
-		return;
+                goto finished;
 	}
+
+ finished:
+        cb_data_is_finished(cb_data, status);
 }
 
 int
@@ -1951,13 +1986,14 @@ symlink_cb(int status, struct nfs_context *nfs, void *data, void *private_data)
 {
 	struct sync_cb_data *cb_data = private_data;
 
-        cb_data_is_finished(cb_data, status);
-
 	if (status < 0) {
 		nfs_set_error(nfs, "symlink call failed with \"%s\"",
 			      (char *)data);
-		return;
+                goto finished;
 	}
+
+ finished:
+        cb_data_is_finished(cb_data, status);
 }
 
 int
@@ -1992,13 +2028,14 @@ rename_cb(int status, struct nfs_context *nfs, void *data, void *private_data)
 {
 	struct sync_cb_data *cb_data = private_data;
 
-        cb_data_is_finished(cb_data, status);
-
 	if (status < 0) {
 		nfs_set_error(nfs, "rename call failed with \"%s\"",
                               (char *)data);
-		return;
+                goto finished;
 	}
+
+ finished:
+        cb_data_is_finished(cb_data, status);
 }
 
 int
@@ -2033,13 +2070,14 @@ link_cb(int status, struct nfs_context *nfs, void *data, void *private_data)
 {
 	struct sync_cb_data *cb_data = private_data;
 
-        cb_data_is_finished(cb_data, status);
-
 	if (status < 0) {
 		nfs_set_error(nfs, "link call failed with \"%s\"",
                               (char *)data);
-		return;
+                goto finished;
 	}
+
+ finished:
+        cb_data_is_finished(cb_data, status);
 }
 
 int
@@ -2086,19 +2124,17 @@ nfs4_getacl_cb(int status, struct nfs_context *nfs, void *data, void *private_da
         fattr4_acl *dst = cb_data->return_data;
         int i;
 
-        cb_data_is_finished(cb_data, status);
-
 	if (status < 0) {
 		nfs_set_error(nfs, "getacl call failed with \"%s\"",
                               (char *)data);
-		return;
+                goto finished;
 	}
         dst->fattr4_acl_len = src->fattr4_acl_len;
         dst->fattr4_acl_val = calloc(dst->fattr4_acl_len, sizeof(nfsace4));
         if (dst->fattr4_acl_val == NULL) {
                 cb_data->status = -ENOMEM;
 		nfs_set_error(nfs, "Failed to allocate fattr4_acl_val");
-		return;
+                goto finished;
         }                
         for (i = 0; i < dst->fattr4_acl_len; i++) {
                 dst->fattr4_acl_val[i].type = src->fattr4_acl_val[i].type;
@@ -2110,12 +2146,15 @@ nfs4_getacl_cb(int status, struct nfs_context *nfs, void *data, void *private_da
                         cb_data->status = -ENOMEM;
                         nfs4_acl_free(dst);
                         nfs_set_error(nfs, "Failed to allocate acl name");
-                        return;
+                        goto finished;
                 }
                 memcpy(dst->fattr4_acl_val[i].who.utf8string_val,
                        src->fattr4_acl_val[i].who.utf8string_val,
                        dst->fattr4_acl_val[i].who.utf8string_len);
         }
+
+ finished:
+        cb_data_is_finished(cb_data, status);
 }
 
 int
@@ -2151,13 +2190,12 @@ mount_getexports_cb(struct rpc_context *mount_context, int status, void *data,
 
 	assert(mount_context->magic == RPC_CONTEXT_MAGIC);
 
-        cb_data_is_finished(cb_data, status);
 	cb_data->return_data = NULL;
 
 	if (status != 0) {
 		rpc_set_error(mount_context, "mount/export call failed with "
                               "\"%s\"", (char *)data);
-		return;
+                goto finished;
 	}
 
 	export = *(exports *)data;
@@ -2173,6 +2211,9 @@ mount_getexports_cb(struct rpc_context *mount_context, int status, void *data,
 
 		export = export->ex_next;
 	}
+
+ finished:
+        cb_data_is_finished(cb_data, status);
 }
 
 struct exportnode *
