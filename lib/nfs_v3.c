@@ -3995,6 +3995,98 @@ nfs3_fsync_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_cb cb,
 }
 
 static void
+nfs3_getacl_cb(struct rpc_context *rpc, int status, void *command_data,
+               void *private_data)
+{
+	GETACL3res *res;
+	GETACL3resok *resok;
+	struct nfs_cb_data *data = private_data;
+	struct nfs_context *nfs = data->nfs;
+        fattr3_acl acl;
+        int i;
+        
+	assert(rpc->magic == RPC_CONTEXT_MAGIC);
+
+	if (check_nfs3_error(nfs, status, data, command_data)) {
+		free_nfs_cb_data(data);
+		return;
+	}
+
+	res = command_data;
+	if (res->status != NFS3_OK) {
+		nfs_set_error(nfs, "NFS: GETACL of %s failed with "
+                              "%s(%d)", data->saved_path,
+                              nfsstat3_to_str(res->status),
+                              nfsstat3_to_errno(res->status));
+		data->cb(nfsstat3_to_errno(res->status), nfs,
+                         nfs_get_error(nfs), data->private_data);
+		free_nfs_cb_data(data);
+		return;
+	}
+        memset(&acl, 0, sizeof(acl));
+        resok = &res->GETACL3res_u.resok;
+        acl.ace_count = resok->ace_count;
+        if (acl.ace_count) {
+                acl.ace = calloc(acl.ace_count, sizeof(struct nfsacl_ace));
+                if (acl.ace == NULL) {
+                        data->cb(-ENOMEM, nfs, nfs_get_error(nfs), data->private_data);
+                        free_nfs_cb_data(data);
+                        return;
+                }
+                for (i = 0; i < acl.ace_count; i++) {
+                        acl.ace[i] = resok->ace.ace_val[i];
+                }
+        }
+        acl.default_ace_count = resok->default_ace_count;
+        if (acl.default_ace_count) {
+                acl.default_ace = calloc(acl.default_ace_count, sizeof(struct nfsacl_ace));
+                if (acl.default_ace == NULL) {
+                        data->cb(-ENOMEM, nfs, nfs_get_error(nfs), data->private_data);
+                        free_nfs_cb_data(data);
+                        return;
+                }
+                for (i = 0; i < acl.default_ace_count; i++) {
+                        acl.default_ace[i] = resok->default_ace.default_ace_val[i];
+                }
+        }
+	data->cb(0, nfs, &acl, data->private_data);
+	free_nfs_cb_data(data);
+}
+
+
+int
+nfs3_getacl_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_cb cb,
+                  void *private_data)
+{
+	struct nfs_cb_data *data;
+        GETACL3args args;
+
+        printf("getacl async\n");
+	data = malloc(sizeof(struct nfs_cb_data));
+	if (data == NULL) {
+		nfs_set_error(nfs, "out of memory: failed to allocate "
+                              "nfs_cb_data structure");
+		return -1;
+	}
+	memset(data, 0, sizeof(struct nfs_cb_data));
+	data->nfs          = nfs;
+	data->cb           = cb;
+	data->private_data = private_data;
+
+	memset(&args, 0, sizeof(GETACL3args));
+        args.dir.data.data_len = nfsfh->fh.len;
+        args.dir.data.data_val = nfsfh->fh.val;
+	args.mask = NFSACL_MASK_ACL_ENTRY|NFSACL_MASK_ACL_COUNT|NFSACL_MASK_ACL_DEFAULT_ENTRY|NFSACL_MASK_ACL_DEFAULT_COUNT;
+	if (rpc_nfsacl_getacl_async(nfs->rpc, nfs3_getacl_cb, &args, data) != 0) {
+		data->cb(-ENOMEM, nfs, nfs_get_error(nfs),
+                         data->private_data);
+		free_nfs_cb_data(data);
+		return -1;
+	}
+	return 0;
+}
+        
+static void
 nfs3_stat_1_cb(struct rpc_context *rpc, int status, void *command_data,
                void *private_data)
 {

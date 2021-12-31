@@ -121,6 +121,8 @@ nfsstat3_to_errno
 nfsstat3_to_str
 nfsstat4_to_errno
 nfsstat4_to_str
+nfs3_getacl
+nfs3_getacl_async
 nfs4_set_client_name
 nfs4_set_verifier
 nfs4_acl_free

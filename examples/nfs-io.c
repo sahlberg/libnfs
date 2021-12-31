@@ -55,6 +55,7 @@ WSADATA wsaData;
 #include "../include/nfsc/libnfs.h"
 #include "../include/nfsc/libnfs-raw.h"
 #include "../mount/libnfs-raw-mount.h"
+#include "../nfs/libnfs-raw-nfs.h"
 #include "../nfs4/libnfs-raw-nfs4.h"
 
 void print_usage(void)
@@ -62,6 +63,27 @@ void print_usage(void)
 	fprintf(stderr, "Usage: nfs-io [-?|--help|--usage] [stat|creat|trunc|unlink|mkdir|rmdir|touch|chmod] <url>\n");
 }
 
+
+static char *acl3_type(int type)
+{
+	switch(type) {
+	case NFSACL_TYPE_USER_OBJ: return "USER_OBJ";
+	case NFSACL_TYPE_USER: return "USER";
+	case NFSACL_TYPE_GROUP_OBJ: return "GROUP_OBJ";
+	case NFSACL_TYPE_GROUP: return "GROUP";
+	case NFSACL_TYPE_CLASS_OBJ: return "CLASS_OBJ";
+	case NFSACL_TYPE_CLASS: return "CLASS";
+	case NFSACL_TYPE_DEFAULT: return "DEFAULT";
+	case NFSACL_TYPE_DEFAULT_USER_OBJ: return "DEFAULT_USER_OBJ";
+	case NFSACL_TYPE_DEFAULT_USER: return "DEFAULT_USER";
+	case NFSACL_TYPE_DEFAULT_GROUP_OBJ: return "DEFAULT_GROUP_OBJ";
+	case NFSACL_TYPE_DEFAULT_GROUP: return "DEFAULT_GROUP";
+	case NFSACL_TYPE_DEFAULT_CLASS_OBJ: return "DEFAULT_CLASS_OBJ";
+	case NFSACL_TYPE_DEFAULT_OTHER_OBJ: return "DEFAULT_OTHER_OBJ";
+	}
+	return "Unknown ACE type";
+}
+    
 int main(int argc, char *argv[])
 {
 	int ret = 1;
@@ -69,6 +91,7 @@ int main(int argc, char *argv[])
 	struct nfsfh *nfsfh = NULL;
 	struct nfs_url *url = NULL;
 	fattr4_acl acl4;
+	fattr3_acl acl3;
 	int i;
 
 #ifdef WIN32
@@ -183,18 +206,34 @@ int main(int argc, char *argv[])
 			printf("\n");
 		}
 	} else if (!strncmp(argv[1], "acl", 3)) {
-		printf("ACL version:%d\n", nfs_get_version(nfs));
-		if (nfs_get_version(nfs) != NFS_V4) {
-			printf("acl support only for nfsv4 for now\n");
-			goto finished;
-		}
-
-		/* NFS_V4 */
 		ret = nfs_open(nfs, url->file, 0600, &nfsfh);
 		if (ret != 0) {
 			printf("failed to open %s\n", url->file);
 			goto finished;
 		}
+
+		printf("ACL version:%d\n", nfs_get_version(nfs));
+		
+		if (nfs_get_version(nfs) == NFS_V3) {
+			printf("Get v3 ACL\n");
+			memset(&acl3, 0, sizeof(fattr3_acl));
+			if (nfs3_getacl(nfs, nfsfh, &acl3) != 0) {
+				printf("nfs3_getacl_async failed\n");
+			}
+			printf("Number of ACEs: %d\n", acl3.ace_count);
+			for (i = 0; i < acl3.ace_count; i++) {
+				printf("%s(%d) ", acl3_type(acl3.ace[i].type), acl3.ace[i].type);
+				printf("Id: %d ", acl3.ace[i].id);
+				printf("Perm: 0x%x: %s%s%s\n", acl3.ace[i].perm,
+				       acl3.ace[i].perm & NFSACL_PERM_READ ? "READ ":"",
+				       acl3.ace[i].perm & NFSACL_PERM_WRITE ? "WRITE ":"",
+				       acl3.ace[i].perm & NFSACL_PERM_EXEC ? "EXEC ":"");
+			}
+			nfs3_acl_free(&acl3);
+			goto finished;
+		}
+
+		/* NFS_V4 */
 		if (nfs4_getacl(nfs, nfsfh, &acl4)) {
 			printf("Failed to read ACLs %s\n", nfs_get_error(nfs));
 			goto finished;

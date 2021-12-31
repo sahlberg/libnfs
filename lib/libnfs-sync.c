@@ -2104,6 +2104,67 @@ nfs_link(struct nfs_context *nfs, const char *oldpath, const char *newpath)
 
 
 /*
+ * nfs3_getacl()
+ */
+void nfs3_acl_free(fattr3_acl *nfs3acl)
+{
+	if (nfs3acl == NULL) {
+		return;
+	}
+	if (nfs3acl->ace) {
+		free(nfs3acl->ace);
+	}
+	if (nfs3acl->default_ace) {
+		free(nfs3acl->default_ace);
+	}
+}
+
+static void
+nfs3_getacl_cb(int status, struct nfs_context *nfs, void *data, void *private_data)
+{
+	struct sync_cb_data *cb_data = private_data;
+        fattr3_acl *src = data;
+        fattr3_acl *dst = cb_data->return_data;
+
+	if (status < 0) {
+		nfs_set_error(nfs, "getacl call failed with \"%s\"",
+                              (char *)data);
+                goto finished;
+	}
+        memcpy(dst, src, sizeof(fattr3_acl));
+        src->ace = NULL; /* steal the pointer to ACEs */
+        src->default_ace = NULL; /* steal the pointer to Default ACEs */
+
+ finished:
+        cb_data_is_finished(cb_data, status);
+}
+
+int
+nfs3_getacl(struct nfs_context *nfs, struct nfsfh *nfsfh,
+            fattr3_acl *acl)
+{
+	struct sync_cb_data cb_data;
+
+	cb_data.return_data = acl;
+        if (nfs_init_cb_data(nfs, &cb_data)) {
+                return -1;
+        }
+
+	if (nfs3_getacl_async(nfs, nfsfh, nfs3_getacl_cb, &cb_data) != 0) {
+		nfs_set_error(nfs, "nfs_getacl_async failed. %s",
+                              nfs_get_error(nfs));
+                nfs_destroy_cb_sem(&cb_data);
+		return -1;
+	}
+
+	wait_for_nfs_reply(nfs, &cb_data);
+        nfs_destroy_cb_sem(&cb_data);
+
+	return cb_data.status;
+}
+
+
+/*
  * nfs4_getacl()
  */
 void nfs4_acl_free(fattr4_acl *acl)
