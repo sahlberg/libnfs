@@ -17,6 +17,8 @@ nfs_close_async
 nfs_closedir
 nfs_creat
 nfs_creat_async
+nfs_create
+nfs_create_async
 nfs_destroy_context
 nfs_fchmod
 nfs_fchmod_async
@@ -26,6 +28,8 @@ nfs_fcntl
 nfs_fcntl_async
 nfs_fstat
 nfs_fstat_async
+nfs_fstat64
+nfs_fstat64_async
 nfs_fsync
 nfs_fsync_async
 nfs_ftruncate

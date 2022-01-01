@@ -85,6 +85,10 @@ struct rpc_context *rpc_init_context(void)
 
 	rpc->magic = RPC_CONTEXT_MAGIC;
 
+#ifdef HAVE_MULTITHREADING
+	nfs_mt_mutex_init(&rpc->rpc_mutex);
+#endif /* HAVE_MULTITHREADING */
+
  	rpc->auth = authunix_create_default();
 	if (rpc->auth == NULL) {
 		free(rpc);
@@ -116,9 +120,6 @@ struct rpc_context *rpc_init_context(void)
 
 	/* Default is no timeout */
 	rpc->timeout = -1;
-#ifdef HAVE_MULTITHREADING
-        nfs_mt_mutex_init(&rpc->rpc_mutex);
-#endif /* HAVE_MULTITHREADING */
 
 	return rpc;
 }

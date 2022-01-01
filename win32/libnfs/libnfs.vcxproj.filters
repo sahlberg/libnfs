@@ -83,6 +83,9 @@
     <ClCompile Include="..\..\nsm\nsm.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\lib\multithreading.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\nfs\libnfs-raw-nfs.h">
@@ -115,11 +118,14 @@
     <ClInclude Include="..\..\nlm\libnfs-raw-nlm.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\include\libnfs-multithreading.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="..\..\lib\libnfs-win32.def" />
   </ItemGroup>
-    <ItemGroup>
+  <ItemGroup>
     <ResourceCompile Include="version.rc" />
   </ItemGroup>
 </Project>

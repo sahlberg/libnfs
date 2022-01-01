@@ -34,6 +34,7 @@
 #define CADDR_T_DEFINED
 typedef char *caddr_t;
 #endif
+#include <winsock2.h>
 #endif
 
 #include <stdio.h>

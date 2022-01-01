@@ -37,6 +37,12 @@ typedef pthread_mutex_t libnfs_mutex_t;
 typedef sem_t libnfs_sem_t;
 #endif /* HAVE_PTHREAD */
 
+#ifdef WIN32
+typedef HANDLE libnfs_thread_t;
+typedef HANDLE libnfs_mutex_t;
+typedef HANDLE libnfs_sem_t;
+#endif
+
 int nfs_mt_mutex_init(libnfs_mutex_t *mutex);
 int nfs_mt_mutex_destroy(libnfs_mutex_t *mutex);
 int nfs_mt_mutex_lock(libnfs_mutex_t *mutex);

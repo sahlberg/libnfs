@@ -28,23 +28,27 @@
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <CharacterSet>MultiByte</CharacterSet>
+    <PlatformToolset>v143</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <CharacterSet>MultiByte</CharacterSet>
+    <PlatformToolset>v143</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>MultiByte</CharacterSet>
+    <PlatformToolset>v143</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>MultiByte</CharacterSet>
+    <PlatformToolset>v143</PlatformToolset>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
@@ -111,7 +115,7 @@
       </PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_USRDLL;_U_=;__STDC_CONSTANT_MACROS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>HAVE_MULTITHREADING;WIN32;NDEBUG;_WINDOWS;_USRDLL;_U_=;__STDC_CONSTANT_MACROS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>..\..\include\nfsc;..\..\include;..\..\.;..\..\win32;..\..\mount;..\..\nfs;..\..\nfs4;..\..\portmap;..\..\lib</AdditionalIncludeDirectories>
       <CompileAs>Default</CompileAs>
       <DisableSpecificWarnings>4996</DisableSpecificWarnings>
@@ -185,6 +189,7 @@
     <ClCompile Include="..\..\lib\libnfs-sync.c" />
     <ClCompile Include="..\..\lib\libnfs-zdr.c" />
     <ClCompile Include="..\..\lib\libnfs.c" />
+    <ClCompile Include="..\..\lib\multithreading.c" />
     <ClCompile Include="..\..\lib\nfs_v3.c" />
     <ClCompile Include="..\..\lib\nfs_v4.c" />
     <ClCompile Include="..\..\lib\pdu.c" />
@@ -207,7 +212,8 @@
     <ClCompile Include="..\win32_compat.c" />
   </ItemGroup>
   <ItemGroup>
-  <ClInclude Include="..\..\include\nfsc\libnfs-zdr.h" />
+    <ClInclude Include="..\..\include\libnfs-multithreading.h" />
+    <ClInclude Include="..\..\include\nfsc\libnfs-zdr.h" />
     <ClInclude Include="..\..\mount\libnfs-raw-mount.h" />
     <ClInclude Include="..\..\nfs\libnfs-raw-nfs.h" />
     <ClInclude Include="..\..\nfs4\libnfs-raw-nfs4.h" />
