@@ -581,6 +581,8 @@ int nfs4_write_async(struct nfs_context *nfs, struct nfsfh *nfsfh,
                      uint64_t count, const void *buf, nfs_cb cb,
                      void *private_data);
 
+int rpc_write_to_socket(struct rpc_context *rpc);
+        
 #ifdef __cplusplus
 }
 #endif

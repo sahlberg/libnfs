@@ -226,7 +226,7 @@ rpc_which_events(struct rpc_context *rpc)
 	return events;
 }
 
-static int
+int
 rpc_write_to_socket(struct rpc_context *rpc)
 {
 	int32_t count;

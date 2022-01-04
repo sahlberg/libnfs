@@ -296,11 +296,16 @@ int rpc_queue_pdu(struct rpc_context *rpc, struct rpc_pdu *pdu)
 #ifdef HAVE_MULTITHREADING
         nfs_mt_mutex_lock(&rpc->rpc_mutex);
 #endif /* HAVE_MULTITHREADING */
-	rpc_enqueue(&rpc->outqueue, pdu);
+        rpc_enqueue(&rpc->outqueue, pdu);
 #ifdef HAVE_MULTITHREADING
-        nfs_mt_mutex_unlock(&rpc->rpc_mutex);
+        if (rpc->outqueue.head == pdu) {
+                nfs_mt_mutex_unlock(&rpc->rpc_mutex);
+                rpc_write_to_socket(rpc);
+        } else {
+                nfs_mt_mutex_unlock(&rpc->rpc_mutex);
+        }
 #endif /* HAVE_MULTITHREADING */
-
+        
 	return 0;
 }
 
