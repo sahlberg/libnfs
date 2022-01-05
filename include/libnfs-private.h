@@ -312,11 +312,10 @@ struct nfs_context {
         char *client_name;
         uint64_t clientid;
         verifier4 setclientid_confirm;
-        uint32_t seqid;
+        uint32_t open_counter;
         int has_lock_owner;
 #ifdef HAVE_MULTITHREADING
         int multithreading_enabled;
-        libnfs_mutex_t nfs_mutex;
         libnfs_thread_t service_thread;
         libnfs_mutex_t nfs4_open_mutex;
 #endif /* HAVE_MULTITHREADING */
@@ -407,6 +406,7 @@ struct nfsfh {
         /* NFSv4 */
         struct stateid stateid;
         /* locking */
+        uint32_t open_seqid;
         uint32_t lock_seqid;
         struct stateid lock_stateid;
 };
