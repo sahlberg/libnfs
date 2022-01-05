@@ -549,6 +549,7 @@ nfs_init_context(void)
 
 #ifdef HAVE_MULTITHREADING
         nfs_mt_mutex_init(&nfs->nfs_mutex);
+        nfs_mt_mutex_init(&nfs->nfs4_open_mutex);
 #endif /* HAVE_MULTITHREADING */
 	return nfs;
 }
@@ -603,6 +604,7 @@ nfs_destroy_context(struct nfs_context *nfs)
 	}
 
 #ifdef HAVE_MULTITHREADING
+        nfs_mt_mutex_destroy(&nfs->nfs4_open_mutex);
         nfs_mt_mutex_destroy(&nfs->nfs_mutex);
 #endif /* HAVE_MULTITHREADING */
 	free(nfs);

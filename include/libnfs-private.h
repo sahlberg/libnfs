@@ -318,6 +318,7 @@ struct nfs_context {
         int multithreading_enabled;
         libnfs_mutex_t nfs_mutex;
         libnfs_thread_t service_thread;
+        libnfs_mutex_t nfs4_open_mutex;
 #endif /* HAVE_MULTITHREADING */
 };
 

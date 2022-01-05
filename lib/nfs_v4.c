@@ -152,6 +152,7 @@ struct nfs4_cb_data {
  */
 #define LOOKUP_FLAG_NO_FOLLOW    0x0001
 #define LOOKUP_FLAG_IS_STATVFS64 0x0002
+#define MUTEX_HELD               0x0004
         int flags;
 
         /* Internal callback for open-with-continuation use */
@@ -243,6 +244,11 @@ nfs4_resolve_path(struct nfs_context *nfs, const char *path)
 static void
 free_nfs4_cb_data(struct nfs4_cb_data *data)
 {
+#ifdef HAVE_MULTITHREADING
+        if (data->flags & MUTEX_HELD) {
+                nfs_mt_mutex_unlock(&data->nfs->nfs4_open_mutex);
+        }
+#endif        
         free(data->path);
         free(data->filler.data);
         if (data->filler.blob0.val && data->filler.blob0.free) {
@@ -2456,7 +2462,8 @@ nfs4_open_async(struct nfs_context *nfs, const char *path, int flags,
 {
         struct nfs4_cb_data *data;
         uint32_t m;
-
+        int ret;
+        
         data = init_cb_data_split_path(nfs, path);
         if (data == NULL) {
                 return -1;
@@ -2502,7 +2509,14 @@ nfs4_open_async(struct nfs_context *nfs, const char *path, int flags,
                 memcpy(data->filler.blob3.val, &m, sizeof(uint32_t));
         }
 
-        return nfs4_open_async_internal(nfs, data, flags, mode);
+#ifdef HAVE_MULTITHREADING
+        if (nfs->multithreading_enabled) {
+                nfs_mt_mutex_lock(&nfs->nfs4_open_mutex);
+                data->flags |= MUTEX_HELD;
+        }
+#endif        
+        ret = nfs4_open_async_internal(nfs, data, flags, mode);
+        return ret;
 }
 
 int
@@ -2661,6 +2675,12 @@ nfs4_close_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_cb cb,
         }
         memset(data, 0, sizeof(*data));
 
+#ifdef HAVE_MULTITHREADING
+        if (nfs->multithreading_enabled) {
+                nfs_mt_mutex_lock(&nfs->nfs4_open_mutex);
+                data->flags |= MUTEX_HELD;
+        }
+#endif        
         data->nfs          = nfs;
         data->cb           = cb;
         data->private_data = private_data;
@@ -3855,6 +3875,12 @@ nfs4_truncate_async(struct nfs_context *nfs, const char *path, uint64_t length,
         length = nfs_hton64(length);
         memcpy(data->filler.blob3.val, &length, sizeof(uint64_t));
 
+#ifdef HAVE_MULTITHREADING
+        if (nfs->multithreading_enabled) {
+                nfs_mt_mutex_lock(&nfs->nfs4_open_mutex);
+                data->flags |= MUTEX_HELD;
+        }
+#endif        
         if (nfs4_open_async_internal(nfs, data, O_WRONLY, 0) < 0) {
                 return -1;
         }

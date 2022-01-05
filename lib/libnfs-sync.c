@@ -517,7 +517,7 @@ nfs_open(struct nfs_context *nfs, const char *path, int flags,
                 return -1;
         }
 
-	if (nfs_open_async(nfs, path, flags, open_cb, &cb_data) != 0) {
+ 	if (nfs_open_async(nfs, path, flags, open_cb, &cb_data) != 0) {
 		nfs_set_error(nfs, "nfs_open_async failed. %s",
                               nfs_get_error(nfs));
                 nfs_destroy_cb_sem(&cb_data);
