@@ -405,6 +405,7 @@ struct nfsfh {
 
         /* NFSv4 */
         struct stateid stateid;
+        uint32_t lock_owner;
         /* locking */
         uint32_t open_seqid;
         uint32_t lock_seqid;

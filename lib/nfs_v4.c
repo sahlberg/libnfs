@@ -644,6 +644,21 @@ nfs4_op_commit(struct nfs_context *nfs, nfs_argop4 *op)
 }
 
 static int
+nfs4_op_release_lockowner(struct nfs_context *nfs, nfs_argop4 *op, struct nfsfh *fh)
+{
+        RELEASE_LOCKOWNER4args *rlargs;
+
+        op->argop = OP_RELEASE_LOCKOWNER;
+        rlargs = &op->nfs_argop4_u.oprelease_lockowner;
+
+        rlargs->lock_owner.clientid = nfs->clientid;
+        rlargs->lock_owner.owner.owner_len = 4;
+        rlargs->lock_owner.owner.owner_val = (char *)&fh->lock_owner;
+        
+        return 1;
+}
+
+static int
 nfs4_op_close(struct nfs_context *nfs, nfs_argop4 *op, struct nfsfh *fh)
 {
         CLOSE4args *clargs;
@@ -658,6 +673,10 @@ nfs4_op_close(struct nfs_context *nfs, nfs_argop4 *op, struct nfsfh *fh)
         clargs->seqid = fh->open_seqid;
         clargs->open_stateid.seqid = fh->stateid.seqid;
         memcpy(clargs->open_stateid.other, fh->stateid.other, 12);
+
+#ifdef HAVE_MULTITHREADING
+        i += nfs4_op_release_lockowner(nfs, &op[i], fh);
+#endif
 
         return i;
 }
@@ -2123,7 +2142,8 @@ nfs4_open_cb(struct rpc_context *rpc, int status, void *command_data,
         }
         memcpy(fh->fh.val, gresok->object.nfs_fh4_val, fh->fh.len);
         fh->open_seqid = 1;
-
+        fh->lock_owner = data->lock_owner;
+        
         if (data->filler.flags & O_SYNC) {
                 fh->is_sync = 1;
         }
@@ -2666,7 +2686,7 @@ nfs4_close_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_cb cb,
                  void *private_data)
 {
         COMPOUND4args args;
-        nfs_argop4 op[3];
+        nfs_argop4 op[4];
         struct nfs4_cb_data *data;
         int i;
 
