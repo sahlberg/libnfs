@@ -109,15 +109,21 @@ void
 nfs_dircache_add(struct nfs_context *nfs, struct nfsdir *nfsdir)
 {
 	int i = 0;
-	LIBNFS_LIST_ADD(&nfs->dircache, nfsdir);
+#ifdef HAVE_MULTITHREADING
+        nfs_mt_mutex_lock(&nfs->rpc->rpc_mutex);
+#endif
+	LIBNFS_LIST_ADD(&nfs->nfsi->dircache, nfsdir);
 
-	for (nfsdir = nfs->dircache; nfsdir; nfsdir = nfsdir->next, i++) {
+	for (nfsdir = nfs->nfsi->dircache; nfsdir; nfsdir = nfsdir->next, i++) {
 		if (i > MAX_DIR_CACHE) {
-			LIBNFS_LIST_REMOVE(&nfs->dircache, nfsdir);
+			LIBNFS_LIST_REMOVE(&nfs->nfsi->dircache, nfsdir);
 			nfs_free_nfsdir(nfsdir);
 			break;
 		}
 	}
+#ifdef HAVE_MULTITHREADING
+        nfs_mt_mutex_unlock(&nfs->rpc->rpc_mutex);
+#endif
 }
 
 struct nfsdir *
@@ -125,15 +131,21 @@ nfs_dircache_find(struct nfs_context *nfs, struct nfs_fh *fh)
 {
 	struct nfsdir *nfsdir;
 
-	for (nfsdir = nfs->dircache; nfsdir; nfsdir = nfsdir->next) {
+#ifdef HAVE_MULTITHREADING
+        nfs_mt_mutex_lock(&nfs->rpc->rpc_mutex);
+#endif
+	for (nfsdir = nfs->nfsi->dircache; nfsdir; nfsdir = nfsdir->next) {
 		if (nfsdir->fh.len == fh->len &&
 		    !memcmp(nfsdir->fh.val, fh->val, fh->len)) {
-			LIBNFS_LIST_REMOVE(&nfs->dircache, nfsdir);
-			return nfsdir;
+			LIBNFS_LIST_REMOVE(&nfs->nfsi->dircache, nfsdir);
+                        break;
 		}
 	}
 
-	return NULL;
+#ifdef HAVE_MULTITHREADING
+        nfs_mt_mutex_unlock(&nfs->rpc->rpc_mutex);
+#endif
+	return nfsdir;
 }
 
 void
@@ -258,11 +270,18 @@ char *
 nfs_get_error(struct nfs_context *nfs)
 {
 #ifdef HAVE_MULTITHREADING
-        if(nfs->multithreading_enabled) {
-                return "nfs_get_error disabled while multithreading is active";
+        if (nfs && nfs->nfsi->multithreading_enabled) {
+                struct nfs_thread_context *ntc;
+
+                for(ntc = nfs->nfsi->thread_ctx; ntc; ntc = ntc->next) {
+                        if (nfs_mt_get_tid() == ntc->tid) {
+                                nfs = &ntc->nfs;
+                                break;
+                        }
+                }
         }
-#endif /* HAVE_MULTITHREADING */
-	return rpc_get_error(nfs->rpc);
+#endif        
+	return nfs->error_string ? nfs->error_string : "";
 };
 
 #ifdef HAVE_SO_BINDTODEVICE
@@ -289,7 +308,7 @@ nfs_set_context_args(struct nfs_context *nfs, const char *arg, const char *val)
 	} else if (!strcmp(arg, "debug")) {
 		rpc_set_debug(nfs_get_rpc_context(nfs), atoi(val));
 	} else if (!strcmp(arg, "auto-traverse-mounts")) {
-		nfs->auto_traverse_mounts = atoi(val);
+		nfs->nfsi->auto_traverse_mounts = atoi(val);
 	} else if (!strcmp(arg, "dircache")) {
 		nfs_set_dircache(nfs, atoi(val));
 	} else if (!strcmp(arg, "autoreconnect")) {
@@ -305,9 +324,9 @@ nfs_set_context_args(struct nfs_context *nfs, const char *arg, const char *val)
 			return -1;
 		}
 	} else if (!strcmp(arg, "nfsport")) {
-		nfs->nfsport =  atoi(val);
+		nfs->nfsi->nfsport =  atoi(val);
 	} else if (!strcmp(arg, "mountport")) {
-		nfs->mountport =  atoi(val);
+		nfs->nfsi->mountport =  atoi(val);
 	}
 	return 0;
 }
@@ -408,7 +427,7 @@ nfs_parse_url(struct nfs_context *nfs, const char *url, int dir, int incomplete)
 	strp = strchr(urls->server, ':');
         if (strp) {
                 *strp++ = 0;
-		nfs->nfsport =  atoi(strp);
+		nfs->nfsi->nfsport =  atoi(strp);
         }
 
 	if (dir) {
@@ -509,30 +528,39 @@ struct nfs_context *
 nfs_init_context(void)
 {
 	struct nfs_context *nfs;
+	struct nfs_context_internal *nfsi;
         int i;
         uint64_t v;
         verifier4 verifier;
         char client_name[MAX_CLIENT_NAME];
 
+	nfsi = malloc(sizeof(struct nfs_context_internal));
+	if (nfsi == NULL) {
+		return NULL;
+	}
+	memset(nfsi, 0, sizeof(struct nfs_context_internal));
+        
 	nfs = malloc(sizeof(struct nfs_context));
 	if (nfs == NULL) {
+                free(nfsi);
 		return NULL;
 	}
 	memset(nfs, 0, sizeof(struct nfs_context));
 
+        nfs->nfsi = nfsi;
 	nfs->rpc = rpc_init_context();
 	if (nfs->rpc == NULL) {
 		free(nfs);
 		return NULL;
 	}
 
-	nfs->cwd = strdup("/");
-	nfs->mask = 022;
-	nfs->auto_traverse_mounts = 1;
-	nfs->dircache_enabled = 1;
+	nfs->nfsi->cwd = strdup("/");
+	nfs->nfsi->mask = 022;
+	nfs->nfsi->auto_traverse_mounts = 1;
+	nfs->nfsi->dircache_enabled = 1;
 	/* Default is never give up, never surrender */
-	nfs->auto_reconnect = -1;
-	nfs->version = NFS_V3;
+	nfs->nfsi->auto_reconnect = -1;
+	nfs->nfsi->version = NFS_V3;
 
         /* NFSv4 parameters */
         /* We need a "random" initial verifier */
@@ -548,7 +576,8 @@ nfs_init_context(void)
         nfs4_set_client_name(nfs, client_name);
 
 #ifdef HAVE_MULTITHREADING
-        nfs_mt_mutex_init(&nfs->nfs4_open_mutex);
+        nfs_mt_mutex_init(&nfs->nfsi->nfs_mutex);
+        nfs_mt_mutex_init(&nfs->nfsi->nfs4_open_mutex);
 #endif /* HAVE_MULTITHREADING */
 	return nfs;
 }
@@ -556,22 +585,22 @@ nfs_init_context(void)
 void
 nfs4_set_client_name(struct nfs_context *nfs, const char *client_name)
 {
-        nfs->client_name = strdup(client_name);
+        nfs->nfsi->client_name = strdup(client_name);
 }
 
 void
 nfs4_set_verifier(struct nfs_context *nfs, const char *verifier)
 {
-        memcpy(nfs->verifier, verifier, NFS4_VERIFIER_SIZE);
+        memcpy(nfs->nfsi->verifier, verifier, NFS4_VERIFIER_SIZE);
 }
 
 void
 nfs_destroy_context(struct nfs_context *nfs)
 {
-	while (nfs->nested_mounts) {
-		struct nested_mounts *mnt = nfs->nested_mounts;
+	while (nfs->nfsi->nested_mounts) {
+		struct nested_mounts *mnt = nfs->nfsi->nested_mounts;
 
-		LIBNFS_LIST_REMOVE(&nfs->nested_mounts, mnt);
+		LIBNFS_LIST_REMOVE(&nfs->nfsi->nested_mounts, mnt);
 		free(mnt->path);
 		free(mnt->fh.val);
                 free(mnt);
@@ -580,31 +609,32 @@ nfs_destroy_context(struct nfs_context *nfs)
 	rpc_destroy_context(nfs->rpc);
 	nfs->rpc = NULL;
 
-        free(nfs->server);
-        nfs->server = NULL;
+        free(nfs->error_string);
+        nfs->error_string = NULL;
+        
+        free(nfs->nfsi->server);
+        free(nfs->nfsi->export);
+        free(nfs->nfsi->cwd);
+        free(nfs->nfsi->rootfh.val);
+        free(nfs->nfsi->client_name);
 
-        free(nfs->export);
-        nfs->export = NULL;
-
-        free(nfs->cwd);
-        nfs->cwd = NULL;
-
-        free(nfs->rootfh.val);
-        nfs->rootfh.len = 0;
-        nfs->rootfh.val = NULL;
-
-        free(nfs->client_name);
-        nfs->client_name = NULL;
-
-	while (nfs->dircache) {
-		struct nfsdir *nfsdir = nfs->dircache;
-		LIBNFS_LIST_REMOVE(&nfs->dircache, nfsdir);
+	while (nfs->nfsi->dircache) {
+		struct nfsdir *nfsdir = nfs->nfsi->dircache;
+		LIBNFS_LIST_REMOVE(&nfs->nfsi->dircache, nfsdir);
 		nfs_free_nfsdir(nfsdir);
 	}
 
 #ifdef HAVE_MULTITHREADING
-        nfs_mt_mutex_destroy(&nfs->nfs4_open_mutex);
+        nfs_mt_mutex_destroy(&nfs->nfsi->nfs4_open_mutex);
+        nfs_mt_mutex_destroy(&nfs->nfsi->nfs_mutex);
+        while (nfs->nfsi->thread_ctx) {
+                struct nfs_thread_context *tmp = nfs->nfsi->thread_ctx->next;
+                free(nfs->nfsi->thread_ctx->nfs.error_string);
+                free(nfs->nfsi->thread_ctx);
+                nfs->nfsi->thread_ctx = tmp;
+        }
 #endif /* HAVE_MULTITHREADING */
+	free(nfs->nfsi);
 	free(nfs);
 }
 
@@ -916,14 +946,14 @@ int
 nfs_mount_async(struct nfs_context *nfs, const char *server,
                 const char *export, nfs_cb cb, void *private_data)
 {
-	switch (nfs->version) {
+	switch (nfs->nfsi->version) {
         case NFS_V3:
                 return nfs3_mount_async(nfs, server, export, cb, private_data);
         case NFS_V4:
                 return nfs4_mount_async(nfs, server, export, cb, private_data);
         default:
                 nfs_set_error(nfs, "%s does not support NFSv%d",
-                              __FUNCTION__, nfs->version);
+                              __FUNCTION__, nfs->nfsi->version);
                 return -1;
         }
 }
@@ -934,7 +964,7 @@ nfs_mount_async(struct nfs_context *nfs, const char *server,
 int
 nfs_umount_async(struct nfs_context *nfs, nfs_cb cb, void *private_data)
 {
-	switch (nfs->version) {
+	switch (nfs->nfsi->version) {
         case NFS_V3:
                 return nfs3_umount_async(nfs, cb, private_data);
         case NFS_V4:
@@ -943,7 +973,7 @@ nfs_umount_async(struct nfs_context *nfs, nfs_cb cb, void *private_data)
                 return 0;
         default:
                 nfs_set_error(nfs, "%s does not support NFSv%d",
-                              __FUNCTION__, nfs->version);
+                              __FUNCTION__, nfs->nfsi->version);
                 return -1;
         }
 }
@@ -1053,7 +1083,7 @@ int
 nfs_stat_async(struct nfs_context *nfs, const char *path,
                nfs_cb cb, void *private_data)
 {
-	switch (nfs->version) {
+	switch (nfs->nfsi->version) {
         case NFS_V3:
                 return nfs3_stat_async(nfs, path, cb, private_data);
         default:
@@ -1067,7 +1097,7 @@ int
 nfs_stat64_async(struct nfs_context *nfs, const char *path,
                  nfs_cb cb, void *private_data)
 {
-	switch (nfs->version) {
+	switch (nfs->nfsi->version) {
         case NFS_V3:
                 return nfs3_stat64_async(nfs, path, 0,
                                          cb, private_data);
@@ -1076,7 +1106,7 @@ nfs_stat64_async(struct nfs_context *nfs, const char *path,
                                          cb, private_data);
         default:
                 nfs_set_error(nfs, "%s does not support NFSv%d",
-                              __FUNCTION__, nfs->version);
+                              __FUNCTION__, nfs->nfsi->version);
                 return -1;
         }
 }
@@ -1085,7 +1115,7 @@ int
 nfs_lstat64_async(struct nfs_context *nfs, const char *path,
                   nfs_cb cb, void *private_data)
 {
-	switch (nfs->version) {
+	switch (nfs->nfsi->version) {
         case NFS_V3:
                 return nfs3_stat64_async(nfs, path, 1,
                                          cb, private_data);
@@ -1094,7 +1124,7 @@ nfs_lstat64_async(struct nfs_context *nfs, const char *path,
                                          cb, private_data);
         default:
                 nfs_set_error(nfs, "%s does not support NFSv%d",
-                              __FUNCTION__, nfs->version);
+                              __FUNCTION__, nfs->nfsi->version);
                 return -1;
         }
 }
@@ -1103,7 +1133,7 @@ int
 nfs_open2_async(struct nfs_context *nfs, const char *path, int flags,
                 int mode, nfs_cb cb, void *private_data)
 {
-	switch (nfs->version) {
+	switch (nfs->nfsi->version) {
         case NFS_V3:
                 return nfs3_open_async(nfs, path, flags, mode,
                                        cb, private_data);
@@ -1112,7 +1142,7 @@ nfs_open2_async(struct nfs_context *nfs, const char *path, int flags,
                                        cb, private_data);
         default:
                 nfs_set_error(nfs, "%s does not support NFSv%d",
-                              __FUNCTION__, nfs->version);
+                              __FUNCTION__, nfs->nfsi->version);
                 return -1;
         }
 }
@@ -1121,7 +1151,7 @@ int
 nfs_open_async(struct nfs_context *nfs, const char *path, int flags,
                nfs_cb cb, void *private_data)
 {
-        return nfs_open2_async(nfs, path, flags, 0666 & ~nfs->mask,
+        return nfs_open2_async(nfs, path, flags, 0666 & ~nfs->nfsi->mask,
                                cb, private_data);
 }
 
@@ -1129,14 +1159,14 @@ int
 nfs_chdir_async(struct nfs_context *nfs, const char *path,
                 nfs_cb cb, void *private_data)
 {
-	switch (nfs->version) {
+	switch (nfs->nfsi->version) {
         case NFS_V3:
                 return nfs3_chdir_async(nfs, path, cb, private_data);
         case NFS_V4:
                 return nfs4_chdir_async(nfs, path, cb, private_data);
         default:
                 nfs_set_error(nfs, "%s does not support NFSv%d",
-                              __FUNCTION__, nfs->version);
+                              __FUNCTION__, nfs->nfsi->version);
                 return -1;
         }
 }
@@ -1145,7 +1175,7 @@ int
 nfs_pread_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t offset,
                 uint64_t count, nfs_cb cb, void *private_data)
 {
-	switch (nfs->version) {
+	switch (nfs->nfsi->version) {
         case NFS_V3:
                 return nfs3_pread_async_internal(nfs, nfsfh, offset,
                                                  (size_t)count,
@@ -1156,7 +1186,7 @@ nfs_pread_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t offset,
                                                  cb, private_data, 0);
         default:
                 nfs_set_error(nfs, "%s does not support NFSv%d",
-                              __FUNCTION__, nfs->version);
+                              __FUNCTION__, nfs->nfsi->version);
                 return -1;
         }
 }
@@ -1165,7 +1195,7 @@ int
 nfs_read_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t count,
                nfs_cb cb, void *private_data)
 {
-	switch (nfs->version) {
+	switch (nfs->nfsi->version) {
         case NFS_V3:
                 return nfs3_pread_async_internal(nfs, nfsfh, nfsfh->offset,
                                                  (size_t)count,
@@ -1176,7 +1206,7 @@ nfs_read_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t count,
                                                  cb, private_data, 1);
         default:
                 nfs_set_error(nfs, "%s does not support NFSv%d",
-                              __FUNCTION__, nfs->version);
+                              __FUNCTION__, nfs->nfsi->version);
                 return -1;
         }
 }
@@ -1185,7 +1215,7 @@ int
 nfs_pwrite_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t offset,
                  uint64_t count, const void *buf, nfs_cb cb, void *private_data)
 {
-	switch (nfs->version) {
+	switch (nfs->nfsi->version) {
         case NFS_V3:
                 return nfs3_pwrite_async_internal(nfs, nfsfh, offset,
                                                   (size_t)count, buf,
@@ -1196,7 +1226,7 @@ nfs_pwrite_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t offset,
                                                   cb, private_data, 0);
         default:
                 nfs_set_error(nfs, "%s does not support NFSv%d.",
-                              __FUNCTION__, nfs->version);
+                              __FUNCTION__, nfs->nfsi->version);
                 return -1;
         }
 }
@@ -1205,7 +1235,7 @@ int
 nfs_write_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t count,
                 const void *buf, nfs_cb cb, void *private_data)
 {
-	switch (nfs->version) {
+	switch (nfs->nfsi->version) {
         case NFS_V3:
                 return nfs3_write_async(nfs, nfsfh, count, buf,
                                         cb, private_data);
@@ -1214,7 +1244,7 @@ nfs_write_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t count,
                                         cb, private_data);
         default:
                 nfs_set_error(nfs, "%s does not support NFSv%d",
-                              __FUNCTION__, nfs->version);
+                              __FUNCTION__, nfs->nfsi->version);
                 return -1;
         }
 }
@@ -1223,14 +1253,14 @@ int
 nfs_close_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_cb cb,
                 void *private_data)
 {
-	switch (nfs->version) {
+	switch (nfs->nfsi->version) {
         case NFS_V3:
                 return nfs3_close_async(nfs, nfsfh, cb, private_data);
         case NFS_V4:
                 return nfs4_close_async(nfs, nfsfh, cb, private_data);
         default:
                 nfs_set_error(nfs, "%s does not support NFSv%d",
-                              __FUNCTION__, nfs->version);
+                              __FUNCTION__, nfs->nfsi->version);
                 return -1;
         }
 }
@@ -1239,7 +1269,7 @@ int
 nfs_fstat_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_cb cb,
                  void *private_data)
 {
-	switch (nfs->version) {
+	switch (nfs->nfsi->version) {
         case NFS_V3:
                 return nfs3_fstat_async(nfs, nfsfh, cb, private_data);
         default:
@@ -1253,14 +1283,14 @@ int
 nfs_fstat64_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_cb cb,
                    void *private_data)
 {
-	switch (nfs->version) {
+	switch (nfs->nfsi->version) {
         case NFS_V3:
                 return nfs3_fstat64_async(nfs, nfsfh, cb, private_data);
         case NFS_V4:
                 return nfs4_fstat64_async(nfs, nfsfh, cb, private_data);
         default:
                 nfs_set_error(nfs, "%s does not support NFSv%d",
-                              __FUNCTION__, nfs->version);
+                              __FUNCTION__, nfs->nfsi->version);
                 return -1;
         }
 }
@@ -1269,14 +1299,14 @@ int
 nfs_fsync_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_cb cb,
                  void *private_data)
 {
-	switch (nfs->version) {
+	switch (nfs->nfsi->version) {
         case NFS_V3:
                 return nfs3_fsync_async(nfs, nfsfh, cb, private_data);
         case NFS_V4:
                 return nfs4_fsync_async(nfs, nfsfh, cb, private_data);
         default:
                 nfs_set_error(nfs, "%s does not support NFSv%d",
-                              __FUNCTION__, nfs->version);
+                              __FUNCTION__, nfs->nfsi->version);
                 return -1;
         }
 }
@@ -1285,7 +1315,7 @@ int
 nfs_ftruncate_async(struct nfs_context *nfs, struct nfsfh *nfsfh,
                     uint64_t length, nfs_cb cb, void *private_data)
 {
-	switch (nfs->version) {
+	switch (nfs->nfsi->version) {
         case NFS_V3:
                 return nfs3_ftruncate_async(nfs, nfsfh, length,
                                             cb, private_data);
@@ -1294,7 +1324,7 @@ nfs_ftruncate_async(struct nfs_context *nfs, struct nfsfh *nfsfh,
                                             cb, private_data);
         default:
                 nfs_set_error(nfs, "%s does not support NFSv%d",
-                              __FUNCTION__, nfs->version);
+                              __FUNCTION__, nfs->nfsi->version);
                 return -1;
         }
 }
@@ -1303,14 +1333,14 @@ int
 nfs_truncate_async(struct nfs_context *nfs, const char *path, uint64_t length,
                    nfs_cb cb, void *private_data)
 {
-	switch (nfs->version) {
+	switch (nfs->nfsi->version) {
         case NFS_V3:
                 return nfs3_truncate_async(nfs, path, length, cb, private_data);
         case NFS_V4:
                 return nfs4_truncate_async(nfs, path, length, cb, private_data);
         default:
                 nfs_set_error(nfs, "%s does not support NFSv%d",
-                              __FUNCTION__, nfs->version);
+                              __FUNCTION__, nfs->nfsi->version);
                 return -1;
         }
 }
@@ -1319,14 +1349,14 @@ int
 nfs_mkdir2_async(struct nfs_context *nfs, const char *path, int mode,
                  nfs_cb cb, void *private_data)
 {
-	switch (nfs->version) {
+	switch (nfs->nfsi->version) {
         case NFS_V3:
                 return nfs3_mkdir2_async(nfs, path, mode, cb, private_data);
         case NFS_V4:
                 return nfs4_mkdir2_async(nfs, path, mode, cb, private_data);
         default:
                 nfs_set_error(nfs, "%s does not support NFSv%d",
-                              __FUNCTION__, nfs->version);
+                              __FUNCTION__, nfs->nfsi->version);
                 return -1;
         }
 }
@@ -1342,14 +1372,14 @@ int
 nfs_rmdir_async(struct nfs_context *nfs, const char *path, nfs_cb cb,
                  void *private_data)
 {
-	switch (nfs->version) {
+	switch (nfs->nfsi->version) {
         case NFS_V3:
                 return nfs3_rmdir_async(nfs, path, cb, private_data);
         case NFS_V4:
                 return nfs4_rmdir_async(nfs, path, cb, private_data);
         default:
                 nfs_set_error(nfs, "%s does not support NFSv%d",
-                              __FUNCTION__, nfs->version);
+                              __FUNCTION__, nfs->nfsi->version);
                 return -1;
         }
 }
@@ -1358,7 +1388,7 @@ int
 nfs_create_async(struct nfs_context *nfs, const char *path, int flags,
                   int mode, nfs_cb cb, void *private_data)
 {
-	switch (nfs->version) {
+	switch (nfs->nfsi->version) {
         case NFS_V3:
                 return nfs3_create_async(nfs, path, flags, mode,
                                          cb, private_data);
@@ -1367,7 +1397,7 @@ nfs_create_async(struct nfs_context *nfs, const char *path, int flags,
                                          cb, private_data);
         default:
                 nfs_set_error(nfs, "%s does not support NFSv%d",
-                              __FUNCTION__, nfs->version);
+                              __FUNCTION__, nfs->nfsi->version);
                 return -1;
         }
 }
@@ -1383,14 +1413,14 @@ int
 nfs_unlink_async(struct nfs_context *nfs, const char *path, nfs_cb cb,
                   void *private_data)
 {
-	switch (nfs->version) {
+	switch (nfs->nfsi->version) {
         case NFS_V3:
                 return nfs3_unlink_async(nfs, path, cb, private_data);
         case NFS_V4:
                 return nfs4_unlink_async(nfs, path, cb, private_data);
         default:
                 nfs_set_error(nfs, "%s does not support NFSv%d",
-                              __FUNCTION__, nfs->version);
+                              __FUNCTION__, nfs->nfsi->version);
                 return -1;
         }
 }
@@ -1399,14 +1429,14 @@ int
 nfs_mknod_async(struct nfs_context *nfs, const char *path, int mode, int dev,
                  nfs_cb cb, void *private_data)
 {
-	switch (nfs->version) {
+	switch (nfs->nfsi->version) {
         case NFS_V3:
                 return nfs3_mknod_async(nfs, path, mode, dev, cb, private_data);
         case NFS_V4:
                 return nfs4_mknod_async(nfs, path, mode, dev, cb, private_data);
         default:
                 nfs_set_error(nfs, "%s does not support NFSv%d",
-                              __FUNCTION__, nfs->version);
+                              __FUNCTION__, nfs->nfsi->version);
                 return -1;
         }
 }
@@ -1415,7 +1445,7 @@ int
 nfs_opendir_async(struct nfs_context *nfs, const char *path, nfs_cb cb,
                    void *private_data)
 {
-	switch (nfs->version) {
+	switch (nfs->nfsi->version) {
         case NFS_V3:
                 return nfs3_opendir_async(nfs, path, cb, private_data);
         case NFS_V4:
@@ -1473,7 +1503,7 @@ nfs_rewinddir(struct nfs_context *nfs _U_, struct nfsdir *nfsdir)
 void
 nfs_closedir(struct nfs_context *nfs, struct nfsdir *nfsdir)
 {
-	if (nfs && nfs->dircache_enabled) {
+	if (nfs && nfs->nfsi->dircache_enabled) {
 		nfs_dircache_add(nfs, nfsdir);
 	} else {
 		nfs_free_nfsdir(nfsdir);
@@ -1484,7 +1514,7 @@ void
 nfs_getcwd(struct nfs_context *nfs, const char **cwd)
 {
 	if (cwd) {
-		*cwd = nfs->cwd;
+		*cwd = nfs->nfsi->cwd;
 	}
 }
 
@@ -1492,7 +1522,7 @@ int
 nfs_lseek_async(struct nfs_context *nfs, struct nfsfh *nfsfh, int64_t offset,
                  int whence, nfs_cb cb, void *private_data)
 {
-	switch (nfs->version) {
+	switch (nfs->nfsi->version) {
         case NFS_V3:
                 return nfs3_lseek_async(nfs, nfsfh, offset, whence,
                                         cb, private_data);
@@ -1501,7 +1531,7 @@ nfs_lseek_async(struct nfs_context *nfs, struct nfsfh *nfsfh, int64_t offset,
                                         cb, private_data);
         default:
                 nfs_set_error(nfs, "%s does not support NFSv%d",
-                              __FUNCTION__, nfs->version);
+                              __FUNCTION__, nfs->nfsi->version);
                 return -1;
         }
 }
@@ -1511,13 +1541,13 @@ nfs_lockf_async(struct nfs_context *nfs, struct nfsfh *nfsfh,
                 enum nfs4_lock_op op, uint64_t count,
                 nfs_cb cb, void *private_data)
 {
-	switch (nfs->version) {
+	switch (nfs->nfsi->version) {
         case NFS_V4:
                 return nfs4_lockf_async(nfs, nfsfh, op, count,
                                         cb, private_data);
         default:
                 nfs_set_error(nfs, "%s does not support NFSv%d",
-                              __FUNCTION__, nfs->version);
+                              __FUNCTION__, nfs->nfsi->version);
                 return -1;
         }
 }
@@ -1527,13 +1557,13 @@ nfs_fcntl_async(struct nfs_context *nfs, struct nfsfh *nfsfh,
                 enum nfs4_fcntl_op cmd, void *arg,
                 nfs_cb cb, void *private_data)
 {
-	switch (nfs->version) {
+	switch (nfs->nfsi->version) {
         case NFS_V4:
                 return nfs4_fcntl_async(nfs, nfsfh, cmd, arg,
                                         cb, private_data);
         default:
                 nfs_set_error(nfs, "%s does not support NFSv%d",
-                              __FUNCTION__, nfs->version);
+                              __FUNCTION__, nfs->nfsi->version);
                 return -1;
         }
 }
@@ -1542,14 +1572,14 @@ int
 nfs_statvfs_async(struct nfs_context *nfs, const char *path, nfs_cb cb,
                    void *private_data)
 {
-	switch (nfs->version) {
+	switch (nfs->nfsi->version) {
         case NFS_V3:
                 return nfs3_statvfs_async(nfs, path, cb, private_data);
         case NFS_V4:
                 return nfs4_statvfs_async(nfs, path, cb, private_data);
         default:
                 nfs_set_error(nfs, "%s does not support NFSv%d",
-                              __FUNCTION__, nfs->version);
+                              __FUNCTION__, nfs->nfsi->version);
                 return -1;
         }
 }
@@ -1558,14 +1588,14 @@ int
 nfs_statvfs64_async(struct nfs_context *nfs, const char *path, nfs_cb cb,
                     void *private_data)
 {
-	switch (nfs->version) {
+	switch (nfs->nfsi->version) {
         case NFS_V3:
                 return nfs3_statvfs64_async(nfs, path, cb, private_data);
         case NFS_V4:
                 return nfs4_statvfs64_async(nfs, path, cb, private_data);
         default:
                 nfs_set_error(nfs, "%s does not support NFSv%d",
-                              __FUNCTION__, nfs->version);
+                              __FUNCTION__, nfs->nfsi->version);
                 return -1;
         }
 }
@@ -1574,14 +1604,14 @@ int
 nfs_readlink_async(struct nfs_context *nfs, const char *path, nfs_cb cb,
                     void *private_data)
 {
-	switch (nfs->version) {
+	switch (nfs->nfsi->version) {
         case NFS_V3:
                 return nfs3_readlink_async(nfs, path, cb, private_data);
         case NFS_V4:
                 return nfs4_readlink_async(nfs, path, cb, private_data);
         default:
                 nfs_set_error(nfs, "%s does not support NFSv%d",
-                              __FUNCTION__, nfs->version);
+                              __FUNCTION__, nfs->nfsi->version);
                 return -1;
         }
 }
@@ -1590,7 +1620,7 @@ int
 nfs_chmod_async(struct nfs_context *nfs, const char *path, int mode,
                 nfs_cb cb, void *private_data)
 {
-	switch (nfs->version) {
+	switch (nfs->nfsi->version) {
         case NFS_V3:
                 return nfs3_chmod_async_internal(nfs, path, 0, mode,
                                                  cb, private_data);
@@ -1599,7 +1629,7 @@ nfs_chmod_async(struct nfs_context *nfs, const char *path, int mode,
                                                  cb, private_data);
         default:
                 nfs_set_error(nfs, "%s does not support NFSv%d",
-                              __FUNCTION__, nfs->version);
+                              __FUNCTION__, nfs->nfsi->version);
                 return -1;
         }
 }
@@ -1608,7 +1638,7 @@ int
 nfs_lchmod_async(struct nfs_context *nfs, const char *path, int mode,
                  nfs_cb cb, void *private_data)
 {
-	switch (nfs->version) {
+	switch (nfs->nfsi->version) {
         case NFS_V3:
                 return nfs3_chmod_async_internal(nfs, path, 1, mode,
                                                  cb, private_data);
@@ -1617,7 +1647,7 @@ nfs_lchmod_async(struct nfs_context *nfs, const char *path, int mode,
                                                  cb, private_data);
         default:
                 nfs_set_error(nfs, "%s does not support NFSv%d",
-                              __FUNCTION__, nfs->version);
+                              __FUNCTION__, nfs->nfsi->version);
                 return -1;
         }
 }
@@ -1626,14 +1656,14 @@ int
 nfs_fchmod_async(struct nfs_context *nfs, struct nfsfh *nfsfh, int mode,
                   nfs_cb cb, void *private_data)
 {
-	switch (nfs->version) {
+	switch (nfs->nfsi->version) {
         case NFS_V3:
                 return nfs3_fchmod_async(nfs, nfsfh, mode, cb, private_data);
         case NFS_V4:
                 return nfs4_fchmod_async(nfs, nfsfh, mode, cb, private_data);
         default:
                 nfs_set_error(nfs, "%s does not support NFSv%d",
-                              __FUNCTION__, nfs->version);
+                              __FUNCTION__, nfs->nfsi->version);
                 return -1;
         }
 }
@@ -1642,7 +1672,7 @@ int
 nfs_chown_async(struct nfs_context *nfs, const char *path, int uid, int gid,
                 nfs_cb cb, void *private_data)
 {
-	switch (nfs->version) {
+	switch (nfs->nfsi->version) {
         case NFS_V3:
                 return nfs3_chown_async_internal(nfs, path, 0, uid, gid,
                                                  cb, private_data);
@@ -1651,7 +1681,7 @@ nfs_chown_async(struct nfs_context *nfs, const char *path, int uid, int gid,
                                                  cb, private_data);
         default:
                 nfs_set_error(nfs, "%s does not support NFSv%d",
-                              __FUNCTION__, nfs->version);
+                              __FUNCTION__, nfs->nfsi->version);
                 return -1;
         }
 }
@@ -1660,7 +1690,7 @@ int
 nfs_lchown_async(struct nfs_context *nfs, const char *path, int uid, int gid,
                  nfs_cb cb, void *private_data)
 {
-	switch (nfs->version) {
+	switch (nfs->nfsi->version) {
         case NFS_V3:
                 return nfs3_chown_async_internal(nfs, path, 1, uid, gid,
                                                  cb, private_data);
@@ -1669,7 +1699,7 @@ nfs_lchown_async(struct nfs_context *nfs, const char *path, int uid, int gid,
                                                  cb, private_data);
         default:
                 nfs_set_error(nfs, "%s does not support NFSv%d",
-                              __FUNCTION__, nfs->version);
+                              __FUNCTION__, nfs->nfsi->version);
                 return -1;
         }
 }
@@ -1678,7 +1708,7 @@ int
 nfs_fchown_async(struct nfs_context *nfs, struct nfsfh *nfsfh, int uid,
                  int gid, nfs_cb cb, void *private_data)
 {
-	switch (nfs->version) {
+	switch (nfs->nfsi->version) {
         case NFS_V3:
                 return nfs3_fchown_async(nfs, nfsfh, uid, gid,
                                          cb, private_data);
@@ -1687,7 +1717,7 @@ nfs_fchown_async(struct nfs_context *nfs, struct nfsfh *nfsfh, int uid,
                                          cb, private_data);
         default:
                 nfs_set_error(nfs, "%s does not support NFSv%d",
-                              __FUNCTION__, nfs->version);
+                              __FUNCTION__, nfs->nfsi->version);
                 return -1;
         }
 }
@@ -1696,7 +1726,7 @@ int
 nfs_utimes_async(struct nfs_context *nfs, const char *path,
                  struct timeval *times, nfs_cb cb, void *private_data)
 {
-	switch (nfs->version) {
+	switch (nfs->nfsi->version) {
         case NFS_V3:
                 return nfs3_utimes_async_internal(nfs, path, 0, times,
                                                   cb, private_data);
@@ -1705,7 +1735,7 @@ nfs_utimes_async(struct nfs_context *nfs, const char *path,
                                                   cb, private_data);
         default:
                 nfs_set_error(nfs, "%s does not support NFSv%d",
-                              __FUNCTION__, nfs->version);
+                              __FUNCTION__, nfs->nfsi->version);
                 return -1;
         }
 }
@@ -1714,7 +1744,7 @@ int
 nfs_lutimes_async(struct nfs_context *nfs, const char *path,
                   struct timeval *times, nfs_cb cb, void *private_data)
 {
-	switch (nfs->version) {
+	switch (nfs->nfsi->version) {
         case NFS_V3:
                 return nfs3_utimes_async_internal(nfs, path, 1, times,
                                                   cb, private_data);
@@ -1723,7 +1753,7 @@ nfs_lutimes_async(struct nfs_context *nfs, const char *path,
                                                   cb, private_data);
         default:
                 nfs_set_error(nfs, "%s does not support NFSv%d",
-                              __FUNCTION__, nfs->version);
+                              __FUNCTION__, nfs->nfsi->version);
                 return -1;
         }
 }
@@ -1732,7 +1762,7 @@ int
 nfs_utime_async(struct nfs_context *nfs, const char *path,
                 struct utimbuf *times, nfs_cb cb, void *private_data)
 {
-	switch (nfs->version) {
+	switch (nfs->nfsi->version) {
         case NFS_V3:
                 return nfs3_utime_async(nfs, path, times, cb, private_data);
         case NFS_V4:
@@ -1748,14 +1778,14 @@ int
 nfs_access_async(struct nfs_context *nfs, const char *path, int mode,
                  nfs_cb cb, void *private_data)
 {
-	switch (nfs->version) {
+	switch (nfs->nfsi->version) {
         case NFS_V3:
                 return nfs3_access_async(nfs, path, mode, cb, private_data);
         case NFS_V4:
                 return nfs4_access_async(nfs, path, mode, cb, private_data);
         default:
                 nfs_set_error(nfs, "%s does not support NFSv%d",
-                              __FUNCTION__, nfs->version);
+                              __FUNCTION__, nfs->nfsi->version);
                 return -1;
         }
 }
@@ -1764,7 +1794,7 @@ int
 nfs_access2_async(struct nfs_context *nfs, const char *path, nfs_cb cb,
                    void *private_data)
 {
-	switch (nfs->version) {
+	switch (nfs->nfsi->version) {
         case NFS_V3:
                 return nfs3_access2_async(nfs, path, cb, private_data);
         case NFS_V4:
@@ -1780,7 +1810,7 @@ int
 nfs_symlink_async(struct nfs_context *nfs, const char *target,
                    const char *newpath, nfs_cb cb, void *private_data)
 {
-	switch (nfs->version) {
+	switch (nfs->nfsi->version) {
         case NFS_V3:
                 return nfs3_symlink_async(nfs, target, newpath,
                                           cb, private_data);
@@ -1789,7 +1819,7 @@ nfs_symlink_async(struct nfs_context *nfs, const char *target,
                                           cb, private_data);
         default:
                 nfs_set_error(nfs, "%s does not support NFSv%d",
-                              __FUNCTION__, nfs->version);
+                              __FUNCTION__, nfs->nfsi->version);
                 return -1;
         }
 }
@@ -1798,7 +1828,7 @@ int
 nfs_rename_async(struct nfs_context *nfs, const char *oldpath,
                   const char *newpath, nfs_cb cb, void *private_data)
 {
-	switch (nfs->version) {
+	switch (nfs->nfsi->version) {
         case NFS_V3:
                 return nfs3_rename_async(nfs, oldpath, newpath,
                                          cb, private_data);
@@ -1807,7 +1837,7 @@ nfs_rename_async(struct nfs_context *nfs, const char *oldpath,
                                          cb, private_data);
         default:
                 nfs_set_error(nfs, "%s does not support NFSv%d",
-                              __FUNCTION__, nfs->version);
+                              __FUNCTION__, nfs->nfsi->version);
                 return -1;
         }
 }
@@ -1816,7 +1846,7 @@ int
 nfs_link_async(struct nfs_context *nfs, const char *oldpath,
                const char *newpath, nfs_cb cb, void *private_data)
 {
-	switch (nfs->version) {
+	switch (nfs->nfsi->version) {
         case NFS_V3:
                 return nfs3_link_async(nfs, oldpath, newpath,
                                        cb, private_data);
@@ -1825,7 +1855,7 @@ nfs_link_async(struct nfs_context *nfs, const char *oldpath,
                                        cb, private_data);
         default:
                 nfs_set_error(nfs, "%s does not support NFSv%d",
-                              __FUNCTION__, nfs->version);
+                              __FUNCTION__, nfs->nfsi->version);
                 return -1;
         }
 }
@@ -1836,12 +1866,12 @@ nfs_link_async(struct nfs_context *nfs, const char *oldpath,
 uint64_t
 nfs_get_readmax(struct nfs_context *nfs)
 {
-	return nfs->readmax;
+	return nfs->nfsi->readmax;
 }
 void
 nfs_set_readmax(struct nfs_context *nfs, uint64_t readmax)
 {
-	nfs->readmax = readmax;
+	nfs->nfsi->readmax = readmax;
 }
 
 /*
@@ -1850,12 +1880,12 @@ nfs_set_readmax(struct nfs_context *nfs, uint64_t readmax)
 uint64_t
 nfs_get_writemax(struct nfs_context *nfs)
 {
-	return nfs->writemax;
+	return nfs->nfsi->writemax;
 }
 void
 nfs_set_writemax(struct nfs_context *nfs, uint64_t writemax)
 {
-	nfs->writemax = writemax;
+	nfs->nfsi->writemax = writemax;
 }
 
 void
@@ -1895,12 +1925,12 @@ nfs_set_debug(struct nfs_context *nfs, int level) {
 
 void
 nfs_set_dircache(struct nfs_context *nfs, int enabled) {
-	nfs->dircache_enabled = enabled;
+	nfs->nfsi->dircache_enabled = enabled;
 }
 
 void
 nfs_set_autoreconnect(struct nfs_context *nfs, int num_retries) {
-	nfs->auto_reconnect = num_retries;
+	nfs->nfsi->auto_reconnect = num_retries;
 }
 
 int
@@ -1908,7 +1938,7 @@ nfs_set_version(struct nfs_context *nfs, int version) {
 	switch (version) {
 	case NFS_V3:
 	case NFS_V4:
-		nfs->version = version;
+		nfs->nfsi->version = version;
 		break;
 	default:
 		nfs_set_error(nfs, "NFS version %d is not supported", version);
@@ -1919,7 +1949,7 @@ nfs_set_version(struct nfs_context *nfs, int version) {
 
 int
 nfs_get_version(struct nfs_context *nfs) {
-        return nfs->version;
+        return nfs->nfsi->version;
 }
 
 void
@@ -1929,15 +1959,18 @@ nfs_set_error(struct nfs_context *nfs, char *error_string, ...)
 	char *str = NULL;
 
 #ifdef HAVE_MULTITHREADING
+        /* All thread contexts share the same rpc_context so
+         * use the mutex from the rpc_context.
+         */
         nfs_mt_mutex_lock(&nfs->rpc->rpc_mutex);
 #endif /* HAVE_MULTITHREADING */
         va_start(ap, error_string);
 	str = malloc(1024);
 	vsnprintf(str, 1024, error_string, ap);
-	if (nfs->rpc->error_string != NULL) {
-		free(nfs->rpc->error_string);
+	if (nfs->error_string != NULL) {
+		free(nfs->error_string);
 	}
-	nfs->rpc->error_string = str;
+	nfs->error_string = str;
 	va_end(ap);
 #ifdef HAVE_MULTITHREADING
         nfs_mt_mutex_unlock(&nfs->rpc->rpc_mutex);
@@ -2046,17 +2079,17 @@ nfs_get_rpc_context(struct nfs_context *nfs)
 
 const char *
 nfs_get_server(struct nfs_context *nfs) {
-	return nfs->server;
+	return nfs->nfsi->server;
 }
 
 const char *
 nfs_get_export(struct nfs_context *nfs) {
-	return nfs->export;
+	return nfs->nfsi->export;
 }
 
 const struct nfs_fh *
 nfs_get_rootfh(struct nfs_context *nfs) {
-      return &nfs->rootfh;
+      return &nfs->nfsi->rootfh;
 }
 
 struct nfs_fh *
@@ -2066,8 +2099,8 @@ nfs_get_fh(struct nfsfh *nfsfh) {
 
 uint16_t
 nfs_umask(struct nfs_context *nfs, uint16_t mask) {
-	 uint16_t tmp = nfs->mask;
-	 nfs->mask = mask;
+	 uint16_t tmp = nfs->nfsi->mask;
+	 nfs->nfsi->mask = mask;
 	 return tmp;
 }
 

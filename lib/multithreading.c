@@ -54,6 +54,13 @@
 #ifdef HAVE_MULTITHREADING
 
 #ifdef HAVE_PTHREAD
+pid_t gettid(void);
+
+nfs_tid_t nfs_mt_get_tid(void)
+{
+        return gettid();
+}
+
 static void *nfs_mt_service_thread(void *arg)
 {
         struct nfs_context *nfs = (struct nfs_context *)arg;
@@ -61,9 +68,9 @@ static void *nfs_mt_service_thread(void *arg)
 	int revents;
 	int ret;
 
-        nfs->multithreading_enabled = 1;
+        nfs->nfsi->multithreading_enabled = 1;
 
-	while (nfs->multithreading_enabled) {
+	while (nfs->nfsi->multithreading_enabled) {
 		pfd.fd = nfs_get_fd(nfs);
 		pfd.events = nfs_which_events(nfs);
 		pfd.revents = 0;
@@ -85,12 +92,12 @@ static void *nfs_mt_service_thread(void *arg)
 
 int nfs_mt_service_thread_start(struct nfs_context *nfs)
 {
-        if (pthread_create(&nfs->service_thread, NULL,
+        if (pthread_create(&nfs->nfsi->service_thread, NULL,
                            &nfs_mt_service_thread, nfs)) {
                 nfs_set_error(nfs, "Failed to start service thread");
                 return -1;
         }
-        while (nfs->multithreading_enabled == 0) {
+        while (nfs->nfsi->multithreading_enabled == 0) {
                 struct timespec ts = {0, 1000000};
                 nanosleep(&ts, NULL);
         }
@@ -99,8 +106,8 @@ int nfs_mt_service_thread_start(struct nfs_context *nfs)
 
 void nfs_mt_service_thread_stop(struct nfs_context *nfs)
 {
-        nfs->multithreading_enabled = 0;
-        pthread_join(nfs->service_thread, NULL);
+        nfs->nfsi->multithreading_enabled = 0;
+        pthread_join(nfs->nfsi->service_thread, NULL);
 }
         
 int nfs_mt_mutex_init(libnfs_mutex_t *mutex)
@@ -146,6 +153,10 @@ int nfs_mt_sem_wait(libnfs_sem_t *sem)
 }
 
 #elif WIN32 
+nfs_tid_t nfs_mt_get_tid(void)
+{
+    return GetCurrentThreadId();
+}
 static void* nfs_mt_service_thread(void* arg)
 {
     struct nfs_context* nfs = (struct nfs_context*)arg;
@@ -153,9 +164,9 @@ static void* nfs_mt_service_thread(void* arg)
     int revents;
     int ret;
 
-    nfs->multithreading_enabled = 1;
+    nfs->nfsi->multithreading_enabled = 1;
 
-    while (nfs->multithreading_enabled) {
+    while (nfs->nfsi->multithreading_enabled) {
         pfd.fd = nfs_get_fd(nfs);
         pfd.events = nfs_which_events(nfs);
         pfd.revents = 0;
@@ -193,12 +204,12 @@ static DWORD WINAPI service_thread_init(LPVOID lpParam)
 
 int nfs_mt_service_thread_start(struct nfs_context* nfs)
 {
-    nfs->service_thread = CreateThread(NULL, 1024*1024, service_thread_init, nfs, 0, NULL);
-    if (nfs->service_thread == NULL) {
+    nfs->nfsi->service_thread = CreateThread(NULL, 1024*1024, service_thread_init, nfs, 0, NULL);
+    if (nfs->nfsi->service_thread == NULL) {
         nfs_set_error(nfs, "Failed to start service thread");
         return -1;
     }
-    while (nfs->multithreading_enabled == 0) {
+    while (nfs->nfsi->multithreading_enabled == 0) {
         Sleep(100);
     }
     return 0;
@@ -206,8 +217,8 @@ int nfs_mt_service_thread_start(struct nfs_context* nfs)
 
 void nfs_mt_service_thread_stop(struct nfs_context* nfs)
 {
-    nfs->multithreading_enabled = 0;
-    while (WaitForSingleObject(nfs->service_thread, INFINITE) != WAIT_OBJECT_0);
+    nfs->nfsi->multithreading_enabled = 0;
+    while (WaitForSingleObject(nfs->nfsi->service_thread, INFINITE) != WAIT_OBJECT_0);
 }
 
 int nfs_mt_mutex_init(libnfs_mutex_t* mutex)

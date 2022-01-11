@@ -223,9 +223,9 @@ nfs4_resolve_path(struct nfs_context *nfs, const char *path)
         if (path[0] == '/') {
                 new_path = strdup(path);
         } else {
-                new_path = malloc(strlen(path) + strlen(nfs->cwd) + 2);
+                new_path = malloc(strlen(path) + strlen(nfs->nfsi->cwd) + 2);
                 if (new_path != NULL) {
-                        sprintf(new_path, "%s/%s", nfs->cwd, path);
+                        sprintf(new_path, "%s/%s", nfs->nfsi->cwd, path);
                 }
         }
         if (new_path == NULL) {
@@ -651,7 +651,7 @@ nfs4_op_release_lockowner(struct nfs_context *nfs, nfs_argop4 *op, struct nfsfh 
         op->argop = OP_RELEASE_LOCKOWNER;
         rlargs = &op->nfs_argop4_u.oprelease_lockowner;
 
-        rlargs->lock_owner.clientid = nfs->clientid;
+        rlargs->lock_owner.clientid = nfs->nfsi->clientid;
         rlargs->lock_owner.owner.owner_len = 4;
         rlargs->lock_owner.owner.owner_val = (char *)&fh->lock_owner;
         
@@ -963,7 +963,7 @@ nfs4_op_lock(struct nfs_context *nfs, nfs_argop4 *op, struct nfsfh *fh,
         largs->offset   = offset;
         largs->length   = length;
 
-        if (nfs->has_lock_owner) {
+        if (nfs->nfsi->has_lock_owner) {
                 largs->locker.new_lock_owner = 0;
                 largs->locker.locker4_u.lock_owner.lock_stateid.seqid =
                         fh->lock_stateid.seqid;
@@ -980,11 +980,11 @@ nfs4_op_lock(struct nfs_context *nfs, nfs_argop4 *op, struct nfsfh *fh,
                 memcpy(largs->locker.locker4_u.open_owner.open_stateid.other,
                        fh->stateid.other, 12);
                 largs->locker.locker4_u.open_owner.lock_owner.clientid =
-                        nfs->clientid;
+                        nfs->nfsi->clientid;
                 largs->locker.locker4_u.open_owner.lock_owner.owner.owner_len =
-                        strlen(nfs->client_name);
+                        strlen(nfs->nfsi->client_name);
                 largs->locker.locker4_u.open_owner.lock_owner.owner.owner_val =
-                        nfs->client_name;
+                        nfs->nfsi->client_name;
                 largs->locker.locker4_u.open_owner.lock_seqid =
                         fh->lock_seqid;
         }
@@ -1026,9 +1026,9 @@ nfs4_op_lockt(struct nfs_context *nfs, nfs_argop4 *op, struct nfsfh *fh,
         ltargs->offset   = offset;
         ltargs->length   = length;
 
-        ltargs->owner.clientid = nfs->clientid;
-        ltargs->owner.owner.owner_len = strlen(nfs->client_name);
-        ltargs->owner.owner.owner_val = nfs->client_name;
+        ltargs->owner.clientid = nfs->nfsi->clientid;
+        ltargs->owner.owner.owner_len = strlen(nfs->nfsi->client_name);
+        ltargs->owner.owner.owner_val = nfs->nfsi->client_name;
 
         return 1;
 }
@@ -1133,11 +1133,11 @@ nfs4_allocate_op(struct nfs_context *nfs, nfs_argop4 **op,
         }
 
         i = 0;
-        if (nfs->rootfh.len) {
+        if (nfs->nfsi->rootfh.len) {
                 struct nfsfh fh;
 
-                fh.fh.len = nfs->rootfh.len;
-                fh.fh.val = nfs->rootfh.val;
+                fh.fh.len = nfs->nfsi->rootfh.len;
+                fh.fh.val = nfs->nfsi->rootfh.val;
                 i += nfs4_op_putfh(nfs, &(*op)[i], &fh);
         } else {
                 i += nfs4_op_putrootfh(nfs, &(*op)[i]);
@@ -1497,17 +1497,17 @@ nfs4_mount_4_cb(struct rpc_context *rpc, int status, void *command_data,
         }
         gfhresok = &res->resarray.resarray_val[i].nfs_resop4_u.opgetfh.GETFH4res_u.resok4;
 
-        nfs->rootfh.len = gfhresok->object.nfs_fh4_len;
-        nfs->rootfh.val = malloc(nfs->rootfh.len);
-        if (nfs->rootfh.val == NULL) {
+        nfs->nfsi->rootfh.len = gfhresok->object.nfs_fh4_len;
+        nfs->nfsi->rootfh.val = malloc(nfs->nfsi->rootfh.len);
+        if (nfs->nfsi->rootfh.val == NULL) {
                 nfs_set_error(nfs, "%s: %s", __FUNCTION__, nfs_get_error(nfs));
                 data->cb(-ENOMEM, nfs, nfs_get_error(nfs), data->private_data);
                 free_nfs4_cb_data(data);
                 return;
         }
-        memcpy(nfs->rootfh.val,
+        memcpy(nfs->nfsi->rootfh.val,
                gfhresok->object.nfs_fh4_val,
-               nfs->rootfh.len);
+               nfs->nfsi->rootfh.len);
 
 
         data->cb(0, nfs, NULL, data->private_data);
@@ -1567,15 +1567,15 @@ nfs4_mount_2_cb(struct rpc_context *rpc, int status, void *command_data,
         }
 
         scidresok = &res->resarray.resarray_val[0].nfs_resop4_u.opsetclientid.SETCLIENTID4res_u.resok4;
-        nfs->clientid = scidresok->clientid;
-        memcpy(nfs->setclientid_confirm,
+        nfs->nfsi->clientid = scidresok->clientid;
+        memcpy(nfs->nfsi->setclientid_confirm,
                scidresok->setclientid_confirm,
                NFS4_VERIFIER_SIZE);
 
         memset(op, 0, sizeof(op));
 
-        i = nfs4_op_setclientid_confirm(nfs, &op[0], nfs->clientid,
-                                        nfs->setclientid_confirm);
+        i = nfs4_op_setclientid_confirm(nfs, &op[0], nfs->nfsi->clientid,
+                                        nfs->nfsi->setclientid_confirm);
                
         memset(&args, 0, sizeof(args));
         args.argarray.argarray_len = i;
@@ -1609,7 +1609,7 @@ nfs4_mount_1_cb(struct rpc_context *rpc, int status, void *command_data,
 
         memset(op, 0, sizeof(op));
 
-        i = nfs4_op_setclientid(nfs, &op[0], nfs->verifier, nfs->client_name);
+        i = nfs4_op_setclientid(nfs, &op[0], nfs->nfsi->verifier, nfs->nfsi->client_name);
         
         memset(&args, 0, sizeof(args));
         args.argarray.argarray_len = i;
@@ -1633,8 +1633,8 @@ nfs4_mount_async(struct nfs_context *nfs, const char *server,
         int port;
 
         new_server = strdup(server);
-        free(nfs->server);
-        nfs->server = new_server;
+        free(nfs->nfsi->server);
+        nfs->nfsi->server = new_server;
 
         new_export = strdup(export);
         if (nfs_normalize_path(nfs, new_export)) {
@@ -1643,8 +1643,8 @@ nfs4_mount_async(struct nfs_context *nfs, const char *server,
                 free(new_export);
                 return -1;
         }
-        free(nfs->export);
-        nfs->export = new_export;
+        free(nfs->nfsi->export);
+        nfs->nfsi->export = new_export;
 
 
         data = malloc(sizeof(*data));
@@ -1660,7 +1660,7 @@ nfs4_mount_async(struct nfs_context *nfs, const char *server,
         data->private_data = private_data;
         data->path         = strdup(new_export);
 
-        port = nfs->nfsport ? nfs->nfsport : 2049;
+        port = nfs->nfsi->nfsport ? nfs->nfsi->nfsport : 2049;
         if (rpc_connect_port_async(nfs->rpc, server, port,
                                    NFS4_PROGRAM, NFS_V4,
                                    nfs4_mount_1_cb, data) != 0) {
@@ -1687,8 +1687,11 @@ nfs4_chdir_1_cb(struct rpc_context *rpc, int status, void *command_data,
         }
 
         /* Ok, all good. Lets steal the path string. */
-        free(nfs->cwd);
-        nfs->cwd = data->path;
+        nfs_mt_mutex_lock(&nfs->rpc->rpc_mutex);
+        free(nfs->nfsi->cwd);
+        nfs->nfsi->cwd = data->path;
+        nfs_mt_mutex_unlock(&nfs->rpc->rpc_mutex);
+
         data->path = NULL;
 
         data->cb(0, nfs, NULL, data->private_data);
@@ -2248,7 +2251,7 @@ nfs4_populate_open(struct nfs4_cb_data *data, nfs_argop4 *op)
                 oargs->share_access |= OPEN4_SHARE_ACCESS_WRITE;
         }
         oargs->share_deny = OPEN4_SHARE_DENY_NONE;
-        oargs->owner.clientid = nfs->clientid;
+        oargs->owner.clientid = nfs->nfsi->clientid;
         oargs->owner.owner.owner_len = 4;
         oargs->owner.owner.owner_val = (char *)&data->lock_owner;
         oargs->seqid = 0;
@@ -2343,12 +2346,13 @@ nfs4_open_readlink_cb(struct rpc_context *rpc, int status, void *command_data,
         data_split_path(data);
 
 #ifdef HAVE_MULTITHREADING
-        nfs_mt_mutex_lock(&data->nfs->nfs4_open_mutex);
-#endif        
-        data->lock_owner = nfs->open_counter++;
-#ifdef HAVE_MULTITHREADING
-        nfs_mt_mutex_unlock(&data->nfs->nfs4_open_mutex);
-#endif        
+        nfs_mt_mutex_lock(&data->nfs->nfsi->nfs4_open_mutex);
+        data->lock_owner = nfs->nfsi->open_counter++;
+        nfs_mt_mutex_unlock(&data->nfs->nfsi->nfs4_open_mutex);
+#else
+        data->lock_owner = nfs->nfsi->open_counter++;
+#endif
+        
         data->filler.func = nfs4_populate_open;
         data->filler.max_op = 3;
  
@@ -2466,11 +2470,11 @@ nfs4_open_async_internal(struct nfs_context *nfs, struct nfs4_cb_data *data,
         }
 
 #ifdef HAVE_MULTITHREADING
-        nfs_mt_mutex_lock(&data->nfs->nfs4_open_mutex);
+        nfs_mt_mutex_lock(&data->nfs->nfsi->nfs4_open_mutex);
 #endif        
-        data->lock_owner = nfs->open_counter++;
+        data->lock_owner = nfs->nfsi->open_counter++;
 #ifdef HAVE_MULTITHREADING
-        nfs_mt_mutex_unlock(&data->nfs->nfs4_open_mutex);
+        nfs_mt_mutex_unlock(&data->nfs->nfsi->nfs4_open_mutex);
 #endif        
         data->filler.func = nfs4_populate_open;
         data->filler.max_op = 3;
@@ -4156,7 +4160,7 @@ nfs4_lockf_cb(struct rpc_context *rpc, int status, void *command_data,
                 }
 
                 lresok = &res->resarray.resarray_val[i].nfs_resop4_u.oplock.LOCK4res_u.resok4;
-                nfs->has_lock_owner = 1;
+                nfs->nfsi->has_lock_owner = 1;
                 fh->lock_stateid.seqid = lresok->lock_stateid.seqid;
                 memcpy(fh->lock_stateid.other, lresok->lock_stateid.other, 12);
                 break;
@@ -4275,7 +4279,7 @@ nfs4_fcntl_cb(struct rpc_context *rpc, int status, void *command_data,
                         }
 
                         lresok = &res->resarray.resarray_val[i].nfs_resop4_u.oplock.LOCK4res_u.resok4;
-                        nfs->has_lock_owner = 1;
+                        nfs->nfsi->has_lock_owner = 1;
                         fh->lock_stateid.seqid = lresok->lock_stateid.seqid;
                         memcpy(fh->lock_stateid.other,
                                lresok->lock_stateid.other, 12);
@@ -4700,8 +4704,8 @@ nfs4_statvfs_async_internal(struct nfs_context *nfs, const char *path,
                 data->flags |= LOOKUP_FLAG_IS_STATVFS64;
         }
 
-        fh.fh.len = nfs->rootfh.len;
-        fh.fh.val = nfs->rootfh.val;
+        fh.fh.len = nfs->nfsi->rootfh.len;
+        fh.fh.val = nfs->nfsi->rootfh.val;
 
         i = nfs4_op_putfh(nfs, &op[0], &fh);
         i += nfs4_op_getattr(nfs, &op[i], statvfs_attributes, 2);

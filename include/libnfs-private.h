@@ -287,40 +287,57 @@ struct nfs_fh {
         char *val;
 };
 
-struct nfs_context {
-       struct rpc_context *rpc;
+struct nfs_context_internal {
        char *server;
        char *export;
+       char *cwd;
        struct nfs_fh rootfh;
        uint64_t readmax;
        uint64_t writemax;
-       char *cwd;
-       int dircache_enabled;
        int auto_reconnect;
+       int dircache_enabled;
        struct nfsdir *dircache;
        uint16_t	mask;
-
        int auto_traverse_mounts;
        struct nested_mounts *nested_mounts;
+       int version;
+       int nfsport;
+       int mountport;
 
-        int version;
-        int nfsport;
-        int mountport;
-
-        /* NFSv4 specific fields */
-        verifier4 verifier;
-        char *client_name;
-        uint64_t clientid;
-        verifier4 setclientid_confirm;
-        uint32_t open_counter;
-        int has_lock_owner;
+       /* NFSv4 specific fields */
+       verifier4 verifier;
+       char *client_name;
+       uint64_t clientid;
+       verifier4 setclientid_confirm;
+       uint32_t open_counter;
+       int has_lock_owner;
 #ifdef HAVE_MULTITHREADING
-        int multithreading_enabled;
-        libnfs_thread_t service_thread;
-        libnfs_mutex_t nfs4_open_mutex;
+       int multithreading_enabled;
+       libnfs_thread_t service_thread;
+       libnfs_mutex_t nfs_mutex;
+       libnfs_mutex_t nfs4_open_mutex;
+       struct nfs_thread_context *thread_ctx;
+#endif /* HAVE_MULTITHREADING */
+};
+        
+struct nfs_context {
+       struct rpc_context *rpc;
+       struct nfs_context_internal *nfsi;
+       char *error_string;
+
+#ifdef HAVE_MULTITHREADING
+       struct nfs_context *master_ctx;
 #endif /* HAVE_MULTITHREADING */
 };
 
+#ifdef HAVE_MULTITHREADING
+struct nfs_thread_context {
+        struct nfs_thread_context *next;
+        nfs_tid_t tid;
+        struct nfs_context nfs;
+};
+#endif /* HAVE_MULTITHREADING */
+        
 typedef int (*continue_func)(struct nfs_context *nfs, struct nfs_attr *attr,
 			     struct nfs_cb_data *data);
 

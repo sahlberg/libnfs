@@ -192,8 +192,8 @@ nfs3_lookup_path_2_cb(struct rpc_context *rpc, int status, void *command_data,
 	/* Handle absolute paths, ensuring that the path lies within the
 	 * export. */
 	if (path[0] == '/') {
-		if (strstr(path, nfs->export) == path) {
-			char *ptr = path + strlen(nfs->export);
+		if (strstr(path, nfs_get_export(nfs)) == path) {
+			char *ptr = path + strlen(nfs_get_export(nfs));
 			if (*ptr == '/') {
 				newpath = strdup(ptr);
 			} else if (*ptr == '\0') {
@@ -248,7 +248,7 @@ nfs3_lookup_path_2_cb(struct rpc_context *rpc, int status, void *command_data,
 	}
 
 	data->path = data->saved_path;
-	nfs3_lookup_path_async_internal(nfs, NULL, data, &nfs->rootfh);
+	nfs3_lookup_path_async_internal(nfs, NULL, data, &nfs->nfsi->rootfh);
 	return;
 
 nomem:
@@ -459,7 +459,7 @@ nfs3_lookup_path_getattr_cb(struct rpc_context *rpc, int status,
 	/* This function will always invoke the callback and cleanup
 	 * for failures. So no need to check the return value.
 	 */
-	nfs3_lookup_path_async_internal(nfs, &attr, data, &nfs->rootfh);
+	nfs3_lookup_path_async_internal(nfs, &attr, data, &nfs->nfsi->rootfh);
 }
 
 /* This function will free continue_data on error */
@@ -498,14 +498,14 @@ nfs3_lookuppath_async(struct nfs_context *nfs, const char *path, int no_follow,
 	if (path[0] == '/') {
 		data->saved_path = strdup(path);
 	} else {
-		data->saved_path = malloc(strlen(path) + strlen(nfs->cwd) + 2);
+		data->saved_path = malloc(strlen(path) + strlen(nfs->nfsi->cwd) + 2);
 		if (data->saved_path == NULL) {
 			nfs_set_error(nfs, "Out of memory: failed to "
 				"allocate path string");
 			free_nfs_cb_data(data);
 			return -1;
 		}
-		sprintf(data->saved_path, "%s/%s", nfs->cwd, path);
+		sprintf(data->saved_path, "%s/%s", nfs->nfsi->cwd, path);
 	}
 
 	if (data->saved_path == NULL) {
@@ -520,7 +520,7 @@ nfs3_lookuppath_async(struct nfs_context *nfs, const char *path, int no_follow,
 	}
 
 	data->path = data->saved_path;
-	fh = &nfs->rootfh;
+	fh = &nfs->nfsi->rootfh;
 
 	if (data->path[0]) {
 		struct nested_mounts *mnt;
@@ -531,7 +531,7 @@ nfs3_lookuppath_async(struct nfs_context *nfs, const char *path, int no_follow,
 		size_t max_match_len = 0;
 
 		/* Do we need to switch to a different nested export ? */
-		for (mnt = nfs->nested_mounts; mnt; mnt = mnt->next) {
+		for (mnt = nfs->nfsi->nested_mounts; mnt; mnt = mnt->next) {
 			if (strlen(mnt->path) < max_match_len)
 				continue;
 			if (strncmp(mnt->path, data->saved_path,
@@ -620,7 +620,7 @@ nfs3_mount_7_cb(struct rpc_context *rpc, int status, void *command_data,
 		return;
 	}
 
-	if (!nfs->nested_mounts)
+	if (!nfs->nfsi->nested_mounts)
 		goto finished;
 
 	/* nested mount traversals are best-effort only, so any
@@ -633,7 +633,7 @@ nfs3_mount_7_cb(struct rpc_context *rpc, int status, void *command_data,
 	memset(ma, 0, sizeof(struct mount_attr_cb));
 	ma->data = data;
 
-	for(mnt = nfs->nested_mounts; mnt; mnt = mnt->next) {
+	for(mnt = nfs->nfsi->nested_mounts; mnt; mnt = mnt->next) {
 		struct mount_attr_item_cb *ma_item;
 		struct GETATTR3args args;
 
@@ -685,7 +685,7 @@ nfs3_mount_6_cb(struct rpc_context *rpc, int status, void *command_data,
 
 	if (res->status != NFS3_OK) {
 		nfs_set_error(nfs, "NFS: FSINFO of %s failed with %s(%d)",
-                              nfs->export, nfsstat3_to_str(res->status),
+                              nfs_get_export(nfs), nfsstat3_to_str(res->status),
                               nfsstat3_to_errno(res->status));
 		data->cb(nfsstat3_to_errno(res->status), nfs,
                          nfs_get_error(nfs), data->private_data);
@@ -693,35 +693,35 @@ nfs3_mount_6_cb(struct rpc_context *rpc, int status, void *command_data,
 		return;
         }
 
-	nfs->readmax = res->FSINFO3res_u.resok.rtmax;
-	nfs->writemax = res->FSINFO3res_u.resok.wtmax;
+	nfs->nfsi->readmax = res->FSINFO3res_u.resok.rtmax;
+	nfs->nfsi->writemax = res->FSINFO3res_u.resok.wtmax;
 
 	/* The server supports sizes up to rtmax and wtmax, so it is legal
 	 * to use smaller transfers sizes.
 	 */
-	if (nfs->readmax > NFS_MAX_XFER_SIZE)
-		nfs->readmax = NFS_MAX_XFER_SIZE;
-	else if (nfs->readmax < NFSMAXDATA2) {
+	if (nfs->nfsi->readmax > NFS_MAX_XFER_SIZE)
+		nfs->nfsi->readmax = NFS_MAX_XFER_SIZE;
+	else if (nfs->nfsi->readmax < NFSMAXDATA2) {
 		nfs_set_error(nfs, "server max rsize of %" PRIu64,
-                              nfs->readmax);
+                              nfs->nfsi->readmax);
 		data->cb(-EINVAL, nfs, nfs_get_error(nfs), data->private_data);
 		free_nfs_cb_data(data);
 		return;
 	}
 
-	if (nfs->writemax > NFS_MAX_XFER_SIZE)
-		nfs->writemax = NFS_MAX_XFER_SIZE;
-	else if (nfs->writemax < NFSMAXDATA2) {
+	if (nfs->nfsi->writemax > NFS_MAX_XFER_SIZE)
+		nfs->nfsi->writemax = NFS_MAX_XFER_SIZE;
+	else if (nfs->nfsi->writemax < NFSMAXDATA2) {
 		nfs_set_error(nfs, "server max wsize of %" PRIu64,
-                              nfs->writemax);
+                              nfs->nfsi->writemax);
 		data->cb(-EINVAL, nfs, nfs_get_error(nfs), data->private_data);
 		free_nfs_cb_data(data);
 		return;
 	}
 
 	memset(&args, 0, sizeof(GETATTR3args));
-	args.object.data.data_len = nfs->rootfh.len;
-	args.object.data.data_val = nfs->rootfh.val;
+	args.object.data.data_len = nfs->nfsi->rootfh.len;
+	args.object.data.data_val = nfs->nfsi->rootfh.val;
 
 	if (rpc_nfs3_getattr_async(rpc, nfs3_mount_7_cb, &args, data) != 0) {
                 nfs_set_error(nfs, "%s: %s", __FUNCTION__, nfs_get_error(nfs));
@@ -749,10 +749,10 @@ nfs3_mount_5_cb(struct rpc_context *rpc, int status, void *command_data,
 	/* NFS TCP: As we are connected now we can pass on the auto-reconnect
 	 * settings to the RPC layer.
          */
-	rpc_set_autoreconnect(rpc, nfs->auto_reconnect);
+	rpc_set_autoreconnect(rpc, nfs->nfsi->auto_reconnect);
 
-	args.fsroot.data.data_len = nfs->rootfh.len;
-	args.fsroot.data.data_val = nfs->rootfh.val;
+	args.fsroot.data.data_len = nfs->nfsi->rootfh.len;
+	args.fsroot.data.data_val = nfs->nfsi->rootfh.val;
 	if (rpc_nfs3_fsinfo_async(rpc, nfs3_mount_6_cb, &args, data) != 0) {
                 nfs_set_error(nfs, "%s: %s", __FUNCTION__, nfs_get_error(nfs));
 		data->cb(-ENOMEM, nfs, nfs_get_error(nfs), data->private_data);
@@ -836,7 +836,7 @@ nfs3_mount_4_cb(struct rpc_context *rpc, int status, void *command_data,
 	mnt->path = md_item_cb->path;
 	md_item_cb->path = NULL;
 
-	LIBNFS_LIST_ADD(&nfs->nested_mounts, mnt);
+	LIBNFS_LIST_ADD(&nfs->nfsi->nested_mounts, mnt);
 
 finished:
 	free(md_item_cb->path);
@@ -861,8 +861,9 @@ finished:
 		return;
 	}
 
-        if (nfs->nfsport) {
-                if (rpc_connect_port_async(nfs->rpc, nfs->server, nfs->nfsport,
+        if (nfs->nfsi->nfsport) {
+                if (rpc_connect_port_async(nfs->rpc, nfs_get_server(nfs),
+                                           nfs->nfsi->nfsport,
                                            NFS_PROGRAM, NFS_V3,
                                            nfs3_mount_5_cb, data) != 0) {
                         nfs_set_error(nfs, "%s: %s", __FUNCTION__,
@@ -876,7 +877,8 @@ finished:
                 return;
         }
 
-	if (rpc_connect_program_async(nfs->rpc, nfs->server, NFS_PROGRAM,
+	if (rpc_connect_program_async(nfs->rpc, nfs_get_server(nfs),
+                                      NFS_PROGRAM,
                                       NFS_V3, nfs3_mount_5_cb, data) != 0) {
                 nfs_set_error(nfs, "%s: %s", __FUNCTION__, nfs_get_error(nfs));
 		data->cb(-ENOMEM, nfs, nfs_get_error(nfs), data->private_data);
@@ -907,7 +909,7 @@ nfs3_mount_3_cb(struct rpc_context *rpc, int status, void *command_data,
 	/* Iterate over all exports and check if there are any mounts nested
 	 * below the current mount.
 	 */
-	len = strlen(nfs->export);
+	len = strlen(nfs_get_export(nfs));
 	if (!len) {
 		data->cb(-EFAULT, nfs, "Export is empty", data->private_data);
 		free_nfs_cb_data(data);
@@ -917,7 +919,7 @@ nfs3_mount_3_cb(struct rpc_context *rpc, int status, void *command_data,
 	while (res) {
 		struct mount_discovery_item_cb *md_item_cb;
 
-		if (strncmp(nfs->export, res->ex_dir, len)) {
+		if (strncmp(nfs_get_export(nfs), res->ex_dir, len)) {
 			res = res->ex_next;
 			continue;
 		}
@@ -938,7 +940,7 @@ nfs3_mount_3_cb(struct rpc_context *rpc, int status, void *command_data,
 		memset(md_item_cb, 0, sizeof(*md_item_cb));
 
 		md_item_cb->path = strdup(res->ex_dir + len
-					  - (nfs->export[len -1] == '/'));
+					  - (nfs_get_export(nfs)[len -1] == '/'));
 		if (md_item_cb->path == NULL) {
 			free(md_item_cb);
 			continue;
@@ -983,8 +985,9 @@ nfs3_mount_3_cb(struct rpc_context *rpc, int status, void *command_data,
 	 */
 	rpc_disconnect(rpc, "normal disconnect");
 
-        if (nfs->nfsport) {
-                if (rpc_connect_port_async(nfs->rpc, nfs->server, nfs->nfsport,
+        if (nfs->nfsi->nfsport) {
+                if (rpc_connect_port_async(nfs->rpc, nfs_get_server(nfs),
+                                           nfs->nfsi->nfsport,
                                            NFS_PROGRAM, NFS_V3,
                                            nfs3_mount_5_cb, data) != 0) {
                         nfs_set_error(nfs, "%s: %s", __FUNCTION__,
@@ -997,7 +1000,8 @@ nfs3_mount_3_cb(struct rpc_context *rpc, int status, void *command_data,
                 return;
         }
 
-	if (rpc_connect_program_async(nfs->rpc, nfs->server, NFS_PROGRAM,
+	if (rpc_connect_program_async(nfs->rpc, nfs_get_server(nfs),
+                                      NFS_PROGRAM,
                                       NFS_V3, nfs3_mount_5_cb, data) != 0) {
                 nfs_set_error(nfs, "%s: %s", __FUNCTION__, nfs_get_error(nfs));
 		data->cb(-ENOMEM, nfs, nfs_get_error(nfs), data->private_data);
@@ -1035,19 +1039,19 @@ nfs3_mount_2_cb(struct rpc_context *rpc, int status, void *command_data,
 		return;
 	}
 
-	nfs->rootfh.len = res->mountres3_u.mountinfo.fhandle.fhandle3_len;
-	nfs->rootfh.val = malloc(nfs->rootfh.len);
-	if (nfs->rootfh.val == NULL) {
+	nfs->nfsi->rootfh.len = res->mountres3_u.mountinfo.fhandle.fhandle3_len;
+	nfs->nfsi->rootfh.val = malloc(nfs->nfsi->rootfh.len);
+	if (nfs->nfsi->rootfh.val == NULL) {
                 nfs_set_error(nfs, "%s: %s", __FUNCTION__, nfs_get_error(nfs));
 		data->cb(-ENOMEM, nfs, nfs_get_error(nfs), data->private_data);
 		free_nfs_cb_data(data);
 		return;
 	}
-	memcpy(nfs->rootfh.val,
+	memcpy(nfs->nfsi->rootfh.val,
                res->mountres3_u.mountinfo.fhandle.fhandle3_val,
-               nfs->rootfh.len);
+               nfs->nfsi->rootfh.len);
 
-	if (nfs->auto_traverse_mounts) {
+	if (nfs->nfsi->auto_traverse_mounts) {
 		if (rpc_mount3_export_async(rpc, nfs3_mount_3_cb, data) != 0) {
                         nfs_set_error(nfs, "%s: %s", __FUNCTION__,
                                       nfs_get_error(nfs));
@@ -1060,8 +1064,9 @@ nfs3_mount_2_cb(struct rpc_context *rpc, int status, void *command_data,
 	}
 
 	rpc_disconnect(rpc, "normal disconnect");
-        if (nfs->nfsport) {
-                if (rpc_connect_port_async(nfs->rpc, nfs->server, nfs->nfsport,
+        if (nfs->nfsi->nfsport) {
+                if (rpc_connect_port_async(nfs->rpc, nfs_get_server(nfs),
+                                           nfs->nfsi->nfsport,
                                            NFS_PROGRAM, NFS_V3,
                                            nfs3_mount_5_cb, data) != 0) {
                         nfs_set_error(nfs, "%s: %s", __FUNCTION__,
@@ -1074,7 +1079,8 @@ nfs3_mount_2_cb(struct rpc_context *rpc, int status, void *command_data,
                 return;
         }
 
-	if (rpc_connect_program_async(nfs->rpc, nfs->server, NFS_PROGRAM,
+	if (rpc_connect_program_async(nfs->rpc, nfs_get_server(nfs),
+                                      NFS_PROGRAM,
                                       NFS_V3, nfs3_mount_5_cb, data) != 0) {
                 nfs_set_error(nfs, "%s: %s", __FUNCTION__, nfs_get_error(nfs));
 		data->cb(-ENOMEM, nfs, nfs_get_error(nfs), data->private_data);
@@ -1098,7 +1104,7 @@ nfs3_mount_1_cb(struct rpc_context *rpc, int status, void *command_data,
 		return;
 	}
 
-	if (rpc_mount3_mnt_async(rpc, nfs3_mount_2_cb, nfs->export,
+	if (rpc_mount3_mnt_async(rpc, nfs3_mount_2_cb, nfs->nfsi->export,
                                  data) != 0) {
                 nfs_set_error(nfs, "%s: %s.", __FUNCTION__, nfs_get_error(nfs));
 		data->cb(-ENOMEM, nfs, nfs_get_error(nfs), data->private_data);
@@ -1123,20 +1129,20 @@ nfs3_mount_async(struct nfs_context *nfs, const char *server,
 	memset(data, 0, sizeof(struct nfs_cb_data));
 	new_server = strdup(server);
 	new_export = strdup(export);
-	if (nfs->server != NULL) {
-		free(nfs->server);
+	if (nfs->nfsi->server != NULL) {
+		free(nfs->nfsi->server);
 	}
-	nfs->server        = new_server;
-	if (nfs->export != NULL) {
-		free(nfs->export);
+	nfs->nfsi->server = new_server;
+	if (nfs->nfsi->export != NULL) {
+		free(nfs->nfsi->export);
 	}
-	nfs->export        = new_export;
+	nfs->nfsi->export  = new_export;
 	data->nfs          = nfs;
 	data->cb           = cb;
 	data->private_data = private_data;
 
-        if (nfs->mountport) {
-                if (rpc_connect_port_async(nfs->rpc, server, nfs->mountport,
+        if (nfs->nfsi->mountport) {
+                if (rpc_connect_port_async(nfs->rpc, server, nfs->nfsi->mountport,
                                            MOUNT_PROGRAM, MOUNT_V3,
                                            nfs3_mount_1_cb, data) != 0) {
                         nfs_set_error(nfs, "Failed to start connection. %s",
@@ -1192,7 +1198,7 @@ nfs3_umount_1_cb(struct rpc_context *rpc, int status, void *command_data,
 		return;
 	}
 
-	if (rpc_mount3_umnt_async(rpc, nfs3_umount_2_cb, nfs->export,
+	if (rpc_mount3_umnt_async(rpc, nfs3_umount_2_cb, nfs->nfsi->export,
                                  data) != 0) {
                 nfs_set_error(nfs, "%s: %s.", __FUNCTION__, nfs_get_error(nfs));
 		data->cb(-ENOMEM, nfs, nfs_get_error(nfs), data->private_data);
@@ -1220,9 +1226,9 @@ nfs3_umount_async(struct nfs_context *nfs, nfs_cb cb, void *private_data)
 
 	rpc_disconnect(nfs->rpc, "umount");
 
-        if (nfs->mountport) {
-                if (rpc_connect_port_async(nfs->rpc, nfs->server,
-                                           nfs->mountport,
+        if (nfs->nfsi->mountport) {
+                if (rpc_connect_port_async(nfs->rpc, nfs_get_server(nfs),
+                                           nfs->nfsi->mountport,
                                            MOUNT_PROGRAM, MOUNT_V3,
                                            nfs3_umount_1_cb, data) != 0) {
                         nfs_set_error(nfs, "Failed to start connection. %s",
@@ -1233,7 +1239,7 @@ nfs3_umount_async(struct nfs_context *nfs, nfs_cb cb, void *private_data)
                 return 0;
         }
 
-	if (rpc_connect_program_async(nfs->rpc, nfs->server,
+	if (rpc_connect_program_async(nfs->rpc, nfs_get_server(nfs),
 				      MOUNT_PROGRAM, MOUNT_V3,
 				      nfs3_umount_1_cb, data) != 0) {
 		nfs_set_error(nfs, "Failed to start connection. %s",
@@ -2927,7 +2933,7 @@ nfs3_opendir_cb(struct rpc_context *rpc, int status, void *command_data,
 				splen = 0;
 
 			/* No name attributes. Is it a nested mount then?*/
-			for(mnt = nfs->nested_mounts; mnt; mnt = mnt->next) {
+			for(mnt = nfs->nfsi->nested_mounts; mnt; mnt = mnt->next) {
 				if (strncmp(data->saved_path, mnt->path, splen))
 					continue;
 				if (mnt->path[splen] != '/')
@@ -4977,8 +4983,11 @@ nfs3_chdir_continue_internal(struct nfs_context *nfs,
                              struct nfs_cb_data *data)
 {
 	/* steal saved_path */
-	free(nfs->cwd);
-	nfs->cwd = data->saved_path;
+        nfs_mt_mutex_lock(&nfs->rpc->rpc_mutex);
+	free(nfs->nfsi->cwd);
+        nfs->nfsi->cwd = data->saved_path;
+        nfs_mt_mutex_unlock(&nfs->rpc->rpc_mutex);
+
 	data->saved_path = NULL;
 
 	data->cb(0, nfs, NULL, data->private_data);

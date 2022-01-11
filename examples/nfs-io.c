@@ -208,7 +208,7 @@ int main(int argc, char *argv[])
 	} else if (!strncmp(argv[1], "acl", 3)) {
 		ret = nfs_open(nfs, url->file, 0600, &nfsfh);
 		if (ret != 0) {
-			printf("failed to open %s\n", url->file);
+			printf("failed to open %s. %s\n", url->file, nfs_get_error(nfs));
 			goto finished;
 		}
 
