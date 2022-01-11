@@ -121,18 +121,45 @@ struct sync_cb_data {
 };
 
 static inline int
-nfs_init_cb_data(struct nfs_context *nfs, struct sync_cb_data *cb_data)
+nfs_init_cb_data(struct nfs_context **nfs, struct sync_cb_data *cb_data)
 {
 	cb_data->is_finished = 0;
 #ifdef HAVE_MULTITHREADING
+        if (nfs && (*nfs)->multithreading_enabled && (*nfs)->master_ctx == NULL) {
+                struct nfs_thread_context *ntc;
+
+                for(ntc = (*nfs)->thread_ctx; ntc; ntc = ntc->next) {
+                        if (nfs_mt_get_tid() == ntc->tid) {
+                                break;
+                        }
+                }
+                if (ntc) {
+                        *nfs = &ntc->nfs;
+                } else {
+                        ntc = calloc(1, sizeof(struct nfs_thread_context));
+                        if (ntc == NULL) {
+                                return -1;
+                        }
+                        nfs_mt_mutex_lock(&(*nfs)->rpc->rpc_mutex);
+                        ntc->next = (*nfs)->thread_ctx;
+                        ntc->tid = nfs_mt_get_tid();
+                        (*nfs)->thread_ctx = ntc;
+                        nfs_mt_mutex_unlock(&(*nfs)->rpc->rpc_mutex);
+                        memcpy(&ntc->nfs, *nfs, sizeof(struct nfs_context));
+                        ntc->nfs.master_ctx = *nfs;
+
+                        *nfs = &ntc->nfs;
+                }
+        }
+
         /*
          * Create a semaphore and initialize it to zero. So that we
          * can wait for it and immetiately block until the service thread
          * has received the reply.
          */
         if (nfs_mt_sem_init(&cb_data->wait_sem, 0)) {
-                if (nfs) {
-                        nfs_set_error(nfs, "Failed to initialize semaphore");
+                if (nfs && *nfs) {
+                        nfs_set_error(*nfs, "Failed to initialize semaphore");
                 }
                 return -1;
         }
@@ -288,7 +315,7 @@ nfs_mount(struct nfs_context *nfs, const char *server, const char *export)
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
-        if (nfs_init_cb_data(nfs, &cb_data)) {
+        if (nfs_init_cb_data(&nfs, &cb_data)) {
                 return -1;
         }
 
@@ -343,7 +370,7 @@ nfs_umount(struct nfs_context *nfs)
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
-        if (nfs_init_cb_data(nfs, &cb_data)) {
+        if (nfs_init_cb_data(&nfs, &cb_data)) {
                 return -1;
         }
 
@@ -405,7 +432,7 @@ nfs_stat(struct nfs_context *nfs, const char *path, struct stat *st)
 	struct sync_cb_data cb_data;
 
 	cb_data.return_data = st;
-        if (nfs_init_cb_data(nfs, &cb_data)) {
+        if (nfs_init_cb_data(&nfs, &cb_data)) {
                 return -1;
         }
 
@@ -443,7 +470,7 @@ nfs_stat64(struct nfs_context *nfs, const char *path, struct nfs_stat_64 *st)
 	struct sync_cb_data cb_data;
 
 	cb_data.return_data = st;
-        if (nfs_init_cb_data(nfs, &cb_data)) {
+        if (nfs_init_cb_data(&nfs, &cb_data)) {
                 return -1;
         }
 
@@ -466,7 +493,7 @@ nfs_lstat64(struct nfs_context *nfs, const char *path, struct nfs_stat_64 *st)
 	struct sync_cb_data cb_data;
 
 	cb_data.return_data = st;
-        if (nfs_init_cb_data(nfs, &cb_data)) {
+        if (nfs_init_cb_data(&nfs, &cb_data)) {
                 return -1;
         }
 
@@ -513,7 +540,7 @@ nfs_open(struct nfs_context *nfs, const char *path, int flags,
 	struct sync_cb_data cb_data;
 
 	cb_data.return_data = nfsfh;
-        if (nfs_init_cb_data(nfs, &cb_data)) {
+        if (nfs_init_cb_data(&nfs, &cb_data)) {
                 return -1;
         }
 
@@ -537,7 +564,7 @@ nfs_open2(struct nfs_context *nfs, const char *path, int flags,
 	struct sync_cb_data cb_data;
 
 	cb_data.return_data = nfsfh;
-        if (nfs_init_cb_data(nfs, &cb_data)) {
+        if (nfs_init_cb_data(&nfs, &cb_data)) {
                 return -1;
         }
 
@@ -577,7 +604,7 @@ nfs_chdir(struct nfs_context *nfs, const char *path)
 {
 	struct sync_cb_data cb_data;
 
-        if (nfs_init_cb_data(nfs, &cb_data)) {
+        if (nfs_init_cb_data(&nfs, &cb_data)) {
                 return -1;
         }
 
@@ -625,7 +652,7 @@ nfs_pread(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t offset,
 
 	cb_data.return_data = buffer;
 	cb_data.call = "pread";
-        if (nfs_init_cb_data(nfs, &cb_data)) {
+        if (nfs_init_cb_data(&nfs, &cb_data)) {
                 return -1;
         }
 
@@ -654,7 +681,7 @@ nfs_read(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t count,
 
 	cb_data.return_data = buffer;
 	cb_data.call = "read";
-        if (nfs_init_cb_data(nfs, &cb_data)) {
+        if (nfs_init_cb_data(&nfs, &cb_data)) {
                 return -1;
         }
 
@@ -694,7 +721,7 @@ nfs_close(struct nfs_context *nfs, struct nfsfh *nfsfh)
 {
 	struct sync_cb_data cb_data;
 
-        if (nfs_init_cb_data(nfs, &cb_data)) {
+        if (nfs_init_cb_data(&nfs, &cb_data)) {
                 return -1;
         }
 
@@ -725,7 +752,7 @@ nfs_fstat(struct nfs_context *nfs, struct nfsfh *nfsfh, struct stat *st)
 	struct sync_cb_data cb_data;
 
 	cb_data.return_data = st;
-        if (nfs_init_cb_data(nfs, &cb_data)) {
+        if (nfs_init_cb_data(&nfs, &cb_data)) {
                 return -1;
         }
 
@@ -751,7 +778,7 @@ nfs_fstat64(struct nfs_context *nfs, struct nfsfh *nfsfh,
 	struct sync_cb_data cb_data;
 
 	cb_data.return_data = st;
-        if (nfs_init_cb_data(nfs, &cb_data)) {
+        if (nfs_init_cb_data(&nfs, &cb_data)) {
                 return -1;
         }
 
@@ -794,7 +821,7 @@ nfs_pwrite(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t offset,
 	struct sync_cb_data cb_data;
 
 	cb_data.call = "pwrite";
-        if (nfs_init_cb_data(nfs, &cb_data)) {
+        if (nfs_init_cb_data(&nfs, &cb_data)) {
                 return -1;
         }
 
@@ -822,7 +849,7 @@ nfs_write(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t count,
 	struct sync_cb_data cb_data;
 
 	cb_data.call = "write";
-        if (nfs_init_cb_data(nfs, &cb_data)) {
+        if (nfs_init_cb_data(&nfs, &cb_data)) {
                 return -1;
         }
 
@@ -863,7 +890,7 @@ nfs_fsync(struct nfs_context *nfs, struct nfsfh *nfsfh)
 {
 	struct sync_cb_data cb_data;
 
-        if (nfs_init_cb_data(nfs, &cb_data)) {
+        if (nfs_init_cb_data(&nfs, &cb_data)) {
                 return -1;
         }
 
@@ -905,7 +932,7 @@ nfs_ftruncate(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t length)
 {
 	struct sync_cb_data cb_data;
 
-        if (nfs_init_cb_data(nfs, &cb_data)) {
+        if (nfs_init_cb_data(&nfs, &cb_data)) {
                 return -1;
         }
 
@@ -947,7 +974,7 @@ int nfs_truncate(struct nfs_context *nfs, const char *path, uint64_t length)
 {
 	struct sync_cb_data cb_data;
 
-        if (nfs_init_cb_data(nfs, &cb_data)) {
+        if (nfs_init_cb_data(&nfs, &cb_data)) {
                 return -1;
         }
 
@@ -988,7 +1015,7 @@ nfs_mkdir(struct nfs_context *nfs, const char *path)
 {
 	struct sync_cb_data cb_data;
 
-        if (nfs_init_cb_data(nfs, &cb_data)) {
+        if (nfs_init_cb_data(&nfs, &cb_data)) {
                 return -1;
         }
 
@@ -1010,7 +1037,7 @@ nfs_mkdir2(struct nfs_context *nfs, const char *path, int mode)
 {
 	struct sync_cb_data cb_data;
 
-        if (nfs_init_cb_data(nfs, &cb_data)) {
+        if (nfs_init_cb_data(&nfs, &cb_data)) {
                 return -1;
         }
 
@@ -1051,7 +1078,7 @@ int nfs_rmdir(struct nfs_context *nfs, const char *path)
 {
 	struct sync_cb_data cb_data;
 
-        if (nfs_init_cb_data(nfs, &cb_data)) {
+        if (nfs_init_cb_data(&nfs, &cb_data)) {
                 return -1;
         }
 
@@ -1100,7 +1127,7 @@ nfs_create(struct nfs_context *nfs, const char *path, int flags, int mode,
 	struct sync_cb_data cb_data;
 
 	cb_data.return_data = nfsfh;
-        if (nfs_init_cb_data(nfs, &cb_data)) {
+        if (nfs_init_cb_data(&nfs, &cb_data)) {
                 return -1;
         }
 
@@ -1147,7 +1174,7 @@ nfs_mknod(struct nfs_context *nfs, const char *path, int mode, int dev)
 {
 	struct sync_cb_data cb_data;
 
-        if (nfs_init_cb_data(nfs, &cb_data)) {
+        if (nfs_init_cb_data(&nfs, &cb_data)) {
                 return -1;
         }
 
@@ -1188,7 +1215,7 @@ nfs_unlink(struct nfs_context *nfs, const char *path)
 {
 	struct sync_cb_data cb_data;
 
-        if (nfs_init_cb_data(nfs, &cb_data)) {
+        if (nfs_init_cb_data(&nfs, &cb_data)) {
                 return -1;
         }
 
@@ -1236,7 +1263,7 @@ nfs_opendir(struct nfs_context *nfs, const char *path, struct nfsdir **nfsdir)
 	struct sync_cb_data cb_data;
 
 	cb_data.return_data = nfsdir;
-        if (nfs_init_cb_data(nfs, &cb_data)) {
+        if (nfs_init_cb_data(&nfs, &cb_data)) {
                 return -1;
         }
 
@@ -1282,7 +1309,7 @@ nfs_lseek(struct nfs_context *nfs, struct nfsfh *nfsfh, int64_t offset, int when
 	struct sync_cb_data cb_data;
 
 	cb_data.return_data = current_offset;
-        if (nfs_init_cb_data(nfs, &cb_data)) {
+        if (nfs_init_cb_data(&nfs, &cb_data)) {
                 return -1;
         }
 
@@ -1325,7 +1352,7 @@ nfs_lockf(struct nfs_context *nfs, struct nfsfh *nfsfh,
 {
 	struct sync_cb_data cb_data;
 
-        if (nfs_init_cb_data(nfs, &cb_data)) {
+        if (nfs_init_cb_data(&nfs, &cb_data)) {
                 return -1;
         }
 
@@ -1367,7 +1394,7 @@ nfs_fcntl(struct nfs_context *nfs, struct nfsfh *nfsfh,
 {
 	struct sync_cb_data cb_data;
 
-        if (nfs_init_cb_data(nfs, &cb_data)) {
+        if (nfs_init_cb_data(&nfs, &cb_data)) {
                 return -1;
         }
 
@@ -1411,7 +1438,7 @@ nfs_statvfs(struct nfs_context *nfs, const char *path, struct statvfs *svfs)
 	struct sync_cb_data cb_data;
 
 	cb_data.return_data = svfs;
-        if (nfs_init_cb_data(nfs, &cb_data)) {
+        if (nfs_init_cb_data(&nfs, &cb_data)) {
                 return -1;
         }
 
@@ -1456,7 +1483,7 @@ nfs_statvfs64(struct nfs_context *nfs, const char *path,
 	struct sync_cb_data cb_data;
 
 	cb_data.return_data = svfs;
-        if (nfs_init_cb_data(nfs, &cb_data)) {
+        if (nfs_init_cb_data(&nfs, &cb_data)) {
                 return -1;
         }
 
@@ -1506,7 +1533,7 @@ nfs_readlink(struct nfs_context *nfs, const char *path, char *buf, int bufsize)
 
 	cb_data.return_data = buf;
 	cb_data.return_int  = bufsize;
-        if (nfs_init_cb_data(nfs, &cb_data)) {
+        if (nfs_init_cb_data(&nfs, &cb_data)) {
                 return -1;
         }
 
@@ -1557,7 +1584,7 @@ nfs_readlink2(struct nfs_context *nfs, const char *path, char **bufptr)
 
 	*bufptr = NULL;
 	cb_data.return_data = bufptr;
-        if (nfs_init_cb_data(nfs, &cb_data)) {
+        if (nfs_init_cb_data(&nfs, &cb_data)) {
                 return -1;
         }
 
@@ -1598,7 +1625,7 @@ nfs_chmod(struct nfs_context *nfs, const char *path, int mode)
 {
 	struct sync_cb_data cb_data;
 
-        if (nfs_init_cb_data(nfs, &cb_data)) {
+        if (nfs_init_cb_data(&nfs, &cb_data)) {
                 return -1;
         }
 
@@ -1620,7 +1647,7 @@ nfs_lchmod(struct nfs_context *nfs, const char *path, int mode)
 {
 	struct sync_cb_data cb_data;
 
-        if (nfs_init_cb_data(nfs, &cb_data)) {
+        if (nfs_init_cb_data(&nfs, &cb_data)) {
                 return -1;
         }
 
@@ -1663,7 +1690,7 @@ nfs_fchmod(struct nfs_context *nfs, struct nfsfh *nfsfh, int mode)
 {
 	struct sync_cb_data cb_data;
 
-        if (nfs_init_cb_data(nfs, &cb_data)) {
+        if (nfs_init_cb_data(&nfs, &cb_data)) {
                 return -1;
         }
 
@@ -1706,7 +1733,7 @@ nfs_chown(struct nfs_context *nfs, const char *path, int uid, int gid)
 {
 	struct sync_cb_data cb_data;
 
-        if (nfs_init_cb_data(nfs, &cb_data)) {
+        if (nfs_init_cb_data(&nfs, &cb_data)) {
                 return -1;
         }
 
@@ -1731,7 +1758,7 @@ nfs_lchown(struct nfs_context *nfs, const char *path, int uid, int gid)
 {
 	struct sync_cb_data cb_data;
 
-        if (nfs_init_cb_data(nfs, &cb_data)) {
+        if (nfs_init_cb_data(&nfs, &cb_data)) {
                 return -1;
         }
 
@@ -1771,7 +1798,7 @@ nfs_fchown(struct nfs_context *nfs, struct nfsfh *nfsfh, int uid, int gid)
 {
 	struct sync_cb_data cb_data;
 
-        if (nfs_init_cb_data(nfs, &cb_data)) {
+        if (nfs_init_cb_data(&nfs, &cb_data)) {
                 return -1;
         }
 
@@ -1813,7 +1840,7 @@ nfs_utimes(struct nfs_context *nfs, const char *path, struct timeval *times)
 {
 	struct sync_cb_data cb_data;
 
-        if (nfs_init_cb_data(nfs, &cb_data)) {
+        if (nfs_init_cb_data(&nfs, &cb_data)) {
                 return -1;
         }
 
@@ -1835,7 +1862,7 @@ nfs_lutimes(struct nfs_context *nfs, const char *path, struct timeval *times)
 {
 	struct sync_cb_data cb_data;
 
-        if (nfs_init_cb_data(nfs, &cb_data)) {
+        if (nfs_init_cb_data(&nfs, &cb_data)) {
                 return -1;
         }
 
@@ -1877,7 +1904,7 @@ nfs_utime(struct nfs_context *nfs, const char *path, struct utimbuf *times)
 {
 	struct sync_cb_data cb_data;
 
-        if (nfs_init_cb_data(nfs, &cb_data)) {
+        if (nfs_init_cb_data(&nfs, &cb_data)) {
                 return -1;
         }
 
@@ -1917,7 +1944,7 @@ nfs_access(struct nfs_context *nfs, const char *path, int mode)
 {
 	struct sync_cb_data cb_data;
 
-        if (nfs_init_cb_data(nfs, &cb_data)) {
+        if (nfs_init_cb_data(&nfs, &cb_data)) {
                 return -1;
         }
 
@@ -1959,7 +1986,7 @@ nfs_access2(struct nfs_context *nfs, const char *path)
 {
 	struct sync_cb_data cb_data;
 
-        if (nfs_init_cb_data(nfs, &cb_data)) {
+        if (nfs_init_cb_data(&nfs, &cb_data)) {
                 return -1;
         }
 
@@ -2001,7 +2028,7 @@ nfs_symlink(struct nfs_context *nfs, const char *target, const char *linkname)
 {
 	struct sync_cb_data cb_data;
 
-        if (nfs_init_cb_data(nfs, &cb_data)) {
+        if (nfs_init_cb_data(&nfs, &cb_data)) {
                 return -1;
         }
 
@@ -2043,7 +2070,7 @@ nfs_rename(struct nfs_context *nfs, const char *oldpath, const char *newpath)
 {
 	struct sync_cb_data cb_data;
 
-        if (nfs_init_cb_data(nfs, &cb_data)) {
+        if (nfs_init_cb_data(&nfs, &cb_data)) {
                 return -1;
         }
 
@@ -2085,7 +2112,7 @@ nfs_link(struct nfs_context *nfs, const char *oldpath, const char *newpath)
 {
 	struct sync_cb_data cb_data;
 
-        if (nfs_init_cb_data(nfs, &cb_data)) {
+        if (nfs_init_cb_data(&nfs, &cb_data)) {
                 return -1;
         }
 
@@ -2146,7 +2173,7 @@ nfs3_getacl(struct nfs_context *nfs, struct nfsfh *nfsfh,
 	struct sync_cb_data cb_data;
 
 	cb_data.return_data = acl;
-        if (nfs_init_cb_data(nfs, &cb_data)) {
+        if (nfs_init_cb_data(&nfs, &cb_data)) {
                 return -1;
         }
 
@@ -2225,7 +2252,7 @@ nfs4_getacl(struct nfs_context *nfs, struct nfsfh *nfsfh,
 	struct sync_cb_data cb_data;
 
 	cb_data.return_data = acl;
-        if (nfs_init_cb_data(nfs, &cb_data)) {
+        if (nfs_init_cb_data(&nfs, &cb_data)) {
                 return -1;
         }
 

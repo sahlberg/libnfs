@@ -82,7 +82,7 @@ static void *nfs_stat_thread(void *arg)
         while(!sd->is_finished) {
 		ret = nfs_open(sd->nfs, sd->path, 0600, &nfsfh);
 		if (ret != 0) {
-			printf("failed to open %s\n", sd->path);
+			printf("failed to open %s. %s\n", sd->path, nfs_get_error(sd->nfs));
                         exit(10);
                 }
                 if (nfsfh == NULL) {

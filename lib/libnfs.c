@@ -258,11 +258,18 @@ char *
 nfs_get_error(struct nfs_context *nfs)
 {
 #ifdef HAVE_MULTITHREADING
-        if(nfs->multithreading_enabled) {
-                return "nfs_get_error disabled while multithreading is active";
+        if (nfs && nfs->multithreading_enabled) {
+                struct nfs_thread_context *ntc;
+
+                for(ntc = nfs->thread_ctx; ntc; ntc = ntc->next) {
+                        if (nfs_mt_get_tid() == ntc->tid) {
+                                nfs = &ntc->nfs;
+                                break;
+                        }
+                }
         }
-#endif /* HAVE_MULTITHREADING */
-	return rpc_get_error(nfs->rpc);
+#endif        
+	return nfs->error_string ? nfs->error_string : "";
 };
 
 #ifdef HAVE_SO_BINDTODEVICE
@@ -548,6 +555,7 @@ nfs_init_context(void)
         nfs4_set_client_name(nfs, client_name);
 
 #ifdef HAVE_MULTITHREADING
+        nfs_mt_mutex_init(&nfs->nfs_mutex);
         nfs_mt_mutex_init(&nfs->nfs4_open_mutex);
 #endif /* HAVE_MULTITHREADING */
 	return nfs;
@@ -580,6 +588,9 @@ nfs_destroy_context(struct nfs_context *nfs)
 	rpc_destroy_context(nfs->rpc);
 	nfs->rpc = NULL;
 
+        free(nfs->error_string);
+        nfs->error_string = NULL;
+        
         free(nfs->server);
         nfs->server = NULL;
 
@@ -604,6 +615,13 @@ nfs_destroy_context(struct nfs_context *nfs)
 
 #ifdef HAVE_MULTITHREADING
         nfs_mt_mutex_destroy(&nfs->nfs4_open_mutex);
+        nfs_mt_mutex_destroy(&nfs->nfs_mutex);
+        while (nfs->thread_ctx) {
+                struct nfs_thread_context *tmp = nfs->thread_ctx->next;
+                free(nfs->thread_ctx->nfs.error_string);
+                free(nfs->thread_ctx);
+                nfs->thread_ctx = tmp;
+        }
 #endif /* HAVE_MULTITHREADING */
 	free(nfs);
 }
@@ -1929,15 +1947,18 @@ nfs_set_error(struct nfs_context *nfs, char *error_string, ...)
 	char *str = NULL;
 
 #ifdef HAVE_MULTITHREADING
+        /* All thread contexts share the same rpc_context so
+         * use the mutex from the rpc_context.
+         */
         nfs_mt_mutex_lock(&nfs->rpc->rpc_mutex);
 #endif /* HAVE_MULTITHREADING */
         va_start(ap, error_string);
 	str = malloc(1024);
 	vsnprintf(str, 1024, error_string, ap);
-	if (nfs->rpc->error_string != NULL) {
-		free(nfs->rpc->error_string);
+	if (nfs->error_string != NULL) {
+		free(nfs->error_string);
 	}
-	nfs->rpc->error_string = str;
+	nfs->error_string = str;
 	va_end(ap);
 #ifdef HAVE_MULTITHREADING
         nfs_mt_mutex_unlock(&nfs->rpc->rpc_mutex);

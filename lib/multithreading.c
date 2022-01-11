@@ -54,6 +54,13 @@
 #ifdef HAVE_MULTITHREADING
 
 #ifdef HAVE_PTHREAD
+pid_t gettid(void);
+
+nfs_tid_t nfs_mt_get_tid(void)
+{
+        return gettid();
+}
+
 static void *nfs_mt_service_thread(void *arg)
 {
         struct nfs_context *nfs = (struct nfs_context *)arg;

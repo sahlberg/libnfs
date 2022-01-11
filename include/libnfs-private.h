@@ -314,13 +314,25 @@ struct nfs_context {
         verifier4 setclientid_confirm;
         uint32_t open_counter;
         int has_lock_owner;
+        char *error_string;
 #ifdef HAVE_MULTITHREADING
         int multithreading_enabled;
         libnfs_thread_t service_thread;
+        libnfs_mutex_t nfs_mutex;
         libnfs_mutex_t nfs4_open_mutex;
+        struct nfs_context *master_ctx;
+        struct nfs_thread_context *thread_ctx;
 #endif /* HAVE_MULTITHREADING */
 };
 
+#ifdef HAVE_MULTITHREADING
+struct nfs_thread_context {
+        struct nfs_thread_context *next;
+        nfs_tid_t tid;
+        struct nfs_context nfs;
+};
+#endif /* HAVE_MULTITHREADING */
+        
 typedef int (*continue_func)(struct nfs_context *nfs, struct nfs_attr *attr,
 			     struct nfs_cb_data *data);
 
