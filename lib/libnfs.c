@@ -109,6 +109,16 @@ void
 nfs_dircache_add(struct nfs_context *nfs, struct nfsdir *nfsdir)
 {
 	int i = 0;
+#ifdef HAVE_MULTITHREADING
+        /*
+         * Dircache always operate on the master context, thus all threads
+         * share the same cache.
+         */
+        nfs_mt_mutex_lock(&nfs->rpc->rpc_mutex);
+        if (nfs->master_ctx) {
+                nfs = nfs->master_ctx;
+        }
+#endif
 	LIBNFS_LIST_ADD(&nfs->dircache, nfsdir);
 
 	for (nfsdir = nfs->dircache; nfsdir; nfsdir = nfsdir->next, i++) {
@@ -118,6 +128,9 @@ nfs_dircache_add(struct nfs_context *nfs, struct nfsdir *nfsdir)
 			break;
 		}
 	}
+#ifdef HAVE_MULTITHREADING
+        nfs_mt_mutex_unlock(&nfs->rpc->rpc_mutex);
+#endif
 }
 
 struct nfsdir *
@@ -125,15 +138,28 @@ nfs_dircache_find(struct nfs_context *nfs, struct nfs_fh *fh)
 {
 	struct nfsdir *nfsdir;
 
+#ifdef HAVE_MULTITHREADING
+        /*
+         * Dircache always operate on the master context, thus all threads
+         * share the same cache.
+         */
+        nfs_mt_mutex_lock(&nfs->rpc->rpc_mutex);
+        if (nfs->master_ctx) {
+                nfs = nfs->master_ctx;
+        }
+#endif
 	for (nfsdir = nfs->dircache; nfsdir; nfsdir = nfsdir->next) {
 		if (nfsdir->fh.len == fh->len &&
 		    !memcmp(nfsdir->fh.val, fh->val, fh->len)) {
 			LIBNFS_LIST_REMOVE(&nfs->dircache, nfsdir);
-			return nfsdir;
+                        break;
 		}
 	}
 
-	return NULL;
+#ifdef HAVE_MULTITHREADING
+        nfs_mt_mutex_unlock(&nfs->rpc->rpc_mutex);
+#endif
+	return nfsdir;
 }
 
 void
