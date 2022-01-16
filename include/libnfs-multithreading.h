@@ -42,6 +42,7 @@ typedef pid_t nfs_tid_t;
 typedef HANDLE libnfs_thread_t;
 typedef HANDLE libnfs_mutex_t;
 typedef HANDLE libnfs_sem_t;
+typedef DWORD nfs_tid_t;
 #endif
 
 nfs_tid_t nfs_mt_get_tid(void);        

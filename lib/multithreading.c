@@ -153,6 +153,10 @@ int nfs_mt_sem_wait(libnfs_sem_t *sem)
 }
 
 #elif WIN32 
+nfs_tid_t nfs_mt_get_tid(void)
+{
+    return GetCurrentThreadId();
+}
 static void* nfs_mt_service_thread(void* arg)
 {
     struct nfs_context* nfs = (struct nfs_context*)arg;
