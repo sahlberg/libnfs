@@ -2343,12 +2343,23 @@ nfs4_open_readlink_cb(struct rpc_context *rpc, int status, void *command_data,
         data_split_path(data);
 
 #ifdef HAVE_MULTITHREADING
-        nfs_mt_mutex_lock(&data->nfs->nfs4_open_mutex);
-#endif        
+        /*
+         * The service thread always use the main context, if we are
+         * called from a different thread we must use the master_ctx
+         */
+        if (data->nfs->master_ctx) {
+                nfs_mt_mutex_lock(&data->nfs->master_ctx->nfs4_open_mutex);
+                data->lock_owner = nfs->master_ctx->open_counter++;
+                nfs_mt_mutex_unlock(&data->nfs->master_ctx->nfs4_open_mutex);
+        } else {
+                nfs_mt_mutex_lock(&data->nfs->nfs4_open_mutex);
+                data->lock_owner = nfs->open_counter++;
+                nfs_mt_mutex_unlock(&data->nfs->nfs4_open_mutex);
+        }
+#else
         data->lock_owner = nfs->open_counter++;
-#ifdef HAVE_MULTITHREADING
-        nfs_mt_mutex_unlock(&data->nfs->nfs4_open_mutex);
-#endif        
+#endif
+        
         data->filler.func = nfs4_populate_open;
         data->filler.max_op = 3;
  
