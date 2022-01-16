@@ -4978,7 +4978,15 @@ nfs3_chdir_continue_internal(struct nfs_context *nfs,
 {
 	/* steal saved_path */
 	free(nfs->cwd);
-	nfs->cwd = data->saved_path;
+#ifdef HAVE_MULTITHREADING
+        if (nfs->master_ctx) {
+                nfs->master_ctx->cwd = data->saved_path;
+        } else {
+                nfs->cwd = data->saved_path;
+        }
+#else
+        nfs->cwd = data->saved_path;
+#endif                
 	data->saved_path = NULL;
 
 	data->cb(0, nfs, NULL, data->private_data);

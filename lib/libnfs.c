@@ -1528,6 +1528,11 @@ void
 nfs_getcwd(struct nfs_context *nfs, const char **cwd)
 {
 	if (cwd) {
+#ifdef HAVE_MULTITHREADING
+                if (nfs->master_ctx) {
+                        nfs = nfs->master_ctx;
+                }
+#endif
 		*cwd = nfs->cwd;
 	}
 }

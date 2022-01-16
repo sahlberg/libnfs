@@ -1688,7 +1688,15 @@ nfs4_chdir_1_cb(struct rpc_context *rpc, int status, void *command_data,
 
         /* Ok, all good. Lets steal the path string. */
         free(nfs->cwd);
+#ifdef HAVE_MULTITHREADING
+        if (nfs->master_ctx) {
+                nfs->master_ctx->cwd = data->path;
+        } else {
+                nfs->cwd = data->path;
+        }
+#else
         nfs->cwd = data->path;
+#endif                
         data->path = NULL;
 
         data->cb(0, nfs, NULL, data->private_data);

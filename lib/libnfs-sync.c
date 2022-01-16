@@ -146,6 +146,7 @@ nfs_init_cb_data(struct nfs_context **nfs, struct sync_cb_data *cb_data)
                         (*nfs)->thread_ctx = ntc;
                         nfs_mt_mutex_unlock(&(*nfs)->rpc->rpc_mutex);
                         memcpy(&ntc->nfs, *nfs, sizeof(struct nfs_context));
+                        ntc->nfs.error_string = NULL;
                         ntc->nfs.master_ctx = *nfs;
 
                         *nfs = &ntc->nfs;
