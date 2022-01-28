@@ -1,3 +1,13 @@
+Changes since 4.0.0
+	
+Multithread support for Linux and Windows
+Fix NFS4 behavior of chmod/chown/utimes
+Add marshalling / unmarshalling of various NFSv4.1 structures (but not 4.1 support)
+PS3 support
+PS2 EE support
+Support escaped characters in the URL
+Fix MINGW build
+
 Changes since 3.0.0
 
 Fix the versioning in makerpms.sh
