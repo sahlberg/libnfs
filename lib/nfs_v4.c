@@ -643,6 +643,7 @@ nfs4_op_commit(struct nfs_context *nfs, nfs_argop4 *op)
         return 1;
 }
 
+#ifdef HAVE_MULTITHREADING
 static int
 nfs4_op_release_lockowner(struct nfs_context *nfs, nfs_argop4 *op, struct nfsfh *fh)
 {
@@ -657,6 +658,7 @@ nfs4_op_release_lockowner(struct nfs_context *nfs, nfs_argop4 *op, struct nfsfh 
         
         return 1;
 }
+#endif
 
 static int
 nfs4_op_close(struct nfs_context *nfs, nfs_argop4 *op, struct nfsfh *fh)
@@ -1687,10 +1689,14 @@ nfs4_chdir_1_cb(struct rpc_context *rpc, int status, void *command_data,
         }
 
         /* Ok, all good. Lets steal the path string. */
+#ifdef HAVE_MULTITHREADING
         nfs_mt_mutex_lock(&nfs->rpc->rpc_mutex);
+#endif
         free(nfs->nfsi->cwd);
         nfs->nfsi->cwd = data->path;
+#ifdef HAVE_MULTITHREADING
         nfs_mt_mutex_unlock(&nfs->rpc->rpc_mutex);
+#endif
 
         data->path = NULL;
 
@@ -2347,10 +2353,10 @@ nfs4_open_readlink_cb(struct rpc_context *rpc, int status, void *command_data,
 
 #ifdef HAVE_MULTITHREADING
         nfs_mt_mutex_lock(&data->nfs->nfsi->nfs4_open_mutex);
+#endif
         data->lock_owner = nfs->nfsi->open_counter++;
+#ifdef HAVE_MULTITHREADING
         nfs_mt_mutex_unlock(&data->nfs->nfsi->nfs4_open_mutex);
-#else
-        data->lock_owner = nfs->nfsi->open_counter++;
 #endif
         
         data->filler.func = nfs4_populate_open;
