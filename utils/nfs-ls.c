@@ -165,7 +165,9 @@ int main(int argc, char *argv[])
 	struct client client;
 	struct statvfs stvfs;
 	struct nfs_url *url = NULL;
+#ifdef HAVE_MULTITHREADING
 	int mt_started = 0;
+#endif
 
 #ifdef WIN32
 	if (WSAStartup(MAKEWORD(2,2), &wsaData) != 0) {
@@ -247,6 +249,8 @@ int main(int argc, char *argv[])
  		fprintf(stderr, "Failed to mount nfs share : %s\n", nfs_get_error(nfs));
 		goto finished;
 	}
+
+#ifdef HAVE_MULTITHREADING
         /*
          * Before we can use multithreading we must initialize and
          * start the service thread.
@@ -256,6 +260,7 @@ int main(int argc, char *argv[])
                 exit(10);
         }
 	mt_started = 1;
+#endif
 	
 	process_dir(nfs, "", 16);
 
@@ -270,10 +275,12 @@ int main(int argc, char *argv[])
 
 	ret = 0;
 finished:
+#ifdef HAVE_MULTITHREADING
 	if (mt_started) {
 		printf("closing service thread\n");
 		nfs_mt_service_thread_stop(nfs);
 	}
+#endif
 	
 	if (ret > 0) {
 		print_usage();
