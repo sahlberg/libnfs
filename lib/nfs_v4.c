@@ -643,6 +643,7 @@ nfs4_op_commit(struct nfs_context *nfs, nfs_argop4 *op)
         return 1;
 }
 
+#ifdef HAVE_MULTITHREADING
 static int
 nfs4_op_release_lockowner(struct nfs_context *nfs, nfs_argop4 *op, struct nfsfh *fh)
 {
@@ -657,6 +658,7 @@ nfs4_op_release_lockowner(struct nfs_context *nfs, nfs_argop4 *op, struct nfsfh 
         
         return 1;
 }
+#endif
 
 static int
 nfs4_op_close(struct nfs_context *nfs, nfs_argop4 *op, struct nfsfh *fh)
