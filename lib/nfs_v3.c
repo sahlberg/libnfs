@@ -4983,10 +4983,14 @@ nfs3_chdir_continue_internal(struct nfs_context *nfs,
                              struct nfs_cb_data *data)
 {
 	/* steal saved_path */
+#ifdef HAVE_MULTITHREADING
         nfs_mt_mutex_lock(&nfs->rpc->rpc_mutex);
+#endif
 	free(nfs->nfsi->cwd);
         nfs->nfsi->cwd = data->saved_path;
+#ifdef HAVE_MULTITHREADING
         nfs_mt_mutex_unlock(&nfs->rpc->rpc_mutex);
+#endif
 
 	data->saved_path = NULL;
 
