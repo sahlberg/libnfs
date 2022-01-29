@@ -43,14 +43,6 @@ threads that share the same nfs context.
 (In the example the threads just runs a busy loop calling nfs_stat64().)
 
 
-nfs_get_error()
----------------
-Avoid using this function from the application. This string is hared across
-all threads and we will need a new, possibly complex, API to replace it.
-For example, how do we correctly match error strings that occur in the service
-thread to the error string that is presented to a worker thread?
-
-
 Porting
 -------
 The multithreading support is abstracted out into two separate files to make
