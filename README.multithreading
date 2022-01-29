@@ -1,6 +1,7 @@
 Multithreading
 ==============
-Libnfs supports multithreading using the pthread API.
+Libnfs supports multithreading using the pthread API on linux/unix and using
+the native API for Windows.
 By default libnfs is beuilt without pthread support to avoid the overhead
 for locking, but pthread support, and thus support for multithreading, can be
 configured using --enable-pthread
@@ -89,12 +90,11 @@ nfs_mt_sem_destroy()
 nfs_mt_sem_post()
 nfs_mt_sem_wait()       : Wrappers that implement the 4 basic semaphore calls.
 
+nfs_mt_get_tid()        : Get an identifier for the current thread.        
 
 
 TODO
 ----
-* [rpc|nfs]_[set|get]_error() needs to be changed to use threads local storage
-or a different API.
 * Optimization: have the service thread just read the PDU from the socket and
 add it to a new queue. Then have a pool of threads to read from this queue and
 unmarshall the pdu's in concurrently.
