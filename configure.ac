@@ -75,7 +75,7 @@ AC_ARG_ENABLE([pthread],
               [AC_HELP_STRING([--enable-pthread],
                               [Build with pthread multithreading support])],
 	      [ENABLE_PTHREAD=$enableval],
-	      [ENABLE_THREAD="no"])
+	      [ENABLE_PTHREAD="no"])
 if test x$ENABLE_PTHREAD = xyes; then
 # check for lpthread
 AC_CACHE_CHECK([for pthread support],libnfs_cv_HAVE_PTHREAD,[
