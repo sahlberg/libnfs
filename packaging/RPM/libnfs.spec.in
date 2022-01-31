@@ -113,6 +113,8 @@ Utility programs for LibNFS
 %{_mandir}/man1/nfs-ls.1.gz
 
 %changelog
+* Tue Feb 1 2022 : Version 5.0.1
+- Fix non-pthread build
 * Fri Jan 28 2022 : Version 5.0.0
 - Multithread support for Linux and Windows
 - Fix NFS4 behavior of chmod/chown/utimes

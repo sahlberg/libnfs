@@ -1,3 +1,6 @@
+Changes since 5.0.0
+Fix non-pthread build
+	
 Changes since 4.0.0
 	
 Multithread support for Linux and Windows

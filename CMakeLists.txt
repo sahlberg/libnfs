@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.2)
 
 project(libnfs
         LANGUAGES C
-        VERSION 5.0.0)
+        VERSION 5.0.1)
 
 set(SOVERSION 11.0.0 CACHE STRING "" FORCE)
 
