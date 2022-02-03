@@ -54,11 +54,17 @@
 #ifdef HAVE_MULTITHREADING
 
 #ifdef HAVE_PTHREAD
-pid_t gettid(void);
+#include <unistd.h>
+#include <sys/syscall.h>
 
 nfs_tid_t nfs_mt_get_tid(void)
 {
-        return gettid();
+#ifdef SYS_gettid
+        pid_t tid = syscall(SYS_gettid);
+        return tid;
+#else
+#error "SYS_gettid unavailable on this system"
+#endif
 }
 
 static void *nfs_mt_service_thread(void *arg)
