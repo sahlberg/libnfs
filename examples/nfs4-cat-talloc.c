@@ -680,7 +680,7 @@ void setclientid_cb(struct rpc_context *rpc, int status, void *data,
 /*
  * NULL procedure for the callback protocol.
  */
-static int cb_null_proc(struct rpc_context *rpc, struct rpc_msg *call)
+static int cb_null_proc(struct rpc_context *rpc, struct rpc_msg *call, void *opaque)
 {
         rpc_send_reply(rpc, call, NULL, (zdrproc_t)zdr_void, 0);
 
@@ -691,7 +691,7 @@ static int cb_null_proc(struct rpc_context *rpc, struct rpc_msg *call)
  * CB_COMPOUND procedure for the callback protocol.
  * This is where the server will inform us about lease breaks and similar.
  */
-static int cb_compound_proc(struct rpc_context *rpc, struct rpc_msg *call)
+static int cb_compound_proc(struct rpc_context *rpc, struct rpc_msg *call, void *opaque)
 {
         CB_COMPOUND4args *args = call->body.cbody.args;
 

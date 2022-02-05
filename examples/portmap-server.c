@@ -248,7 +248,7 @@ void map_remove(int prog, int vers, char *netid)
  * It is used by clients, and rpcinfo, to "ping" a service and verify that
  * the service is available and that it does support the indicated version.
  */
-static int pmap2_null_proc(struct rpc_context *rpc, struct rpc_msg *call)
+static int pmap2_null_proc(struct rpc_context *rpc, struct rpc_msg *call, void *opaque)
 {
         rpc_send_reply(rpc, call, NULL, (zdrproc_t)zdr_void, 0);
 
@@ -262,7 +262,7 @@ static int pmap2_null_proc(struct rpc_context *rpc, struct rpc_msg *call)
  * and portmapper returns which port that service is available on,
  * (or 0 if no such program is registered.)
  */
-static int pmap2_getport_proc(struct rpc_context *rpc, struct rpc_msg *call)
+static int pmap2_getport_proc(struct rpc_context *rpc, struct rpc_msg *call, void *opaque)
 {
         PMAP2GETPORTargs *args = call->body.cbody.args;
         struct mapping *tmp;
@@ -290,7 +290,7 @@ static int pmap2_getport_proc(struct rpc_context *rpc, struct rpc_msg *call)
  * This RPC returns a list of all endpoints that are registered with
  * portmapper.
  */
-static int pmap2_dump_proc(struct rpc_context *rpc, struct rpc_msg *call)
+static int pmap2_dump_proc(struct rpc_context *rpc, struct rpc_msg *call, void *opaque)
 {
         PMAP2DUMPres reply;
         struct mapping *tmp;
@@ -336,7 +336,7 @@ static int pmap2_dump_proc(struct rpc_context *rpc, struct rpc_msg *call)
  * v2 SET
  * This procedure is used to register and endpoint with portmapper.
  */
-static int pmap2_set_proc(struct rpc_context *rpc, struct rpc_msg *call)
+static int pmap2_set_proc(struct rpc_context *rpc, struct rpc_msg *call, void *opaque)
 {
         PMAP2GETPORTargs *args = call->body.cbody.args;
         char *prot;
@@ -369,7 +369,7 @@ static int pmap2_set_proc(struct rpc_context *rpc, struct rpc_msg *call)
  * This procedure is used to remove a registration from portmappers
  * list of endpoints.
  */
-static int pmap2_unset_proc(struct rpc_context *rpc, struct rpc_msg *call)
+static int pmap2_unset_proc(struct rpc_context *rpc, struct rpc_msg *call, void *opaque)
 {
         PMAP2GETPORTargs *args = call->body.cbody.args;
         char *prot;
@@ -424,7 +424,7 @@ struct service_proc pmap2_pt[] = {
  * It is used by clients, and rpcinfo, to "ping" a service and verify that
  * the service is available and that it does support the indicated version.
  */
-static int pmap3_null_proc(struct rpc_context *rpc, struct rpc_msg *call)
+static int pmap3_null_proc(struct rpc_context *rpc, struct rpc_msg *call, void *opaque)
 {
         rpc_send_reply(rpc, call, NULL, (zdrproc_t)zdr_void, 0);
 
@@ -436,7 +436,7 @@ static int pmap3_null_proc(struct rpc_context *rpc, struct rpc_msg *call)
  * This RPC returns a list of all endpoints that are registered with
  * portmapper.
  */
-static int pmap3_dump_proc(struct rpc_context *rpc, struct rpc_msg *call)
+static int pmap3_dump_proc(struct rpc_context *rpc, struct rpc_msg *call, void *opaque)
 {
         PMAP3DUMPres reply;
         struct mapping *tmp;
