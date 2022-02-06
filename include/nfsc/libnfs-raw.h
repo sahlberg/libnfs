@@ -114,13 +114,14 @@ EXTERN struct rpc_context *rpc_init_server_context(int s);
  * !0:  An abnormal error has occured. It is unrecoverable and the only
  *      meaningful action is to tear down the connection to the server.
  */
-typedef int (*service_fn)(struct rpc_context *rpc, struct rpc_msg *call);
+typedef int (*service_fn)(struct rpc_context *rpc, struct rpc_msg *call, void *opaque);
 
 struct service_proc {
         int proc;
         service_fn func;
         zdrproc_t decode_fn;
         int decode_buf_size;
+        void *opaque;
 };
 
 /*

@@ -497,7 +497,7 @@ static int rpc_process_call(struct rpc_context *rpc, ZDR *zdr)
                                               "call payload");
                                 return rpc_send_error_reply(rpc, &call, GARBAGE_ARGS, 0 ,0);
                         }
-                        return endpoint->procs[i].func(rpc, &call);
+                        return endpoint->procs[i].func(rpc, &call, endpoint->procs[i].opaque);
                 }
         }
 
