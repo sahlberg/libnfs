@@ -539,7 +539,11 @@ nfs_open(struct nfs_context *nfs, const char *path, int flags,
          struct nfsfh **nfsfh)
 {
 	struct sync_cb_data cb_data;
-
+        int retry = 0;
+        struct nfs_context *onfs = nfs;
+        
+ try_again:
+        nfs = onfs;
 	cb_data.return_data = nfsfh;
         if (nfs_init_cb_data(&nfs, &cb_data)) {
                 return -1;
@@ -555,6 +559,10 @@ nfs_open(struct nfs_context *nfs, const char *path, int flags,
 	wait_for_nfs_reply(nfs, &cb_data);
         nfs_destroy_cb_sem(&cb_data);
 
+        if (cb_data.status == -EIO && retry < 10) {
+                retry++;
+                goto try_again;
+        }
 	return cb_data.status;
 }
 
