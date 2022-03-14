@@ -116,6 +116,7 @@ install(DIRECTORY include/nfsc
 
 install(FILES mount/libnfs-raw-mount.h
               nfs/libnfs-raw-nfs.h
+              nfs4/libnfs-raw-nfs4.h
               nlm/libnfs-raw-nlm.h
               nsm/libnfs-raw-nsm.h
               portmap/libnfs-raw-portmap.h
