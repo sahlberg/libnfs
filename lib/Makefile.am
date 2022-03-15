@@ -30,6 +30,7 @@ SOCURRENT=14
 SOREVISION=0
 SOAGE=0
 libnfs_la_LDFLAGS = -version-info $(SOCURRENT):$(SOREVISION):$(SOAGE)
+
 libnfs_la_LIBADD = \
 	../mount/libmount.la \
 	../nfs/libnfs.la \
@@ -37,5 +38,6 @@ libnfs_la_LIBADD = \
 	../nlm/libnlm.la \
 	../nsm/libnsm.la \
 	../portmap/libportmap.la \
-	../rquota/librquota.la 
+	../rquota/librquota.la \
+	$(LIBSOCKET)
 
