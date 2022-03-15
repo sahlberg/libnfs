@@ -341,29 +341,30 @@ rpc_read_from_socket(struct rpc_context *rpc)
                  * 4 bytes at the beginning of every pdu.
                  */
 		if (rpc->inpos < 4) {
-			buf = (void *)rpc->rm_buf;
 			pdu_size = 4;
 		} else {
-			pdu_size = rpc_get_pdu_size((void *)&rpc->rm_buf);
-			if (rpc->inbuf == NULL) {
-				if (pdu_size > NFS_MAX_XFER_SIZE + 4096) {
-					rpc_set_error(rpc, "Incoming PDU "
-                                                      "exceeds limit of %d "
-                                                      "bytes.",
-                                                      NFS_MAX_XFER_SIZE + 4096);
-					return -1;
-				}
-				rpc->inbuf = malloc(pdu_size);
-				if (rpc->inbuf == NULL) {
-					rpc_set_error(rpc, "Failed to allocate "
-                                                      "buffer of %d bytes for "
-                                                      "pdu, errno:%d. Closing "
-                                                      "socket.",
-                                                      (int)pdu_size, errno);
-					return -1;
-				}
-				memcpy(rpc->inbuf, &rpc->rm_buf, 4);
+			pdu_size = rpc_get_pdu_size(rpc->inbuf);
+		}
+		if (rpc->inbuf_size < pdu_size) {
+			if (pdu_size > NFS_MAX_XFER_SIZE + 4096) {
+				rpc_set_error(rpc, "Incoming PDU "
+												  "exceeds limit of %d "
+												  "bytes.",
+												  NFS_MAX_XFER_SIZE + 4096);
+				return -1;
 			}
+			buf = realloc(rpc->inbuf, pdu_size);
+			if (buf == NULL) {
+				rpc_set_error(rpc, "Failed to allocate "
+												  "buffer of %d bytes for "
+												  "pdu, errno:%d. Closing "
+												  "socket.",
+												  (int)pdu_size, errno);
+				return -1;
+			}
+			rpc->inbuf_size = pdu_size;
+			rpc->inbuf = buf;
+		} else {
 			buf = rpc->inbuf;
 		}
 
@@ -390,17 +391,14 @@ rpc_read_from_socket(struct rpc_context *rpc)
 		}
 
 		if (rpc->inpos == pdu_size) {
-			rpc->inbuf  = NULL;
 			rpc->inpos  = 0;
 
 			if (rpc_process_pdu(rpc, buf, pdu_size) != 0) {
 				rpc_set_error(rpc, "Invalid/garbage pdu "
                                               "received from server. Closing "
                                               "socket");
-				free(buf);
 				return -1;
 			}
-			free(buf);
 		}
 	} while (rpc->is_nonblocking && rpc->waitpdu_len > 0);
 
