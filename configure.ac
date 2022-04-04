@@ -88,7 +88,7 @@ if test x"$libnfs_cv_HAVE_PTHREAD" = x"yes"; then
     AC_DEFINE(HAVE_MULTITHREADING,1,[Whether we have multithreading support])
 fi
 fi
-AM_CONDITIONAL([HAVE_PTHREAD], [test $libnfs_cv_HAVE_PTHREAD = yes])
+AM_CONDITIONAL([HAVE_PTHREAD], [test x$libnfs_cv_HAVE_PTHREAD = xyes])
 
 AC_MSG_CHECKING(whether SO_BINDTODEVICE is available)
 AC_TRY_COMPILE([#include <net/if.h>], [
