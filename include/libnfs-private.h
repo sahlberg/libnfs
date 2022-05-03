@@ -315,7 +315,8 @@ struct nfs_context_internal {
        int multithreading_enabled;
        libnfs_thread_t service_thread;
        libnfs_mutex_t nfs_mutex;
-       libnfs_mutex_t nfs4_open_mutex;
+       libnfs_mutex_t nfs4_open_counter_mutex;
+       libnfs_mutex_t nfs4_open_call_mutex;
        struct nfs_thread_context *thread_ctx;
 #endif /* HAVE_MULTITHREADING */
 };

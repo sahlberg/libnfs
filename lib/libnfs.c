@@ -577,7 +577,8 @@ nfs_init_context(void)
 
 #ifdef HAVE_MULTITHREADING
         nfs_mt_mutex_init(&nfs->nfsi->nfs_mutex);
-        nfs_mt_mutex_init(&nfs->nfsi->nfs4_open_mutex);
+        nfs_mt_mutex_init(&nfs->nfsi->nfs4_open_counter_mutex);
+        nfs_mt_mutex_init(&nfs->nfsi->nfs4_open_call_mutex);
 #endif /* HAVE_MULTITHREADING */
 	return nfs;
 }
@@ -625,7 +626,8 @@ nfs_destroy_context(struct nfs_context *nfs)
 	}
 
 #ifdef HAVE_MULTITHREADING
-        nfs_mt_mutex_destroy(&nfs->nfsi->nfs4_open_mutex);
+        nfs_mt_mutex_destroy(&nfs->nfsi->nfs4_open_call_mutex);
+        nfs_mt_mutex_destroy(&nfs->nfsi->nfs4_open_counter_mutex);
         nfs_mt_mutex_destroy(&nfs->nfsi->nfs_mutex);
         while (nfs->nfsi->thread_ctx) {
                 struct nfs_thread_context *tmp = nfs->nfsi->thread_ctx->next;

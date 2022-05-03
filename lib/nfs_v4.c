@@ -247,6 +247,11 @@ nfs4_resolve_path(struct nfs_context *nfs, const char *path)
 static void
 free_nfs4_cb_data(struct nfs4_cb_data *data)
 {
+#ifdef HAVE_MULTITHREADING
+        if (data->flags & MUTEX_HELD) {
+                nfs_mt_mutex_unlock(&data->nfs->nfsi->nfs4_open_call_mutex);
+        }
+#endif        
         free(data->path);
         free(data->filler.data);
         if (data->filler.blob0.val && data->filler.blob0.free) {
@@ -2331,11 +2336,11 @@ nfs4_open_readlink_cb(struct rpc_context *rpc, int status, void *command_data,
         data_split_path(data);
 
 #ifdef HAVE_MULTITHREADING
-        nfs_mt_mutex_lock(&data->nfs->nfsi->nfs4_open_mutex);
+        nfs_mt_mutex_lock(&data->nfs->nfsi->nfs4_open_counter_mutex);
 #endif
         data->open_owner = nfs->nfsi->open_counter++;
 #ifdef HAVE_MULTITHREADING
-        nfs_mt_mutex_unlock(&data->nfs->nfsi->nfs4_open_mutex);
+        nfs_mt_mutex_unlock(&data->nfs->nfsi->nfs4_open_counter_mutex);
 #endif
         
         data->filler.func = nfs4_populate_open;
@@ -2455,11 +2460,11 @@ nfs4_open_async_internal(struct nfs_context *nfs, struct nfs4_cb_data *data,
         }
 
 #ifdef HAVE_MULTITHREADING
-        nfs_mt_mutex_lock(&data->nfs->nfsi->nfs4_open_mutex);
+        nfs_mt_mutex_lock(&data->nfs->nfsi->nfs4_open_counter_mutex);
 #endif        
         data->open_owner = nfs->nfsi->open_counter++;
 #ifdef HAVE_MULTITHREADING
-        nfs_mt_mutex_unlock(&data->nfs->nfsi->nfs4_open_mutex);
+        nfs_mt_mutex_unlock(&data->nfs->nfsi->nfs4_open_counter_mutex);
 #endif        
         data->filler.func = nfs4_populate_open;
         data->filler.max_op = 3;
@@ -2526,6 +2531,12 @@ nfs4_open_async(struct nfs_context *nfs, const char *path, int flags,
                 memcpy(data->filler.blob3.val, &m, sizeof(uint32_t));
         }
 
+#ifdef HAVE_MULTITHREADING
+        if (nfs->nfsi->multithreading_enabled) {
+                nfs_mt_mutex_lock(&nfs->nfsi->nfs4_open_call_mutex);
+                data->flags |= MUTEX_HELD;
+        }
+#endif        
         ret = nfs4_open_async_internal(nfs, data, flags, mode);
         return ret;
 }
@@ -2687,6 +2698,12 @@ nfs4_close_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_cb cb,
         }
         memset(data, 0, sizeof(*data));
 
+#ifdef HAVE_MULTITHREADING
+        if (nfs->nfsi->multithreading_enabled) {
+                nfs_mt_mutex_lock(&nfs->nfsi->nfs4_open_call_mutex);
+                data->flags |= MUTEX_HELD;
+        }
+#endif        
         data->nfs          = nfs;
         data->cb           = cb;
         data->private_data = private_data;
@@ -3882,6 +3899,12 @@ nfs4_truncate_async(struct nfs_context *nfs, const char *path, uint64_t length,
         length = nfs_hton64(length);
         memcpy(data->filler.blob3.val, &length, sizeof(uint64_t));
 
+#ifdef HAVE_MULTITHREADING
+        if (nfs->nfsi->multithreading_enabled) {
+                nfs_mt_mutex_lock(&nfs->nfsi->nfs4_open_call_mutex);
+                data->flags |= MUTEX_HELD;
+        }
+#endif        
         if (nfs4_open_async_internal(nfs, data, O_WRONLY, 0) < 0) {
                 return -1;
         }
