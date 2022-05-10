@@ -4511,12 +4511,13 @@ nfs3_pwrite_mcb(struct rpc_context *rpc, int status, void *command_data,
                                                              mdata->offset,
                                                              mdata->count,
                                                              &data->usrbuf[mdata->offset - data->offset]);
+					data->num_calls++;
 					if (rpc_nfs3_write_async(nfs->rpc,
                                                                  nfs3_pwrite_mcb,
                                                                  &args, mdata) == 0) {
-						data->num_calls++;
 						return;
 					} else {
+						data->num_calls--;
 						nfs_set_error(nfs, "RPC error: Failed to send WRITE call for %s", data->path);
 						data->oom = 1;
 					}
@@ -4623,8 +4624,10 @@ nfs3_pwrite_async_internal(struct nfs_context *nfs, struct nfsfh *nfsfh,
 		nfs3_fill_WRITE3args(&args, nfsfh, offset, writecount,
                                      &buf[offset - data->offset]);
 
+		data->num_calls++;
 		if (rpc_nfs3_write_async(nfs->rpc, nfs3_pwrite_mcb,
                                          &args, mdata) != 0) {
+			data->num_calls--;
 			nfs_set_error(nfs, "RPC error: Failed to send WRITE "
                                       "call for %s", data->path);
 			free(mdata);
@@ -4638,7 +4641,6 @@ nfs3_pwrite_async_internal(struct nfs_context *nfs, struct nfsfh *nfsfh,
 
 		count               -= writecount;
 		offset              += writecount;
-		data->num_calls++;
 	} while (count > 0);
 
 	return 0;
@@ -4773,13 +4775,14 @@ nfs3_pread_mcb(struct rpc_context *rpc, int status, void *command_data,
 					nfs3_fill_READ3args(&args, data->nfsfh,
                                                             mdata->offset,
                                                             mdata->count);
+					data->num_calls++;
 					if (rpc_nfs3_read_async(nfs->rpc,
                                                                 nfs3_pread_mcb,
                                                                 &args, mdata)
-                                            == 0) {
-						data->num_calls++;
+                                            != 0) {
 						return;
 					} else {
+						data->num_calls--;
 						nfs_set_error(nfs, "RPC error: Failed to send READ call for %s", data->path);
 						data->oom = 1;
 					}
@@ -4956,8 +4959,10 @@ nfs3_pread_async_internal(struct nfs_context *nfs, struct nfsfh *nfsfh,
 
 		nfs3_fill_READ3args(&args, nfsfh, offset, readcount);
 
+		data->num_calls++;
 		if (rpc_nfs3_read_async(nfs->rpc, nfs3_pread_mcb,
                                         &args, mdata) != 0) {
+			data->num_calls--;
 			nfs_set_error(nfs, "RPC error: Failed to send READ "
                                       "call for %s", data->path);
 			free(mdata);
@@ -4971,7 +4976,6 @@ nfs3_pread_async_internal(struct nfs_context *nfs, struct nfsfh *nfsfh,
 
 		count               -= readcount;
 		offset              += readcount;
-		data->num_calls++;
 	 } while (count > 0);
 
 	 return 0;
