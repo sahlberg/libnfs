@@ -4067,7 +4067,6 @@ nfs3_getacl_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_cb cb,
 	struct nfs_cb_data *data;
         GETACL3args args;
 
-        printf("getacl async\n");
 	data = malloc(sizeof(struct nfs_cb_data));
 	if (data == NULL) {
 		nfs_set_error(nfs, "out of memory: failed to allocate "
