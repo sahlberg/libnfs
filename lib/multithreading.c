@@ -203,7 +203,6 @@ static DWORD WINAPI service_thread_init(LPVOID lpParam)
         return 1;
     }
     nfs = (struct nfs_context *)lpParam;
-    printf("SERVICE THREAD\n");
     nfs_mt_service_thread(nfs);
     return 0;
 }
@@ -229,7 +228,7 @@ void nfs_mt_service_thread_stop(struct nfs_context* nfs)
 
 int nfs_mt_mutex_init(libnfs_mutex_t* mutex)
 {
-    *mutex = CreateMutex(NULL, 0, NULL);
+    *mutex = CreateSemaphoreA(NULL, 1, 1, NULL);
     return 0;
 }
 
@@ -247,7 +246,7 @@ int nfs_mt_mutex_lock(libnfs_mutex_t* mutex)
 
 int nfs_mt_mutex_unlock(libnfs_mutex_t* mutex)
 {
-    ReleaseMutex(*mutex);
+    ReleaseSemaphore(*mutex, 1, NULL);
     return 0;
 }
 
