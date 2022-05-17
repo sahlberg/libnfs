@@ -270,7 +270,7 @@ char *
 nfs_get_error(struct nfs_context *nfs)
 {
 #ifdef HAVE_MULTITHREADING
-        if (nfs && nfs->nfsi->multithreading_enabled) {
+        if (nfs && nfs->rpc->multithreading_enabled) {
                 struct nfs_thread_context *ntc;
 
                 for(ntc = nfs->nfsi->thread_ctx; ntc; ntc = ntc->next) {

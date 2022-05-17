@@ -133,6 +133,7 @@ struct rpc_context {
 	struct rpc_queue waitpdu[HASHES];
 	uint32_t waitpdu_len;
 #ifdef HAVE_MULTITHREADING
+        int multithreading_enabled;
         libnfs_mutex_t rpc_mutex;
 #endif /* HAVE_MULTITHREADING */
 
@@ -312,7 +313,6 @@ struct nfs_context_internal {
        uint32_t open_counter;
        int has_lock_owner;
 #ifdef HAVE_MULTITHREADING
-       int multithreading_enabled;
        libnfs_thread_t service_thread;
        libnfs_mutex_t nfs_mutex;
        libnfs_mutex_t nfs4_open_counter_mutex;

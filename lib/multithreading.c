@@ -74,9 +74,9 @@ static void *nfs_mt_service_thread(void *arg)
 	int revents;
 	int ret;
 
-        nfs->nfsi->multithreading_enabled = 1;
+        nfs->rpc->multithreading_enabled = 1;
 
-	while (nfs->nfsi->multithreading_enabled) {
+	while (nfs->rpc->multithreading_enabled) {
 		pfd.fd = nfs_get_fd(nfs);
 		pfd.events = nfs_which_events(nfs);
 		pfd.revents = 0;
@@ -103,7 +103,7 @@ int nfs_mt_service_thread_start(struct nfs_context *nfs)
                 nfs_set_error(nfs, "Failed to start service thread");
                 return -1;
         }
-        while (nfs->nfsi->multithreading_enabled == 0) {
+        while (nfs->rpc->multithreading_enabled == 0) {
                 struct timespec ts = {0, 1000000};
                 nanosleep(&ts, NULL);
         }
@@ -112,7 +112,7 @@ int nfs_mt_service_thread_start(struct nfs_context *nfs)
 
 void nfs_mt_service_thread_stop(struct nfs_context *nfs)
 {
-        nfs->nfsi->multithreading_enabled = 0;
+        nfs->rpc->multithreading_enabled = 0;
         pthread_join(nfs->nfsi->service_thread, NULL);
 }
         
@@ -170,9 +170,9 @@ static void* nfs_mt_service_thread(void* arg)
     int revents;
     int ret;
 
-    nfs->nfsi->multithreading_enabled = 1;
+    nfs->rpc->multithreading_enabled = 1;
 
-    while (nfs->nfsi->multithreading_enabled) {
+    while (nfs->rpc->multithreading_enabled) {
         pfd.fd = nfs_get_fd(nfs);
         pfd.events = nfs_which_events(nfs);
         pfd.revents = 0;
@@ -214,7 +214,7 @@ int nfs_mt_service_thread_start(struct nfs_context* nfs)
         nfs_set_error(nfs, "Failed to start service thread");
         return -1;
     }
-    while (nfs->nfsi->multithreading_enabled == 0) {
+    while (nfs->rpc->multithreading_enabled == 0) {
         Sleep(100);
     }
     return 0;
@@ -222,7 +222,7 @@ int nfs_mt_service_thread_start(struct nfs_context* nfs)
 
 void nfs_mt_service_thread_stop(struct nfs_context* nfs)
 {
-    nfs->nfsi->multithreading_enabled = 0;
+    nfs->rpc->multithreading_enabled = 0;
     while (WaitForSingleObject(nfs->nfsi->service_thread, INFINITE) != WAIT_OBJECT_0);
 }
 

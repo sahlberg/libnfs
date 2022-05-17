@@ -125,7 +125,7 @@ nfs_init_cb_data(struct nfs_context **nfs, struct sync_cb_data *cb_data)
 {
 	cb_data->is_finished = 0;
 #ifdef HAVE_MULTITHREADING
-        if (nfs && (*nfs)->nfsi->multithreading_enabled && (*nfs)->master_ctx == NULL) {
+        if (nfs && (*nfs)->rpc->multithreading_enabled && (*nfs)->master_ctx == NULL) {
                 struct nfs_thread_context *ntc;
 
                 for(ntc = (*nfs)->nfsi->thread_ctx; ntc; ntc = ntc->next) {
@@ -260,7 +260,7 @@ wait_for_nfs_reply(struct nfs_context *nfs, struct sync_cb_data *cb_data)
 	int ret;
 
 #ifdef HAVE_MULTITHREADING
-        if(nfs->nfsi->multithreading_enabled) {
+        if(nfs->rpc->multithreading_enabled) {
                 nfs_mt_sem_wait(&cb_data->wait_sem);
                 return;
         }
