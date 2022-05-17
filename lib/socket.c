@@ -215,13 +215,17 @@ rpc_which_events(struct rpc_context *rpc)
 	}
 
 #ifdef HAVE_MULTITHREADING
-        nfs_mt_mutex_lock(&rpc->rpc_mutex);
+        if (rpc->multithreading_enabled) {
+                nfs_mt_mutex_lock(&rpc->rpc_mutex);
+        }
 #endif /* HAVE_MULTITHREADING */
 	if (rpc_has_queue(&rpc->outqueue)) {
 		events |= POLLOUT;
 	}
 #ifdef HAVE_MULTITHREADING
-        nfs_mt_mutex_unlock(&rpc->rpc_mutex);
+        if (rpc->multithreading_enabled) {
+                nfs_mt_mutex_unlock(&rpc->rpc_mutex);
+        }
 #endif /* HAVE_MULTITHREADING */
 	return events;
 }
@@ -241,7 +245,9 @@ rpc_write_to_socket(struct rpc_context *rpc)
 	}
 
 #ifdef HAVE_MULTITHREADING
-        nfs_mt_mutex_lock(&rpc->rpc_mutex);
+        if (rpc->multithreading_enabled) {
+                nfs_mt_mutex_lock(&rpc->rpc_mutex);
+        }
 #endif /* HAVE_MULTITHREADING */
 	while ((pdu = rpc->outqueue.head) != NULL) {
 		int64_t total;
@@ -283,7 +289,9 @@ rpc_write_to_socket(struct rpc_context *rpc)
 
  finished:
 #ifdef HAVE_MULTITHREADING
-        nfs_mt_mutex_unlock(&rpc->rpc_mutex);
+        if (rpc->multithreading_enabled) {
+                nfs_mt_mutex_unlock(&rpc->rpc_mutex);
+        }
 #endif /* HAVE_MULTITHREADING */
 	return ret;
 }
@@ -421,7 +429,9 @@ rpc_timeout_scan(struct rpc_context *rpc)
 	unsigned int i;
 
 #ifdef HAVE_MULTITHREADING
-        nfs_mt_mutex_lock(&rpc->rpc_mutex);
+        if (rpc->multithreading_enabled) {
+                nfs_mt_mutex_lock(&rpc->rpc_mutex);
+        }
 #endif /* HAVE_MULTITHREADING */
 	for (pdu = rpc->outqueue.head; pdu; pdu = next_pdu) {
 		next_pdu = pdu->next;
@@ -471,7 +481,9 @@ rpc_timeout_scan(struct rpc_context *rpc)
 		}
 	}
 #ifdef HAVE_MULTITHREADING
-        nfs_mt_mutex_unlock(&rpc->rpc_mutex);
+        if (rpc->multithreading_enabled) {
+                nfs_mt_mutex_unlock(&rpc->rpc_mutex);
+        }
 #endif /* HAVE_MULTITHREADING */
 }
 
@@ -894,7 +906,9 @@ rpc_reconnect_requeue(struct rpc_context *rpc)
 	 */
         printf("reconnect reset waitpdu queues\n");
 #ifdef HAVE_MULTITHREADING
-        nfs_mt_mutex_lock(&rpc->rpc_mutex);
+        if (rpc->multithreading_enabled) {
+                nfs_mt_mutex_lock(&rpc->rpc_mutex);
+        }
 #endif /* HAVE_MULTITHREADING */
 	for (i = 0; i < HASHES; i++) {
 		struct rpc_queue *q = &rpc->waitpdu[i];
@@ -908,7 +922,9 @@ rpc_reconnect_requeue(struct rpc_context *rpc)
 	}
 	rpc->waitpdu_len = 0;
 #ifdef HAVE_MULTITHREADING
-        nfs_mt_mutex_unlock(&rpc->rpc_mutex);
+        if (rpc->multithreading_enabled) {
+                nfs_mt_mutex_unlock(&rpc->rpc_mutex);
+        }
 #endif /* HAVE_MULTITHREADING */
 
 	if (rpc->auto_reconnect < 0 || rpc->num_retries > 0) {
@@ -1032,11 +1048,15 @@ rpc_queue_length(struct rpc_context *rpc)
 	}
 
 #ifdef HAVE_MULTITHREADING
-        nfs_mt_mutex_lock(&rpc->rpc_mutex);
+        if (rpc->multithreading_enabled) {
+                nfs_mt_mutex_lock(&rpc->rpc_mutex);
+        }
 #endif /* HAVE_MULTITHREADING */
 	i += rpc->waitpdu_len;
 #ifdef HAVE_MULTITHREADING
-        nfs_mt_mutex_unlock(&rpc->rpc_mutex);
+        if (rpc->multithreading_enabled) {
+                nfs_mt_mutex_unlock(&rpc->rpc_mutex);
+        }
 #endif /* HAVE_MULTITHREADING */
 
 	return i;

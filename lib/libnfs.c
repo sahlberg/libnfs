@@ -110,7 +110,9 @@ nfs_dircache_add(struct nfs_context *nfs, struct nfsdir *nfsdir)
 {
 	int i = 0;
 #ifdef HAVE_MULTITHREADING
-        nfs_mt_mutex_lock(&nfs->rpc->rpc_mutex);
+        if (nfs->rpc->multithreading_enabled) {
+                nfs_mt_mutex_lock(&nfs->rpc->rpc_mutex);
+        }
 #endif
 	LIBNFS_LIST_ADD(&nfs->nfsi->dircache, nfsdir);
 
@@ -122,7 +124,9 @@ nfs_dircache_add(struct nfs_context *nfs, struct nfsdir *nfsdir)
 		}
 	}
 #ifdef HAVE_MULTITHREADING
-        nfs_mt_mutex_unlock(&nfs->rpc->rpc_mutex);
+        if (nfs->rpc->multithreading_enabled) {
+                nfs_mt_mutex_unlock(&nfs->rpc->rpc_mutex);
+        }
 #endif
 }
 
@@ -132,7 +136,9 @@ nfs_dircache_find(struct nfs_context *nfs, struct nfs_fh *fh)
 	struct nfsdir *nfsdir;
 
 #ifdef HAVE_MULTITHREADING
-        nfs_mt_mutex_lock(&nfs->rpc->rpc_mutex);
+        if (nfs->rpc->multithreading_enabled) {
+                nfs_mt_mutex_lock(&nfs->rpc->rpc_mutex);
+        }
 #endif
 	for (nfsdir = nfs->nfsi->dircache; nfsdir; nfsdir = nfsdir->next) {
 		if (nfsdir->fh.len == fh->len &&
@@ -143,7 +149,9 @@ nfs_dircache_find(struct nfs_context *nfs, struct nfs_fh *fh)
 	}
 
 #ifdef HAVE_MULTITHREADING
-        nfs_mt_mutex_unlock(&nfs->rpc->rpc_mutex);
+        if (nfs->rpc->multithreading_enabled) {
+                nfs_mt_mutex_unlock(&nfs->rpc->rpc_mutex);
+        }
 #endif
 	return nfsdir;
 }
@@ -1964,7 +1972,9 @@ nfs_set_error(struct nfs_context *nfs, char *error_string, ...)
         /* All thread contexts share the same rpc_context so
          * use the mutex from the rpc_context.
          */
-        nfs_mt_mutex_lock(&nfs->rpc->rpc_mutex);
+        if (nfs->rpc->multithreading_enabled) {
+                nfs_mt_mutex_lock(&nfs->rpc->rpc_mutex);
+        }
 #endif /* HAVE_MULTITHREADING */
         va_start(ap, error_string);
 	str = malloc(1024);
@@ -1975,7 +1985,9 @@ nfs_set_error(struct nfs_context *nfs, char *error_string, ...)
 	nfs->error_string = str;
 	va_end(ap);
 #ifdef HAVE_MULTITHREADING
-        nfs_mt_mutex_unlock(&nfs->rpc->rpc_mutex);
+        if (nfs->rpc->multithreading_enabled) {
+                nfs_mt_mutex_unlock(&nfs->rpc->rpc_mutex);
+        }
 #endif /* HAVE_MULTITHREADING */
 }
 

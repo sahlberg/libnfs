@@ -161,11 +161,15 @@ struct rpc_pdu *rpc_allocate_pdu2(struct rpc_context *rpc, int program, int vers
 	}
 	memset(pdu, 0, pdu_size);
 #ifdef HAVE_MULTITHREADING
-        nfs_mt_mutex_lock(&rpc->rpc_mutex);
+        if (rpc->multithreading_enabled) {
+                nfs_mt_mutex_lock(&rpc->rpc_mutex);
+        }
 #endif /* HAVE_MULTITHREADING */
 	pdu->xid                = rpc->xid++;
 #ifdef HAVE_MULTITHREADING
-        nfs_mt_mutex_unlock(&rpc->rpc_mutex);
+        if (rpc->multithreading_enabled) {
+                nfs_mt_mutex_unlock(&rpc->rpc_mutex);
+        }
 #endif /* HAVE_MULTITHREADING */
 	pdu->cb                 = cb;
 	pdu->private_data       = private_data;
@@ -229,11 +233,15 @@ void rpc_free_pdu(struct rpc_context *rpc, struct rpc_pdu *pdu)
 void rpc_set_next_xid(struct rpc_context *rpc, uint32_t xid)
 {
 #ifdef HAVE_MULTITHREADING
-        nfs_mt_mutex_lock(&rpc->rpc_mutex);
+        if (rpc->multithreading_enabled) {
+                nfs_mt_mutex_lock(&rpc->rpc_mutex);
+        }
 #endif /* HAVE_MULTITHREADING */
 	rpc->xid = xid;
 #ifdef HAVE_MULTITHREADING
-        nfs_mt_mutex_unlock(&rpc->rpc_mutex);
+        if (rpc->multithreading_enabled) {
+                nfs_mt_mutex_unlock(&rpc->rpc_mutex);
+        }
 #endif /* HAVE_MULTITHREADING */
 }
 
@@ -277,12 +285,16 @@ int rpc_queue_pdu(struct rpc_context *rpc, struct rpc_pdu *pdu)
 
 		hash = rpc_hash_xid(pdu->xid);
 #ifdef HAVE_MULTITHREADING
-		nfs_mt_mutex_lock(&rpc->rpc_mutex);
+                if (rpc->multithreading_enabled) {
+                        nfs_mt_mutex_lock(&rpc->rpc_mutex);
+                }
 #endif /* HAVE_MULTITHREADING */
 		rpc_enqueue(&rpc->waitpdu[hash], pdu);
 		rpc->waitpdu_len++;
 #ifdef HAVE_MULTITHREADING
-		nfs_mt_mutex_unlock(&rpc->rpc_mutex);
+                if (rpc->multithreading_enabled) {
+                        nfs_mt_mutex_unlock(&rpc->rpc_mutex);
+                }
 #endif /* HAVE_MULTITHREADING */
 		return 0;
 	}
@@ -294,15 +306,21 @@ int rpc_queue_pdu(struct rpc_context *rpc, struct rpc_pdu *pdu)
 
 	pdu->outdata.size = size;
 #ifdef HAVE_MULTITHREADING
-        nfs_mt_mutex_lock(&rpc->rpc_mutex);
+        if (rpc->multithreading_enabled) {
+                nfs_mt_mutex_lock(&rpc->rpc_mutex);
+        }
 #endif /* HAVE_MULTITHREADING */
         rpc_enqueue(&rpc->outqueue, pdu);
 #ifdef HAVE_MULTITHREADING
         if (rpc->outqueue.head == pdu) {
-                nfs_mt_mutex_unlock(&rpc->rpc_mutex);
+                if (rpc->multithreading_enabled) {
+                        nfs_mt_mutex_unlock(&rpc->rpc_mutex);
+                }
                 rpc_write_to_socket(rpc);
         } else {
-                nfs_mt_mutex_unlock(&rpc->rpc_mutex);
+                if (rpc->multithreading_enabled) {
+                        nfs_mt_mutex_unlock(&rpc->rpc_mutex);
+                }
         }
 #endif /* HAVE_MULTITHREADING */
         
@@ -593,7 +611,9 @@ int rpc_process_pdu(struct rpc_context *rpc, char *buf, int size)
 	/* Look up the transaction in a hash table of our requests */
 	hash = rpc_hash_xid(xid);
 #ifdef HAVE_MULTITHREADING
-        nfs_mt_mutex_lock(&rpc->rpc_mutex);
+        if (rpc->multithreading_enabled) {
+                nfs_mt_mutex_lock(&rpc->rpc_mutex);
+        }
 #endif /* HAVE_MULTITHREADING */
 	q = &rpc->waitpdu[hash];
 
@@ -616,7 +636,9 @@ int rpc_process_pdu(struct rpc_context *rpc, char *buf, int size)
 			rpc->waitpdu_len--;
 		}
 #ifdef HAVE_MULTITHREADING
-                nfs_mt_mutex_unlock(&rpc->rpc_mutex);
+                if (rpc->multithreading_enabled) {
+                        nfs_mt_mutex_unlock(&rpc->rpc_mutex);
+                }
 #endif /* HAVE_MULTITHREADING */
 		if (rpc_process_reply(rpc, pdu, &zdr) != 0) {
 			rpc_set_error(rpc, "rpc_procdess_reply failed");
@@ -631,7 +653,9 @@ int rpc_process_pdu(struct rpc_context *rpc, char *buf, int size)
 		return 0;
 	}
 #ifdef HAVE_MULTITHREADING
-        nfs_mt_mutex_unlock(&rpc->rpc_mutex);
+        if (rpc->multithreading_enabled) {
+                nfs_mt_mutex_unlock(&rpc->rpc_mutex);
+        }
 #endif /* HAVE_MULTITHREADING */
 
 	zdr_destroy(&zdr);

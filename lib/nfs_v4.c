@@ -1674,12 +1674,16 @@ nfs4_chdir_1_cb(struct rpc_context *rpc, int status, void *command_data,
 
         /* Ok, all good. Lets steal the path string. */
 #ifdef HAVE_MULTITHREADING
-        nfs_mt_mutex_lock(&nfs->rpc->rpc_mutex);
+        if (nfs->rpc->multithreading_enabled) {
+                nfs_mt_mutex_lock(&nfs->rpc->rpc_mutex);
+        }
 #endif
         free(nfs->nfsi->cwd);
         nfs->nfsi->cwd = data->path;
 #ifdef HAVE_MULTITHREADING
-        nfs_mt_mutex_unlock(&nfs->rpc->rpc_mutex);
+        if (nfs->rpc->multithreading_enabled) {
+                nfs_mt_mutex_unlock(&nfs->rpc->rpc_mutex);
+        }
 #endif
 
         data->path = NULL;
@@ -2336,11 +2340,15 @@ nfs4_open_readlink_cb(struct rpc_context *rpc, int status, void *command_data,
         data_split_path(data);
 
 #ifdef HAVE_MULTITHREADING
-        nfs_mt_mutex_lock(&data->nfs->nfsi->nfs4_open_counter_mutex);
+        if (nfs->rpc->multithreading_enabled) {
+                nfs_mt_mutex_lock(&nfs->nfsi->nfs4_open_counter_mutex);
+        }
 #endif
         data->open_owner = nfs->nfsi->open_counter++;
 #ifdef HAVE_MULTITHREADING
-        nfs_mt_mutex_unlock(&data->nfs->nfsi->nfs4_open_counter_mutex);
+        if (nfs->rpc->multithreading_enabled) {
+                nfs_mt_mutex_unlock(&nfs->nfsi->nfs4_open_counter_mutex);
+        }
 #endif
         
         data->filler.func = nfs4_populate_open;
@@ -2460,11 +2468,15 @@ nfs4_open_async_internal(struct nfs_context *nfs, struct nfs4_cb_data *data,
         }
 
 #ifdef HAVE_MULTITHREADING
-        nfs_mt_mutex_lock(&data->nfs->nfsi->nfs4_open_counter_mutex);
+        if (nfs->rpc->multithreading_enabled) {
+                nfs_mt_mutex_lock(&nfs->nfsi->nfs4_open_counter_mutex);
+        }
 #endif        
         data->open_owner = nfs->nfsi->open_counter++;
 #ifdef HAVE_MULTITHREADING
-        nfs_mt_mutex_unlock(&data->nfs->nfsi->nfs4_open_counter_mutex);
+        if (nfs->rpc->multithreading_enabled) {
+                nfs_mt_mutex_unlock(&nfs->nfsi->nfs4_open_counter_mutex);
+        }
 #endif        
         data->filler.func = nfs4_populate_open;
         data->filler.max_op = 3;
