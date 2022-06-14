@@ -142,10 +142,10 @@ nfsstat4_to_errno(int error)
         case NFS4ERR_DELAY: return -EIO;
         case NFS4ERR_SAME: return -EIO;
         case NFS4ERR_DENIED: return -EIO;
-        case NFS4ERR_EXPIRED: return -EIO;
+        case NFS4ERR_EXPIRED: return -EAGAIN;
         case NFS4ERR_LOCKED: return -EIO;
         case NFS4ERR_GRACE: return -EIO;
-        case NFS4ERR_FHEXPIRED: return -EIO;
+        case NFS4ERR_FHEXPIRED: return -EAGAIN;
         case NFS4ERR_SHARE_DENIED: return -EIO;
         case NFS4ERR_WRONGSEC: return -EIO;
         case NFS4ERR_CLID_INUSE: return -EIO;
