@@ -4778,7 +4778,7 @@ nfs3_pread_mcb(struct rpc_context *rpc, int status, void *command_data,
 					if (rpc_nfs3_read_async(nfs->rpc,
                                                                 nfs3_pread_mcb,
                                                                 &args, mdata)
-                                            != 0) {
+                                            == 0) {
 						return;
 					} else {
 						data->num_calls--;
