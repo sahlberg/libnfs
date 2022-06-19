@@ -214,7 +214,6 @@ EXTERN void nfs_destroy_context(struct nfs_context *nfs);
  *                         times before failing and returing an error back
  *                         to the application.
  * version=<3|4>     : NFS version. Default is 3.
- *                     Version 4 is not yet functional. Do not use.
  * nfsport=<port>    : Use this port for NFS instead of using the portmapper.
  * mountport=<port>  : Use this port for the MOUNT protocol instead of
  *                     using portmapper. This argument is ignored for NFSv4
