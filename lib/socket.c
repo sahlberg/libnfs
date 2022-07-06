@@ -166,7 +166,7 @@ set_tcp_sockopt(int sockfd, int optname, int value)
 {
 	int level;
 
-	#if defined(__FreeBSD__) || defined(__sun) || (defined(__APPLE__) && defined(__MACH__))
+	#if defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__sun) || (defined(__APPLE__) && defined(__MACH__))
 	struct protoent *buf;
 
 	if ((buf = getprotobyname("tcp")) != NULL)
