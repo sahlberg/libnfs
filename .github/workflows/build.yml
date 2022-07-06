@@ -1,0 +1,95 @@
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  Linux:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@main
+      - run: sudo apt install -y cmake
+      - run: mkdir build
+      - run: cmake -B build
+      - run: make --directory build
+      - run: sudo make --directory build install
+
+  Linux-Musl-QEMU:
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        platform:
+          - i386
+          - s390x   # Test big-endian
+          - arm32v6
+          - arm32v7
+
+    steps:
+      - uses: actions/checkout@main
+      - name: Get the qemu container
+        run: docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
+      - name: ${{ matrix.platform }}
+        run: docker run --rm --interactive --mount type=bind,source=$(pwd),target=/host ${{ matrix.platform }}/alpine sh -c "apk add cmake make gcc libc-dev git; cp -r /host from-host; cd from-host; mkdir build; cmake -B build; make --directory build install"
+
+  macOS:
+    runs-on: macos-latest
+
+    steps:
+      - uses: actions/checkout@main
+      - run: brew install cmake
+      - run: mkdir build
+      - run: cmake -B build
+      - run: make --directory build install
+
+  BSDs:
+    runs-on: macos-latest
+
+    strategy:
+      matrix:
+        os:
+          - name: FreeBSD
+            version: '13.0'
+            pkginstall: pkg install -y cmake
+
+          - name: OpenBSD
+            version: 6.9
+            pkginstall: pkg_add cmake
+
+    name: ${{ matrix.os.name }} ${{ matrix.os.version }}
+
+    steps:
+      - uses: actions/checkout@main
+
+      - name: Test on ${{ matrix.os.name }}
+        uses: cross-platform-actions/action@v0.3.1
+        with:
+          operating_system: ${{ matrix.os.name }}
+          version: ${{ matrix.os.version }}
+          shell: bash
+          run: |
+            sudo ${{ matrix.os.pkginstall }}
+            mkdir build
+            cmake -B build
+            cd build
+            make
+            sudo make install
+
+  Cygwin:
+    runs-on: windows-latest
+
+    steps:
+      - name: Set up Cygwin
+        uses: egor-tensin/setup-cygwin@v3
+        with:
+            platform: x64
+            packages: make gcc-g++ bash cmake
+      - uses: actions/checkout@main
+      - run: cd $GITHUB_WORKSPACE; mkdir build
+        shell: C:\tools\cygwin\bin\bash.exe --login --norc -eo pipefail -o igncr '{0}'
+      - run: cd $GITHUB_WORKSPACE; cmake -B build
+        shell: C:\tools\cygwin\bin\bash.exe --login --norc -eo pipefail -o igncr '{0}'
+      - run: cd $GITHUB_WORKSPACE; make --directory build install
+        shell: C:\tools\cygwin\bin\bash.exe --login --norc -eo pipefail -o igncr '{0}'
