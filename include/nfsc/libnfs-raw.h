@@ -79,12 +79,13 @@ EXTERN int rpc_service(struct rpc_context *rpc, int revents);
 EXTERN int rpc_queue_length(struct rpc_context *rpc);
 
 /*
- * Set which UID/GID to use in the authenticator.
+ * Set which UID/GIDs to use in the authenticator.
  * By default libnfs will use getuid()/getgid() where available
- * and 65534/65534 where not.
+ * and 65534/65534 where not, with no auxiliary GIDs.
  */
 EXTERN void rpc_set_uid(struct rpc_context *rpc, int uid);
 EXTERN void rpc_set_gid(struct rpc_context *rpc, int gid);
+EXTERN void rpc_set_auxiliary_gids(struct rpc_context *rpc, uint32_t len, uint32_t* gids);
 
 /*
  * Create a server context.

@@ -264,6 +264,13 @@ void rpc_set_gid(struct rpc_context *rpc, int gid) {
 	rpc_set_uid_gid(rpc, rpc->uid, gid);
 }
 
+void rpc_set_auxiliary_gids(struct rpc_context *rpc, uint32_t len, uint32_t* gids) {
+	struct AUTH *auth = libnfs_authunix_create("libnfs", rpc->uid, rpc->gid, len, gids);
+	if (auth != NULL) {
+		rpc_set_auth(rpc, auth);
+	}
+}
+
 void rpc_set_error(struct rpc_context *rpc, const char *error_string, ...)
 {
         va_list ap;

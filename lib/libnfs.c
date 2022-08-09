@@ -1914,6 +1914,11 @@ nfs_set_gid(struct nfs_context *nfs, int gid) {
 }
 
 void
+nfs_set_auxiliary_gids(struct nfs_context *nfs, uint32_t len, uint32_t* gids) {
+	rpc_set_auxiliary_gids(nfs->rpc, len, gids);
+}
+
+void
 nfs_set_pagecache(struct nfs_context *nfs, uint32_t v) {
 	rpc_set_pagecache(nfs->rpc, v);
 }
