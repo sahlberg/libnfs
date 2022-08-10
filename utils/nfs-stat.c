@@ -47,6 +47,7 @@ WSADATA wsaData;
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <inttypes.h>
 #include <sys/types.h>
 #include <fcntl.h>
 #include "libnfs.h"
@@ -273,19 +274,19 @@ int main(int argc, char *argv[])
 	}
 
 	printf("  File:%s\n", argv[1]);
-	printf("  Size: %-16dBlocks: %-11d IO Block: %d  %s\n",
+	printf("  Size: %-16" PRIu64 "Blocks: %-11" PRIu64 " IO Block: %" PRIu64 "  %s\n",
 	       st.nfs_size, st.nfs_blocks, st.nfs_blksize,
 	       get_file_type(st.nfs_mode));
-	printf("Inode:%-12dLinks %d\n",
+	printf("Inode:%-12" PRIu64 "Links %" PRIu64 "\n",
 	       st.nfs_ino, st.nfs_nlink);
-	printf("Access: (%04o/%s)  Uid: ( %d/%s)  Gid: ( %d/%s)\n",
+	printf("Access: (%04" PRIo64 "/%s)  Uid: ( %" PRIu64 "/%s)  Gid: ( %" PRIu64 "/%s)\n",
 	       st.nfs_mode & 07777, get_access_bits(st.nfs_mode),
 	       st.nfs_uid, uid_to_name(st.nfs_uid),
 	       st.nfs_gid, gid_to_name(st.nfs_gid));
 
-	printf("Access: %s", ctime(&st.nfs_atime));
-	printf("Modify: %s", ctime(&st.nfs_mtime));
-	printf("Change: %s", ctime(&st.nfs_ctime));
+	printf("Access: %s", ctime( (const time_t *) &st.nfs_atime));
+	printf("Modify: %s", ctime( (const time_t *) &st.nfs_mtime));
+	printf("Change: %s", ctime( (const time_t *) &st.nfs_ctime));
 	free_file_context(nf);
 
 	return 0;
