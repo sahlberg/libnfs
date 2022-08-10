@@ -2,9 +2,9 @@ cmake_minimum_required(VERSION 3.2)
 
 project(libnfs
         LANGUAGES C
-        VERSION 5.0.1)
+        VERSION 5.0.2)
 
-set(SOVERSION 11.0.0 CACHE STRING "" FORCE)
+set(SOVERSION 11.1.0 CACHE STRING "" FORCE)
 
 set(INSTALL_LIB_DIR "${CMAKE_INSTALL_PREFIX}/lib" CACHE PATH "Installation directory for libraries")
 set(INSTALL_INC_DIR "${CMAKE_INSTALL_PREFIX}/include" CACHE PATH "Installation directory for headers")

@@ -1,3 +1,10 @@
+Changes since 5.0.1
+Various small multithreading fixes
+Add opaque pointer to service_proc to make it easier to build server apps.
+BSD compile fix
+OpenBSD support
+fix double free in nfs3_pread_mcb()
+
 Changes since 5.0.0
 Fix non-pthread build
 	

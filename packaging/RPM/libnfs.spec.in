@@ -113,6 +113,12 @@ Utility programs for LibNFS
 %{_mandir}/man1/nfs-ls.1.gz
 
 %changelog
+* Wed Aug 10 2022 : Version 5.0.2
+- Various small multithreading fixes
+- Add opaque pointer to service_proc to make it easier to build server apps.
+- BSD compile fix
+- OpenBSD support
+- fix double free in nfs3_pread_mcb() 
 * Tue Feb 1 2022 : Version 5.0.1
 - Fix non-pthread build
 * Fri Jan 28 2022 : Version 5.0.0
