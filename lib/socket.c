@@ -904,7 +904,6 @@ rpc_reconnect_requeue(struct rpc_context *rpc)
 	 * in flight. Move them all over from the waitpdu queue back to the
          * out queue.
 	 */
-        printf("reconnect reset waitpdu queues\n");
 #ifdef HAVE_MULTITHREADING
         if (rpc->multithreading_enabled) {
                 nfs_mt_mutex_lock(&rpc->rpc_mutex);
