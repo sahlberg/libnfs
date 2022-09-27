@@ -283,6 +283,7 @@ wait_for_nfs_reply(struct nfs_context *nfs, struct sync_cb_data *cb_data)
 			if (revents != -1)
 				nfs_set_error(nfs, "nfs_service failed");
 			cb_data->status = -EIO;
+                        rpc_error_all_pdus(nfs->rpc, "RPC ERROR: Failed to reconnect async");
 			break;
 		}
 	}
