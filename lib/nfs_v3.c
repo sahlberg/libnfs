@@ -2998,7 +2998,7 @@ nfs3_opendir_cb(struct rpc_context *rpc, int status, void *command_data,
                        res->READDIRPLUS3res_u.resok.cookieverf,
                        sizeof(cookieverf3));
 		args.dircount = 8192;
-		args.maxcount = 8192;
+		args.maxcount = 65536;
 
 	     	if (rpc_nfs3_readdirplus_async(nfs->rpc, nfs3_opendir_cb,
                                                &args, data) != 0) {
@@ -3069,7 +3069,7 @@ nfs3_opendir_continue_internal(struct nfs_context *nfs,
 	args.cookie = 0;
 	memset(&args.cookieverf, 0, sizeof(cookieverf3));
 	args.dircount = 8192;
-	args.maxcount = 8192;
+	args.maxcount = 65536;
 	if (rpc_nfs3_readdirplus_async(nfs->rpc, nfs3_opendir_cb,
                                        &args, data) != 0) {
 		nfs_set_error(nfs, "RPC error: Failed to send "
