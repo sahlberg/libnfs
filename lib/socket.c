@@ -428,6 +428,14 @@ rpc_timeout_scan(struct rpc_context *rpc)
 	uint64_t t = rpc_current_time();
 	unsigned int i;
 
+        /*
+         * Only scan once per second.
+         */
+        if (t <= rpc->last_timeout_scan + 1000) {
+                return;
+        }
+        rpc->last_timeout_scan = t;
+
 #ifdef HAVE_MULTITHREADING
         if (rpc->multithreading_enabled) {
                 nfs_mt_mutex_lock(&rpc->rpc_mutex);
