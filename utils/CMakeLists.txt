@@ -7,4 +7,6 @@ endif()
 foreach(TARGET ${UTILITIES})
   add_executable(${TARGET} ${TARGET}.c)
   target_link_libraries(${TARGET} nfs nfs_mount)
+  install(FILES ${CMAKE_CURRENT_BINARY_DIR}/${TARGET}
+          DESTINATION ${INSTALL_BIN_DIR})
 endforeach()
