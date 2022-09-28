@@ -71,11 +71,40 @@ uint64_t rpc_current_time(void)
 #endif
 }
 
+int rpc_set_hash_size(struct rpc_context *rpc, int hashes)
+{
+	uint32_t i;
+
+#ifdef HAVE_MULTITHREADING
+        if (rpc->multithreading_enabled) {
+                nfs_mt_mutex_lock(&rpc->rpc_mutex);
+        }
+#endif /* HAVE_MULTITHREADING */
+        rpc->num_hashes = hashes;
+        free(rpc->waitpdu);
+	rpc->waitpdu = malloc(sizeof(struct rpc_queue) * rpc->num_hashes);
+        if (rpc->waitpdu == NULL) {
+                return -1;
+        }
+	for (i = 0; i < rpc->num_hashes; i++)
+		rpc_reset_queue(&rpc->waitpdu[i]);
+#ifdef HAVE_MULTITHREADING
+        if (rpc->multithreading_enabled) {
+                nfs_mt_mutex_unlock(&rpc->rpc_mutex);
+        }
+#endif /* HAVE_MULTITHREADING */
+        return 0;
+}
+
+int nfs_set_hash_size(struct nfs_context *nfs, int hashes)
+{
+        return rpc_set_hash_size(nfs->rpc, hashes);
+}
+
 struct rpc_context *rpc_init_context(void)
 {
 	struct rpc_context *rpc;
 	static uint32_t salt = 0;
-	unsigned int i;
 
 	rpc = malloc(sizeof(struct rpc_context));
 	if (rpc == NULL) {
@@ -83,6 +112,11 @@ struct rpc_context *rpc_init_context(void)
 	}
 	memset(rpc, 0, sizeof(struct rpc_context));
 
+	if (rpc_set_hash_size(rpc, DEFAULT_HASHES)) {
+                free(rpc);
+		return NULL;
+	}
+        
 	rpc->magic = RPC_CONTEXT_MAGIC;
 
 #ifdef HAVE_MULTITHREADING
@@ -92,6 +126,7 @@ struct rpc_context *rpc_init_context(void)
  	rpc->auth = authunix_create_default();
 	if (rpc->auth == NULL) {
 		free(rpc);
+		free(rpc->waitpdu);
 		return NULL;
 	}
 	// Add PID to rpc->xid for easier debugging, making sure to cast
@@ -108,19 +143,7 @@ struct rpc_context *rpc_init_context(void)
 	rpc->uid = getuid();
 	rpc->gid = getgid();
 #endif
-#ifdef HAVE_MULTITHREADING
-        if (rpc->multithreading_enabled) {
-                nfs_mt_mutex_lock(&rpc->rpc_mutex);
-        }
-#endif /* HAVE_MULTITHREADING */
 	rpc_reset_queue(&rpc->outqueue);
-	for (i = 0; i < HASHES; i++)
-		rpc_reset_queue(&rpc->waitpdu[i]);
-#ifdef HAVE_MULTITHREADING
-        if (rpc->multithreading_enabled) {
-                nfs_mt_mutex_unlock(&rpc->rpc_mutex);
-        }
-#endif /* HAVE_MULTITHREADING */
 
 	/* Default is no timeout */
 	rpc->timeout = -1;
@@ -341,7 +364,7 @@ static void rpc_purge_all_pdus(struct rpc_context *rpc, int status, const char *
         }
 #endif /* HAVE_MULTITHREADING */
 
-	for (i = 0; i < HASHES; i++) {
+	for (i = 0; i < rpc->num_hashes; i++) {
 		struct rpc_queue waitqueue;
 
 #ifdef HAVE_MULTITHREADING
@@ -437,6 +460,8 @@ void rpc_destroy_context(struct rpc_context *rpc)
 		rpc->error_string = NULL;
 	}
 
+        free(rpc->waitpdu);
+        rpc->waitpdu = NULL;
 	free(rpc->inbuf);
 	rpc->inbuf = NULL;
 

@@ -90,6 +90,7 @@ rpc_set_auxiliary_gids
 nfs_set_debug
 nfs_set_dircache
 nfs_set_gid
+nfs_set_hash_size
 nfs_set_pagecache
 nfs_set_pagecache_ttl
 nfs_set_readahead
@@ -262,5 +263,6 @@ rpc_send_reply
 rpc_service
 rpc_set_fd
 rpc_set_gid
+rpc_set_hash_size
 rpc_set_uid
 rpc_which_events

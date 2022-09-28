@@ -39,6 +39,24 @@ struct rpc_context;
 EXTERN struct rpc_context *rpc_init_context(void);
 EXTERN void rpc_destroy_context(struct rpc_context *rpc);
 
+/*
+ * Commands that are in flight are kept on linked lists and keyed by
+ * XID so that responses received can be matched with a request.
+ * For performance reasons, this would not scale well for applications
+ * that use many concurrent async requests concurrently.
+ * The default setting is to hash the requests into a small number of
+ * lists which should work well for single threaded syncrhonous and
+ * async applications with a moderate number of concurrent requests in flight
+ * at any one time.
+ * If you application uses a significant number of concurrent requests
+ * as in thousands or more, then the default might not be sufficient.
+ * In that case you can change the number of lists that requests will
+ * be hashed into with this function.
+ * NOTE: you can only call this function and modify the number of hashes
+ * before you connect to the remote service.
+ */
+EXTERN int rpc_set_hash_size(struct rpc_context *rpc, int hashes);
+        
 EXTERN void rpc_set_auth(struct rpc_context *rpc, struct AUTH *auth);
 
 /*

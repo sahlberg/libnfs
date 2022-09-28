@@ -88,9 +88,9 @@ void rpc_return_to_queue(struct rpc_queue *q, struct rpc_pdu *pdu)
 		q->tail = pdu;
 }
 
-unsigned int rpc_hash_xid(uint32_t xid)
+unsigned int rpc_hash_xid(struct rpc_context *rpc, uint32_t xid)
 {
-	return (xid * 7919) % HASHES;
+	return (xid * 7919) % rpc->num_hashes;
 }
 
 #define PAD_TO_8_BYTES(x) ((x + 0x07) & ~0x07)
@@ -283,7 +283,7 @@ int rpc_queue_pdu(struct rpc_context *rpc, struct rpc_pdu *pdu)
 			return -1;
 		}
 
-		hash = rpc_hash_xid(pdu->xid);
+		hash = rpc_hash_xid(rpc, pdu->xid);
 #ifdef HAVE_MULTITHREADING
                 if (rpc->multithreading_enabled) {
                         nfs_mt_mutex_lock(&rpc->rpc_mutex);
@@ -609,7 +609,7 @@ int rpc_process_pdu(struct rpc_context *rpc, char *buf, int size)
 	zdr_setpos(&zdr, pos);
 
 	/* Look up the transaction in a hash table of our requests */
-	hash = rpc_hash_xid(xid);
+	hash = rpc_hash_xid(rpc, xid);
 #ifdef HAVE_MULTITHREADING
         if (rpc->multithreading_enabled) {
                 nfs_mt_mutex_lock(&rpc->rpc_mutex);
