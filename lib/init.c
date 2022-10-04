@@ -125,8 +125,8 @@ struct rpc_context *rpc_init_context(void)
 
  	rpc->auth = authunix_create_default();
 	if (rpc->auth == NULL) {
-		free(rpc);
 		free(rpc->waitpdu);
+		free(rpc);
 		return NULL;
 	}
 	// Add PID to rpc->xid for easier debugging, making sure to cast
