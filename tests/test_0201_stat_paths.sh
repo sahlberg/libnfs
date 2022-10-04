@@ -42,7 +42,7 @@ ln -s stat7 "${TESTDIR}/symlink7"
 success
 
 echo -n "test nfs_lstat() on the underlying file ... "
-grep "nfs_mode:100664" "${TESTDIR}/output" >/dev/null || failure
+grep "nfs_mode:100644" "${TESTDIR}/output" >/dev/null || failure
 success
 
 stop_share
