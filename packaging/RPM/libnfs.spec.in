@@ -93,7 +93,7 @@ development libraries for LibNFS
 %{_includedir}/nfsc/libnfs-raw-nlm.h
 %{_includedir}/nfsc/libnfs-raw-nsm.h
 %{_libdir}/libnfs.a
-%{_libdir}/libnfs.la
+%{_libdir}/libnfs.so*
 %{_libdir}/pkgconfig/libnfs.pc
 
 %package utils
@@ -108,6 +108,7 @@ Utility programs for LibNFS
 %{_bindir}/nfs-cat
 %{_bindir}/nfs-cp
 %{_bindir}/nfs-ls
+%{_bindir}/nfs-stat
 %{_mandir}/man1/nfs-cat.1.gz
 %{_mandir}/man1/nfs-cp.1.gz
 %{_mandir}/man1/nfs-ls.1.gz
