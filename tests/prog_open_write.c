@@ -71,6 +71,9 @@ int main(int argc, char *argv[])
         if (strstr(argv[4], "O_CREAT")) {
                 flags |= O_CREAT;
         }
+        if (strstr(argv[4], "O_EXCL")) {
+                flags |= O_EXCL;
+        }
 
 	nfs = nfs_init_context();
 	if (nfs == NULL) {
