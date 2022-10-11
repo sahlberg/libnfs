@@ -316,7 +316,7 @@ nfs_set_context_args(struct nfs_context *nfs, const char *arg, const char *val)
 	} else if (!strcmp(arg, "debug")) {
 		rpc_set_debug(nfs_get_rpc_context(nfs), atoi(val));
 	} else if (!strcmp(arg, "auto-traverse-mounts")) {
-		nfs->nfsi->auto_traverse_mounts = atoi(val);
+		nfs_set_auto_traverse_mounts(nfs, atoi(val));
 	} else if (!strcmp(arg, "dircache")) {
 		nfs_set_dircache(nfs, atoi(val));
 	} else if (!strcmp(arg, "autoreconnect")) {
@@ -332,9 +332,9 @@ nfs_set_context_args(struct nfs_context *nfs, const char *arg, const char *val)
 			return -1;
 		}
 	} else if (!strcmp(arg, "nfsport")) {
-		nfs->nfsi->nfsport =  atoi(val);
+		nfs_set_nfsport(nfs, atoi(val));
 	} else if (!strcmp(arg, "mountport")) {
-		nfs->nfsi->mountport =  atoi(val);
+		nfs_set_mountport(nfs, atoi(val));
 	}
 	return 0;
 }
@@ -1939,6 +1939,11 @@ nfs_set_debug(struct nfs_context *nfs, int level) {
 }
 
 void
+nfs_set_auto_traverse_mounts(struct nfs_context *nfs, int enabled) {
+	nfs->nfsi->auto_traverse_mounts = enabled;
+}
+
+void
 nfs_set_dircache(struct nfs_context *nfs, int enabled) {
 	nfs->nfsi->dircache_enabled = enabled;
 }
@@ -1965,6 +1970,16 @@ nfs_set_version(struct nfs_context *nfs, int version) {
 int
 nfs_get_version(struct nfs_context *nfs) {
         return nfs->nfsi->version;
+}
+
+void
+nfs_set_nfsport(struct nfs_context *nfs, int port) {
+	nfs->nfsi->nfsport = port;
+}
+
+void
+nfs_set_mountport(struct nfs_context *nfs, int port) {
+	nfs->nfsi->mountport = port;
 }
 
 void

@@ -88,9 +88,12 @@ nfs_set_auth
 nfs_set_autoreconnect
 rpc_set_auxiliary_gids
 nfs_set_debug
+nfs_set_auto_traverse_mounts
 nfs_set_dircache
 nfs_set_gid
 nfs_set_hash_size
+nfs_set_mountport
+nfs_set_nfsport
 nfs_set_pagecache
 nfs_set_pagecache_ttl
 nfs_set_readahead

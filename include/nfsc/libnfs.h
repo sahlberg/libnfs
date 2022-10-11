@@ -299,8 +299,11 @@ EXTERN void nfs_set_pagecache(struct nfs_context *nfs, uint32_t v);
 EXTERN void nfs_set_pagecache_ttl(struct nfs_context *nfs, uint32_t v);
 EXTERN void nfs_set_readahead(struct nfs_context *nfs, uint32_t v);
 EXTERN void nfs_set_debug(struct nfs_context *nfs, int level);
+EXTERN void nfs_set_auto_traverse_mounts(struct nfs_context *nfs, int enabled);
 EXTERN void nfs_set_dircache(struct nfs_context *nfs, int enabled);
 EXTERN void nfs_set_autoreconnect(struct nfs_context *nfs, int num_retries);
+EXTERN void nfs_set_nfsport(struct nfs_context *nfs, int port);
+EXTERN void nfs_set_mountport(struct nfs_context *nfs, int port);
 
 /*
  * Set NFS version. Supported versions are
