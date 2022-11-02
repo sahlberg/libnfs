@@ -55,7 +55,7 @@ jobs:
             pkginstall: pkg install -y cmake
 
           - name: OpenBSD
-            version: 7.2
+            version: 7.0
             pkginstall: pkg_add cmake
 
     name: ${{ matrix.os.name }} ${{ matrix.os.version }}
