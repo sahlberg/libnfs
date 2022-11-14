@@ -139,7 +139,7 @@ struct rpc_context {
 #endif /* HAVE_MULTITHREADING */
 
 	uint32_t inpos;
-	char rm_buf[4];
+	uint32_t inbuf_size;
 	char *inbuf;
 
 	/* special fields for UDP, which can sometimes be BROADCASTed */
