@@ -514,3 +514,24 @@ int rpc_register_service(struct rpc_context *rpc, int program, int version,
 
         return 0;
 }
+
+void rpc_free_iovector(struct rpc_context *rpc, struct rpc_io_vectors *v)
+{
+        int i;
+
+        for (i = 0; i < v->niov; i++) {
+                if (v->iov[i].free) {
+                        v->iov[i].free(v->iov[i].buf);
+                }
+        }
+        v->niov = 0;
+}
+
+void rpc_add_iovector(struct rpc_context *rpc, struct rpc_io_vectors *v,
+                      char *buf, int len, void (*free)(void *))
+{
+        v->iov[v->niov].buf = buf;
+        v->iov[v->niov].len = len;
+        v->iov[v->niov].free = free;
+        v->niov++;
+}

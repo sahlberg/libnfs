@@ -43,6 +43,10 @@
 #include <poll.h>
 #endif
 
+#ifdef HAVE_SYS_UIO_H
+#include <sys/uio.h>
+#endif
+
 #ifdef HAVE_UNISTD_H
 #include <unistd.h>
 #endif
@@ -233,7 +237,6 @@ rpc_which_events(struct rpc_context *rpc)
 int
 rpc_write_to_socket(struct rpc_context *rpc)
 {
-	int32_t count;
 	struct rpc_pdu *pdu;
         int ret = 0;
         
@@ -250,25 +253,47 @@ rpc_write_to_socket(struct rpc_context *rpc)
         }
 #endif /* HAVE_MULTITHREADING */
 	while ((pdu = rpc->outqueue.head) != NULL) {
-		int64_t total;
+                struct iovec iov[RPC_MAX_VECTORS];
+                struct iovec *tmpiov;
+                size_t num_done = pdu->out.num_done;
+                int niov = pdu->out.niov;
+                int i;
+                ssize_t count;
 
-		total = pdu->outdata.size;
+                for (i = 0; i < niov; i++) {
+                        iov[i].iov_base = pdu->out.iov[i].buf;
+                        iov[i].iov_len = pdu->out.iov[i].len;
+                }
+                tmpiov = iov;
 
-		count = send(rpc->fd, pdu->outdata.data + pdu->written,
-                             (int)(total - pdu->written), MSG_NOSIGNAL);
-		if (count == -1) {
-			if (errno == EAGAIN || errno == EWOULDBLOCK) {
-				ret = 0;
-                                goto finished;
-			}
-			rpc_set_error(rpc, "Error when writing to socket :%s"
-                                      "(%d)", strerror(errno), errno);
-			ret = -1;
+                /* Skip the vectors we have alredy written */
+                while (num_done >= tmpiov->iov_len) {
+                        num_done -= tmpiov->iov_len;
+                        tmpiov++;
+                        niov--;
+                }
+
+                /* Adjust the first vector to send */
+                tmpiov->iov_base = (char *)tmpiov->iov_base + num_done;
+                tmpiov->iov_len -= num_done;
+
+                count = writev(rpc->fd, tmpiov, niov);
+                if (count == -1) {
+                        if (errno == EAGAIN || errno == EWOULDBLOCK) {
+                                ret = 0;
+                                 goto finished;
+
+                        }
+                        rpc_set_error(rpc, "Error when writing to "
+                                      "socket :%d %s", errno,
+                                      rpc_get_error(rpc));
+                        ret = -1;
                         goto finished;
-		}
+                }
 
-		pdu->written += count;
-		if (pdu->written == total) {
+                pdu->out.num_done += count;
+
+		if (pdu->out.num_done == pdu->out.total_size) {
 			unsigned int hash;
 
 			rpc->outqueue.head = pdu->next;
@@ -903,7 +928,7 @@ rpc_reconnect_requeue(struct rpc_context *rpc)
 	rpc->is_connected = 0;
 
 	if (rpc->outqueue.head) {
-		rpc->outqueue.head->written = 0;
+		rpc->outqueue.head->out.num_done = 0;
 	}
 
 	/* Socket is closed so we will not get any replies to any commands
@@ -921,7 +946,7 @@ rpc_reconnect_requeue(struct rpc_context *rpc)
 			next = pdu->next;
 			rpc_return_to_queue(&rpc->outqueue, pdu);
 			/* we have to re-send the whole pdu again */
-			pdu->written = 0;
+			pdu->out.num_done = 0;
 		}
 		rpc_reset_queue(q);
 	}
@@ -1022,12 +1047,18 @@ rpc_set_udp_destination(struct rpc_context *rpc, char *addr, int port,
 		return -1;
  	}
 
+	rpc->is_broadcast = is_broadcast;
+	setsockopt(rpc->fd, SOL_SOCKET, SO_BROADCAST, (char *)&is_broadcast, sizeof(is_broadcast));
+
 	memcpy(&rpc->udp_dest, ai->ai_addr, ai->ai_addrlen);
 	freeaddrinfo(ai);
 
-	rpc->is_broadcast = is_broadcast;
-	setsockopt(rpc->fd, SOL_SOCKET, SO_BROADCAST, (char *)&is_broadcast,
-                   sizeof(is_broadcast));
+        if (!is_broadcast) {
+                if (connect(rpc->fd, (struct sockaddr *)&rpc->udp_dest, sizeof(rpc->udp_dest)) != 0 && errno != EINPROGRESS) {
+                        rpc_set_error(rpc, "connect() to UDP address failed. %s(%d)", strerror(errno), errno);
+                        return -1;
+                }
+        }
 
 	return 0;
 }

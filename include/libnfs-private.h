@@ -172,14 +172,36 @@ struct rpc_context {
         struct rpc_endpoint *endpoints;
 };
 
+#define RPC_MAX_VECTORS 16
+
+struct rpc_iovec {
+        char *buf;
+        size_t len;
+        void (*free)(void *);
+};
+
+struct rpc_io_vectors {
+        size_t num_done;
+        int total_size;
+        int niov;
+        struct rpc_iovec iov[RPC_MAX_VECTORS];
+};
+
 struct rpc_pdu {
 	struct rpc_pdu *next;
 
 	uint32_t xid;
 	ZDR zdr;
 
-	uint32_t written;
 	struct rpc_data outdata;
+
+        /* For sending/receiving
+         * out contains at least three vectors:
+         * [0]  4 bytes for the stream protocol length
+         * [1]  Varying size for the rpc header (including cred & verf)
+         * [2+] command and and extra parameters
+         */
+        struct rpc_io_vectors out;
 
 	rpc_cb cb;
 	void *private_data;
@@ -432,6 +454,9 @@ struct nfsfh {
         struct stateid lock_stateid;
 };
 
+void rpc_free_iovector(struct rpc_context *rpc, struct rpc_io_vectors *v);
+void rpc_add_iovector(struct rpc_context *rpc, struct rpc_io_vectors *v,
+                      char *buf, int len, void (*free)(void *));
 const struct nfs_fh *nfs_get_rootfh(struct nfs_context *nfs);
 
 int nfs_normalize_path(struct nfs_context *nfs, char *path);
