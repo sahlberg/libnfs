@@ -973,6 +973,7 @@ struct open_claim4 {
 		open_delegation_type4 delegate_type;
 		open_claim_delegate_cur4 delegate_cur_info;
 		component4 file_delegate_prev;
+		stateid4 oc_delegate_stateid;
 	} open_claim4_u;
 };
 typedef struct open_claim4 open_claim4;

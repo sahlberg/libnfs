@@ -1925,6 +1925,14 @@ zdr_open_claim4 (ZDR *zdrs, open_claim4 *objp)
 		 if (!zdr_component4 (zdrs, &objp->open_claim4_u.file_delegate_prev))
 			 return FALSE;
 		break;
+	case CLAIM_FH:
+		break;
+	case CLAIM_DELEG_PREV_FH:
+		break;
+	case CLAIM_DELEG_CUR_FH:
+		 if (!zdr_stateid4 (zdrs, &objp->open_claim4_u.oc_delegate_stateid))
+			 return FALSE;
+		break;
 	default:
 		return FALSE;
 	}
