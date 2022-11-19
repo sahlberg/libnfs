@@ -59,7 +59,11 @@
 
 nfs_tid_t nfs_mt_get_tid(void)
 {
-#ifdef SYS_gettid
+#ifdef HAVE_PTHREAD_THREADID_NP
+        nfs_tid_t tid;
+        pthread_threadid_np(NULL, &tid);
+        return tid;
+#elif defined(SYS_gettid)
         pid_t tid = syscall(SYS_gettid);
         return tid;
 #else
@@ -139,6 +143,33 @@ int nfs_mt_mutex_unlock(libnfs_mutex_t *mutex)
         return pthread_mutex_unlock(mutex);
 }
 
+#if defined(__APPLE__) && defined(HAVE_DISPATCH_DISPATCH_H)
+int nfs_mt_sem_init(libnfs_sem_t *sem, int value)
+{
+        if ((*sem = dispatch_semaphore_create(value)) != NULL)
+                return 0;
+        return -1;
+}
+
+int nfs_mt_sem_destroy(libnfs_sem_t *sem)
+{
+        dispatch_release(*sem);
+        return 0;
+}
+
+int nfs_mt_sem_post(libnfs_sem_t *sem)
+{
+        dispatch_semaphore_signal(*sem);
+        return 0;
+}
+
+int nfs_mt_sem_wait(libnfs_sem_t *sem)
+{
+        dispatch_semaphore_wait(*sem, DISPATCH_TIME_FOREVER);
+        return 0;
+}
+
+#else
 int nfs_mt_sem_init(libnfs_sem_t *sem, int value)
 {
         return sem_init(sem, 0, value);
@@ -158,6 +189,7 @@ int nfs_mt_sem_wait(libnfs_sem_t *sem)
 {
         return sem_wait(sem);
 }
+#endif
 
 #elif WIN32 
 nfs_tid_t nfs_mt_get_tid(void)
