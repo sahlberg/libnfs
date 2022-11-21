@@ -353,24 +353,36 @@ int rpc_nfs3_write_async(struct rpc_context *rpc, rpc_cb cb, struct WRITE3args *
 	}
 
         /* Add an iovector for the WRITE3 header */
-        rpc_add_iovector(rpc, &pdu->out, &pdu->outdata.data[start + 4],
-                         zdr_getpos(&pdu->zdr) - start, NULL);
-
+        if (rpc_add_iovector(rpc, &pdu->out, &pdu->outdata.data[start + 4],
+                             zdr_getpos(&pdu->zdr) - start, NULL) < 0) {
+		rpc_free_pdu(rpc, pdu);
+		return -1;
+        }
 
         /* Add an iovector for the length of the byte/array blob */
         start = zdr_getpos(&pdu->zdr);
         zdr_u_int(&pdu->zdr, &args->data.data_len);
-        rpc_add_iovector(rpc, &pdu->out, &pdu->outdata.data[start + 4],
-                         4, NULL);
+        if (rpc_add_iovector(rpc, &pdu->out, &pdu->outdata.data[start + 4],
+                             4, NULL) < 0) {
+		rpc_free_pdu(rpc, pdu);
+		return -1;
+        }
 
         /* Add an iovector for the data itself */
-        rpc_add_iovector(rpc, &pdu->out, args->data.data_val,
-                         args->data.data_len, NULL);
+        if (rpc_add_iovector(rpc, &pdu->out, args->data.data_val,
+                             args->data.data_len, NULL) < 0) {
+		rpc_free_pdu(rpc, pdu);
+		return -1;
+        }
 
         /* We may need to pad this to 4 byte boundary */
         if (args->data.data_len & 0x03) {
-                rpc_add_iovector(rpc, &pdu->out, (char *)&zero_padding,
-                                 4 - args->data.data_len & 0x03, NULL);
+                if (rpc_add_iovector(rpc, &pdu->out, (char *)&zero_padding,
+                                     4 - args->data.data_len & 0x03,
+                                     NULL) < 0) {
+                        rpc_free_pdu(rpc, pdu);
+                        return -1;
+                }
         }
 
 	if (rpc_queue_pdu(rpc, pdu) != 0) {

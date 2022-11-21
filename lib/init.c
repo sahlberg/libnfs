@@ -527,11 +527,18 @@ void rpc_free_iovector(struct rpc_context *rpc, struct rpc_io_vectors *v)
         v->niov = 0;
 }
 
-void rpc_add_iovector(struct rpc_context *rpc, struct rpc_io_vectors *v,
+int rpc_add_iovector(struct rpc_context *rpc, struct rpc_io_vectors *v,
                       char *buf, int len, void (*free)(void *))
 {
+        if (v->niov >= RPC_MAX_VECTORS) {
+                rpc_set_error(rpc, "Too many io vectors");
+                return -1;
+        }
+
         v->iov[v->niov].buf = buf;
         v->iov[v->niov].len = len;
         v->iov[v->niov].free = free;
         v->niov++;
+
+        return 0;
 }

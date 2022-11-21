@@ -285,9 +285,12 @@ int rpc_queue_pdu(struct rpc_context *rpc, struct rpc_pdu *pdu)
         if (pos > size) {
                 int count = pos - size;
 
-                rpc_add_iovector(rpc, &pdu->out,
-                                 &pdu->outdata.data[pdu->out.total_size],
-                                 count, NULL);
+                if (rpc_add_iovector(rpc, &pdu->out,
+                                     &pdu->outdata.data[pdu->out.total_size],
+                                     count, NULL) < 0) {
+                        rpc_free_pdu(rpc, pdu);
+                        return -1;
+                }
                 pdu->out.total_size += count;
                 size = pos;
         }

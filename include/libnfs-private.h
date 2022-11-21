@@ -455,8 +455,8 @@ struct nfsfh {
 };
 
 void rpc_free_iovector(struct rpc_context *rpc, struct rpc_io_vectors *v);
-void rpc_add_iovector(struct rpc_context *rpc, struct rpc_io_vectors *v,
-                      char *buf, int len, void (*free)(void *));
+int rpc_add_iovector(struct rpc_context *rpc, struct rpc_io_vectors *v,
+                     char *buf, int len, void (*free)(void *));
 const struct nfs_fh *nfs_get_rootfh(struct nfs_context *nfs);
 
 int nfs_normalize_path(struct nfs_context *nfs, char *path);
