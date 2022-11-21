@@ -43,7 +43,7 @@
 #include <poll.h>
 #endif
 
-#ifdef HAVE_SYS_UIO_H
+#if defined(HAVE_SYS_UIO_H) || (defined(__APPLE__) && defined(__MACH__))
 #include <sys/uio.h>
 #endif
 
