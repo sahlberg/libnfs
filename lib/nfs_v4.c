@@ -828,8 +828,8 @@ nfs4_op_readdir(struct nfs_context *nfs, nfs_argop4 *op, uint64_t cookie)
         memset(rdargs, 0, sizeof(*rdargs));
 
         rdargs->cookie = cookie;
-        rdargs->dircount = 8192;
-        rdargs->maxcount = 8192;
+        rdargs->dircount = nfs->nfsi->readdir_dircount;
+        rdargs->maxcount = nfs->nfsi->readdir_maxcount;
         rdargs->attr_request.bitmap4_len = 2;
         rdargs->attr_request.bitmap4_val = standard_attributes;
 

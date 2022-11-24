@@ -2802,7 +2802,7 @@ nfs3_opendir_2_cb(struct rpc_context *rpc, int status, void *command_data,
 		args.cookie = cookie;
 		memcpy(&args.cookieverf, res->READDIR3res_u.resok.cookieverf,
                        sizeof(cookieverf3));
-		args.count = 8192;
+		args.count = nfs->nfsi->readdir_dircount;
 
 	     	if (rpc_nfs3_readdir_async(nfs->rpc, nfs3_opendir_2_cb,
                                            &args, data) != 0) {
@@ -2859,7 +2859,7 @@ nfs3_opendir_cb(struct rpc_context *rpc, int status, void *command_data,
 		args.dir.data.data_val = data->fh.val;
 		args.cookie = cookie;
 		memset(&args.cookieverf, 0, sizeof(cookieverf3));
-		args.count = 8192;
+		args.count = nfs->nfsi->readdir_dircount;
 
 		if (rpc_nfs3_readdir_async(nfs->rpc, nfs3_opendir_2_cb,
                                            &args, data) != 0) {
@@ -2997,8 +2997,8 @@ nfs3_opendir_cb(struct rpc_context *rpc, int status, void *command_data,
 		memcpy(&args.cookieverf,
                        res->READDIRPLUS3res_u.resok.cookieverf,
                        sizeof(cookieverf3));
-		args.dircount = 8192;
-		args.maxcount = 8192;
+		args.dircount = nfs->nfsi->readdir_dircount;
+		args.maxcount = nfs->nfsi->readdir_maxcount;
 
 	     	if (rpc_nfs3_readdirplus_async(nfs->rpc, nfs3_opendir_cb,
                                                &args, data) != 0) {
@@ -3068,8 +3068,8 @@ nfs3_opendir_continue_internal(struct nfs_context *nfs,
 	args.dir.data.data_val = data->fh.val;
 	args.cookie = 0;
 	memset(&args.cookieverf, 0, sizeof(cookieverf3));
-	args.dircount = 8192;
-	args.maxcount = 8192;
+	args.dircount = nfs->nfsi->readdir_dircount;
+	args.maxcount = nfs->nfsi->readdir_maxcount;
 	if (rpc_nfs3_readdirplus_async(nfs->rpc, nfs3_opendir_cb,
                                        &args, data) != 0) {
 		nfs_set_error(nfs, "RPC error: Failed to send "

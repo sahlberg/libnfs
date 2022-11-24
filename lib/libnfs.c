@@ -335,6 +335,15 @@ nfs_set_context_args(struct nfs_context *nfs, const char *arg, const char *val)
 		nfs_set_nfsport(nfs, atoi(val));
 	} else if (!strcmp(arg, "mountport")) {
 		nfs_set_mountport(nfs, atoi(val));
+	} else if (!strcmp(arg, "readdir-buffer")) {
+		char *strp = strchr(val, ',');
+		if (strp) {
+			*strp = 0;
+			strp++;
+			nfs_set_readdir_max_buffer_size(nfs, atoi(val), atoi(strp));
+		} else {
+			nfs_set_readdir_max_buffer_size(nfs, atoi(val), atoi(val));
+		}
 	}
 	return 0;
 }
@@ -569,6 +578,8 @@ nfs_init_context(void)
 	/* Default is never give up, never surrender */
 	nfs->nfsi->auto_reconnect = -1;
 	nfs->nfsi->version = NFS_V3;
+	nfs->nfsi->readdir_dircount = 8192;
+	nfs->nfsi->readdir_maxcount = 8192;
 
         /* NFSv4 parameters */
         /* We need a "random" initial verifier */
@@ -1980,6 +1991,12 @@ nfs_set_nfsport(struct nfs_context *nfs, int port) {
 void
 nfs_set_mountport(struct nfs_context *nfs, int port) {
 	nfs->nfsi->mountport = port;
+}
+
+void
+nfs_set_readdir_max_buffer_size(struct nfs_context *nfs, uint64_t dircount, uint64_t maxcount) {
+	nfs->nfsi->readdir_dircount = dircount;
+	nfs->nfsi->readdir_maxcount = maxcount;
 }
 
 void

@@ -236,6 +236,13 @@ EXTERN int nfs_set_hash_size(struct nfs_context *nfs, int hashes);
  * mountport=<port>  : Use this port for the MOUNT protocol instead of
  *                     using portmapper. This argument is ignored for NFSv4
  *                     as it does not use the MOUNT protocol.
+ * readdir-buffer=<count> | readdir-buffer=<dircount>,<maxcount>
+ *                   : Set the buffer size for READDIRPLUS, where dircount is
+ *                     the maximum amount of bytes the server should use to
+ *                     retrieve the entry names and maxcount is the maximum
+ *                     size of the response buffer (including attributes).
+ *                     If only one <count> is given it will be used for both.
+ *                     Default is 8192 for both.
  */
 /*
  * Parse a complete NFS URL including, server, path and
@@ -304,6 +311,7 @@ EXTERN void nfs_set_dircache(struct nfs_context *nfs, int enabled);
 EXTERN void nfs_set_autoreconnect(struct nfs_context *nfs, int num_retries);
 EXTERN void nfs_set_nfsport(struct nfs_context *nfs, int port);
 EXTERN void nfs_set_mountport(struct nfs_context *nfs, int port);
+EXTERN void nfs_set_readdir_max_buffer_size(struct nfs_context *nfs, uint64_t dircount, uint64_t maxcount);
 
 /*
  * Set NFS version. Supported versions are

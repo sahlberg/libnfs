@@ -97,6 +97,7 @@ nfs_set_nfsport
 nfs_set_pagecache
 nfs_set_pagecache_ttl
 nfs_set_readahead
+nfs_set_readdir_max_buffer_size
 nfs_set_readmax
 nfs_set_tcp_syncnt
 nfs_set_timeout
