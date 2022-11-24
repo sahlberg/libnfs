@@ -81,6 +81,13 @@ Arguments supported by libnfs are :
  mountport=<port>  : Use this port for the MOUNT protocol instead of
                      using portmapper. This argument is ignored for NFSv4
                      as it does not use the MOUNT protocol.
+ readdir-buffer=<count> | readdir-buffer=<dircount>,<maxcount>
+                   : Set the buffer size for READDIRPLUS, where dircount is
+                     the maximum amount of bytes the server should use to
+                     retrieve the entry names and maxcount is the maximum
+                     size of the response buffer (including attributes).
+                     If only one <count> is given it will be used for both.
+                     Default is 8192 for both.
 
 Auto_traverse_mounts
 ====================
