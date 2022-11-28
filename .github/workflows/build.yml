@@ -82,10 +82,13 @@ jobs:
 
     steps:
       - name: Set up Cygwin
-        uses: egor-tensin/setup-cygwin@v3
+      - run: git config --global core.autocrlf input
+        uses: actions/checkout@v2
+        uses: cygwin/cygwin-install-action@master
         with:
             platform: x64
             packages: make gcc-g++ bash cmake
+      - run: bash tests/script.sh  # see footnote [1]
       - uses: actions/checkout@main
       - run: cd $GITHUB_WORKSPACE; mkdir build
         shell: C:\tools\cygwin\bin\bash.exe --login --norc -eo pipefail -o igncr '{0}'
