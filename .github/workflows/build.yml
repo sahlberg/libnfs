@@ -57,3 +57,31 @@ jobs:
     - name: Build (MSVC)
       run: |
         cmake --build .
+  BSDs:
+    runs-on: macos-latest
+
+    strategy:
+      matrix:
+        os:
+          - name: OpenBSD
+            version: 7.1
+            pkginstall: pkg_add cmake
+
+    name: ${{ matrix.os.name }} ${{ matrix.os.version }}
+
+    steps:
+      - uses: actions/checkout@main
+
+      - name: Test on ${{ matrix.os.name }}
+        uses: cross-platform-actions/action@v0.3.1
+        with:
+          operating_system: ${{ matrix.os.name }}
+          version: ${{ matrix.os.version }}
+          shell: bash
+          run: |
+            sudo ${{ matrix.os.pkginstall }}
+            mkdir build
+            cmake -B build
+            cd build
+            make
+            sudo make install
