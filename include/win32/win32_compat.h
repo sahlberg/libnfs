@@ -156,4 +156,35 @@ int     win32_gettimeofday(struct timeval *tv, struct timezone *tz);
 char* strndup(const char *s, size_t n);
 #endif
 
+struct iovec
+{
+  unsigned long iov_len; // from WSABUF
+  void *iov_base;        
+};
+
+inline int writev(t_socket sock, struct iovec *iov, int nvecs)
+{
+  DWORD ret;
+
+  int res = WSASend(sock, (LPWSABUF)iov, nvecs, &ret, 0, NULL, NULL);
+
+  if (res == 0) {
+    return (int)ret;
+  }
+  return -1;
+}
+
+inline int readv(t_socket sock, struct iovec *iov, int nvecs)
+{
+  DWORD ret;
+  DWORD flags = 0;
+
+  int res = WSARecv(sock, (LPWSABUF)iov, nvecs, &ret, &flags, NULL, NULL);
+
+  if (res == 0) {
+    return (int)ret;
+  }
+  return -1;
+}
+
 #endif//win32_COMPAT_H_
