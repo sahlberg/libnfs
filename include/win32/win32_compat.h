@@ -162,7 +162,7 @@ struct iovec
   void *iov_base;        
 };
 
-inline int writev(t_socket sock, struct iovec *iov, int nvecs)
+inline int writev(SOCKET sock, struct iovec *iov, int nvecs)
 {
   DWORD ret;
 
@@ -174,7 +174,7 @@ inline int writev(t_socket sock, struct iovec *iov, int nvecs)
   return -1;
 }
 
-inline int readv(t_socket sock, struct iovec *iov, int nvecs)
+inline int readv(SOCKET sock, struct iovec *iov, int nvecs)
 {
   DWORD ret;
   DWORD flags = 0;
