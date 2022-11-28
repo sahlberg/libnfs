@@ -76,20 +76,3 @@ jobs:
             cd build
             make
             sudo make install
-
-  Cygwin:
-    runs-on: windows-latest
-
-    steps:
-      - name: Set up Cygwin
-        uses: egor-tensin/setup-cygwin@v3
-        with:
-            platform: x64
-            packages: make gcc-g++ bash cmake
-      - uses: actions/checkout@main
-      - run: cd $GITHUB_WORKSPACE; mkdir build
-        shell: C:\tools\cygwin\bin\bash.exe --login --norc -eo pipefail -o igncr '{0}'
-      - run: cd $GITHUB_WORKSPACE; cmake -B build
-        shell: C:\tools\cygwin\bin\bash.exe --login --norc -eo pipefail -o igncr '{0}'
-      - run: cd $GITHUB_WORKSPACE; make --directory build install
-        shell: C:\tools\cygwin\bin\bash.exe --login --norc -eo pipefail -o igncr '{0}'
