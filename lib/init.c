@@ -147,6 +147,8 @@ struct rpc_context *rpc_init_context(void)
 
 	/* Default is no timeout */
 	rpc->timeout = -1;
+	/* Default is to timeout after 100ms of poll(2) */
+	rpc->poll_timeout = 100;
 
 	return rpc;
 }
@@ -470,6 +472,20 @@ void rpc_destroy_context(struct rpc_context *rpc)
         nfs_mt_mutex_destroy(&rpc->rpc_mutex);
 #endif /* HAVE_MULTITHREADING */
 	free(rpc);
+}
+
+void rpc_set_poll_timeout(struct rpc_context *rpc, int poll_timeout)
+{
+	assert(rpc->magic == RPC_CONTEXT_MAGIC);
+
+	rpc->poll_timeout = poll_timeout;
+}
+
+int rpc_get_poll_timeout(struct rpc_context *rpc)
+{
+	assert(rpc->magic == RPC_CONTEXT_MAGIC);
+
+	return rpc->poll_timeout;
 }
 
 void rpc_set_timeout(struct rpc_context *rpc, int timeout)

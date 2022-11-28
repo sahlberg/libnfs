@@ -2156,12 +2156,30 @@ nfs_umask(struct nfs_context *nfs, uint16_t mask) {
 }
 
 /*
+* Sets polling timeout for nfs apis
+*/
+void
+nfs_set_poll_timeout(struct nfs_context *nfs, int poll_timeout)
+{
+	rpc_set_timeout(nfs->rpc,poll_timeout);
+}
+
+/*
+* Gets polling timeout for nfs apis
+*/
+int
+nfs_get_poll_timeout(struct nfs_context *nfs)
+{
+	return rpc_get_poll_timeout(nfs->rpc);
+}
+
+/*
 * Sets timeout for nfs apis
 */
 void
 nfs_set_timeout(struct nfs_context *nfs,int timeout)
 {
-	 rpc_set_timeout(nfs->rpc,timeout);
+	rpc_set_timeout(nfs->rpc,timeout);
 }
 
 /*

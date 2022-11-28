@@ -225,7 +225,7 @@ wait_for_reply(struct rpc_context *rpc, struct sync_cb_data *cb_data)
 		pfd.events  = rpc_which_events(rpc);
 		pfd.revents = 0;
 
-		ret = poll(&pfd, 1, 100);
+		ret = poll(&pfd, 1, rpc->poll_timeout);
 		if (ret < 0) {
 			rpc_set_error(rpc, "Poll failed");
 			revents = -1;
@@ -271,7 +271,7 @@ wait_for_nfs_reply(struct nfs_context *nfs, struct sync_cb_data *cb_data)
 		pfd.events = nfs_which_events(nfs);
 		pfd.revents = 0;
 
-		ret = poll(&pfd, 1, 100);
+		ret = poll(&pfd, 1, nfs->rpc->poll_timeout);
 		if (ret < 0) {
 			nfs_set_error(nfs, "Poll failed");
 			revents = -1;
