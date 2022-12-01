@@ -1690,7 +1690,7 @@ nfs_fchmod_async(struct nfs_context *nfs, struct nfsfh *nfsfh, int mode,
 }
 
 int
-nfs_chown_async(struct nfs_context *nfs, const char *path, int uid, int gid,
+nfs_chown_async(struct nfs_context *nfs, const char *path, uint32_t uid, uint32_t gid,
                 nfs_cb cb, void *private_data)
 {
 	switch (nfs->nfsi->version) {
@@ -1708,7 +1708,7 @@ nfs_chown_async(struct nfs_context *nfs, const char *path, int uid, int gid,
 }
 
 int
-nfs_lchown_async(struct nfs_context *nfs, const char *path, int uid, int gid,
+nfs_lchown_async(struct nfs_context *nfs, const char *path, uint32_t uid, uint32_t gid,
                  nfs_cb cb, void *private_data)
 {
 	switch (nfs->nfsi->version) {
@@ -1726,8 +1726,8 @@ nfs_lchown_async(struct nfs_context *nfs, const char *path, int uid, int gid,
 }
 
 int
-nfs_fchown_async(struct nfs_context *nfs, struct nfsfh *nfsfh, int uid,
-                 int gid, nfs_cb cb, void *private_data)
+nfs_fchown_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint32_t uid,
+                 uint32_t gid, nfs_cb cb, void *private_data)
 {
 	switch (nfs->nfsi->version) {
         case NFS_V3:
@@ -1915,12 +1915,12 @@ nfs_set_tcp_syncnt(struct nfs_context *nfs, int v) {
 }
 
 void
-nfs_set_uid(struct nfs_context *nfs, int uid) {
+nfs_set_uid(struct nfs_context *nfs, uint32_t uid) {
 	rpc_set_uid(nfs->rpc, uid);
 }
 
 void
-nfs_set_gid(struct nfs_context *nfs, int gid) {
+nfs_set_gid(struct nfs_context *nfs, uint32_t gid) {
 	rpc_set_gid(nfs->rpc, gid);
 }
 

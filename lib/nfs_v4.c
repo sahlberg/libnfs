@@ -4875,7 +4875,7 @@ nfs4_fchmod_async(struct nfs_context *nfs, struct nfsfh *fh, int mode,
 #define CHOWN_BLOB_SIZE 64
 static int
 nfs4_create_chown_buffer(struct nfs_context *nfs, struct nfs4_cb_data *data,
-                         int uid, int gid)
+                         uint32_t uid, uint32_t gid)
 {
         char *str;
         int i, l;
@@ -4947,7 +4947,7 @@ nfs4_populate_chown(struct nfs4_cb_data *data, nfs_argop4 *op)
 
 int
 nfs4_chown_async_internal(struct nfs_context *nfs, const char *path,
-                          int no_follow, int uid, int gid,
+                          int no_follow, uint32_t uid, uint32_t gid,
                           nfs_cb cb, void *private_data)
 {
         struct nfs4_cb_data *data;
@@ -4979,7 +4979,7 @@ nfs4_chown_async_internal(struct nfs_context *nfs, const char *path,
 }
 
 int
-nfs4_fchown_async(struct nfs_context *nfs, struct nfsfh *fh, int uid, int gid,
+nfs4_fchown_async(struct nfs_context *nfs, struct nfsfh *fh, uint32_t uid, uint32_t gid,
                   nfs_cb cb, void *private_data)
 {
         COMPOUND4args args;

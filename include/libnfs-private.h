@@ -157,8 +157,8 @@ struct rpc_context {
 
 	/* parameters passable via URL */
 	int tcp_syncnt;
-	int uid;
-	int gid;
+	uint32_t uid;
+	uint32_t gid;
 	uint32_t readahead;
 	uint32_t pagecache;
 	uint32_t pagecache_ttl;
@@ -483,7 +483,7 @@ int nfs3_chmod_async_internal(struct nfs_context *nfs, const char *path,
                               int no_follow, int mode, nfs_cb cb,
                               void *private_data);
 int nfs3_chown_async_internal(struct nfs_context *nfs, const char *path,
-                              int no_follow, int uid, int gid,
+                              int no_follow, uint32_t uid, uint32_t gid,
                               nfs_cb cb, void *private_data);
 int nfs3_close_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_cb cb,
                      void *private_data);
@@ -491,8 +491,8 @@ int nfs3_create_async(struct nfs_context *nfs, const char *path, int flags,
                       int mode, nfs_cb cb, void *private_data);
 int nfs3_fchmod_async(struct nfs_context *nfs, struct nfsfh *nfsfh, int mode,
                       nfs_cb cb, void *private_data);
-int nfs3_fchown_async(struct nfs_context *nfs, struct nfsfh *nfsfh, int uid,
-                      int gid, nfs_cb cb, void *private_data);
+int nfs3_fchown_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint32_t uid,
+                      uint32_t gid, nfs_cb cb, void *private_data);
 int nfs3_fstat_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_cb cb,
                      void *private_data);
 int nfs3_fstat64_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_cb cb,
@@ -561,7 +561,7 @@ int nfs4_chmod_async_internal(struct nfs_context *nfs, const char *path,
                               int no_follow, int mode, nfs_cb cb,
                               void *private_data);
 int nfs4_chown_async_internal(struct nfs_context *nfs, const char *path,
-                              int no_follow, int uid, int gid,
+                              int no_follow, uint32_t uid, uint32_t gid,
                               nfs_cb cb, void *private_data);
 int nfs4_close_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_cb cb,
                      void *private_data);
@@ -569,8 +569,8 @@ int nfs4_create_async(struct nfs_context *nfs, const char *path, int flags,
                       int mode, nfs_cb cb, void *private_data);
 int nfs4_fchmod_async(struct nfs_context *nfs, struct nfsfh *nfsfh, int mode,
                       nfs_cb cb, void *private_data);
-int nfs4_fchown_async(struct nfs_context *nfs, struct nfsfh *nfsfh, int uid,
-                      int gid, nfs_cb cb, void *private_data);
+int nfs4_fchown_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint32_t uid,
+                      uint32_t gid, nfs_cb cb, void *private_data);
 int nfs4_fcntl_async(struct nfs_context *nfs, struct nfsfh *nfsfh,
                      enum nfs4_fcntl_op cmd, void *arg,
                      nfs_cb cb, void *private_data);

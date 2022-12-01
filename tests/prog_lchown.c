@@ -43,7 +43,7 @@ int main(int argc, char *argv[])
 	struct nfs_context *nfs = NULL;
 	struct nfs_url *url = NULL;
 	int ret = 0;
-        int uid, gid;
+        uint32_t uid, gid;
 
 	if (argc != 6) {
 		usage();

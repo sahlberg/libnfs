@@ -2124,7 +2124,7 @@ nfs3_chown_continue_internal(struct nfs_context *nfs,
 
 int
 nfs3_chown_async_internal(struct nfs_context *nfs, const char *path,
-                          int no_follow, int uid, int gid,
+                          int no_follow, uint32_t uid, uint32_t gid,
                           nfs_cb cb, void *private_data)
 {
 	struct nfs_chown_data *chown_data;
@@ -2149,8 +2149,8 @@ nfs3_chown_async_internal(struct nfs_context *nfs, const char *path,
 }
 
 int
-nfs3_fchown_async(struct nfs_context *nfs, struct nfsfh *nfsfh, int uid,
-                  int gid, nfs_cb cb, void *private_data)
+nfs3_fchown_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint32_t uid,
+                  uint32_t gid, nfs_cb cb, void *private_data)
 {
 	struct nfs_cb_data *data;
 	struct nfs_chown_data *chown_data;

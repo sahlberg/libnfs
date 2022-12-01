@@ -299,8 +299,8 @@ EXTERN void nfs_set_writemax(struct nfs_context *nfs, uint64_t writemax);
  */
 
 EXTERN void nfs_set_tcp_syncnt(struct nfs_context *nfs, int v);
-EXTERN void nfs_set_uid(struct nfs_context *nfs, int uid);
-EXTERN void nfs_set_gid(struct nfs_context *nfs, int gid);
+EXTERN void nfs_set_uid(struct nfs_context *nfs, uint32_t uid);
+EXTERN void nfs_set_gid(struct nfs_context *nfs, uint32_t gid);
 EXTERN void nfs_set_auxiliary_gids(struct nfs_context *nfs, uint32_t len, uint32_t* gids);
 EXTERN void nfs_set_pagecache(struct nfs_context *nfs, uint32_t v);
 EXTERN void nfs_set_pagecache_ttl(struct nfs_context *nfs, uint32_t v);
@@ -1595,16 +1595,16 @@ EXTERN int nfs_fchmod(struct nfs_context *nfs, struct nfsfh *nfsfh, int mode);
  * -errno : An error occured.
  *          data is the error string.
  */
-EXTERN int nfs_chown_async(struct nfs_context *nfs, const char *path, int uid,
-                           int gid, nfs_cb cb, void *private_data);
+EXTERN int nfs_chown_async(struct nfs_context *nfs, const char *path, uint32_t uid,
+                           uint32_t gid, nfs_cb cb, void *private_data);
 /*
  * Sync chown(<name>)
  * Function returns
  *      0 : The operation was successful.
  * -errno : The command failed.
  */
-EXTERN int nfs_chown(struct nfs_context *nfs, const char *path, int uid,
-                     int gid);
+EXTERN int nfs_chown(struct nfs_context *nfs, const char *path, uint32_t uid,
+                     uint32_t gid);
 /*
  * Async chown(<name>)
  *
@@ -1623,8 +1623,8 @@ EXTERN int nfs_chown(struct nfs_context *nfs, const char *path, int uid,
  * -errno : An error occured.
  *          data is the error string.
  */
-EXTERN int nfs_lchown_async(struct nfs_context *nfs, const char *path, int uid,
-                            int gid, nfs_cb cb, void *private_data);
+EXTERN int nfs_lchown_async(struct nfs_context *nfs, const char *path, uint32_t uid,
+                            uint32_t gid, nfs_cb cb, void *private_data);
 /*
  * Sync chown(<name>)
  *
@@ -1635,8 +1635,8 @@ EXTERN int nfs_lchown_async(struct nfs_context *nfs, const char *path, int uid,
  *      0 : The operation was successful.
  * -errno : The command failed.
  */
-EXTERN int nfs_lchown(struct nfs_context *nfs, const char *path, int uid,
-                      int gid);
+EXTERN int nfs_lchown(struct nfs_context *nfs, const char *path, uint32_t uid,
+                      uint32_t gid);
 
 
 
@@ -1658,15 +1658,15 @@ EXTERN int nfs_lchown(struct nfs_context *nfs, const char *path, int uid,
  *          data is the error string.
  */
 EXTERN int nfs_fchown_async(struct nfs_context *nfs, struct nfsfh *nfsfh,
-                            int uid, int gid, nfs_cb cb, void *private_data);
+                            uint32_t uid, uint32_t gid, nfs_cb cb, void *private_data);
 /*
  * Sync fchown(<handle>)
  * Function returns
  *      0 : The operation was successful.
  * -errno : The command failed.
  */
-EXTERN int nfs_fchown(struct nfs_context *nfs, struct nfsfh *nfsfh, int uid,
-                      int gid);
+EXTERN int nfs_fchown(struct nfs_context *nfs, struct nfsfh *nfsfh, uint32_t uid,
+                      uint32_t gid);
 
 
 

@@ -268,7 +268,7 @@ void rpc_set_auth(struct rpc_context *rpc, struct AUTH *auth)
 	rpc->auth = auth;
 }
 
-static void rpc_set_uid_gid(struct rpc_context *rpc, int uid, int gid) {
+static void rpc_set_uid_gid(struct rpc_context *rpc, uint32_t uid, uint32_t gid) {
 	if (uid != rpc->uid || gid != rpc->gid) {
 		struct AUTH *auth = libnfs_authunix_create("libnfs", uid, gid, 0, NULL);
 		if (auth != NULL) {
@@ -279,11 +279,11 @@ static void rpc_set_uid_gid(struct rpc_context *rpc, int uid, int gid) {
 	}
 }
 
-void rpc_set_uid(struct rpc_context *rpc, int uid) {
+void rpc_set_uid(struct rpc_context *rpc, uint32_t uid) {
 	rpc_set_uid_gid(rpc, uid, rpc->gid);
 }
 
-void rpc_set_gid(struct rpc_context *rpc, int gid) {
+void rpc_set_gid(struct rpc_context *rpc, uint32_t gid) {
 	rpc_set_uid_gid(rpc, rpc->uid, gid);
 }
 

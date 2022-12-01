@@ -1739,7 +1739,7 @@ chown_cb(int status, struct nfs_context *nfs, void *data, void *private_data)
 }
 
 int
-nfs_chown(struct nfs_context *nfs, const char *path, int uid, int gid)
+nfs_chown(struct nfs_context *nfs, const char *path, uint32_t uid, uint32_t gid)
 {
 	struct sync_cb_data cb_data;
 
@@ -1764,7 +1764,7 @@ nfs_chown(struct nfs_context *nfs, const char *path, int uid, int gid)
  * lchown()
  */
 int
-nfs_lchown(struct nfs_context *nfs, const char *path, int uid, int gid)
+nfs_lchown(struct nfs_context *nfs, const char *path, uint32_t uid, uint32_t gid)
 {
 	struct sync_cb_data cb_data;
 
@@ -1804,7 +1804,7 @@ fchown_cb(int status, struct nfs_context *nfs, void *data, void *private_data)
 }
 
 int
-nfs_fchown(struct nfs_context *nfs, struct nfsfh *nfsfh, int uid, int gid)
+nfs_fchown(struct nfs_context *nfs, struct nfsfh *nfsfh, uint32_t uid, uint32_t gid)
 {
 	struct sync_cb_data cb_data;
 

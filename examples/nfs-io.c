@@ -154,8 +154,8 @@ int main(int argc, char *argv[])
 			fprintf(stderr, "Invalid arguments for chown");
 			goto finished;
 		}
-		int uid = strtol(argv[2], NULL, 10);
-		int gid = strtol(argv[3], NULL, 10);
+		uint32_t uid = strtol(argv[2], NULL, 10);
+		uint32_t gid = strtol(argv[3], NULL, 10);
 		ret = nfs_chown(nfs, url->file, uid, gid);
 	} else if (!strncmp(argv[1], "stat", 4)) {
 		struct nfs_stat_64 st;

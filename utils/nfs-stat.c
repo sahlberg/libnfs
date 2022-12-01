@@ -160,12 +160,12 @@ char uidbuf[16];
 char gidbuf[16];
 
 #ifdef WIN32
-char *uid_to_name(int uid)
+char *uid_to_name(uint32_t uid)
 {
 	sprintf(uidbuf, "%d", uid);
 	return uidbuf;
 }
-char *gid_to_name(int gid)
+char *gid_to_name(uint32_t gid)
 {
 	sprintf(gidbuf, "%d", gid);
 	return gidbuf;
@@ -174,7 +174,7 @@ char *gid_to_name(int gid)
 #include <sys/types.h>
 #include <grp.h>
 #include <pwd.h>
-char *uid_to_name(int uid)
+char *uid_to_name(uint32_t uid)
 {
 	struct passwd *pw;
 
@@ -186,7 +186,7 @@ char *uid_to_name(int uid)
 		return uidbuf;
 	}
 }	
-char *gid_to_name(int gid)
+char *gid_to_name(uint32_t gid)
 {
 	struct group *gr;
 
