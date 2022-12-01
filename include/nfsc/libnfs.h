@@ -311,7 +311,7 @@ EXTERN void nfs_set_dircache(struct nfs_context *nfs, int enabled);
 EXTERN void nfs_set_autoreconnect(struct nfs_context *nfs, int num_retries);
 EXTERN void nfs_set_nfsport(struct nfs_context *nfs, int port);
 EXTERN void nfs_set_mountport(struct nfs_context *nfs, int port);
-EXTERN void nfs_set_readdir_max_buffer_size(struct nfs_context *nfs, uint64_t dircount, uint64_t maxcount);
+EXTERN void nfs_set_readdir_max_buffer_size(struct nfs_context *nfs, uint32_t dircount, uint32_t maxcount);
 
 /*
  * Set NFS version. Supported versions are

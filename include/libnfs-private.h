@@ -328,8 +328,8 @@ struct nfs_context_internal {
        int version;
        int nfsport;
        int mountport;
-       uint64_t readdir_dircount;
-       uint64_t readdir_maxcount;
+       uint32_t readdir_dircount;
+       uint32_t readdir_maxcount;
 
        /* NFSv4 specific fields */
        verifier4 verifier;
