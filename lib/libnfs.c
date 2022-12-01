@@ -1994,7 +1994,7 @@ nfs_set_mountport(struct nfs_context *nfs, int port) {
 }
 
 void
-nfs_set_readdir_max_buffer_size(struct nfs_context *nfs, uint64_t dircount, uint64_t maxcount) {
+nfs_set_readdir_max_buffer_size(struct nfs_context *nfs, uint32_t dircount, uint32_t maxcount) {
 	nfs->nfsi->readdir_dircount = dircount;
 	nfs->nfsi->readdir_maxcount = maxcount;
 }
