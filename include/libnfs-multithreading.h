@@ -30,12 +30,22 @@ extern "C" {
 #ifdef HAVE_MULTITHREADING
 
 #ifdef HAVE_PTHREAD
-#include <semaphore.h>
 #include <pthread.h>
 typedef pthread_t libnfs_thread_t;
 typedef pthread_mutex_t libnfs_mutex_t;
+
+#if defined(__APPLE__) && defined(HAVE_DISPATCH_DISPATCH_H)
+#include <dispatch/dispatch.h>
+typedef dispatch_semaphore_t libnfs_sem_t;
+#else
+#include <semaphore.h>
 typedef sem_t libnfs_sem_t;
+#endif
+#ifdef HAVE_PTHREAD_THREADID_NP
+typedef uint64_t nfs_tid_t;
+#else
 typedef pid_t nfs_tid_t;
+#endif
 #endif /* HAVE_PTHREAD */
 
 #ifdef WIN32
@@ -45,7 +55,7 @@ typedef HANDLE libnfs_sem_t;
 typedef DWORD nfs_tid_t;
 #endif
 
-nfs_tid_t nfs_mt_get_tid(void);        
+nfs_tid_t nfs_mt_get_tid(void);
 int nfs_mt_mutex_init(libnfs_mutex_t *mutex);
 int nfs_mt_mutex_destroy(libnfs_mutex_t *mutex);
 int nfs_mt_mutex_lock(libnfs_mutex_t *mutex);
@@ -57,7 +67,7 @@ int nfs_mt_sem_post(libnfs_sem_t *sem);
 int nfs_mt_sem_wait(libnfs_sem_t *sem);
 
 #endif /* HAVE_MULTITHREADING */
-        
+
 #ifdef __cplusplus
 }
 #endif
