@@ -580,6 +580,31 @@ enum nfs_lock_type4 {
 };
 
 /*
+ * Client owner
+ */
+struct client_owner4 {
+        verifier4       co_verifier;
+        opaque          co_ownerid<NFS4_OPAQUE_LIMIT>;
+};
+
+/*
+ * Server owner
+ */
+struct server_owner4 {
+        uint64_t       so_minor_id;
+        opaque         so_major_id<NFS4_OPAQUE_LIMIT>;
+};
+
+/*
+ * NFS implementation details
+ */
+struct nfs_impl_id4 {
+        utf8str_cis   nii_domain;
+        utf8str_cs    nii_name;
+        nfstime4      nii_date;
+};
+
+/*
  * ACCESS: Check access permission
  */
 const ACCESS4_READ      = 0x00000001;
@@ -1465,9 +1490,9 @@ struct RELEASE_LOCKOWNER4res {
 /*
  * BACKCHANNEL_CTL
  */
-/*
 typedef opaque gsshandle4_t<>;
 
+/*
 struct gss_cb_handles4 {
        rpc_gss_svc_t           gcbp_service; RFC 2203
        gsshandle4_t            gcbp_handle_from_server;
@@ -1492,6 +1517,128 @@ struct BACKCHANNEL_CTL4args {
        callback_sec_parms4     bca_sec_parms<>;
 };
 */
+
+/*
+ * BIND_CONN_TO_SESSION
+ */
+enum channel_dir_from_client4 {
+        CDFC4_FORE             = 0x1,
+        CDFC4_BACK             = 0x2,
+        CDFC4_FORE_OR_BOTH     = 0x3,
+        CDFC4_BACK_OR_BOTH     = 0x7
+};
+
+struct BIND_CONN_TO_SESSION4args {
+        sessionid4     bctsa_sessid;
+        channel_dir_from_client4 bctsa_dir;
+        bool           bctsa_use_conn_in_rdma_mode;
+};
+
+enum channel_dir_from_server4 {
+        CDFS4_FORE     = 0x1,
+        CDFS4_BACK     = 0x2,
+        CDFS4_BOTH     = 0x3
+};
+
+struct BIND_CONN_TO_SESSION4resok {
+        sessionid4     bctsr_sessid;
+        channel_dir_from_server4 bctsr_dir;
+        bool           bctsr_use_conn_in_rdma_mode;
+};
+
+union BIND_CONN_TO_SESSION4res switch (nfsstat4 bctsr_status) {
+case NFS4_OK:
+        BIND_CONN_TO_SESSION4resok bctsr_resok4;
+default:
+        void;
+};
+
+/*
+ * EXCHANGE_ID
+ */
+const EXCHGID4_FLAG_SUPP_MOVED_REFER    = 0x00000001;
+const EXCHGID4_FLAG_SUPP_MOVED_MIGR     = 0x00000002;
+
+const EXCHGID4_FLAG_BIND_PRINC_STATEID  = 0x00000100;
+
+const EXCHGID4_FLAG_USE_NON_PNFS        = 0x00010000;
+const EXCHGID4_FLAG_USE_PNFS_MDS        = 0x00020000;
+const EXCHGID4_FLAG_USE_PNFS_DS         = 0x00040000;
+
+const EXCHGID4_FLAG_MASK_PNFS           = 0x00070000;
+
+const EXCHGID4_FLAG_UPD_CONFIRMED_REC_A = 0x40000000;
+const EXCHGID4_FLAG_CONFIRMED_R         = 0x80000000;
+
+struct state_protect_ops4 {
+        bitmap4 spo_must_enforce;
+        bitmap4 spo_must_allow;
+};
+
+struct ssv_sp_parms4 {
+        state_protect_ops4      ssp_ops;
+        sec_oid4                ssp_hash_algs<>;
+        sec_oid4                ssp_encr_algs<>;
+        uint32_t                ssp_window;
+        uint32_t                ssp_num_gss_handles;
+};
+
+enum state_protect_how4 {
+        SP4_NONE = 0,
+        SP4_MACH_CRED = 1,
+        SP4_SSV = 2
+};
+
+union state_protect4_a switch(state_protect_how4 spa_how) {
+case SP4_NONE:
+        void;
+case SP4_MACH_CRED:
+        state_protect_ops4      spa_mach_ops;
+case SP4_SSV:
+        ssv_sp_parms4           spa_ssv_parms;
+};
+
+struct EXCHANGE_ID4args {
+        client_owner4           eia_clientowner;
+        uint32_t                eia_flags;
+        state_protect4_a        eia_state_protect;
+        nfs_impl_id4            eia_client_impl_id<1>;
+};
+
+struct ssv_prot_info4 {
+        state_protect_ops4     spi_ops;
+        uint32_t               spi_hash_alg;
+        uint32_t               spi_encr_alg;
+        uint32_t               spi_ssv_len;
+        uint32_t               spi_window;
+        gsshandle4_t           spi_handles<>;
+};
+
+union state_protect4_r switch(state_protect_how4 spr_how) {
+case SP4_NONE:
+        void;
+case SP4_MACH_CRED:
+        state_protect_ops4     spr_mach_ops;
+case SP4_SSV:
+        ssv_prot_info4         spr_ssv_info;
+};
+
+struct EXCHANGE_ID4resok {
+        clientid4        eir_clientid;
+        sequenceid4      eir_sequenceid;
+        uint32_t         eir_flags;
+        state_protect4_r eir_state_protect;
+        server_owner4    eir_server_owner;
+        opaque           eir_server_scope<NFS4_OPAQUE_LIMIT>;
+        nfs_impl_id4     eir_server_impl_id<1>;
+};
+
+union EXCHANGE_ID4res switch (nfsstat4 eir_status) {
+case NFS4_OK:
+        EXCHANGE_ID4resok      eir_resok4;
+default:
+        void;
+};
 
 /*
  * CREATE_SESSION
@@ -1961,6 +2108,8 @@ enum nfs_opnum4 {
         OP_VERIFY               = 37,
         OP_WRITE                = 38,
         OP_RELEASE_LOCKOWNER    = 39,
+        OP_BIND_CONN_TO_SESSION = 41,
+        OP_EXCHANGE_ID          = 42,
         OP_CREATE_SESSION       = 43,
         OP_DESTROY_SESSION      = 44,
         OP_FREE_STATEID         = 45,
@@ -2020,6 +2169,8 @@ union nfs_argop4 switch (nfs_opnum4 argop) {
  case OP_WRITE:         WRITE4args opwrite;
  case OP_RELEASE_LOCKOWNER:     RELEASE_LOCKOWNER4args
                                     oprelease_lockowner;
+ case OP_BIND_CONN_TO_SESSION:  BIND_CONN_TO_SESSION4args opbindconntosession;
+ case OP_EXCHANGE_ID:           EXCHANGE_ID4args opexchangeid;
  case OP_CREATE_SESSION:        CREATE_SESSION4args opcreatesession;
  case OP_DESTROY_SESSION:       DESTROY_SESSION4args opdestroysession;
  case OP_FREE_STATEID:          FREE_STATEID4args opfreestateid;
@@ -2079,6 +2230,8 @@ union nfs_resop4 switch (nfs_opnum4 resop){
  case OP_WRITE:         WRITE4res opwrite;
  case OP_RELEASE_LOCKOWNER:     RELEASE_LOCKOWNER4res
                                     oprelease_lockowner;
+ case OP_BIND_CONN_TO_SESSION:  BIND_CONN_TO_SESSION4res opbindconntosession;
+ case OP_EXCHANGE_ID:           EXCHANGE_ID4res opexchangeid;
  case OP_CREATE_SESSION:        CREATE_SESSION4res opcreatesession;
  case OP_DESTROY_SESSION:       DESTROY_SESSION4res opdestroysession;
  case OP_FREE_STATEID:          FREE_STATEID4res opfreestateid;
