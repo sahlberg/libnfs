@@ -166,6 +166,7 @@ struct rpc_context {
         uint64_t last_timeout_scan;
 	int timeout;
 	char ifname[IFNAMSIZ];
+	int poll_timeout;
 
         /* Is a server context ? */
         int is_server_context;
@@ -271,6 +272,8 @@ void rpc_set_pagecache(struct rpc_context *rpc, uint32_t v);
 void rpc_set_pagecache_ttl(struct rpc_context *rpc, uint32_t v);
 void rpc_set_readahead(struct rpc_context *rpc, uint32_t v);
 void rpc_set_debug(struct rpc_context *rpc, int level);
+void rpc_set_poll_timeout(struct rpc_context *rpc, int poll_timeout);
+int rpc_get_poll_timeout(struct rpc_context *rpc);
 void rpc_set_timeout(struct rpc_context *rpc, int timeout);
 int rpc_get_timeout(struct rpc_context *rpc);
 int rpc_add_fragment(struct rpc_context *rpc, char *data, uint32_t size);

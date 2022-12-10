@@ -84,9 +84,8 @@ static void *nfs_mt_service_thread(void *arg)
 		pfd.fd = nfs_get_fd(nfs);
 		pfd.events = nfs_which_events(nfs);
 		pfd.revents = 0;
-
-		// Wake up at least every 100ms to process timeouts.
-		ret = poll(&pfd, 1, 100);
+        
+		ret = poll(&pfd, 1, nfs->rpc->poll_timeout);
 		if (ret < 0) {
 			nfs_set_error(nfs, "Poll failed");
 			revents = -1;

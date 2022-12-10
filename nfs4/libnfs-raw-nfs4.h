@@ -614,6 +614,31 @@ enum nfs_lock_type4 {
 	WRITEW_LT = 4,
 };
 typedef enum nfs_lock_type4 nfs_lock_type4;
+
+struct client_owner4 {
+	verifier4 co_verifier;
+	struct {
+		u_int co_ownerid_len;
+		char *co_ownerid_val;
+	} co_ownerid;
+};
+typedef struct client_owner4 client_owner4;
+
+struct server_owner4 {
+	uint64_t so_minor_id;
+	struct {
+		u_int so_major_id_len;
+		char *so_major_id_val;
+	} so_major_id;
+};
+typedef struct server_owner4 server_owner4;
+
+struct nfs_impl_id4 {
+	utf8str_cis nii_domain;
+	utf8str_cs nii_name;
+	nfstime4 nii_date;
+};
+typedef struct nfs_impl_id4 nfs_impl_id4;
 #define ACCESS4_READ 0x00000001
 #define ACCESS4_LOOKUP 0x00000002
 #define ACCESS4_MODIFY 0x00000004
@@ -973,6 +998,7 @@ struct open_claim4 {
 		open_delegation_type4 delegate_type;
 		open_claim_delegate_cur4 delegate_cur_info;
 		component4 file_delegate_prev;
+		stateid4 oc_delegate_stateid;
 	} open_claim4_u;
 };
 typedef struct open_claim4 open_claim4;
@@ -1371,6 +1397,11 @@ struct RELEASE_LOCKOWNER4res {
 };
 typedef struct RELEASE_LOCKOWNER4res RELEASE_LOCKOWNER4res;
 
+typedef struct {
+	u_int gsshandle4_t_len;
+	char *gsshandle4_t_val;
+} gsshandle4_t;
+
 struct callback_sec_parms4 {
 	uint32_t cb_secflavor;
 	union {
@@ -1378,6 +1409,147 @@ struct callback_sec_parms4 {
 	} callback_sec_parms4_u;
 };
 typedef struct callback_sec_parms4 callback_sec_parms4;
+
+enum channel_dir_from_client4 {
+	CDFC4_FORE = 0x1,
+	CDFC4_BACK = 0x2,
+	CDFC4_FORE_OR_BOTH = 0x3,
+	CDFC4_BACK_OR_BOTH = 0x7,
+};
+typedef enum channel_dir_from_client4 channel_dir_from_client4;
+
+struct BIND_CONN_TO_SESSION4args {
+	sessionid4 bctsa_sessid;
+	channel_dir_from_client4 bctsa_dir;
+	uint32_t bctsa_use_conn_in_rdma_mode;
+};
+typedef struct BIND_CONN_TO_SESSION4args BIND_CONN_TO_SESSION4args;
+
+enum channel_dir_from_server4 {
+	CDFS4_FORE = 0x1,
+	CDFS4_BACK = 0x2,
+	CDFS4_BOTH = 0x3,
+};
+typedef enum channel_dir_from_server4 channel_dir_from_server4;
+
+struct BIND_CONN_TO_SESSION4resok {
+	sessionid4 bctsr_sessid;
+	channel_dir_from_server4 bctsr_dir;
+	uint32_t bctsr_use_conn_in_rdma_mode;
+};
+typedef struct BIND_CONN_TO_SESSION4resok BIND_CONN_TO_SESSION4resok;
+
+struct BIND_CONN_TO_SESSION4res {
+	nfsstat4 bctsr_status;
+	union {
+		BIND_CONN_TO_SESSION4resok bctsr_resok4;
+	} BIND_CONN_TO_SESSION4res_u;
+};
+typedef struct BIND_CONN_TO_SESSION4res BIND_CONN_TO_SESSION4res;
+#define EXCHGID4_FLAG_SUPP_MOVED_REFER 0x00000001
+#define EXCHGID4_FLAG_SUPP_MOVED_MIGR 0x00000002
+#define EXCHGID4_FLAG_BIND_PRINC_STATEID 0x00000100
+#define EXCHGID4_FLAG_USE_NON_PNFS 0x00010000
+#define EXCHGID4_FLAG_USE_PNFS_MDS 0x00020000
+#define EXCHGID4_FLAG_USE_PNFS_DS 0x00040000
+#define EXCHGID4_FLAG_MASK_PNFS 0x00070000
+#define EXCHGID4_FLAG_UPD_CONFIRMED_REC_A 0x40000000
+#define EXCHGID4_FLAG_CONFIRMED_R 0x80000000
+
+struct state_protect_ops4 {
+	bitmap4 spo_must_enforce;
+	bitmap4 spo_must_allow;
+};
+typedef struct state_protect_ops4 state_protect_ops4;
+
+struct ssv_sp_parms4 {
+	state_protect_ops4 ssp_ops;
+	struct {
+		u_int ssp_hash_algs_len;
+		sec_oid4 *ssp_hash_algs_val;
+	} ssp_hash_algs;
+	struct {
+		u_int ssp_encr_algs_len;
+		sec_oid4 *ssp_encr_algs_val;
+	} ssp_encr_algs;
+	uint32_t ssp_window;
+	uint32_t ssp_num_gss_handles;
+};
+typedef struct ssv_sp_parms4 ssv_sp_parms4;
+
+enum state_protect_how4 {
+	SP4_NONE = 0,
+	SP4_MACH_CRED = 1,
+	SP4_SSV = 2,
+};
+typedef enum state_protect_how4 state_protect_how4;
+
+struct state_protect4_a {
+	state_protect_how4 spa_how;
+	union {
+		state_protect_ops4 spa_mach_ops;
+		ssv_sp_parms4 spa_ssv_parms;
+	} state_protect4_a_u;
+};
+typedef struct state_protect4_a state_protect4_a;
+
+struct EXCHANGE_ID4args {
+	client_owner4 eia_clientowner;
+	uint32_t eia_flags;
+	state_protect4_a eia_state_protect;
+	struct {
+		u_int eia_client_impl_id_len;
+		nfs_impl_id4 *eia_client_impl_id_val;
+	} eia_client_impl_id;
+};
+typedef struct EXCHANGE_ID4args EXCHANGE_ID4args;
+
+struct ssv_prot_info4 {
+	state_protect_ops4 spi_ops;
+	uint32_t spi_hash_alg;
+	uint32_t spi_encr_alg;
+	uint32_t spi_ssv_len;
+	uint32_t spi_window;
+	struct {
+		u_int spi_handles_len;
+		gsshandle4_t *spi_handles_val;
+	} spi_handles;
+};
+typedef struct ssv_prot_info4 ssv_prot_info4;
+
+struct state_protect4_r {
+	state_protect_how4 spr_how;
+	union {
+		state_protect_ops4 spr_mach_ops;
+		ssv_prot_info4 spr_ssv_info;
+	} state_protect4_r_u;
+};
+typedef struct state_protect4_r state_protect4_r;
+
+struct EXCHANGE_ID4resok {
+	clientid4 eir_clientid;
+	sequenceid4 eir_sequenceid;
+	uint32_t eir_flags;
+	state_protect4_r eir_state_protect;
+	server_owner4 eir_server_owner;
+	struct {
+		u_int eir_server_scope_len;
+		char *eir_server_scope_val;
+	} eir_server_scope;
+	struct {
+		u_int eir_server_impl_id_len;
+		nfs_impl_id4 *eir_server_impl_id_val;
+	} eir_server_impl_id;
+};
+typedef struct EXCHANGE_ID4resok EXCHANGE_ID4resok;
+
+struct EXCHANGE_ID4res {
+	nfsstat4 eir_status;
+	union {
+		EXCHANGE_ID4resok eir_resok4;
+	} EXCHANGE_ID4res_u;
+};
+typedef struct EXCHANGE_ID4res EXCHANGE_ID4res;
 
 struct channel_attrs4 {
 	count4 ca_headerpadsize;
@@ -1870,6 +2042,8 @@ enum nfs_opnum4 {
 	OP_VERIFY = 37,
 	OP_WRITE = 38,
 	OP_RELEASE_LOCKOWNER = 39,
+	OP_BIND_CONN_TO_SESSION = 41,
+	OP_EXCHANGE_ID = 42,
 	OP_CREATE_SESSION = 43,
 	OP_DESTROY_SESSION = 44,
 	OP_FREE_STATEID = 45,
@@ -1923,6 +2097,8 @@ struct nfs_argop4 {
 		VERIFY4args opverify;
 		WRITE4args opwrite;
 		RELEASE_LOCKOWNER4args oprelease_lockowner;
+		BIND_CONN_TO_SESSION4args opbindconntosession;
+		EXCHANGE_ID4args opexchangeid;
 		CREATE_SESSION4args opcreatesession;
 		DESTROY_SESSION4args opdestroysession;
 		FREE_STATEID4args opfreestateid;
@@ -1983,6 +2159,8 @@ struct nfs_resop4 {
 		VERIFY4res opverify;
 		WRITE4res opwrite;
 		RELEASE_LOCKOWNER4res oprelease_lockowner;
+		BIND_CONN_TO_SESSION4res opbindconntosession;
+		EXCHANGE_ID4res opexchangeid;
 		CREATE_SESSION4res opcreatesession;
 		DESTROY_SESSION4res opdestroysession;
 		FREE_STATEID4res opfreestateid;
@@ -2265,6 +2443,9 @@ extern  uint32_t zdr_nfs_client_id4 (ZDR *, nfs_client_id4*);
 extern  uint32_t zdr_open_owner4 (ZDR *, open_owner4*);
 extern  uint32_t zdr_lock_owner4 (ZDR *, lock_owner4*);
 extern  uint32_t zdr_nfs_lock_type4 (ZDR *, nfs_lock_type4*);
+extern  uint32_t zdr_client_owner4 (ZDR *, client_owner4*);
+extern  uint32_t zdr_server_owner4 (ZDR *, server_owner4*);
+extern  uint32_t zdr_nfs_impl_id4 (ZDR *, nfs_impl_id4*);
 extern  uint32_t zdr_ACCESS4args (ZDR *, ACCESS4args*);
 extern  uint32_t zdr_ACCESS4resok (ZDR *, ACCESS4resok*);
 extern  uint32_t zdr_ACCESS4res (ZDR *, ACCESS4res*);
@@ -2375,7 +2556,22 @@ extern  uint32_t zdr_WRITE4resok (ZDR *, WRITE4resok*);
 extern  uint32_t zdr_WRITE4res (ZDR *, WRITE4res*);
 extern  uint32_t zdr_RELEASE_LOCKOWNER4args (ZDR *, RELEASE_LOCKOWNER4args*);
 extern  uint32_t zdr_RELEASE_LOCKOWNER4res (ZDR *, RELEASE_LOCKOWNER4res*);
+extern  uint32_t zdr_gsshandle4_t (ZDR *, gsshandle4_t*);
 extern  uint32_t zdr_callback_sec_parms4 (ZDR *, callback_sec_parms4*);
+extern  uint32_t zdr_channel_dir_from_client4 (ZDR *, channel_dir_from_client4*);
+extern  uint32_t zdr_BIND_CONN_TO_SESSION4args (ZDR *, BIND_CONN_TO_SESSION4args*);
+extern  uint32_t zdr_channel_dir_from_server4 (ZDR *, channel_dir_from_server4*);
+extern  uint32_t zdr_BIND_CONN_TO_SESSION4resok (ZDR *, BIND_CONN_TO_SESSION4resok*);
+extern  uint32_t zdr_BIND_CONN_TO_SESSION4res (ZDR *, BIND_CONN_TO_SESSION4res*);
+extern  uint32_t zdr_state_protect_ops4 (ZDR *, state_protect_ops4*);
+extern  uint32_t zdr_ssv_sp_parms4 (ZDR *, ssv_sp_parms4*);
+extern  uint32_t zdr_state_protect_how4 (ZDR *, state_protect_how4*);
+extern  uint32_t zdr_state_protect4_a (ZDR *, state_protect4_a*);
+extern  uint32_t zdr_EXCHANGE_ID4args (ZDR *, EXCHANGE_ID4args*);
+extern  uint32_t zdr_ssv_prot_info4 (ZDR *, ssv_prot_info4*);
+extern  uint32_t zdr_state_protect4_r (ZDR *, state_protect4_r*);
+extern  uint32_t zdr_EXCHANGE_ID4resok (ZDR *, EXCHANGE_ID4resok*);
+extern  uint32_t zdr_EXCHANGE_ID4res (ZDR *, EXCHANGE_ID4res*);
 extern  uint32_t zdr_channel_attrs4 (ZDR *, channel_attrs4*);
 extern  uint32_t zdr_CREATE_SESSION4args (ZDR *, CREATE_SESSION4args*);
 extern  uint32_t zdr_CREATE_SESSION4resok (ZDR *, CREATE_SESSION4resok*);
@@ -2562,6 +2758,9 @@ extern uint32_t zdr_nfs_client_id4 ();
 extern uint32_t zdr_open_owner4 ();
 extern uint32_t zdr_lock_owner4 ();
 extern uint32_t zdr_nfs_lock_type4 ();
+extern uint32_t zdr_client_owner4 ();
+extern uint32_t zdr_server_owner4 ();
+extern uint32_t zdr_nfs_impl_id4 ();
 extern uint32_t zdr_ACCESS4args ();
 extern uint32_t zdr_ACCESS4resok ();
 extern uint32_t zdr_ACCESS4res ();
@@ -2672,7 +2871,22 @@ extern uint32_t zdr_WRITE4resok ();
 extern uint32_t zdr_WRITE4res ();
 extern uint32_t zdr_RELEASE_LOCKOWNER4args ();
 extern uint32_t zdr_RELEASE_LOCKOWNER4res ();
+extern uint32_t zdr_gsshandle4_t ();
 extern uint32_t zdr_callback_sec_parms4 ();
+extern uint32_t zdr_channel_dir_from_client4 ();
+extern uint32_t zdr_BIND_CONN_TO_SESSION4args ();
+extern uint32_t zdr_channel_dir_from_server4 ();
+extern uint32_t zdr_BIND_CONN_TO_SESSION4resok ();
+extern uint32_t zdr_BIND_CONN_TO_SESSION4res ();
+extern uint32_t zdr_state_protect_ops4 ();
+extern uint32_t zdr_ssv_sp_parms4 ();
+extern uint32_t zdr_state_protect_how4 ();
+extern uint32_t zdr_state_protect4_a ();
+extern uint32_t zdr_EXCHANGE_ID4args ();
+extern uint32_t zdr_ssv_prot_info4 ();
+extern uint32_t zdr_state_protect4_r ();
+extern uint32_t zdr_EXCHANGE_ID4resok ();
+extern uint32_t zdr_EXCHANGE_ID4res ();
 extern uint32_t zdr_channel_attrs4 ();
 extern uint32_t zdr_CREATE_SESSION4args ();
 extern uint32_t zdr_CREATE_SESSION4resok ();

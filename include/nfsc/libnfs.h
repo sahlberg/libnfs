@@ -1989,6 +1989,27 @@ struct nfs_server_list *nfs_find_local_servers(void);
 void free_nfs_srvr_list(struct nfs_server_list *srv);
 
 /*
+ * nfs_set_poll_timeout()
+ * This function sets the polling timeout used for nfs rpc calls.
+ *
+ * Function returns nothing.
+ *
+ * int milliseconds : timeout that is passed to poll(2)
+ *                    to be applied in milliseconds (-1 no timeout)
+ */
+EXTERN void nfs_set_poll_timeout(struct nfs_context *nfs, int milliseconds);
+
+/*
+ * nfs_get_poll_timeout()
+ * This function gets the polling timeout used for nfs rpc calls.
+ *
+ * Function returns:
+ * int milliseconds : timeout that is passed to poll(2)
+ *                    to be applied in milliseconds (-1 no timeout)
+ */
+EXTERN int nfs_get_poll_timeout(struct nfs_context *nfs);
+
+/*
  * sync nfs_set_timeout()
  * This function sets the timeout used for nfs rpc calls.
  *
