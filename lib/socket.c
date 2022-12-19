@@ -238,6 +238,7 @@ int
 rpc_write_to_socket(struct rpc_context *rpc)
 {
 	struct rpc_pdu *pdu;
+	struct iovec iov[RPC_MAX_VECTORS];
         int ret = 0;
         
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
@@ -252,32 +253,46 @@ rpc_write_to_socket(struct rpc_context *rpc)
                 nfs_mt_mutex_lock(&rpc->rpc_mutex);
         }
 #endif /* HAVE_MULTITHREADING */
+
+        /* Write several pdus at once */
 	while ((pdu = rpc->outqueue.head) != NULL) {
-                struct iovec iov[RPC_MAX_VECTORS];
-                struct iovec *tmpiov;
-                size_t num_done = pdu->out.num_done;
-                int niov = pdu->out.niov;
-                int i;
+                int niov = 0;
+                char *last_buf = NULL;
                 ssize_t count;
 
-                for (i = 0; i < niov; i++) {
-                        iov[i].iov_base = pdu->out.iov[i].buf;
-                        iov[i].iov_len = pdu->out.iov[i].len;
-                }
-                tmpiov = iov;
+                do {
+                        size_t num_done = pdu->out.num_done;
+                        int pdu_niov = pdu->out.niov;
+                        int i;
 
-                /* Skip the vectors we have alredy written */
-                while (num_done >= tmpiov->iov_len) {
-                        num_done -= tmpiov->iov_len;
-                        tmpiov++;
-                        niov--;
-                }
+                        for (i = 0; i < pdu_niov; i++) {
+                                char *buf = pdu->out.iov[i].buf;
+                                size_t len = pdu->out.iov[i].len;
+                                if (num_done >= len) {
+                                        num_done -= len;
+                                        continue;
+                                }
+                                buf += num_done;
+                                len -= num_done;
 
-                /* Adjust the first vector to send */
-                tmpiov->iov_base = (char *)tmpiov->iov_base + num_done;
-                tmpiov->iov_len -= num_done;
+                                /* Concatenate continous blocks */
+                                if (last_buf != buf) {
+                                        iov[niov].iov_base = buf;
+                                        iov[niov].iov_len = len;
+                                        niov++;
+                                        if (niov >= RPC_MAX_VECTORS)
+                                                break;
+                                        last_buf = (buf + len);
+                                } else {
+                                        iov[niov - 1].iov_len += len;
+                                        last_buf += len;
+                                }
+                        }
 
-                count = writev(rpc->fd, tmpiov, niov);
+                        pdu = pdu->next;
+                } while (pdu != NULL && niov < RPC_MAX_VECTORS);
+
+                count = writev(rpc->fd, iov, niov);
                 if (count == -1) {
                         if (errno == EAGAIN || errno == EWOULDBLOCK) {
                                 ret = 0;
@@ -291,25 +306,35 @@ rpc_write_to_socket(struct rpc_context *rpc)
                         goto finished;
                 }
 
-                pdu->out.num_done += count;
+                /* Check how many pdu we completed */
+                while (count > 0 && (pdu = rpc->outqueue.head) != NULL) {
+                        size_t remaining = (pdu->out.total_size - pdu->out.num_done);
+                        if (remaining <= count) {
+                                unsigned int hash;
 
-		if (pdu->out.num_done == pdu->out.total_size) {
-			unsigned int hash;
+                                count -= remaining;
 
-			rpc->outqueue.head = pdu->next;
-			if (pdu->next == NULL)
-				rpc->outqueue.tail = NULL;
+                                pdu->out.num_done = pdu->out.total_size;
 
-                        if (pdu->flags & PDU_DISCARD_AFTER_SENDING) {
-                                rpc_free_pdu(rpc, pdu);
-                                ret = 0;
-                                goto finished;
+                                rpc->outqueue.head = pdu->next;
+                                if (pdu->next == NULL)
+                                        rpc->outqueue.tail = NULL;
+
+                                if (pdu->flags & PDU_DISCARD_AFTER_SENDING) {
+                                        rpc_free_pdu(rpc, pdu);
+                                        ret = 0;
+                                        goto finished;
+                                }
+
+                                hash = rpc_hash_xid(rpc, pdu->xid);
+                                rpc_enqueue(&rpc->waitpdu[hash], pdu);
+                                rpc->waitpdu_len++;
+
+                        } else {
+                                pdu->out.num_done += count;
+                                break;
                         }
-
-			hash = rpc_hash_xid(rpc, pdu->xid);
-			rpc_enqueue(&rpc->waitpdu[hash], pdu);
-			rpc->waitpdu_len++;
-		}
+                }
 	}
 
  finished:
