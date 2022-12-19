@@ -173,7 +173,7 @@ struct rpc_context {
         struct rpc_endpoint *endpoints;
 };
 
-#define RPC_MAX_VECTORS 16
+#define RPC_MAX_VECTORS  8 /* Same as UIO_FASTIOV used by the Linux kernel */
 
 struct rpc_iovec {
         char *buf;
