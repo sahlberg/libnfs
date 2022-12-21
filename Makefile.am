@@ -12,3 +12,6 @@ EXTRA_DIST = \
 	LICENCE-LGPL-2.1.txt \
 	examples \
 	libnfs.pc.in
+
+test: $(SUBDIRS)
+	cd tests; make test

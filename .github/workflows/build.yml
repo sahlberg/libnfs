@@ -10,10 +10,50 @@ jobs:
     steps:
       - uses: actions/checkout@main
       - run: sudo apt install -y cmake
+      - run: sudo apt install -y nfs-kernel-server
+      - run: sudo apt install -y nfs-common
+      - run: sudo apt install -y valgrind
       - run: mkdir build
-      - run: cmake -B build
+      - run: cmake -D ENABLE_TESTS=yes -B build
       - run: make --directory build
       - run: sudo make --directory build install
+      - run: sudo bash -c "cd build/tests;./test_0100_ls_basic.sh"
+      - run: sudo bash -c "cd build/tests;./test_0102_ls_discover_shares.sh"
+      - run: sudo bash -c "cd build/tests;./test_0200_stat.sh"
+      - run: sudo bash -c "cd build/tests;./test_0201_stat_paths.sh"
+      - run: sudo bash -c "cd build/tests;./test_0203_stat_symlink.sh"
+      - run: sudo bash -c "cd build/tests;./test_0210_fstat.sh"
+      - run: sudo bash -c "cd build/tests;./test_0211_fstat_paths.sh"
+      - run: sudo bash -c "cd build/tests;./test_0220_open_paths.sh"
+      - run: sudo bash -c "cd build/tests;./test_0223_open_O_TRUNC.sh"
+      - run: sudo bash -c "cd build/tests;./test_0224_open_O_APPEND.sh"
+      - run: sudo bash -c "cd build/tests;./test_0225_open_O_CREAT.sh"
+      - run: sudo bash -c "cd build/tests;./test_0230_creat_paths.sh"
+      - run: sudo bash -c "cd build/tests;./test_0240_link.sh"
+      - run: sudo bash -c "cd build/tests;./test_0250_rename.sh"
+      - run: sudo bash -c "cd build/tests;./test_0260_symlink_paths.sh"
+      - run: sudo bash -c "cd build/tests;./test_0270_unlink.sh"
+      - run: sudo bash -c "cd build/tests;./test_0280_mkdir_rmdir.sh"
+      - run: sudo bash -c "cd build/tests;./test_0290_read.sh"
+      - run: sudo bash -c "cd build/tests;./test_0300_write.sh"
+      - run: sudo bash -c "cd build/tests;./test_0310_mknod.sh"
+      - run: sudo bash -c "cd build/tests;./test_0320_lstat.sh"
+      - run: sudo bash -c "cd build/tests;./test_0321_lstat_paths.sh"
+      - run: sudo bash -c "cd build/tests;./test_0330_ftruncate.sh"
+      - run: sudo bash -c "cd build/tests;./test_0340_truncate.sh"
+      - run: sudo bash -c "cd build/tests;./test_0341_truncate_paths.sh"
+      - run: sudo bash -c "cd build/tests;./test_0350_lseek.sh"
+      - run: sudo bash -c "cd build/tests;./test_0360_statvfs.sh"
+      - run: sudo bash -c "cd build/tests;./test_0370_chmod.sh"
+      - run: sudo bash -c "cd build/tests;./test_0380_lchmod.sh"
+      - run: sudo bash -c "cd build/tests;./test_0390_fchmod.sh"
+      - run: sudo bash -c "cd build/tests;./test_0400_chown.sh"
+      - run: sudo bash -c "cd build/tests;./test_0410_lchown.sh"
+      - run: sudo bash -c "cd build/tests;./test_0420_fchown.sh"
+      - run: sudo bash -c "cd build/tests;./test_0450_utimes.sh"
+      - run: sudo bash -c "cd build/tests;./test_0460_opendir.sh"
+      - run: sudo bash -c "cd build/tests;./test_1000_mount_paths.sh"
+      - run: sudo bash -c "cd build/tests;./test_1010_chdir_paths.sh"
 
   Linux-Musl-QEMU:
     runs-on: ubuntu-latest
