@@ -113,6 +113,11 @@ struct rpc_endpoint {
         int num_procs;
 };
 
+enum input_state {
+        READ_RM = 0,
+        READ_PAYLOAD = 1
+};
+
 struct rpc_context {
 	uint32_t magic;
 	int fd;
@@ -141,6 +146,8 @@ struct rpc_context {
 	uint32_t inpos;
 	uint32_t inbuf_size;
 	char *inbuf;
+        enum input_state state;
+        uint32_t record_marker;
 
 	/* special fields for UDP, which can sometimes be BROADCASTed */
 	int is_udp;
@@ -227,7 +234,6 @@ struct rpc_pdu *rpc_allocate_pdu(struct rpc_context *rpc, int program, int versi
 struct rpc_pdu *rpc_allocate_pdu2(struct rpc_context *rpc, int program, int version, int procedure, rpc_cb cb, void *private_data, zdrproc_t zdr_decode_fn, int zdr_bufsize, size_t alloc_hint);
 void rpc_free_pdu(struct rpc_context *rpc, struct rpc_pdu *pdu);
 int rpc_queue_pdu(struct rpc_context *rpc, struct rpc_pdu *pdu);
-uint32_t rpc_get_pdu_size(char *buf);
 int rpc_process_pdu(struct rpc_context *rpc, char *buf, int size);
 void rpc_error_all_pdus(struct rpc_context *rpc, const char *error);
 

@@ -116,8 +116,11 @@ struct rpc_context *rpc_init_context(void)
                 free(rpc);
 		return NULL;
 	}
-        
+
 	rpc->magic = RPC_CONTEXT_MAGIC;
+        rpc->inpos  = 0;
+        rpc->record_marker = 0;
+        rpc->state = READ_RM;
 
 #ifdef HAVE_MULTITHREADING
 	nfs_mt_mutex_init(&rpc->rpc_mutex);
