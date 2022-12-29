@@ -346,6 +346,29 @@ rpc_write_to_socket(struct rpc_context *rpc)
 	return ret;
 }
 
+static int adjust_inbuf(struct rpc_context *rpc, uint32_t pdu_size)
+{
+        char *buf;
+
+        if (rpc->inbuf_size < pdu_size) {
+                if (pdu_size > NFS_MAX_XFER_SIZE + 4096) {
+                        rpc_set_error(rpc, "Incoming PDU exceeds limit of %d "
+                                      "bytes.", NFS_MAX_XFER_SIZE + 4096);
+                        return -1;
+                }
+                buf = realloc(rpc->inbuf, pdu_size);
+                if (buf == NULL) {
+                        rpc_set_error(rpc, "Failed to allocate buffer of %d "
+                                      "bytes for pdu, errno:%d. Closing "
+                                      "socket.", (int)pdu_size, errno);
+                        return -1;
+                }
+                rpc->inbuf_size = pdu_size;
+                rpc->inbuf = buf;
+        }
+        return 0;
+}
+
 #define MAX_UDP_SIZE 65536
 static int
 rpc_read_from_socket(struct rpc_context *rpc)
@@ -387,38 +410,22 @@ rpc_read_from_socket(struct rpc_context *rpc)
 	}
 
 	do {
-		/* Read record marker,
-                 * 4 bytes at the beginning of every pdu.
-                 */
-		if (rpc->inpos < 4) {
+                switch (rpc->state) {
+                case READ_RM:
+                        /*
+                         * Read record marker,
+                         * 4 bytes at the beginning of every pdu.
+                         */
 			pdu_size = 4;
-		} else {
-			pdu_size = rpc_get_pdu_size(rpc->inbuf);
-		}
-		if (rpc->inbuf_size < pdu_size) {
-			if (pdu_size > NFS_MAX_XFER_SIZE + 4096) {
-				rpc_set_error(rpc, "Incoming PDU "
-												  "exceeds limit of %d "
-												  "bytes.",
-												  NFS_MAX_XFER_SIZE + 4096);
-				return -1;
-			}
-			buf = realloc(rpc->inbuf, pdu_size);
-			if (buf == NULL) {
-				rpc_set_error(rpc, "Failed to allocate "
-												  "buffer of %d bytes for "
-												  "pdu, errno:%d. Closing "
-												  "socket.",
-												  (int)pdu_size, errno);
-				return -1;
-			}
-			rpc->inbuf_size = pdu_size;
-			rpc->inbuf = buf;
-		} else {
-			buf = rpc->inbuf;
-		}
+                        buf = (char *)&rpc->record_marker;
+                        break;
+                case READ_PAYLOAD:
+			pdu_size = rpc->record_marker;
+                        adjust_inbuf(rpc, pdu_size);
+                        buf = rpc->inbuf + rpc->inpos;
+                }
 
-		count = recv(rpc->fd, buf + rpc->inpos, pdu_size - rpc->inpos,
+		count = recv(rpc->fd, buf, pdu_size - rpc->inpos,
                              MSG_DONTWAIT);
 		if (count < 0) {
 			if (errno == EINTR || errno == EAGAIN) {
@@ -434,22 +441,30 @@ rpc_read_from_socket(struct rpc_context *rpc)
 		}
 		rpc->inpos += count;
 
-		if (rpc->inpos == 4) {
-			/* We have just read the header and there is likely
-                         * more data available */
-			continue;
-		}
-
-		if (rpc->inpos == pdu_size) {
-			rpc->inpos  = 0;
-
-			if (rpc_process_pdu(rpc, buf, pdu_size) != 0) {
-				rpc_set_error(rpc, "Invalid/garbage pdu "
-                                              "received from server. Closing "
-                                              "socket");
-				return -1;
-			}
-		}
+                if (rpc->inpos == pdu_size) {
+                        switch (rpc->state) {
+                        case READ_RM:
+                                /* We have just read the record marker */
+                                rpc->record_marker = ntohl(rpc->record_marker);
+                                if (!(rpc->record_marker & 0x80000000)) {
+                                        rpc_set_error(rpc, "Can not handle fragmented PDUs, yet");
+                                        return -1;
+                                }
+                                rpc->record_marker &= 0x7fffffff;
+                                rpc->state = READ_PAYLOAD;
+                                rpc->inpos = 0;
+                                continue;
+                        case READ_PAYLOAD:
+                                rpc->state = READ_RM;
+                                rpc->inpos  = 0;
+                                if (rpc_process_pdu(rpc, rpc->inbuf, pdu_size) != 0) {
+                                        rpc_set_error(rpc, "Invalid/garbage pdu"
+                                                      " received from server. "
+                                                      "Closing socket");
+                                        return -1;
+                                }
+                        }
+                }
 	} while (rpc->is_nonblocking && rpc->waitpdu_len > 0);
 
 	return 0;

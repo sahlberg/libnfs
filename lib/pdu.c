@@ -365,15 +365,6 @@ int rpc_queue_pdu(struct rpc_context *rpc, struct rpc_pdu *pdu)
 	return 0;
 }
 
-uint32_t rpc_get_pdu_size(char *buf)
-{
-	uint32_t size;
-
-	size = ntohl(*(uint32_t *)(void *)buf);
-
-	return (size & 0x7fffffff) + 4;
-}
-
 static int rpc_process_reply(struct rpc_context *rpc, struct rpc_pdu *pdu, ZDR *zdr)
 {
 	struct rpc_msg msg;
@@ -566,72 +557,19 @@ int rpc_process_pdu(struct rpc_context *rpc, char *buf, int size)
 	struct rpc_queue *q;
 	ZDR zdr;
 	int pos;
-        int32_t recordmarker = 0;
 	unsigned int hash;
 	uint32_t xid;
-	char *reasbuf = NULL;
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
 	memset(&zdr, 0, sizeof(ZDR));
 
 	zdrmem_create(&zdr, buf, size, ZDR_DECODE);
-	if (rpc->is_udp == 0) {
-		if (zdr_int(&zdr, &recordmarker) == 0) {
-			rpc_set_error(rpc, "zdr_int reading recordmarker failed");
-			zdr_destroy(&zdr);
-			return -1;
-		}
-		if (!(recordmarker&0x80000000)) {
-			zdr_destroy(&zdr);
-			if (rpc_add_fragment(rpc, buf+4, size-4) != 0) {
-				rpc_set_error(rpc, "Failed to queue fragment for reassembly.");
-				return -1;
-			}
-			return 0;
-		}
-	}
-
-	/* reassembly */
-	if (recordmarker != 0 && rpc->fragments != NULL) {
-		struct rpc_fragment *fragment;
-		uint32_t total = size - 4;
-		char *ptr;
-
-		zdr_destroy(&zdr);
-		for (fragment = rpc->fragments; fragment; fragment = fragment->next) {
-			total += fragment->size;
-                        if (total < fragment->size) {
-                                rpc_set_error(rpc, "Fragments too large");
-                                rpc_free_all_fragments(rpc);
-                                return -1;
-                        }
-		}
-
-		reasbuf = malloc(total);
-		if (reasbuf == NULL) {
-			rpc_set_error(rpc, "Failed to reassemble PDU");
-			rpc_free_all_fragments(rpc);
-			return -1;
-		}
-		ptr = reasbuf;
-		for (fragment = rpc->fragments; fragment; fragment = fragment->next) {
-			memcpy(ptr, fragment->data, fragment->size);
-			ptr += fragment->size;
-		}
-		memcpy(ptr, buf + 4, size - 4);
-		zdrmem_create(&zdr, reasbuf, total, ZDR_DECODE);
-		rpc_free_all_fragments(rpc);
-	}
-
         if (rpc->is_server_context) {
                 int ret;
 
                 ret = rpc_process_call(rpc, &zdr);
                 zdr_destroy(&zdr);
-                if (reasbuf != NULL) {
-                        free(reasbuf);
-                }
                 return ret;
         }
 
@@ -639,9 +577,6 @@ int rpc_process_pdu(struct rpc_context *rpc, char *buf, int size)
 	if (zdr_u_int(&zdr, &xid) == 0) {
 		rpc_set_error(rpc, "zdr_int reading xid failed");
 		zdr_destroy(&zdr);
-		if (reasbuf != NULL) {
-			free(reasbuf);
-		}
 		return -1;
 	}
 	zdr_setpos(&zdr, pos);
@@ -685,9 +620,6 @@ int rpc_process_pdu(struct rpc_context *rpc, char *buf, int size)
 		if (rpc->is_udp == 0 || rpc->is_broadcast == 0) {
 			rpc_free_pdu(rpc, pdu);
 		}
-		if (reasbuf != NULL) {
-			free(reasbuf);
-		}
 		return 0;
 	}
 #ifdef HAVE_MULTITHREADING
@@ -697,9 +629,6 @@ int rpc_process_pdu(struct rpc_context *rpc, char *buf, int size)
 #endif /* HAVE_MULTITHREADING */
 
 	zdr_destroy(&zdr);
-	if (reasbuf != NULL) {
-		free(reasbuf);
-	}
 	return 0;
 }
 
