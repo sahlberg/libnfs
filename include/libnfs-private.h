@@ -115,7 +115,8 @@ struct rpc_endpoint {
 
 enum input_state {
         READ_RM = 0,
-        READ_PAYLOAD = 1
+        READ_PAYLOAD = 1,
+        READ_FRAGMENT = 2
 };
 
 struct rpc_context {

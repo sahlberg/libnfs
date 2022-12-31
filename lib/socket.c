@@ -369,6 +369,39 @@ static int adjust_inbuf(struct rpc_context *rpc, uint32_t pdu_size)
         return 0;
 }
 
+static char *rpc_reassemble_pdu(struct rpc_context *rpc, uint32_t *pdu_size)
+{
+        struct rpc_fragment *fragment;
+ 	char *reasbuf = NULL, *ptr;
+        uint32_t size;
+
+        size = rpc->inpos;
+        for (fragment = rpc->fragments; fragment; fragment = fragment->next) {
+                size += fragment->size;
+                if (size < fragment->size) {
+                        rpc_set_error(rpc, "Fragments too large");
+                        rpc_free_all_fragments(rpc);
+                        return NULL;
+                }
+        }
+
+        reasbuf = malloc(size);
+        if (reasbuf == NULL) {
+                rpc_set_error(rpc, "Failed to reassemble PDU");
+                rpc_free_all_fragments(rpc);
+                return NULL;
+        }
+        ptr = reasbuf;
+        for (fragment = rpc->fragments; fragment; fragment = fragment->next) {
+                memcpy(ptr, fragment->data, fragment->size);
+                ptr += fragment->size;
+        }
+        memcpy(ptr, rpc->inbuf, rpc->inpos);
+
+        *pdu_size = size;
+        return reasbuf;
+}
+
 #define MAX_UDP_SIZE 65536
 static int
 rpc_read_from_socket(struct rpc_context *rpc)
@@ -420,6 +453,7 @@ rpc_read_from_socket(struct rpc_context *rpc)
                         buf = (char *)&rpc->record_marker;
                         break;
                 case READ_PAYLOAD:
+                case READ_FRAGMENT:
 			pdu_size = rpc->record_marker;
                         adjust_inbuf(rpc, pdu_size);
                         buf = rpc->inbuf + rpc->inpos;
@@ -446,23 +480,43 @@ rpc_read_from_socket(struct rpc_context *rpc)
                         case READ_RM:
                                 /* We have just read the record marker */
                                 rpc->record_marker = ntohl(rpc->record_marker);
-                                if (!(rpc->record_marker & 0x80000000)) {
-                                        rpc_set_error(rpc, "Can not handle fragmented PDUs, yet");
-                                        return -1;
+                                if (rpc->record_marker & 0x80000000) {
+                                        rpc->state = READ_PAYLOAD;
+                                } else {
+                                        rpc->state = READ_FRAGMENT;
                                 }
                                 rpc->record_marker &= 0x7fffffff;
-                                rpc->state = READ_PAYLOAD;
                                 rpc->inpos = 0;
                                 continue;
-                        case READ_PAYLOAD:
+                        case READ_FRAGMENT:
+                                if (rpc_add_fragment(rpc, rpc->inbuf, rpc->inpos) != 0) {
+                                        rpc_set_error(rpc, "Failed to queue fragment for reassembly.");
+                                        return -1;
+                                }
                                 rpc->state = READ_RM;
                                 rpc->inpos  = 0;
-                                if (rpc_process_pdu(rpc, rpc->inbuf, pdu_size) != 0) {
+                                continue;
+                        case READ_PAYLOAD:
+                                if (rpc->fragments) {
+                                        buf = rpc_reassemble_pdu(rpc, &pdu_size);
+                                        if (buf == NULL) {
+                                                return -1;
+                                        }
+                                } else {
+                                        buf = rpc->inbuf;
+                                }
+                                if (rpc_process_pdu(rpc, buf, pdu_size) != 0) {
                                         rpc_set_error(rpc, "Invalid/garbage pdu"
                                                       " received from server. "
                                                       "Closing socket");
                                         return -1;
                                 }
+                                if (rpc->fragments) {
+                                        free(buf);
+                                        rpc_free_all_fragments(rpc);
+                                }
+                                rpc->state = READ_RM;
+                                rpc->inpos  = 0;
                         }
                 }
 	} while (rpc->is_nonblocking && rpc->waitpdu_len > 0);
