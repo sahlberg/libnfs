@@ -119,7 +119,6 @@ struct rpc_context *rpc_init_context(void)
 
 	rpc->magic = RPC_CONTEXT_MAGIC;
         rpc->inpos  = 0;
-        rpc->record_marker = 0;
         rpc->state = READ_RM;
 
 #ifdef HAVE_MULTITHREADING
