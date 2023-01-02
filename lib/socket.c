@@ -403,6 +403,7 @@ static char *rpc_reassemble_pdu(struct rpc_context *rpc, uint32_t *pdu_size)
 }
 
 #define MAX_UDP_SIZE 65536
+#define MAX_FRAGMENT_SIZE 8*1024*1024
 static int
 rpc_read_from_socket(struct rpc_context *rpc)
 {
@@ -447,15 +448,15 @@ rpc_read_from_socket(struct rpc_context *rpc)
                 case READ_RM:
                         /*
                          * Read record marker,
-                         * 4 bytes at the beginning of every pdu.
+                         * And if this is a cleint context read the next 4 bytes
+                         * i.e. the XID on a client
                          */
-			pdu_size = 4;
-                        buf = (char *)&rpc->record_marker;
+                        pdu_size = 8;
+                        buf = (char *)&rpc->rm_xid[0];
                         break;
                 case READ_PAYLOAD:
                 case READ_FRAGMENT:
-			pdu_size = rpc->record_marker;
-                        adjust_inbuf(rpc, pdu_size);
+			pdu_size = rpc->rm_xid[0];
                         buf = rpc->inbuf + rpc->inpos;
                 }
 
@@ -479,14 +480,21 @@ rpc_read_from_socket(struct rpc_context *rpc)
                         switch (rpc->state) {
                         case READ_RM:
                                 /* We have just read the record marker */
-                                rpc->record_marker = ntohl(rpc->record_marker);
-                                if (rpc->record_marker & 0x80000000) {
+                                rpc->rm_xid[0] = ntohl(rpc->rm_xid[0]);
+                                if (rpc->rm_xid[0] & 0x80000000) {
                                         rpc->state = READ_PAYLOAD;
                                 } else {
                                         rpc->state = READ_FRAGMENT;
                                 }
-                                rpc->record_marker &= 0x7fffffff;
-                                rpc->inpos = 0;
+                                rpc->rm_xid[0] &= 0x7fffffff;
+                                if (rpc->rm_xid[0] < 8 || rpc->rm_xid[0] > MAX_FRAGMENT_SIZE) {
+                                        rpc_set_error(rpc, "Invalid recordmarker size");
+                                        return -1;
+                                }
+                                adjust_inbuf(rpc, rpc->rm_xid[0]);
+                                /* Copy the next 4 bytes into inbuf */
+                                memcpy(rpc->inbuf, &rpc->rm_xid[1], 4);
+                                rpc->inpos = 4;
                                 continue;
                         case READ_FRAGMENT:
                                 if (rpc_add_fragment(rpc, rpc->inbuf, rpc->inpos) != 0) {

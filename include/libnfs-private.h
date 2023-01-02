@@ -148,7 +148,7 @@ struct rpc_context {
 	uint32_t inbuf_size;
 	char *inbuf;
         enum input_state state;
-        uint32_t record_marker;
+        uint32_t rm_xid[2]; /* array holding the record marker and the next 4 bytes */
 
 	/* special fields for UDP, which can sometimes be BROADCASTed */
 	int is_udp;
