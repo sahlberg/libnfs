@@ -167,83 +167,6 @@ nfs_dircache_drop(struct nfs_context *nfs, struct nfs_fh *fh)
 	}
 }
 
-static uint32_t
-nfs_pagecache_hash(struct nfs_pagecache *pagecache, uint64_t offset) {
-	return (2654435761UL * (1 + ((uint32_t)(offset) / NFS_BLKSIZE))) &
-                (pagecache->num_entries - 1);
-}
-
-void
-nfs_pagecache_invalidate(struct nfs_context *nfs, struct nfsfh *nfsfh) {
-	if (nfsfh->pagecache.entries) {
-		RPC_LOG(nfs->rpc, 2, "invalidating pagecache");
-		memset(nfsfh->pagecache.entries, 0x00,
-                       sizeof(struct nfs_pagecache_entry) *
-                       nfsfh->pagecache.num_entries);
-	}
-}
-
-void
-nfs_pagecache_put(struct nfs_pagecache *pagecache, uint64_t offset,
-                  const char *buf, size_t len)
-{
-	time_t ts = pagecache->ttl ? (time_t)(rpc_current_time() / 1000) : 1;
-	if (!pagecache->num_entries) return;
-	while (len > 0) {
-		uint64_t page_offset = offset & ~(NFS_BLKSIZE - 1);
-		uint32_t entry = nfs_pagecache_hash(pagecache, page_offset);
-		struct nfs_pagecache_entry *e = &pagecache->entries[entry];
-		size_t n = MIN(NFS_BLKSIZE - offset % NFS_BLKSIZE, len);
-
-		/* we can only write to the cache if we add a full page or
-		 * partially update a page that is still valid */
-		if (n == NFS_BLKSIZE ||
-		    (e->ts && e->offset == page_offset &&
-		     (!pagecache->ttl || ts - e->ts <= pagecache->ttl))) {
-			e->ts = ts;
-			e->offset = page_offset;
-			memcpy(e->buf + offset % NFS_BLKSIZE, buf, n);
-		}
-		buf += n;
-		offset += n;
-		len -= n;
-	}
-}
-
-char *
-nfs_pagecache_get(struct nfs_pagecache *pagecache, uint64_t offset)
-{
-	uint32_t entry;
-	struct nfs_pagecache_entry *e;
-
-	entry = nfs_pagecache_hash(pagecache, offset);
-	e = &pagecache->entries[entry];
-
-	if (offset != e->offset) {
-		return NULL;
-	}
-	if (!e->ts) {
-		return NULL;
-	}
-	if (pagecache->ttl && (time_t)(rpc_current_time() / 1000) - e->ts > pagecache->ttl) {
-		return NULL;
-	}
-
-	return e->buf;
-}
-
-void nfs_pagecache_init(struct nfs_context *nfs, struct nfsfh *nfsfh) {
-	/* init page cache */
-	if (nfs->rpc->pagecache) {
-		nfsfh->pagecache.num_entries = nfs->rpc->pagecache;
-		nfsfh->pagecache.ttl = nfs->rpc->pagecache_ttl;
-		nfsfh->pagecache.entries = malloc(sizeof(struct nfs_pagecache_entry) * nfsfh->pagecache.num_entries);
-		nfs_pagecache_invalidate(nfs, nfsfh);
-		RPC_LOG(nfs->rpc, 2, "init pagecache entries %d pagesize %d\n",
-                        nfsfh->pagecache.num_entries, NFS_BLKSIZE);
-	}
-}
-
 void
 nfs_set_auth(struct nfs_context *nfs, struct AUTH *auth)
 {
@@ -309,10 +232,6 @@ nfs_set_context_args(struct nfs_context *nfs, const char *arg, const char *val)
 		rpc_set_uid(nfs_get_rpc_context(nfs), atoi(val));
 	} else if (!strcmp(arg, "gid")) {
 		rpc_set_gid(nfs_get_rpc_context(nfs), atoi(val));
-	} else if (!strcmp(arg, "readahead")) {
-		rpc_set_readahead(nfs_get_rpc_context(nfs), atoi(val));
-	} else if (!strcmp(arg, "pagecache")) {
-		rpc_set_pagecache(nfs_get_rpc_context(nfs), atoi(val));
 	} else if (!strcmp(arg, "debug")) {
 		rpc_set_debug(nfs_get_rpc_context(nfs), atoi(val));
 	} else if (!strcmp(arg, "auto-traverse-mounts")) {
@@ -956,7 +875,6 @@ nfs_free_nfsfh(struct nfsfh *nfsfh)
 		nfsfh->fh.len = 0;
 		nfsfh->fh.val = NULL;
 	}
-	free(nfsfh->pagecache.entries);
 	free(nfsfh);
 }
 
@@ -1193,17 +1111,18 @@ nfs_chdir_async(struct nfs_context *nfs, const char *path,
 }
 
 int
-nfs_pread_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t offset,
-                uint64_t count, nfs_cb cb, void *private_data)
+nfs_pread_async(struct nfs_context *nfs, struct nfsfh *nfsfh,
+                void *buf, size_t count, uint64_t offset,
+                nfs_cb cb, void *private_data)
 {
 	switch (nfs->nfsi->version) {
         case NFS_V3:
-                return nfs3_pread_async_internal(nfs, nfsfh, offset,
-                                                 (size_t)count,
+                return nfs3_pread_async_internal(nfs, nfsfh,
+                                                 buf, count, offset,
                                                  cb, private_data, 0);
         case NFS_V4:
-                return nfs4_pread_async_internal(nfs, nfsfh, offset,
-                                                 (size_t)count,
+                return nfs4_pread_async_internal(nfs, nfsfh,
+                                                 buf, count, offset,
                                                  cb, private_data, 0);
         default:
                 nfs_set_error(nfs, "%s does not support NFSv%d",
@@ -1212,18 +1131,20 @@ nfs_pread_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t offset,
         }
 }
 
+//qqq remove the update_pos argument
 int
-nfs_read_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t count,
+nfs_read_async(struct nfs_context *nfs, struct nfsfh *nfsfh,
+               void *buf, size_t count,
                nfs_cb cb, void *private_data)
 {
 	switch (nfs->nfsi->version) {
         case NFS_V3:
-                return nfs3_pread_async_internal(nfs, nfsfh, nfsfh->offset,
-                                                 (size_t)count,
+                return nfs3_pread_async_internal(nfs, nfsfh,
+                                                 buf, count, nfsfh->offset,
                                                  cb, private_data, 1);
         case NFS_V4:
-                return nfs4_pread_async_internal(nfs, nfsfh, nfsfh->offset,
-                                                 (size_t)count,
+                return nfs4_pread_async_internal(nfs, nfsfh,
+                                                 buf, count, nfsfh->offset,
                                                  cb, private_data, 1);
         default:
                 nfs_set_error(nfs, "%s does not support NFSv%d",
@@ -1233,15 +1154,17 @@ nfs_read_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t count,
 }
 
 int
-nfs_pwrite_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t offset,
-                 uint64_t count, const void *buf, nfs_cb cb, void *private_data)
+nfs_pwrite_async(struct nfs_context *nfs, struct nfsfh *nfsfh,
+                 const void *buf, size_t count, uint64_t offset,
+                 nfs_cb cb, void *private_data)
 {
 	switch (nfs->nfsi->version) {
         case NFS_V3:
-                return nfs3_pwrite_async_internal(nfs, nfsfh, offset,
-                                                  (size_t)count, buf,
+                return nfs3_pwrite_async_internal(nfs, nfsfh,
+                                                  buf, count, offset,
                                                   cb, private_data, 0);
         case NFS_V4:
+                //qq
                 return nfs4_pwrite_async_internal(nfs, nfsfh, offset,
                                                   (size_t)count, buf,
                                                   cb, private_data, 0);
@@ -1253,14 +1176,17 @@ nfs_pwrite_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t offset,
 }
 
 int
-nfs_write_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t count,
-                const void *buf, nfs_cb cb, void *private_data)
+nfs_write_async(struct nfs_context *nfs, struct nfsfh *nfsfh,
+                const void *buf, size_t count,
+                nfs_cb cb, void *private_data)
 {
 	switch (nfs->nfsi->version) {
         case NFS_V3:
-                return nfs3_write_async(nfs, nfsfh, count, buf,
+                return nfs3_write_async(nfs, nfsfh,
+                                        buf, count,
                                         cb, private_data);
         case NFS_V4:
+                //qqq
                 return nfs4_write_async(nfs, nfsfh, count, buf,
                                         cb, private_data);
         default:
@@ -1884,13 +1810,13 @@ nfs_link_async(struct nfs_context *nfs, const char *oldpath,
 /*
  * Get/Set the maximum supported READ size by the server
  */
-uint64_t
+size_t
 nfs_get_readmax(struct nfs_context *nfs)
 {
 	return nfs->nfsi->readmax;
 }
 void
-nfs_set_readmax(struct nfs_context *nfs, uint64_t readmax)
+nfs_set_readmax(struct nfs_context *nfs, size_t readmax)
 {
 	nfs->nfsi->readmax = readmax;
 }
@@ -1898,13 +1824,13 @@ nfs_set_readmax(struct nfs_context *nfs, uint64_t readmax)
 /*
  * Get/Set the maximum supported WRITE size by the server
  */
-uint64_t
+size_t
 nfs_get_writemax(struct nfs_context *nfs)
 {
 	return nfs->nfsi->writemax;
 }
 void
-nfs_set_writemax(struct nfs_context *nfs, uint64_t writemax)
+nfs_set_writemax(struct nfs_context *nfs, size_t writemax)
 {
 	nfs->nfsi->writemax = writemax;
 }
@@ -1927,21 +1853,6 @@ nfs_set_gid(struct nfs_context *nfs, int gid) {
 void
 nfs_set_auxiliary_gids(struct nfs_context *nfs, uint32_t len, uint32_t* gids) {
 	rpc_set_auxiliary_gids(nfs->rpc, len, gids);
-}
-
-void
-nfs_set_pagecache(struct nfs_context *nfs, uint32_t v) {
-	rpc_set_pagecache(nfs->rpc, v);
-}
-
-void
-nfs_set_pagecache_ttl(struct nfs_context *nfs, uint32_t v) {
-	rpc_set_pagecache_ttl(nfs->rpc, v);
-}
-
-void
-nfs_set_readahead(struct nfs_context *nfs, uint32_t v) {
-	rpc_set_readahead(nfs->rpc, v);
 }
 
 void

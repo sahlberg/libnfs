@@ -903,8 +903,6 @@ EXTERN int nfsstat3_to_errno(int error);
  */
 EXTERN int rpc_nfs3_null_async(struct rpc_context *rpc,
                                rpc_cb cb, void *private_data);
-EXTERN int rpc_nfs_null_async(struct rpc_context *rpc,
-                              rpc_cb cb, void *private_data);
 
 /*
  * Call NFS3/GETATTR
@@ -927,9 +925,6 @@ struct GETATTR3args;
 EXTERN int rpc_nfs3_getattr_async(struct rpc_context *rpc, rpc_cb cb,
                                   struct GETATTR3args *args,
                                   void *private_data);
-EXTERN int rpc_nfs_getattr_async(struct rpc_context *rpc, rpc_cb cb,
-                                 struct nfs_fh3 *fh,
-                                 void *private_data);
 
 /*
  * Call NFS3/PATHCONF
@@ -952,9 +947,6 @@ struct PATHCONF3args;
 EXTERN int rpc_nfs3_pathconf_async(struct rpc_context *rpc, rpc_cb cb,
                                    struct PATHCONF3args *args,
                                    void *private_data);
-EXTERN int rpc_nfs_pathconf_async(struct rpc_context *rpc, rpc_cb cb,
-                                  struct nfs_fh3 *fh,
-                                  void *private_data);
 
 /*
  * Call NFS3/LOOKUP
@@ -977,9 +969,6 @@ struct LOOKUP3args;
 EXTERN int rpc_nfs3_lookup_async(struct rpc_context *rpc, rpc_cb cb,
                                  struct LOOKUP3args *args,
                                  void *private_data);
-EXTERN int rpc_nfs_lookup_async(struct rpc_context *rpc, rpc_cb cb,
-                                struct nfs_fh3 *fh, char *name,
-                                void *private_data);
 
 /*
  * Call NFS3/ACCESS
@@ -1002,9 +991,6 @@ struct ACCESS3args;
 EXTERN int rpc_nfs3_access_async(struct rpc_context *rpc, rpc_cb cb,
                                  struct ACCESS3args *args,
                                  void *private_data);
-EXTERN int rpc_nfs_access_async(struct rpc_context *rpc, rpc_cb cb,
-                                struct nfs_fh3 *fh, int access,
-                                void *private_data);
 
 /*
  * Call NFS3/READ
@@ -1024,14 +1010,10 @@ EXTERN int rpc_nfs_access_async(struct rpc_context *rpc, rpc_cb cb,
  *                      data is NULL.
  */
 struct READ3args;
+struct rpc_pdu;
 EXTERN int rpc_nfs3_read_async(struct rpc_context *rpc, rpc_cb cb,
                                struct READ3args *args,
-                               void *private_data);
-EXTERN int rpc_nfs_read_async(struct rpc_context *rpc, rpc_cb cb,
-                              struct nfs_fh3 *fh,
-                              uint64_t offset, uint64_t count,
-                              void *private_data);
-
+                               void *private_data, struct rpc_pdu **pdu);
 /*
  * Call NFS3/WRITE
  *
@@ -1053,11 +1035,6 @@ struct WRITE3args;
 EXTERN int rpc_nfs3_write_async(struct rpc_context *rpc, rpc_cb cb,
                                 struct WRITE3args *args,
                                 void *private_data);
-EXTERN int rpc_nfs_write_async(struct rpc_context *rpc, rpc_cb cb,
-                               struct nfs_fh3 *fh,
-                               char *buf, uint64_t offset, uint64_t count,
-                               int stable_how,
-                               void *private_data);
 
 /*
  * Call NFS3/COMMIT
@@ -1080,9 +1057,6 @@ struct COMMIT3args;
 EXTERN int rpc_nfs3_commit_async(struct rpc_context *rpc, rpc_cb cb,
                                  struct COMMIT3args *args,
                                  void *private_data);
-EXTERN int rpc_nfs_commit_async(struct rpc_context *rpc, rpc_cb cb,
-                                struct nfs_fh3 *fh,
-                                void *private_data);
 
 /*
  * Call NFS3/SETATTR
@@ -1105,9 +1079,6 @@ struct SETATTR3args;
 EXTERN int rpc_nfs3_setattr_async(struct rpc_context *rpc, rpc_cb cb,
                                   struct SETATTR3args *args,
                                   void *private_data);
-EXTERN int rpc_nfs_setattr_async(struct rpc_context *rpc, rpc_cb cb,
-                                 struct SETATTR3args *args,
-                                 void *private_data);
 
 /*
  * Call NFS3/MKDIR
@@ -1130,9 +1101,6 @@ struct MKDIR3args;
 EXTERN int rpc_nfs3_mkdir_async(struct rpc_context *rpc, rpc_cb cb,
                                 struct MKDIR3args *args,
                                 void *private_data);
-EXTERN int rpc_nfs_mkdir_async(struct rpc_context *rpc, rpc_cb cb,
-                               struct MKDIR3args *args,
-                               void *private_data);
 
 /*
  * Call NFS3/RMDIR
@@ -1155,9 +1123,6 @@ struct RMDIR3args;
 EXTERN int rpc_nfs3_rmdir_async(struct rpc_context *rpc, rpc_cb cb,
                                 struct RMDIR3args *args,
                                 void *private_data);
-EXTERN int rpc_nfs_rmdir_async(struct rpc_context *rpc, rpc_cb cb,
-                               struct nfs_fh3 *fh, char *dir,
-                               void *private_data);
 
 /*
  * Call NFS3/CREATE
@@ -1180,9 +1145,6 @@ struct CREATE3args;
 EXTERN int rpc_nfs3_create_async(struct rpc_context *rpc, rpc_cb cb,
                                  struct CREATE3args *args,
                                  void *private_data);
-EXTERN int rpc_nfs_create_async(struct rpc_context *rpc, rpc_cb cb,
-                                struct CREATE3args *args,
-                                void *private_data);
 
 /*
  * Call NFS3/MKNOD
@@ -1205,10 +1167,6 @@ struct MKNOD3args;
 EXTERN int rpc_nfs3_mknod_async(struct rpc_context *rpc, rpc_cb cb,
                                 struct MKNOD3args *args,
                                 void *private_data);
-EXTERN int rpc_nfs_mknod_async(struct rpc_context *rpc, rpc_cb cb,
-                               struct nfs_fh3 *fh,
-                               char *file, int mode, int major, int minor,
-                               void *private_data);
 
 /*
  * Call NFS3/REMOVE
@@ -1231,9 +1189,6 @@ struct REMOVE3args;
 EXTERN int rpc_nfs3_remove_async(struct rpc_context *rpc, rpc_cb cb,
                                  struct REMOVE3args *args,
                                  void *private_data);
-EXTERN int rpc_nfs_remove_async(struct rpc_context *rpc, rpc_cb cb,
-                                struct nfs_fh3 *fh, char *name,
-                                void *private_data);
 
 /*
  * Call NFS3/READDIR
@@ -1256,10 +1211,6 @@ struct READDIR3args;
 EXTERN int rpc_nfs3_readdir_async(struct rpc_context *rpc, rpc_cb cb,
                                   struct READDIR3args *args,
                                   void *private_data);
-EXTERN int rpc_nfs_readdir_async(struct rpc_context *rpc, rpc_cb cb,
-                                 struct nfs_fh3 *fh, uint64_t cookie,
-                                 char *cookieverf, int count,
-                                 void *private_data);
 
 /*
  * Call NFS3/READDIRPLUS
@@ -1282,10 +1233,6 @@ struct READDIRPLUS3args;
 EXTERN int rpc_nfs3_readdirplus_async(struct rpc_context *rpc, rpc_cb cb,
                                       struct READDIRPLUS3args *args,
                                       void *private_data);
-EXTERN int rpc_nfs_readdirplus_async(struct rpc_context *rpc, rpc_cb cb,
-                                     struct nfs_fh3 *fh, uint64_t cookie,
-                                     char *cookieverf, int count,
-                                     void *private_data);
 
 /*
  * Call NFS3/FSSTAT
@@ -1308,9 +1255,6 @@ struct FSSTAT3args;
 EXTERN int rpc_nfs3_fsstat_async(struct rpc_context *rpc, rpc_cb cb,
                                  struct FSSTAT3args *args,
                                  void *private_data);
-EXTERN int rpc_nfs_fsstat_async(struct rpc_context *rpc, rpc_cb cb,
-                                struct nfs_fh3 *fh,
-                                void *private_data);
 
 /*
  * Call NFS3/FSINFO
@@ -1333,9 +1277,6 @@ struct FSINFO3args;
 EXTERN int rpc_nfs3_fsinfo_async(struct rpc_context *rpc, rpc_cb cb,
                                  struct FSINFO3args *args,
                                  void *private_data);
-EXTERN int rpc_nfs_fsinfo_async(struct rpc_context *rpc, rpc_cb cb,
-                                struct nfs_fh3 *fh,
-                                void *private_data);
 
 /*
  * Call NFS3/READLINK
@@ -1358,9 +1299,6 @@ struct READLINK3args;
 EXTERN int rpc_nfs3_readlink_async(struct rpc_context *rpc, rpc_cb cb,
                                    struct READLINK3args *args,
                                    void *private_data);
-EXTERN int rpc_nfs_readlink_async(struct rpc_context *rpc, rpc_cb cb,
-                                  struct READLINK3args *args,
-                                  void *private_data);
 
 /*
  * Call NFS3/SYMLINK
@@ -1383,9 +1321,6 @@ struct SYMLINK3args;
 EXTERN int rpc_nfs3_symlink_async(struct rpc_context *rpc, rpc_cb cb,
                                   struct SYMLINK3args *args,
                                   void *private_data);
-EXTERN int rpc_nfs_symlink_async(struct rpc_context *rpc, rpc_cb cb,
-                                 struct SYMLINK3args *args,
-                                 void *private_data);
 
 /*
  * Call NFS3/RENAME
@@ -1408,10 +1343,6 @@ struct RENAME3args;
 EXTERN int rpc_nfs3_rename_async(struct rpc_context *rpc, rpc_cb cb,
                                  struct RENAME3args *args,
                                  void *private_data);
-EXTERN int rpc_nfs_rename_async(struct rpc_context *rpc, rpc_cb cb,
-                                struct nfs_fh3 *olddir, char *oldname,
-                                struct nfs_fh3 *newdir, char *newname,
-                                void *private_data);
 
 /*
  * Call NFS3/LINK
@@ -1434,10 +1365,6 @@ struct LINK3args;
 EXTERN int rpc_nfs3_link_async(struct rpc_context *rpc, rpc_cb cb,
                                struct LINK3args *args,
                                void *private_data);
-EXTERN int rpc_nfs_link_async(struct rpc_context *rpc, rpc_cb cb,
-                              struct nfs_fh3 *file, struct nfs_fh3 *newdir,
-                              char *newname,
-                              void *private_data);
 
 /*
  * NFS v2 FUNCTIONS

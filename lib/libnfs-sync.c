@@ -639,7 +639,6 @@ static void
 pread_cb(int status, struct nfs_context *nfs, void *data, void *private_data)
 {
 	struct sync_cb_data *cb_data = private_data;
-	char *buffer;
 
 	if (status < 0) {
 		nfs_set_error(nfs, "%s call failed with \"%s\"", cb_data->call,
@@ -647,27 +646,23 @@ pread_cb(int status, struct nfs_context *nfs, void *data, void *private_data)
                 goto finished;
 	}
 
-	buffer = cb_data->return_data;
-	memcpy(buffer, (char *)data, status);
-
  finished:
         cb_data_is_finished(cb_data, status);
 }
 
 int
-nfs_pread(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t offset,
-          uint64_t count, void *buffer)
+nfs_pread(struct nfs_context *nfs, struct nfsfh *nfsfh,
+          void *buf, size_t count, uint64_t offset)
 {
 	struct sync_cb_data cb_data;
 
-	cb_data.return_data = buffer;
 	cb_data.call = "pread";
         if (nfs_init_cb_data(&nfs, &cb_data)) {
                 return -1;
         }
 
-	if (nfs_pread_async(nfs, nfsfh, offset, count, pread_cb,
-                            &cb_data) != 0) {
+	if (nfs_pread_async(nfs, nfsfh, buf, count, offset,
+                            pread_cb, &cb_data) != 0) {
 		nfs_set_error(nfs, "nfs_pread_async failed. %s",
                               nfs_get_error(nfs));
                 nfs_destroy_cb_sem(&cb_data);
@@ -684,18 +679,17 @@ nfs_pread(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t offset,
  * read()
  */
 int
-nfs_read(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t count,
-         void *buffer)
+nfs_read(struct nfs_context *nfs, struct nfsfh *nfsfh,
+         void *buf, size_t count)
 {
 	struct sync_cb_data cb_data;
 
-	cb_data.return_data = buffer;
 	cb_data.call = "read";
         if (nfs_init_cb_data(&nfs, &cb_data)) {
                 return -1;
         }
 
-	if (nfs_read_async(nfs, nfsfh, count, pread_cb, &cb_data) != 0) {
+	if (nfs_read_async(nfs, nfsfh, buf, count, pread_cb, &cb_data) != 0) {
 		nfs_set_error(nfs, "nfs_read_async failed. %s",
                               nfs_get_error(nfs));
                 nfs_destroy_cb_sem(&cb_data);
@@ -825,8 +819,8 @@ pwrite_cb(int status, struct nfs_context *nfs, void *data, void *private_data)
 }
 
 int
-nfs_pwrite(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t offset,
-           uint64_t count, const void *buf)
+nfs_pwrite(struct nfs_context *nfs, struct nfsfh *nfsfh,
+           const void *buf, size_t count, uint64_t offset)
 {
 	struct sync_cb_data cb_data;
 
@@ -835,7 +829,7 @@ nfs_pwrite(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t offset,
                 return -1;
         }
 
-	if (nfs_pwrite_async(nfs, nfsfh, offset, count, buf, pwrite_cb,
+	if (nfs_pwrite_async(nfs, nfsfh, buf, count, offset, pwrite_cb,
                              &cb_data) != 0) {
 		nfs_set_error(nfs, "nfs_pwrite_async failed. %s",
                               nfs_get_error(nfs));
@@ -853,8 +847,8 @@ nfs_pwrite(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t offset,
  * write()
  */
 int
-nfs_write(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t count,
-          const void *buf)
+nfs_write(struct nfs_context *nfs, struct nfsfh *nfsfh,
+          const void *buf, uint64_t count)
 {
 	struct sync_cb_data cb_data;
 
@@ -863,7 +857,7 @@ nfs_write(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t count,
                 return -1;
         }
 
-	if (nfs_write_async(nfs, nfsfh, count, buf, pwrite_cb, &cb_data) != 0) {
+	if (nfs_write_async(nfs, nfsfh, buf, count, pwrite_cb, &cb_data) != 0) {
 		nfs_set_error(nfs, "nfs_write_async failed. %s",
                               nfs_get_error(nfs));
                 nfs_destroy_cb_sem(&cb_data);
