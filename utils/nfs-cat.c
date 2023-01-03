@@ -184,7 +184,7 @@ int main(int argc, char *argv[])
 		if (count > BUFSIZE) {
 			count = BUFSIZE;
 		}
-		count = nfs_pread(nf->nfs, nf->nfsfh, off, count, buf);
+		count = nfs_pread(nf->nfs, nf->nfsfh, buf, count, off);
 		if (count < 0) {
 			fprintf(stderr, "Failed to read from file\n");
 			free_file_context(nf);

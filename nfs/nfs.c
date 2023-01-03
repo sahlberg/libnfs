@@ -1,3 +1,4 @@
+/* -*-  mode:c; tab-width:8; c-basic-offset:8; indent-tabs-mode:nil;  -*- */
 /*
    Copyright (C) 2010 by Ronnie Sahlberg <ronniesahlberg@gmail.com>
 
@@ -130,11 +131,6 @@ int rpc_nfs3_null_async(struct rpc_context *rpc, rpc_cb cb, void *private_data)
 	return 0;
 }
 
-int rpc_nfs_null_async(struct rpc_context *rpc, rpc_cb cb, void *private_data)
-{
-	return rpc_nfs3_null_async(rpc, cb, private_data);
-}
-
 int rpc_nfs3_getattr_async(struct rpc_context *rpc, rpc_cb cb, struct GETATTR3args *args, void *private_data)
 {
 	struct rpc_pdu *pdu;
@@ -157,17 +153,6 @@ int rpc_nfs3_getattr_async(struct rpc_context *rpc, rpc_cb cb, struct GETATTR3ar
 	}
 
 	return 0;
-}
-
-int rpc_nfs_getattr_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh, void *private_data)
-{
-	GETATTR3args args;
-
-	memset(&args, 0, sizeof(GETATTR3args));
-	args.object.data.data_len = fh->data.data_len; 
-	args.object.data.data_val = fh->data.data_val; 
-
-	return rpc_nfs3_getattr_async(rpc, cb, &args, private_data);
 }
 
 int rpc_nfs3_pathconf_async(struct rpc_context *rpc, rpc_cb cb, struct PATHCONF3args *args, void *private_data)
@@ -194,17 +179,6 @@ int rpc_nfs3_pathconf_async(struct rpc_context *rpc, rpc_cb cb, struct PATHCONF3
 	return 0;
 }
 
-int rpc_nfs_pathconf_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh, void *private_data)
-{
-	PATHCONF3args args;
-
-	memset(&args, 0, sizeof(PATHCONF3args));
-	args.object.data.data_len = fh->data.data_len; 
-	args.object.data.data_val = fh->data.data_val; 
-
-	return rpc_nfs3_pathconf_async(rpc, cb, &args, private_data);
-}
-
 int rpc_nfs3_lookup_async(struct rpc_context *rpc, rpc_cb cb, struct LOOKUP3args *args, void *private_data)
 {
 	struct rpc_pdu *pdu;
@@ -227,18 +201,6 @@ int rpc_nfs3_lookup_async(struct rpc_context *rpc, rpc_cb cb, struct LOOKUP3args
 	}
 
 	return 0;
-}
-
-int rpc_nfs_lookup_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh, char *name, void *private_data)
-{
-	LOOKUP3args args;
-
-	memset(&args, 0, sizeof(LOOKUP3args));
-	args.what.dir.data.data_len = fh->data.data_len; 
-	args.what.dir.data.data_val = fh->data.data_val; 
-	args.what.name              = name;
-
-	return rpc_nfs3_lookup_async(rpc, cb, &args, private_data);
 }
 
 int rpc_nfs3_access_async(struct rpc_context *rpc, rpc_cb cb, struct ACCESS3args *args, void *private_data)
@@ -265,34 +227,55 @@ int rpc_nfs3_access_async(struct rpc_context *rpc, rpc_cb cb, struct ACCESS3args
 	return 0;
 }
 
-int rpc_nfs_access_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh, int access, void *private_data)
+uint32_t
+zdr_READ3resok_zero_copy (ZDR *zdrs, READ3resok *objp)
 {
-	ACCESS3args args;
-
-	memset(&args, 0, sizeof(ACCESS3args));
-	args.object.data.data_len = fh->data.data_len;
-	args.object.data.data_val = fh->data.data_val;
-	args.access = access;
-
-	return rpc_nfs3_access_async(rpc, cb, &args, private_data);
+        if (!zdr_post_op_attr (zdrs, &objp->file_attributes))
+                return FALSE;
+        if (!zdr_count3 (zdrs, &objp->count))
+                return FALSE;
+        if (!zdr_bool (zdrs, &objp->eof))
+                return FALSE;
+	return TRUE;
 }
 
-int rpc_nfs3_read_async(struct rpc_context *rpc, rpc_cb cb, struct READ3args *args, void *private_data)
+uint32_t
+zdr_READ3res_zero_copy (ZDR *zdrs, READ3res *objp)
+{
+        if (!zdr_nfsstat3 (zdrs, &objp->status))
+                return FALSE;
+	switch (objp->status) {
+	case NFS3_OK:
+		 if (!zdr_READ3resok_zero_copy (zdrs, &objp->READ3res_u.resok))
+			 return FALSE;
+		break;
+	default:
+		 if (!zdr_READ3resfail (zdrs, &objp->READ3res_u.resfail))
+			 return FALSE;
+		break;
+	}
+	return TRUE;
+}
+
+int rpc_nfs3_read_async(struct rpc_context *rpc, rpc_cb cb, struct READ3args *args, void *private_data, struct rpc_pdu **out_pdu)
 {
 	struct rpc_pdu *pdu;
 
-	pdu = rpc_allocate_pdu(rpc, NFS_PROGRAM, NFS_V3, NFS3_READ, cb, private_data, (zdrproc_t)zdr_READ3res, sizeof(READ3res));
+	pdu = rpc_allocate_pdu(rpc, NFS_PROGRAM, NFS_V3, NFS3_READ, cb, private_data, (zdrproc_t)zdr_READ3res_zero_copy, sizeof(READ3res));
 	if (pdu == NULL) {
 		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu for NFS3/READ call");
 		return -1;
 	}
-
 	if (zdr_READ3args(&pdu->zdr, args) == 0) {
 		rpc_set_error(rpc, "ZDR error: Failed to encode READ3args");
 		rpc_free_pdu(rpc, pdu);
 		return -2;
 	}
 
+        if (out_pdu) {
+                *out_pdu = pdu;
+        }
+        
 	if (rpc_queue_pdu(rpc, pdu) != 0) {
 		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for NFS3/READ call");
 		return -3;
@@ -301,20 +284,8 @@ int rpc_nfs3_read_async(struct rpc_context *rpc, rpc_cb cb, struct READ3args *ar
 	return 0;
 }
 
-int rpc_nfs_read_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh, uint64_t offset, uint64_t count, void *private_data)
-{
-	READ3args args;
-
-	memset(&args, 0, sizeof(READ3args));
-	args.file.data.data_len = fh->data.data_len;
-	args.file.data.data_val = fh->data.data_val;
-	args.offset = offset;
-	args.count = (count3)count;
-
-	return rpc_nfs3_read_async(rpc, cb, &args, private_data);
-}
-
-/* Replacement WRITE3args so that we can add the data as an iovector
+/*
+ * Replacement WRITE3args so that we can add the data as an iovector
  * instead of marshalling it in the out buffer.
  * This will marshall the WRITE3args structure except for the final
  * byte/array for the actual data.
@@ -393,22 +364,6 @@ int rpc_nfs3_write_async(struct rpc_context *rpc, rpc_cb cb, struct WRITE3args *
 	return 0;
 }
 
-int rpc_nfs_write_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh, char *buf, uint64_t offset, uint64_t count, int stable_how, void *private_data)
-{
-	WRITE3args args;
-
-	memset(&args, 0, sizeof(WRITE3args));
-	args.file.data.data_len = fh->data.data_len;
-	args.file.data.data_val = fh->data.data_val;
-	args.offset = offset;
-	args.count  = (count3)count;
-	args.stable = stable_how;
-	args.data.data_len = (count3)count;
-	args.data.data_val = buf;
-
-	return rpc_nfs3_write_async(rpc, cb, &args, private_data);
-}
-
 int rpc_nfs3_commit_async(struct rpc_context *rpc, rpc_cb cb, struct COMMIT3args *args, void *private_data)
 {
 	struct rpc_pdu *pdu;
@@ -431,19 +386,6 @@ int rpc_nfs3_commit_async(struct rpc_context *rpc, rpc_cb cb, struct COMMIT3args
 	}
 
 	return 0;
-}
-
-int rpc_nfs_commit_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh, void *private_data)
-{
-	COMMIT3args args;
-
-	memset(&args, 0, sizeof(COMMIT3args));
-	args.file.data.data_len = fh->data.data_len;
-	args.file.data.data_val = fh->data.data_val;
-	args.offset = 0;
-	args.count  = 0;
-
-	return rpc_nfs3_commit_async(rpc, cb, &args, private_data);
 }
 
 int rpc_nfs3_setattr_async(struct rpc_context *rpc, rpc_cb cb, SETATTR3args *args, void *private_data)
@@ -470,11 +412,6 @@ int rpc_nfs3_setattr_async(struct rpc_context *rpc, rpc_cb cb, SETATTR3args *arg
 	return 0;
 }
 
-int rpc_nfs_setattr_async(struct rpc_context *rpc, rpc_cb cb, SETATTR3args *args, void *private_data)
-{
-	return rpc_nfs3_setattr_async(rpc, cb, args, private_data);
-}
-
 int rpc_nfs3_mkdir_async(struct rpc_context *rpc, rpc_cb cb, MKDIR3args *args, void *private_data)
 {
 	struct rpc_pdu *pdu;
@@ -497,11 +434,6 @@ int rpc_nfs3_mkdir_async(struct rpc_context *rpc, rpc_cb cb, MKDIR3args *args, v
 	}
 
 	return 0;
-}
-
-int rpc_nfs_mkdir_async(struct rpc_context *rpc, rpc_cb cb, MKDIR3args *args, void *private_data)
-{
-	return rpc_nfs3_mkdir_async(rpc, cb, args, private_data);
 }
 
 int rpc_nfs3_rmdir_async(struct rpc_context *rpc, rpc_cb cb, struct RMDIR3args *args, void *private_data)
@@ -528,18 +460,6 @@ int rpc_nfs3_rmdir_async(struct rpc_context *rpc, rpc_cb cb, struct RMDIR3args *
 	return 0;
 }
 
-int rpc_nfs_rmdir_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh, char *dir, void *private_data)
-{
-	RMDIR3args args;
-
-	memset(&args, 0, sizeof(RMDIR3args));
-	args.object.dir.data.data_len = fh->data.data_len;
-	args.object.dir.data.data_val = fh->data.data_val;
-	args.object.name = dir;
-
-	return rpc_nfs3_rmdir_async(rpc, cb, &args, private_data);
-}
-
 int rpc_nfs3_create_async(struct rpc_context *rpc, rpc_cb cb, CREATE3args *args, void *private_data)
 {
 	struct rpc_pdu *pdu;
@@ -562,11 +482,6 @@ int rpc_nfs3_create_async(struct rpc_context *rpc, rpc_cb cb, CREATE3args *args,
 	}
 
 	return 0;
-}
-
-int rpc_nfs_create_async(struct rpc_context *rpc, rpc_cb cb, CREATE3args *args, void *private_data)
-{
-	return rpc_nfs3_create_async(rpc, cb, args, private_data);
 }
 
 int rpc_nfs3_mknod_async(struct rpc_context *rpc, rpc_cb cb, struct MKNOD3args *args, void *private_data)
@@ -593,47 +508,6 @@ int rpc_nfs3_mknod_async(struct rpc_context *rpc, rpc_cb cb, struct MKNOD3args *
 	return 0;
 }
 
-int rpc_nfs_mknod_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh, char *file, int mode, int major, int minor, void *private_data)
-{
-	MKNOD3args args;
-
-	memset(&args, 0, sizeof(MKNOD3args));
-	args.where.dir.data.data_len = fh->data.data_len;
-	args.where.dir.data.data_val = fh->data.data_val;
-	args.where.name = file;
-
-	switch (mode & S_IFMT) {
-	case S_IFCHR:
-		args.what.type = NF3CHR;
-		args.what.mknoddata3_u.chr_device.dev_attributes.mode.set_it = 1;
-		args.what.mknoddata3_u.chr_device.dev_attributes.mode.set_mode3_u.mode = mode & (S_IRUSR|S_IWUSR|S_IXUSR|S_IRGRP|S_IWGRP|S_IXGRP|S_IROTH|S_IWOTH|S_IXOTH);
-		args.what.mknoddata3_u.chr_device.spec.specdata1 = major;
-		args.what.mknoddata3_u.chr_device.spec.specdata2 = minor;
-		break;
-	case S_IFBLK:
-		args.what.type = NF3BLK;
-		args.what.mknoddata3_u.blk_device.dev_attributes.mode.set_it = 1;
-		args.what.mknoddata3_u.blk_device.dev_attributes.mode.set_mode3_u.mode = mode & (S_IRUSR|S_IWUSR|S_IXUSR|S_IRGRP|S_IWGRP|S_IXGRP|S_IROTH|S_IWOTH|S_IXOTH);
-		args.what.mknoddata3_u.blk_device.spec.specdata1 = major;
-		args.what.mknoddata3_u.blk_device.spec.specdata2 = minor;
-	case S_IFSOCK:
-		args.what.type = NF3SOCK;
-		args.what.mknoddata3_u.sock_attributes.mode.set_it = 1;
-		args.what.mknoddata3_u.sock_attributes.mode.set_mode3_u.mode = mode & (S_IRUSR|S_IWUSR|S_IXUSR|S_IRGRP|S_IWGRP|S_IXGRP|S_IROTH|S_IWOTH|S_IXOTH);
-		break;
-	case S_IFIFO:
-		args.what.type = NF3FIFO;
-		args.what.mknoddata3_u.pipe_attributes.mode.set_it = 1;
-		args.what.mknoddata3_u.pipe_attributes.mode.set_mode3_u.mode = mode & (S_IRUSR|S_IWUSR|S_IXUSR|S_IRGRP|S_IWGRP|S_IXGRP|S_IROTH|S_IWOTH|S_IXOTH);
-		break;
-	default:
-		rpc_set_error(rpc, "Invalid file type for NFS3/MKNOD call");
-		return -1;
-	}
-
-	return rpc_nfs3_mknod_async(rpc, cb, &args, private_data);
-}
-
 int rpc_nfs3_remove_async(struct rpc_context *rpc, rpc_cb cb, struct REMOVE3args *args, void *private_data)
 {
 	struct rpc_pdu *pdu;
@@ -656,18 +530,6 @@ int rpc_nfs3_remove_async(struct rpc_context *rpc, rpc_cb cb, struct REMOVE3args
 	}
 
 	return 0;
-}
-
-int rpc_nfs_remove_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh, char *file, void *private_data)
-{
-	REMOVE3args args;
-
-	memset(&args, 0, sizeof(REMOVE3args));
-	args.object.dir.data.data_len = fh->data.data_len;
-	args.object.dir.data.data_val = fh->data.data_val;
-	args.object.name = file;
-
-	return rpc_nfs3_remove_async(rpc, cb, &args, private_data);
 }
 
 int rpc_nfs3_readdir_async(struct rpc_context *rpc, rpc_cb cb, struct READDIR3args *args, void *private_data)
@@ -694,20 +556,6 @@ int rpc_nfs3_readdir_async(struct rpc_context *rpc, rpc_cb cb, struct READDIR3ar
 	return 0;
 }
 
-int rpc_nfs_readdir_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh, uint64_t cookie, char *cookieverf, int count, void *private_data)
-{
-	READDIR3args args;
-
-	memset(&args, 0, sizeof(READDIR3args));
-	args.dir.data.data_len = fh->data.data_len;
-	args.dir.data.data_val = fh->data.data_val;
-	args.cookie = cookie;
-	memcpy(&args.cookieverf, cookieverf, sizeof(cookieverf3)); 
-	args.count = count;
-
-	return rpc_nfs3_readdir_async(rpc, cb, &args, private_data);
-}
-
 int rpc_nfs3_readdirplus_async(struct rpc_context *rpc, rpc_cb cb, struct READDIRPLUS3args *args, void *private_data)
 {
 	struct rpc_pdu *pdu;
@@ -730,21 +578,6 @@ int rpc_nfs3_readdirplus_async(struct rpc_context *rpc, rpc_cb cb, struct READDI
 	}
 
 	return 0;
-}
-
-int rpc_nfs_readdirplus_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh, uint64_t cookie, char *cookieverf, int count, void *private_data)
-{
-	READDIRPLUS3args args;
-
-	memset(&args, 0, sizeof(READDIRPLUS3args));
-	args.dir.data.data_len = fh->data.data_len;
-	args.dir.data.data_val = fh->data.data_val;
-	args.cookie = cookie;
-	memcpy(&args.cookieverf, cookieverf, sizeof(cookieverf3)); 
-	args.dircount = count;
-	args.maxcount = count * 8;
-
-	return rpc_nfs3_readdirplus_async(rpc, cb, &args, private_data);
 }
 
 int rpc_nfs3_fsstat_async(struct rpc_context *rpc, rpc_cb cb, struct FSSTAT3args *args, void *private_data)
@@ -771,17 +604,6 @@ int rpc_nfs3_fsstat_async(struct rpc_context *rpc, rpc_cb cb, struct FSSTAT3args
 	return 0;
 }
 
-int rpc_nfs_fsstat_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh, void *private_data)
-{
-	FSSTAT3args args;
-
-	memset(&args, 0, sizeof(FSSTAT3args));
-	args.fsroot.data.data_len = fh->data.data_len; 
-	args.fsroot.data.data_val = fh->data.data_val; 
-
-	return rpc_nfs3_fsstat_async(rpc, cb, &args, private_data);
-}
-
 int rpc_nfs3_fsinfo_async(struct rpc_context *rpc, rpc_cb cb, struct FSINFO3args *args, void *private_data)
 {
 	struct rpc_pdu *pdu;
@@ -804,17 +626,6 @@ int rpc_nfs3_fsinfo_async(struct rpc_context *rpc, rpc_cb cb, struct FSINFO3args
 	}
 
 	return 0;
-}
-
-int rpc_nfs_fsinfo_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh, void *private_data)
-{
-	FSINFO3args args;
-
-	memset(&args, 0, sizeof(FSINFO3args));
-	args.fsroot.data.data_len = fh->data.data_len; 
-	args.fsroot.data.data_val = fh->data.data_val; 
-
-	return rpc_nfs3_fsinfo_async(rpc, cb, &args, private_data);
 }
 
 int rpc_nfs3_readlink_async(struct rpc_context *rpc, rpc_cb cb, READLINK3args *args, void *private_data)
@@ -841,11 +652,6 @@ int rpc_nfs3_readlink_async(struct rpc_context *rpc, rpc_cb cb, READLINK3args *a
 	return 0;
 }
 
-int rpc_nfs_readlink_async(struct rpc_context *rpc, rpc_cb cb, READLINK3args *args, void *private_data)
-{
-	return rpc_nfs3_readlink_async(rpc, cb, args, private_data);
-}
-
 int rpc_nfs3_symlink_async(struct rpc_context *rpc, rpc_cb cb, SYMLINK3args *args, void *private_data)
 {
 	struct rpc_pdu *pdu;
@@ -868,11 +674,6 @@ int rpc_nfs3_symlink_async(struct rpc_context *rpc, rpc_cb cb, SYMLINK3args *arg
 	}
 
 	return 0;
-}
-
-int rpc_nfs_symlink_async(struct rpc_context *rpc, rpc_cb cb, SYMLINK3args *args, void *private_data)
-{
-	return rpc_nfs3_symlink_async(rpc, cb, args, private_data);
 }
 
 int rpc_nfs3_rename_async(struct rpc_context *rpc, rpc_cb cb, struct RENAME3args *args, void *private_data)
@@ -899,21 +700,6 @@ int rpc_nfs3_rename_async(struct rpc_context *rpc, rpc_cb cb, struct RENAME3args
 	return 0;
 }
 
-int rpc_nfs_rename_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *olddir, char *oldname, struct nfs_fh3 *newdir, char *newname, void *private_data)
-{
-	RENAME3args args;
-
-	memset(&args, 0, sizeof(RENAME3args));
-	args.from.dir.data.data_len = olddir->data.data_len;
-	args.from.dir.data.data_val = olddir->data.data_val;
-	args.from.name = oldname;
-	args.to.dir.data.data_len = newdir->data.data_len;
-	args.to.dir.data.data_val = newdir->data.data_val;
-	args.to.name = newname;
-
-	return rpc_nfs3_rename_async(rpc, cb, &args, private_data);
-}
-
 int rpc_nfs3_link_async(struct rpc_context *rpc, rpc_cb cb, struct LINK3args *args, void *private_data)
 {
 	struct rpc_pdu *pdu;
@@ -936,20 +722,6 @@ int rpc_nfs3_link_async(struct rpc_context *rpc, rpc_cb cb, struct LINK3args *ar
 	}
 
 	return 0;
-}
-
-int rpc_nfs_link_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *file, struct nfs_fh3 *newdir, char *newname, void *private_data)
-{
-	LINK3args args;
-
-	memset(&args, 0, sizeof(LINK3args));
-	args.file.data.data_len = file->data.data_len;
-	args.file.data.data_val = file->data.data_val;
-	args.link.dir.data.data_len = newdir->data.data_len;
-	args.link.dir.data.data_val = newdir->data.data_val;
-	args.link.name = newname;
-
-	return rpc_nfs3_link_async(rpc, cb, &args, private_data);
 }
 
 /*

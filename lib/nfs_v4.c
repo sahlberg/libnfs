@@ -2766,19 +2766,19 @@ nfs4_pread_cb(struct rpc_context *rpc, int status, void *command_data,
         }
         rres = &res->resarray.resarray_val[i].nfs_resop4_u.opread.READ4res_u.resok4;
 
+        memcpy(data->filler.blob1.val, rres->data.data_val, rres->data.data_len);
         if (data->rw_data.update_pos) {
                 nfsfh->offset = data->rw_data.offset + rres->data.data_len;
         }
 
-        data->cb(rres->data.data_len, nfs, rres->data.data_val,
-                 data->private_data);
+        data->cb(rres->data.data_len, nfs, NULL, data->private_data);
         free_nfs4_cb_data(data);
 }
 
 int
 nfs4_pread_async_internal(struct nfs_context *nfs, struct nfsfh *nfsfh,
-                          uint64_t offset, size_t count, nfs_cb cb,
-                          void *private_data, int update_pos)
+                          void *buf, size_t count, uint64_t offset,
+                          nfs_cb cb, void *private_data, int update_pos)
 {
         COMPOUND4args args;
         nfs_argop4 op[2];
@@ -2799,6 +2799,9 @@ nfs4_pread_async_internal(struct nfs_context *nfs, struct nfsfh *nfsfh,
 
         data->filler.blob0.val  = nfsfh;
         data->filler.blob0.free = NULL;
+        data->filler.blob1.val  = buf;
+        data->filler.blob1.len  = count;
+        data->filler.blob1.free = NULL;
         data->rw_data.offset = offset;
         data->rw_data.update_pos = update_pos;
         

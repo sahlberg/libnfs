@@ -1,6 +1,6 @@
 /* -*-  mode:c; tab-width:8; c-basic-offset:8; indent-tabs-mode:nil;  -*- */
 /* 
-   Copyright (C) by Ronnie Sahlberg <ronniesahlberg@gmail.com> 2017
+   Copyright (C) by Ronnie Sahlberg <ronniesahlberg@gmail.com> 2023
    
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -33,8 +33,7 @@
 
 void usage(void)
 {
-	fprintf(stderr, "Usage: prog_open_read <url> <cwd> <path> <flags>"
-                "\n");
+	fprintf(stderr, "Usage: prog_write_update_pos <url> <file>\n");
 	exit(1);
 }
 
@@ -43,32 +42,14 @@ int main(int argc, char *argv[])
 	struct nfs_context *nfs = NULL;
 	struct nfs_url *url = NULL;
 	int ret = 0;
-        int flags = 0, count, res, pos;
         struct nfsfh *fh;
+        uint64_t pos;
         char buf[1024];
+        struct nfs_stat_64 st;
 
-	if (argc != 5) {
+	if (argc != 2) {
 		usage();
 	}
-
-        if (strstr(argv[4], "O_RDONLY")) {
-                flags |= O_RDONLY;
-        }
-        if (strstr(argv[4], "O_RDWR")) {
-                flags |= O_RDWR;
-        }
-        if (strstr(argv[4], "O_WRONLY")) {
-                flags |= O_WRONLY;
-        }
-        if (strstr(argv[4], "O_NOFOLLOW")) {
-                flags |= O_NOFOLLOW;
-        }
-        if (strstr(argv[4], "O_APPEND")) {
-                flags |= O_APPEND;
-        }
-        if (strstr(argv[4], "O_TRUNC")) {
-                flags |= O_TRUNC;
-        }
 
 	nfs = nfs_init_context();
 	if (nfs == NULL) {
@@ -89,40 +70,74 @@ int main(int argc, char *argv[])
 		goto finished;
 	}
 
-	if (nfs_chdir(nfs, argv[2]) != 0) {
- 		fprintf(stderr, "Failed to chdir to \"%s\" : %s\n",
-			argv[2], nfs_get_error(nfs));
-		ret = 1;
-		goto finished;
-	}
-
-	if (nfs_open(nfs, argv[3],flags, &fh)) {
+	if (nfs_open(nfs, url->file, O_RDONLY, &fh)) {
  		fprintf(stderr, "Failed to open(): %s\n",
 			nfs_get_error(nfs));
 		ret = 1;
 		goto finished;
 	}
 
-	count = nfs_read(nfs, fh, buf, sizeof(buf));
-	if (count < 0) {
- 		fprintf(stderr, "Failed to read(): %s\n",
+	if (nfs_fstat64(nfs, fh, &st)) {
+ 		fprintf(stderr, "Failed to fstat64(): %s\n",
 			nfs_get_error(nfs));
 		ret = 1;
 		goto finished;
 	}
-
-        pos = 0;
-        while (count) {
-                res = write(1, &buf[pos], count);
-                if (res < 0) {
-                        fprintf(stderr, "write() failed\n");
-                        ret = 1;
-                        goto finished;
-                }
-                count -= res;
-                pos += res;
+        if (nfs_lseek(nfs, fh, -3, SEEK_END, &pos) < 0) {
+ 		fprintf(stderr, "Failed to lseek(): %s\n",
+			nfs_get_error(nfs));
+		ret = 1;
+		goto finished;
+	}
+        if (pos != st.nfs_size - 3) {
+ 		fprintf(stderr, "lseek() returned wrong pos\n");
+		ret = 1;
+		goto finished;
         }
 
+        if (nfs_pread(nfs, fh, buf, 1, st.nfs_size - 3) != 1) {
+ 		fprintf(stderr, "pread() failed to read 1 byte: %s\n",
+			nfs_get_error(nfs));
+		ret = 1;
+		goto finished;
+        }
+        /* offset should not change after pread() */
+        if (nfs_lseek(nfs, fh, 0, SEEK_CUR, &pos) < 0) {
+ 		fprintf(stderr, "Failed to lseek(): %s\n",
+			nfs_get_error(nfs));
+		ret = 1;
+		goto finished;
+	}
+        if (pos != st.nfs_size - 3) {
+ 		fprintf(stderr, "offset changed after pread()\n");
+		ret = 1;
+		goto finished;
+        }
+
+        if (nfs_read(nfs, fh, buf, 1) != 1) {
+ 		fprintf(stderr, "read() failed to read 1 byte: %s\n",
+			nfs_get_error(nfs));
+		ret = 1;
+		goto finished;
+        }
+        /* offset should change after read() */
+        if (nfs_lseek(nfs, fh, 0, SEEK_CUR, &pos) < 0) {
+ 		fprintf(stderr, "Failed to lseek(): %s\n",
+			nfs_get_error(nfs));
+		ret = 1;
+		goto finished;
+	}
+        if (pos == st.nfs_size - 3) {
+ 		fprintf(stderr, "offset did not change after read()\n");
+		ret = 1;
+		goto finished;
+        }
+        if (pos != st.nfs_size - 2) {
+ 		fprintf(stderr, "offset changed to wrong value after read()\n");
+		ret = 1;
+		goto finished;
+        }
+        
 	if (nfs_close(nfs, fh)) {
  		fprintf(stderr, "Failed to close(): %s\n",
 			nfs_get_error(nfs));
