@@ -106,7 +106,7 @@ int main(int argc, char *argv[])
 	}
 
         if (strlen(argv[5]) > 0) {
-                count = nfs_write(nfs, fh, strlen(argv[5]), argv[5]);
+                count = nfs_write(nfs, fh, argv[5], strlen(argv[5]));
                 if (count < 0) {
                         fprintf(stderr, "Failed to write(): %s\n",
                                 nfs_get_error(nfs));

@@ -121,7 +121,7 @@ file_pread(struct file_context *fc, char *buf, size_t count, off_t off)
 		lseek(fc->fd, off, SEEK_SET);
 		return read(fc->fd, buf, count);
 	} else {
-		return nfs_pread(fc->nfs, fc->nfsfh, off, count, buf);
+		return nfs_pread(fc->nfs, fc->nfsfh, buf, count, off);
 	}
 }
 
@@ -132,7 +132,7 @@ file_pwrite(struct file_context *fc, char *buf, size_t count, off_t off)
 		lseek(fc->fd, off, SEEK_SET);
 		return write(fc->fd, buf, count);
 	} else {
-		return nfs_pwrite(fc->nfs, fc->nfsfh, off, count, buf);
+		return nfs_pwrite(fc->nfs, fc->nfsfh, buf, count, off);
 	}
 }
 

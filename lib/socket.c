@@ -402,6 +402,22 @@ static char *rpc_reassemble_pdu(struct rpc_context *rpc, uint32_t *pdu_size)
         return reasbuf;
 }
 
+static void rpc_finished_pdu(struct rpc_context *rpc)
+{
+        if (rpc->pdu && rpc->pdu->free_pdu) {
+                rpc->pdu->cb(rpc, RPC_STATUS_SUCCESS, rpc->pdu->zdr_decode_buf, rpc->pdu->private_data);
+        }
+        if (rpc->pdu && rpc->pdu->free_zdr) {
+                zdr_destroy(&rpc->pdu->zdr);
+        }
+        rpc->state = READ_RM;
+        rpc->inpos  = 0;
+        if (rpc->is_udp == 0 || rpc->is_broadcast == 0) {
+                rpc_free_pdu(rpc, rpc->pdu);
+                rpc->pdu = NULL;
+        }
+}
+
 #define MAX_UDP_SIZE 65536
 #define MAX_FRAGMENT_SIZE 8*1024*1024
 static int
@@ -410,6 +426,7 @@ rpc_read_from_socket(struct rpc_context *rpc)
 	uint32_t pdu_size;
 	ssize_t count;
 	char *buf;
+        int pos;
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
@@ -455,11 +472,39 @@ rpc_read_from_socket(struct rpc_context *rpc)
                          */
                         pdu_size = 8;
                         buf = (char *)&rpc->rm_xid[0];
+                        rpc->pdu = NULL;
                         break;
                 case READ_PAYLOAD:
+                        pdu_size = rpc->rm_xid[0];
+                        buf = rpc->inbuf + rpc->inpos;
+
+                        /*
+                         * If it is a READ pdu, just read part of the data
+                         * to the buffer and read the remainder directly into
+                         * the application iovec. 1024 is big enough to
+                         * "guarantee" that we get the whole onc-rpc as well
+                         * as the read3res header into the buffer.
+                         * I don't want to have to deal with reading too
+                         * little here and having to increase the limit and
+                         * restart unmarshalling from scratch.
+                         */
+                        /* We do not have rpc->pdu for server context */
+                        if (rpc->pdu && rpc->pdu->in.buf && pdu_size > 1024) {
+                                pdu_size = 1024;
+                        }
+                        break;
                 case READ_FRAGMENT:
 			pdu_size = rpc->rm_xid[0];
                         buf = rpc->inbuf + rpc->inpos;
+                        break;
+                case READ_IOVEC:
+                        buf = &rpc->pdu->in.buf[rpc->pdu->inpos];
+                        pdu_size = rpc->pdu->read_count;
+                        break;
+                case READ_PADDING:
+                        pdu_size = rpc->rm_xid[0];
+                        buf = rpc->inbuf;
+                        break;
                 }
 
 		count = recv(rpc->fd, buf, pdu_size - rpc->inpos,
@@ -486,7 +531,9 @@ rpc_read_from_socket(struct rpc_context *rpc)
                                 if (rpc->rm_xid[0] & 0x80000000) {
                                         rpc->state = READ_PAYLOAD;
                                 } else {
+                                        rpc_set_error(rpc, "Fragment support not yet working");
                                         rpc->state = READ_FRAGMENT;
+                                        return -1;
                                 }
                                 rpc->rm_xid[0] &= 0x7fffffff;
                                 if (rpc->rm_xid[0] < 8 || rpc->rm_xid[0] > MAX_FRAGMENT_SIZE) {
@@ -497,6 +544,24 @@ rpc_read_from_socket(struct rpc_context *rpc)
                                 /* Copy the next 4 bytes into inbuf */
                                 memcpy(rpc->inbuf, &rpc->rm_xid[1], 4);
                                 rpc->inpos = 4;
+                                rpc->rm_xid[1] = ntohl(rpc->rm_xid[1]);
+                                if (!rpc->is_server_context) {
+#ifdef HAVE_MULTITHREADING
+                                        if (rpc->multithreading_enabled) {
+                                                nfs_mt_mutex_lock(&rpc->rpc_mutex);
+                                        }
+#endif /* HAVE_MULTITHREADING */
+                                        rpc->pdu = rpc_find_pdu(rpc, rpc->rm_xid[1]);
+#ifdef HAVE_MULTITHREADING
+                                        if (rpc->multithreading_enabled) {
+                                                nfs_mt_mutex_unlock(&rpc->rpc_mutex);
+                                        }
+#endif /* HAVE_MULTITHREADING */
+                                        if (rpc->pdu == NULL) {
+                                                rpc_set_error(rpc, "Received unknown XID");
+                                                return -1;
+                                        }
+                                }
                                 continue;
                         case READ_FRAGMENT:
                                 if (rpc_add_fragment(rpc, rpc->inbuf, rpc->inpos) != 0) {
@@ -521,12 +586,48 @@ rpc_read_from_socket(struct rpc_context *rpc)
                                                       "Closing socket");
                                         return -1;
                                 }
+                                /* We do not have rpc->pdu for server context */
+                                if (rpc->pdu && rpc->pdu->free_zdr) {
+                                        /* We have zero-copy read */
+                                        if (!zdr_uint32_t(&rpc->pdu->zdr, &rpc->pdu->read_count))
+                                                return -1;
+                                        pos = zdr_getpos(&rpc->pdu->zdr);
+                                        count = rpc->inpos - pos;
+                                        if (count > rpc->pdu->read_count) {
+                                                count = rpc->pdu->read_count;
+                                        }
+                                        if (rpc->pdu->in.len <= count) {
+                                                memcpy(rpc->pdu->in.buf, &rpc->inbuf[pos], rpc->pdu->in.len);
+                                        } else {
+                                                memcpy(rpc->pdu->in.buf, &rpc->inbuf[pos], count);
+                                                rpc->pdu->inpos = count;
+                                                rpc->pdu->read_count -= count;
+                                                rpc->state = READ_IOVEC;
+                                                rpc->inpos  = 0;
+                                                rpc->rm_xid[0] -= pos + count;
+                                                continue;
+                                        }
+                                }
                                 if (rpc->fragments) {
                                         free(buf);
                                         rpc_free_all_fragments(rpc);
                                 }
-                                rpc->state = READ_RM;
+                                rpc_finished_pdu(rpc);
+                                break;
+                        case READ_IOVEC:
+                                rpc->pdu->inpos += pdu_size;
+                                rpc->pdu->read_count -= pdu_size;
+                                rpc->rm_xid[0] -= pdu_size;
+                                if (!rpc->rm_xid[0]) {
+                                        rpc_finished_pdu(rpc);
+                                        break;
+                                }
+                                rpc->state = READ_PADDING;
                                 rpc->inpos  = 0;
+                                continue;
+                        case READ_PADDING:
+                                rpc_finished_pdu(rpc);
+                                break;
                         }
                 }
 	} while (rpc->is_nonblocking && rpc->waitpdu_len > 0);
