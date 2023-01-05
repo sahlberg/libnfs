@@ -185,6 +185,27 @@ struct NLM4_GRANTEDres {
 };
 typedef struct NLM4_GRANTEDres NLM4_GRANTEDres;
 
+struct NLM4_SHAREargs {
+    nlm_cookie cookie;
+    nlm4_share share;
+    bool_t reclaim;
+};
+typedef struct NLM4_SHAREargs NLM4_SHAREargs;
+
+struct NLM4_SHAREres {
+    nlm_cookie cookie;
+	  nlmstat4 status;
+    int32_t sequence;
+};
+typedef struct NLM4_SHAREres NLM4_SHAREres;
+
+struct NLM4_UNSHAREres {
+    nlm_cookie cookie;
+	  nlmstat4 status;
+    int32_t sequence;
+};
+typedef struct NLM4_UNSHAREres NLM4_UNSHAREres;
+
 #define NLM_PROGRAM 100021
 #define NLM_V4 4
 
@@ -238,6 +259,14 @@ extern  void * nlm4_unlock_res_4_svc(NLM4_UNLOCKres *, struct svc_req *);
 extern  void * nlm4_grant_res_4(NLM4_GRANTEDres *, void *);
 extern  void * nlm4_grant_res_4_svc(NLM4_GRANTEDres *, struct svc_req *);
 extern int nlm_program_4_freeresult (void *, zdrproc_t, caddr_t);
+#define NLM4_SHARE 20
+extern NLM4_SHAREres *nlm4_share_4(NLM4_SHAREargs *, void *);
+extern NLM4_SHAREres *nlm4_share_4_svc(NLM4_SHAREargs *,
+               struct svc_req *);
+#define NLM4_UNSHARE 21
+extern NLM4_SHAREres *nlm4_unshare_4(NLM4_SHAREargs *, void *);
+extern NLM4_SHAREres *nlm4_unshare_4_svc(NLM4_SHAREargs *,
+                 struct svc_req *);
 
 #else /* K&R C */
 #define NLM4_NULL 0
@@ -289,6 +318,12 @@ extern  void * nlm4_unlock_res_4_svc();
 extern  void * nlm4_grant_res_4();
 extern  void * nlm4_grant_res_4_svc();
 extern int nlm_program_4_freeresult ();
+#define NLM4_SHARE 20
+extern NLM4_SHAREres *nlm4_share_4();
+extern NLM4_SHAREres *nlm4_share_4_svc();
+#define NLM4_UNSHARE 21
+extern NLM4_SHAREres *nlm4_unshare_4();
+extern NLM4_SHAREres *nlm4_unshare_4_svc();
 #endif /* K&R C */
 
 /* the zdr functions */
@@ -313,6 +348,10 @@ extern  uint32_t zdr_NLM4_LOCKres (ZDR *, NLM4_LOCKres*);
 extern  uint32_t zdr_NLM4_LOCKargs (ZDR *, NLM4_LOCKargs*);
 extern  uint32_t zdr_NLM4_GRANTEDargs (ZDR *, NLM4_GRANTEDargs*);
 extern  uint32_t zdr_NLM4_GRANTEDres (ZDR *, NLM4_GRANTEDres*);
+extern  uint32_t zdr_NLM4_SHAREres (ZDR *, NLM4_SHAREres*);
+extern  uint32_t zdr_NLM4_SHAREargs (ZDR *, NLM4_SHAREargs*);
+extern  uint32_t zdr_NLM4_UNSHAREres (ZDR *, NLM4_UNSHAREres*);
+extern  uint32_t zdr_NLM4_UNSHAREargs (ZDR *, NLM4_SHAREargs*);
 
 #else /* K&R C */
 extern uint32_t zdr_nlm_fh4 ();
@@ -334,6 +373,10 @@ extern uint32_t zdr_NLM4_LOCKres ();
 extern uint32_t zdr_NLM4_LOCKargs ();
 extern uint32_t zdr_NLM4_GRANTEDargs ();
 extern uint32_t zdr_NLM4_GRANTEDres ();
+extern  uint32_t zdr_NLM4_SHAREres ();
+extern  uint32_t zdr_NLM4_SHAREargs ();
+extern  uint32_t zdr_NLM4_UNSHAREres ();
+extern  uint32_t zdr_NLM4_UNSHAREargs ();
 
 #endif /* K&R C */
 
