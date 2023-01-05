@@ -443,6 +443,8 @@ rpc_read_from_socket(struct rpc_context *rpc)
 	}
 
 	do {
+                pdu_size = 0;
+                buf = NULL;
                 switch (rpc->state) {
                 case READ_RM:
                         /*
