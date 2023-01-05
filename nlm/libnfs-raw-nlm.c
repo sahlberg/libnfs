@@ -256,3 +256,47 @@ zdr_NLM4_GRANTEDres (ZDR *zdrs, NLM4_GRANTEDres *objp)
 		 return FALSE;
 	return TRUE;
 }
+
+uint32_t
+zdr_NLM4_SHAREres(ZDR *zdrs, NLM4_SHAREres *objp)
+{
+	if (!zdr_nlm_cookie (zdrs, &objp->cookie))
+    return FALSE;
+	if (!zdr_nlmstat4 (zdrs, &objp->status))
+    return FALSE;
+  return TRUE;
+}
+
+uint32_t
+zdr_NLM4_SHAREargs(ZDR *zdrs, NLM4_SHAREargs *objp)
+{
+  if (!zdr_nlm_cookie (zdrs, &objp->cookie))
+    return FALSE;
+  if (!zdr_nlm4_share (zdrs, &objp->share))
+    return FALSE;
+  if (!zdr_bool (zdrs, &objp->reclaim))
+    return FALSE;
+  return TRUE;
+}
+
+uint32_t
+zdr_NLM4_UNSHAREres(ZDR *zdrs, NLM4_UNSHAREres *objp)
+{
+  if (!zdr_nlm_cookie (zdrs, &objp->cookie))
+	  return FALSE;
+  if (!zdr_nlmstat4 (zdrs, &objp->status))
+	  return FALSE;
+	return TRUE;
+}
+
+uint32_t
+zdr_NLM4_UNSHAREargs(ZDR *zdrs, NLM4_SHAREargs *objp)
+{
+  if (!zdr_nlm_cookie (zdrs, &objp->cookie))
+    return FALSE;
+  if (!zdr_nlm4_share (zdrs, &objp->share))
+    return FALSE;
+  if (!zdr_bool (zdrs, &objp->reclaim))
+    return FALSE;
+  return TRUE;
+}
