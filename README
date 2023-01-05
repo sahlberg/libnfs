@@ -1,3 +1,32 @@
+This is the branch for LIBNFS-NEXT_GEN
+This branch is for a long overdue reworking of the internals of libnfs
+which will unfortunately also mean we will need to change the API.
+In particular we need to change the API in order to support zero-copy read
+operations and since we ARE breaking the API for read we can take this opportunity to break other parts of the API too where we need to.
+This will either require a migration guide when we switch to this new major
+version or optionally this branch might release as a selarate project: libnfs2.
+
+Major changes:
+* Readahead and Pagecache has been removed. These were implemented in the nfsv3
+  layer and thus did not provide any support in v4.
+* The read/pread/write/pwrite functions have new signatures.
+* The rpc_nfs_* functions have been removed. Instead use the rpc_nfs3_*
+  functions. These functions have a much more consistent API (they all take a
+  struct FUNC3args argument)
+
+TODOs:
+* Re-add readahead/pagecache but implement it above the nfsv3/4 layers so
+  it benefits both protocols.
+* Fragmentation is currently broken
+* All rpc_nfs/nlm/... functions should return a rpc_pdu * pointer instead
+  if an int to indicate success/failure. This will allow us to use
+  getters/setters on the PDU that was created.
+* Make zero-copy reads work for the raw rpc_nfs3 interface
+* Make zero-copy reads work for the raw rpc_nfs4 interface
+* Make zero-copy work for NFS4 writes
+
+=====
+
 LIBNFS is a client library for accessing NFS shares over a network.
 
 LIBNFS offers three different APIs, for different use :
