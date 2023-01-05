@@ -596,6 +596,10 @@ rpc_read_from_socket(struct rpc_context *rpc)
                                         if (count > rpc->pdu->read_count) {
                                                 count = rpc->pdu->read_count;
                                         }
+                                        if (rpc->pdu->in.len > rpc->pdu->read_count) {
+                                                /* we got a short read */
+                                                rpc->pdu->in.len = rpc->pdu->read_count;
+                                        }
                                         if (rpc->pdu->in.len <= count) {
                                                 memcpy(rpc->pdu->in.buf, &rpc->inbuf[pos], rpc->pdu->in.len);
                                         } else {
