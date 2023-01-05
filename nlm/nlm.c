@@ -141,6 +141,54 @@ int rpc_nlm4_unlock_async(struct rpc_context *rpc, rpc_cb cb, struct NLM4_UNLOCK
 	return 0;
 }
 
+int rpc_nlm4_share_async(struct rpc_context *rpc, rpc_cb cb, struct NLM4_SHAREargs *args, void *private_data)
+{
+	struct rpc_pdu *pdu;
+
+	pdu = rpc_allocate_pdu(rpc, NLM_PROGRAM, NLM_V4, NLM4_SHARE, cb, private_data, (zdrproc_t)zdr_NLM4_SHAREres, sizeof(NLM4_SHAREres));
+	if (pdu == NULL) {
+		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu for nlm/lock call");
+		return -1;
+	}
+
+	if (zdr_NLM4_SHAREargs(&pdu->zdr, args) == 0) {
+		rpc_set_error(rpc, "ZDR error: Failed to encode NLM4_LOCKargs");
+		rpc_free_pdu(rpc, pdu);
+		return -2;
+	}
+
+	if (rpc_queue_pdu(rpc, pdu) != 0) {
+		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for nlm/lock call");
+		return -1;
+	}
+
+	return 0;
+}
+
+int rpc_nlm4_unshare_async(struct rpc_context *rpc, rpc_cb cb, struct NLM4_SHAREargs *args, void *private_data)
+{
+	struct rpc_pdu *pdu;
+
+	pdu = rpc_allocate_pdu(rpc, NLM_PROGRAM, NLM_V4, NLM4_UNSHARE, cb, private_data, (zdrproc_t)zdr_NLM4_UNSHAREres, sizeof(NLM4_UNSHAREres));
+	if (pdu == NULL) {
+		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu for nlm/lock call");
+		return -1;
+	}
+
+	if (zdr_NLM4_UNSHAREargs(&pdu->zdr, args) == 0) {
+		rpc_set_error(rpc, "ZDR error: Failed to encode NLM4_LOCKargs");
+		rpc_free_pdu(rpc, pdu);
+		return -2;
+	}
+
+	if (rpc_queue_pdu(rpc, pdu) != 0) {
+		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for nlm/lock call");
+		return -1;
+	}
+
+	return 0;
+}
+
 char *nlmstat4_to_str(int st)
 {
 	enum nlmstat4 stat = st;

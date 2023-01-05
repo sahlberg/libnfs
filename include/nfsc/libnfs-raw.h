@@ -2091,6 +2091,49 @@ EXTERN int rpc_nlm4_unlock_async(struct rpc_context *rpc, rpc_cb cb,
                                  void *private_data);
 
 /*
+ * Call NLM/SHARE
+ *
+ * Function returns
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
+ *
+ * When the callback is invoked, status indicates the result:
+ * RPC_STATUS_SUCCESS : We got a successful response from the server.
+ *                      data is NLM4_LOCKres *.
+ * RPC_STATUS_ERROR   : The command failed with an error.
+ *                      data is the error string.
+ * RPC_STATUS_CANCEL  : The command was cancelled.
+ *                      data is NULL.
+ */
+struct NLM4_SHAREargs;
+EXTERN int rpc_nlm4_share_async(struct rpc_context *rpc, rpc_cb cb,
+                               struct NLM4_SHAREargs *args,
+                               void *private_data);
+
+/*
+ * Call NLM/UNSHARE
+ *
+ * Function returns
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
+ *
+ * When the callback is invoked, status indicates the result:
+ * RPC_STATUS_SUCCESS : We got a successful response from the server.
+ *                      data is NLM4_UNLOCKres *.
+ * RPC_STATUS_ERROR   : The command failed with an error.
+ *                      data is the error string.
+ * RPC_STATUS_CANCEL  : The command was cancelled.
+ *                      data is NULL.
+ */
+EXTERN int rpc_nlm4_unshare_async(struct rpc_context *rpc, rpc_cb cb,
+                                 struct NLM4_SHAREargs *args,
+                                 void *private_data);
+
+/*
  * NSM functions
  */
 EXTERN char *nsmstat1_to_str(int stat);
