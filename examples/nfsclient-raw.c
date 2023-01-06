@@ -341,7 +341,7 @@ void pmap_getport1_cb(struct rpc_context *rpc, int status, void *data, void *pri
 	}		
 
 	printf("Send getport request asking for MOUNT port\n");
-	if (rpc_pmap2_getport_async(rpc, MOUNT_PROGRAM, MOUNT_V3, IPPROTO_TCP, pmap_getport2_cb, client) != 0) {
+	if (rpc_pmap2_getport_async(rpc, MOUNT_PROGRAM, MOUNT_V3, IPPROTO_TCP, pmap_getport2_cb, client) == NULL) {
 		printf("Failed to send getport request\n");
 		exit(10);
 	}
@@ -373,7 +373,7 @@ void pmap_dump_cb(struct rpc_context *rpc, int status, void *data, void *private
 	}
 
 	printf("Send getport request asking for MOUNT port\n");
-	if (rpc_pmap2_getport_async(rpc, RQUOTA_PROGRAM, RQUOTA_V1, IPPROTO_TCP, pmap_getport1_cb, client) != 0) {
+	if (rpc_pmap2_getport_async(rpc, RQUOTA_PROGRAM, RQUOTA_V1, IPPROTO_TCP, pmap_getport1_cb, client) == NULL) {
 		printf("Failed to send getport request\n");
 		exit(10);
 	}
@@ -394,7 +394,7 @@ void pmap_null_cb(struct rpc_context *rpc, int status, void *data, void *private
 
 	printf("Got reply from server for PORTMAP/NULL procedure.\n");
 	printf("Send PMAP/DUMP command\n");
-	if (rpc_pmap2_dump_async(rpc, pmap_dump_cb, client) != 0) {
+	if (rpc_pmap2_dump_async(rpc, pmap_dump_cb, client) == NULL) {
 		printf("Failed to send getport request\n");
 		exit(10);
 	}
@@ -411,7 +411,7 @@ void pmap_connect_cb(struct rpc_context *rpc, int status, void *data _U_, void *
 	}
 
 	printf("Send NULL request to check if portmapper is actually running\n");
-	if (rpc_pmap2_null_async(rpc, pmap_null_cb, client) != 0) {
+	if (rpc_pmap2_null_async(rpc, pmap_null_cb, client) == NULL) {
 		printf("Failed to send null request\n");
 		exit(10);
 	}
