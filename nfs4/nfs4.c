@@ -183,8 +183,8 @@ nfsstat4_to_errno(int error)
 	return -ERANGE;
 }
 
-int
-rpc_nfs4_null_async(struct rpc_context *rpc, rpc_cb cb, void *private_data)
+struct rpc_pdu *rpc_nfs4_null_async(struct rpc_context *rpc, rpc_cb cb,
+                                    void *private_data)
 {
 	struct rpc_pdu *pdu;
 
@@ -193,23 +193,22 @@ rpc_nfs4_null_async(struct rpc_context *rpc, rpc_cb cb, void *private_data)
 	if (pdu == NULL) {
 		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu "
                               "for NFS4/NULL call");
-		return -1;
+		return NULL;
 	}
 
 	if (rpc_queue_pdu(rpc, pdu) != 0) {
 		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for "
                               "NFS4/NULL call");
-		return -1;
+		return NULL;
 	}
 
-	return 0;
+	return pdu;
 }
 
-int
-rpc_nfs4_compound_async2(struct rpc_context *rpc, rpc_cb cb,
-                        struct COMPOUND4args *args,
-                        void *private_data,
-                        size_t alloc_hint)
+struct rpc_pdu *rpc_nfs4_compound_async2(struct rpc_context *rpc, rpc_cb cb,
+                                         struct COMPOUND4args *args,
+                                         void *private_data,
+                                         size_t alloc_hint)
 {
 	struct rpc_pdu *pdu;
 
@@ -220,29 +219,28 @@ rpc_nfs4_compound_async2(struct rpc_context *rpc, rpc_cb cb,
 	if (pdu == NULL) {
 		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu for "
                               "NFS4/COMPOUND call");
-		return -1;
+		return NULL;
 	}
 
 	if (zdr_COMPOUND4args(&pdu->zdr,  args) == 0) {
 		rpc_set_error(rpc, "ZDR error: Failed to encode COMPOUND4args");
 		rpc_free_pdu(rpc, pdu);
-		return -2;
+		return NULL;
 	}
 
 	if (rpc_queue_pdu(rpc, pdu) != 0) {
 		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for "
                               "NFS4/COMPOUND4 call");
-		return -3;
+		return NULL;
 	}
 
-	return 0;
+	return pdu;
 }
 
 
-int
-rpc_nfs4_compound_async(struct rpc_context *rpc, rpc_cb cb,
-                        struct COMPOUND4args *args,
-                        void *private_data)
+struct rpc_pdu *rpc_nfs4_compound_async(struct rpc_context *rpc, rpc_cb cb,
+                                        struct COMPOUND4args *args,
+                                        void *private_data)
 {
         return rpc_nfs4_compound_async2(rpc, cb, args, private_data, 0);
 }

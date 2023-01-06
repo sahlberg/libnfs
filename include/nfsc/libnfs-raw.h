@@ -2298,10 +2298,10 @@ EXTERN int nfsstat4_to_errno(int error);
 /*
  * Call NFS4/NULL
  * Function returns
- *  0 : The command was queued successfully. The callback will be invoked once
- *      the command completes.
- * <0 : An error occured when trying to queue the command.
- *      The callback will not be invoked.
+ *  pdu : The command was queued successfully. The callback will be invoked once
+ *        the command completes.
+ * NULL : An error occured when trying to queue the command.
+ *        The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
  * RPC_STATUS_SUCCESS : We got a successful response from the server.
@@ -2311,16 +2311,17 @@ EXTERN int nfsstat4_to_errno(int error);
  * RPC_STATUS_CANCEL  : The command was cancelled.
  *                      data is NULL.
  */
-EXTERN int rpc_nfs4_null_async(struct rpc_context *rpc, rpc_cb cb,
-                               void *private_data);
+EXTERN struct rpc_pdu *
+rpc_nfs4_null_async(struct rpc_context *rpc, rpc_cb cb,
+                    void *private_data);
 
 /*
  * Call NFS4/COMPOUND
  * Function returns
- *  0 : The command was queued successfully. The callback will be invoked once
- *      the command completes.
- * <0 : An error occured when trying to queue the command.
- *      The callback will not be invoked.
+ *  pdu : The command was queued successfully. The callback will be invoked once
+ *        the command completes.
+ * NULL : An error occured when trying to queue the command.
+ *        The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
  * RPC_STATUS_SUCCESS : We got a successful response from the server.
@@ -2331,9 +2332,10 @@ EXTERN int rpc_nfs4_null_async(struct rpc_context *rpc, rpc_cb cb,
  *                      data is NULL.
  */
 struct COMPOUND4args;
-EXTERN int rpc_nfs4_compound_async(struct rpc_context *rpc, rpc_cb cb,
-                                   struct COMPOUND4args *args,
-                                   void *private_data);
+EXTERN struct rpc_pdu *
+rpc_nfs4_compound_async(struct rpc_context *rpc, rpc_cb cb,
+                        struct COMPOUND4args *args,
+                        void *private_data);
 /*
  * Call NFS4/COMPOUND with extra allocation.
 
@@ -2352,10 +2354,11 @@ EXTERN int rpc_nfs4_compound_async(struct rpc_context *rpc, rpc_cb cb,
  *                      data is NULL.
  */
 struct COMPOUND4args;
-EXTERN int rpc_nfs4_compound_async2(struct rpc_context *rpc, rpc_cb cb,
-                                   struct COMPOUND4args *args,
-                                   void *private_data,
-                                   size_t alloc_hint);
+EXTERN struct rpc_pdu *
+rpc_nfs4_compound_async2(struct rpc_context *rpc, rpc_cb cb,
+                         struct COMPOUND4args *args,
+                         void *private_data,
+                         size_t alloc_hint);
 
 /*
  * Call <generic>/NULL
@@ -2373,8 +2376,9 @@ EXTERN int rpc_nfs4_compound_async2(struct rpc_context *rpc, rpc_cb cb,
  * RPC_STATUS_CANCEL  : The command was cancelled.
  *                      data is NULL.
  */
-EXTERN int rpc_null_async(struct rpc_context *rpc, int program, int version,
-                          rpc_cb cb, void *private_data);
+EXTERN struct rpc_pdu *
+rpc_null_async(struct rpc_context *rpc, int program, int version,
+               rpc_cb cb, void *private_data);
 
 
 #ifdef __cplusplus
