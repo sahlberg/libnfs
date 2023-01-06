@@ -13,6 +13,10 @@ Major changes:
 * The rpc_nfs_* functions have been removed. Instead use the rpc_nfs3_*
   functions. These functions have a much more consistent API (they all take a
   struct FUNC3args argument)
+* rpc_nfs2_ functions have changed signatures and return a rpc_pdu *
+* rpc_nfs3_ functions have changed signatures and return a rpc_pdu *
+* rpc_pmap2_ functions have changed signatures and return a rpc_pdu *
+* rpc_pmap3_ functions have changed signatures and return a rpc_pdu *
 
 TODOs:
 * Re-add readahead/pagecache but implement it above the nfsv3/4 layers so
