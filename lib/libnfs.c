@@ -1993,7 +1993,7 @@ mount_export_4_cb(struct rpc_context *rpc, int status, void *command_data,
 		return;
 	}
 
-	if (rpc_mount3_export_async(rpc, mount_export_5_cb, data) != 0) {
+	if (rpc_mount3_export_async(rpc, mount_export_5_cb, data) == NULL) {
 		data->cb(rpc, -ENOMEM, command_data, data->private_data);
 		free_mount_cb_data(data);
 		return;
