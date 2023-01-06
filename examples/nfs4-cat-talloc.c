@@ -216,7 +216,7 @@ static void send_setclientid(struct rpc_context *rpc,
         args.argarray.argarray_len = sizeof(op) / sizeof(nfs_argop4);
         args.argarray.argarray_val = op;
 
-        if (rpc_nfs4_compound_async(rpc, cb, &args, private_data) != 0) {
+        if (rpc_nfs4_compound_async(rpc, cb, &args, private_data) == NULL) {
                 fprintf(stderr, "Failed to send nfs4 SETCLIENTID request\n");
                 talloc_free(client);
                 exit(10);
@@ -242,7 +242,7 @@ static void send_setclientid_confirm(struct rpc_context *rpc,
         args.argarray.argarray_len = sizeof(op) / sizeof(nfs_argop4);
         args.argarray.argarray_val = op;
 
-        if (rpc_nfs4_compound_async(rpc, cb, &args, private_data) != 0) {
+        if (rpc_nfs4_compound_async(rpc, cb, &args, private_data) == NULL) {
                 fprintf(stderr, "Failed to send nfs4 SETCLIENTID_CONFIRM request\n");
                 talloc_free(client);
                 exit(10);
@@ -263,7 +263,7 @@ static void send_getrootfh(struct rpc_context *rpc,
         memset(&args, 0, sizeof(args));
         args.argarray.argarray_len = sizeof(op) / sizeof(nfs_argop4);
         args.argarray.argarray_val = op;
-	if (rpc_nfs4_compound_async(rpc, cb, &args, private_data) != 0) {
+	if (rpc_nfs4_compound_async(rpc, cb, &args, private_data) == NULL) {
 		fprintf(stderr, "Failed to send nfs4 GETROOTFH request\n");
                 talloc_free(client);
 		exit(10);
@@ -337,7 +337,7 @@ static void send_open(struct rpc_context *rpc, nfs_fh4 dir, char *path,
         args.argarray.argarray_len = idx;
         args.argarray.argarray_val = op;
 
-	if (rpc_nfs4_compound_async(rpc, cb, &args, private_data) != 0) {
+	if (rpc_nfs4_compound_async(rpc, cb, &args, private_data) == NULL) {
 		fprintf(stderr, "Failed to send nfs4 OPEN request\n");
                 talloc_free(client);
 		exit(10);
@@ -371,7 +371,7 @@ static void send_open_confirm(struct rpc_context *rpc, nfs_fh4 object, rpc_cb cb
         args.argarray.argarray_len = sizeof(op) / sizeof(nfs_argop4);
         args.argarray.argarray_val = op;
 
-        if (rpc_nfs4_compound_async(rpc, cb, &args, private_data) != 0) {
+        if (rpc_nfs4_compound_async(rpc, cb, &args, private_data) == NULL) {
                 fprintf(stderr, "Failed to send nfs4 CLOSE request\n");
                 talloc_free(client);
                 exit(10);
@@ -406,7 +406,7 @@ static void send_read(struct rpc_context *rpc, nfs_fh4 object,
         args.argarray.argarray_len = sizeof(op) / sizeof(nfs_argop4);
         args.argarray.argarray_val = op;
 
-        if (rpc_nfs4_compound_async(rpc, cb, &args, private_data) != 0) {
+        if (rpc_nfs4_compound_async(rpc, cb, &args, private_data) == NULL) {
                 fprintf(stderr, "Failed to send nfs4 READ request\n");
                 talloc_free(client);
                 exit(10);
@@ -439,7 +439,7 @@ static void send_close(struct rpc_context *rpc, nfs_fh4 object,
         args.argarray.argarray_len = sizeof(op) / sizeof(nfs_argop4);
         args.argarray.argarray_val = op;
 
-        if (rpc_nfs4_compound_async(rpc, cb, &args, private_data) != 0) {
+        if (rpc_nfs4_compound_async(rpc, cb, &args, private_data) == NULL) {
                 fprintf(stderr, "Failed to send nfs4 CLOSE request\n");
                 talloc_free(client);
                 exit(10);
