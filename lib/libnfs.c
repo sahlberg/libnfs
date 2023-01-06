@@ -721,7 +721,7 @@ rpc_connect_program_2_cb(struct rpc_context *rpc, int status,
 		if (rpc_pmap2_getport_async(rpc, data->program, data->version,
                                             IPPROTO_TCP,
                                             rpc_connect_program_3_cb,
-                                            private_data) != 0) {
+                                            private_data) == NULL) {
 			data->cb(rpc, RPC_STATUS_ERROR, command_data, data->private_data);
 			free_rpc_cb_data(data);
 			return;
@@ -735,7 +735,7 @@ rpc_connect_program_2_cb(struct rpc_context *rpc, int status,
 		map.owner="";
 		if (rpc_pmap3_getaddr_async(rpc, &map,
                                             rpc_connect_program_3_cb,
-                                            private_data) != 0) {
+                                            private_data) == NULL) {
 			data->cb(rpc, RPC_STATUS_ERROR, command_data, data->private_data);
 			free_rpc_cb_data(data);
 			return;
@@ -764,7 +764,7 @@ rpc_connect_program_1_cb(struct rpc_context *rpc, int status,
 	switch (rpc->s.ss_family) {
 	case AF_INET:
 		if (rpc_pmap2_null_async(rpc, rpc_connect_program_2_cb,
-                                         data) != 0) {
+                                         data) == NULL) {
 			data->cb(rpc, RPC_STATUS_ERROR, command_data, data->private_data);
 			free_rpc_cb_data(data);
 			return;
@@ -772,7 +772,7 @@ rpc_connect_program_1_cb(struct rpc_context *rpc, int status,
 		break;
 	case AF_INET6:
 		if (rpc_pmap3_null_async(rpc, rpc_connect_program_2_cb,
-                                         data) != 0) {
+                                         data) == NULL) {
 			data->cb(rpc, RPC_STATUS_ERROR, command_data, data->private_data);
 			free_rpc_cb_data(data);
 			return;
