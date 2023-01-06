@@ -7,6 +7,7 @@ This will either require a migration guide when we switch to this new major
 version or optionally this branch might release as a selarate project: libnfs2.
 
 Major changes:
+* nfsv3 reads now support (almost) zero-copy
 * Readahead and Pagecache has been removed. These were implemented in the nfsv3
   layer and thus did not provide any support in v4.
 * The read/pread/write/pwrite functions have new signatures.
@@ -23,13 +24,13 @@ Major changes:
 * rpc_nfsacl_ functions have changed signatures and return a rpc_pdu *
 * rpc_nlm_ functions have changed signatures and return a rpc_pdu *
 * rpc_nsm1_ functions have changed signatures and return a rpc_pdu *
+* rpc_nfs3_read_async() takes buc/count arguments
 
 TODOs:
 * Re-add readahead/pagecache but implement it above the nfsv3/4 layers so
   it benefits both protocols.
 * Fragmentation is currently broken
 * All high level async functions (nfs_*async) should return a rpc_pdu *
-* Make zero-copy reads work for the raw rpc_nfs3 interface
 * Make zero-copy reads work for the raw rpc_nfs4 interface
 * Make zero-copy work for NFS4 writes
 * Unify open/create for nfs4, create should just be open with special flags

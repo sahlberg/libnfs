@@ -397,7 +397,6 @@ struct nfs_cb_data {
        void *continue_data;
        void (*free_continue_data)(void *);
        uint64_t continue_int;
-       uint8_t *buf;
         
        struct nfs_fh fh;
 

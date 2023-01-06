@@ -4472,7 +4472,6 @@ nfs3_pread_cb(struct rpc_context *rpc, int status, void *command_data,
         if (data->update_pos) {
                 data->nfsfh->offset = data->offset + count;
         }
-        //memcpy(data->buf, res->READ3res_u.resok.data.data_val, count);
 	data->cb(count, nfs, NULL, data->private_data);
 	free_nfs_cb_data(data);
 	return;
@@ -4510,19 +4509,14 @@ nfs3_pread_async_internal(struct nfs_context *nfs, struct nfsfh *nfsfh,
 	data->offset = offset;
 	data->count = (count3)count;
 	data->max_offset = data->offset;
-        data->buf = buf;
 
         nfs3_fill_READ3args(&args, nfsfh, offset, count);
-        pdu = rpc_nfs3_read_async(nfs->rpc, nfs3_pread_cb, &args, data);
+        pdu = rpc_nfs3_read_async(nfs->rpc, nfs3_pread_cb, buf, count, &args, data);
         if (pdu == NULL) {
                 nfs_set_error(nfs, "RPC error: Failed to send READ "
                               "call for %s", data->path);
                 free_nfs_cb_data(data);
                 return -1;
-        }
-        if (pdu) {
-                pdu->in.buf = buf;
-                pdu->in.len = count;
         }
 
         return 0;
