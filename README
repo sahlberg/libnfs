@@ -25,6 +25,7 @@ TODOs:
 * All rpc_nfs/nlm/... functions should return a rpc_pdu * pointer instead
   if an int to indicate success/failure. This will allow us to use
   getters/setters on the PDU that was created.
+* All high level async functions (nfs_*async) should return a rpc_pdu *
 * Make zero-copy reads work for the raw rpc_nfs3 interface
 * Make zero-copy reads work for the raw rpc_nfs4 interface
 * Make zero-copy work for NFS4 writes
