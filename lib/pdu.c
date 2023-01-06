@@ -562,6 +562,12 @@ struct rpc_pdu *rpc_find_pdu(struct rpc_context *rpc, uint32_t xid)
 	struct rpc_queue *q;
 	unsigned int hash;
 
+#ifdef HAVE_MULTITHREADING
+        if (rpc->multithreading_enabled) {
+                nfs_mt_mutex_lock(&rpc->rpc_mutex);
+        }
+#endif /* HAVE_MULTITHREADING */
+
 	/* Look up the transaction in a hash table of our requests */
 	hash = rpc_hash_xid(rpc, rpc->rm_xid[1]);
 	q = &rpc->waitpdu[hash];
@@ -584,9 +590,30 @@ struct rpc_pdu *rpc_find_pdu(struct rpc_context *rpc, uint32_t xid)
 				prev_pdu->next = pdu->next;
 			rpc->waitpdu_len--;
 		}
-                return pdu;
+                break;
         }
-        return NULL;
+
+#ifdef HAVE_MULTITHREADING
+        if (rpc->multithreading_enabled) {
+                nfs_mt_mutex_unlock(&rpc->rpc_mutex);
+        }
+#endif /* HAVE_MULTITHREADING */
+
+        return pdu;
+}
+
+int rpc_cancel_pdu(struct rpc_context *rpc, struct rpc_pdu *pdu)
+{
+        /*
+         * Use rpc_find_pdu() to locate it and remove it from the input list.
+         */
+        pdu = rpc_find_pdu(rpc, pdu->xid);
+        if (pdu) {
+                rpc_free_pdu(rpc, pdu);
+                return 0;
+        }
+
+        return -ENOENT;
 }
 
 int rpc_process_pdu(struct rpc_context *rpc, char *buf, int size)

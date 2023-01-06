@@ -271,6 +271,31 @@ EXTERN int rpc_disconnect(struct rpc_context *rpc, const char *error);
 
 
 /*
+ * All rpc_<protocol>_ functions return a struct rpc_pdu *
+ * This is to allow to cancel a pdu in flight. Beware, the pdu pointer
+ * is only valid until the callback function has completed.
+ * After the callback function has finished the pdu structure will no longer
+ * be valid.
+ * It is the responsibility of the application to make sure
+ * that the pdu pointer is not used after the callback has returned.
+ *
+ * A PDU can not be cancelled once we has started to receive it on the
+ * socket.
+ */
+/*
+ * rpc_cancel_pdu()
+ *
+ * Function returns
+ *  0 : PDU was successfully cancelled.
+ * <0 : PDU could not be cancelled.
+ *      This can happen for example if we have started to receive this
+ *      pdu on the socket but have not yet completed the callback
+ *      function.
+ */
+struct rpc_pdu;
+int rpc_cancel_pdu(struct rpc_context *rpc, struct rpc_pdu *pdu);
+        
+/*
  * PORTMAP v2 FUNCTIONS
  */
 

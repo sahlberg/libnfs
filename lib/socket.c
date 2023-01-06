@@ -494,6 +494,7 @@ rpc_read_from_socket(struct rpc_context *rpc)
                                         pdu_size = 1024;
                                 }
                                 break;
+                        case READ_UNKNOWN:
                         case READ_FRAGMENT:
                                 /* we already read 4 bytes into the buffer */
                                 rpc->inpos = 4;
@@ -555,20 +556,13 @@ rpc_read_from_socket(struct rpc_context *rpc)
                                 rpc->inpos = 0;   
                                 rpc->rm_xid[1] = ntohl(rpc->rm_xid[1]);
                                 if (!rpc->is_server_context) {
-#ifdef HAVE_MULTITHREADING
-                                        if (rpc->multithreading_enabled) {
-                                                nfs_mt_mutex_lock(&rpc->rpc_mutex);
-                                        }
-#endif /* HAVE_MULTITHREADING */
                                         rpc->pdu = rpc_find_pdu(rpc, rpc->rm_xid[1]);
-#ifdef HAVE_MULTITHREADING
-                                        if (rpc->multithreading_enabled) {
-                                                nfs_mt_mutex_unlock(&rpc->rpc_mutex);
-                                        }
-#endif /* HAVE_MULTITHREADING */
+                                        /* Unknown xid, either unsolicited
+                                         * or an xid we have cancelled
+                                         */
                                         if (rpc->pdu == NULL) {
-                                                rpc_set_error(rpc, "Received unknown XID");
-                                                return -1;
+                                                rpc->state = READ_UNKNOWN;
+                                                continue;
                                         }
                                 }
                                 continue;
@@ -577,6 +571,10 @@ rpc_read_from_socket(struct rpc_context *rpc)
                                         rpc_set_error(rpc, "Failed to queue fragment for reassembly.");
                                         return -1;
                                 }
+                                rpc->state = READ_RM;
+                                rpc->inpos  = 0;
+                                continue;
+                        case READ_UNKNOWN:
                                 rpc->state = READ_RM;
                                 rpc->inpos  = 0;
                                 continue;
