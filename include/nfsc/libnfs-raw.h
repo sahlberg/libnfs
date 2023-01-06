@@ -1992,10 +1992,10 @@ EXTERN char *nlmstat4_to_str(int stat);
  * Call NLM/NULL
  *
  * Function returns
- *  0 : The command was queued successfully. The callback will be invoked once
- *      the command completes.
- * <0 : An error occured when trying to queue the command.
- *      The callback will not be invoked.
+ *  pdu : The command was queued successfully. The callback will be invoked once
+ *        the command completes.
+ * NULL : An error occured when trying to queue the command.
+ *        The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
  * RPC_STATUS_SUCCESS : We got a successful response from the server.
@@ -2005,17 +2005,18 @@ EXTERN char *nlmstat4_to_str(int stat);
  * RPC_STATUS_CANCEL  : The command was cancelled.
  *                      data is NULL.
  */
-EXTERN int rpc_nlm4_null_async(struct rpc_context *rpc, rpc_cb cb,
-                               void *private_data);
+EXTERN struct rpc_pdu *
+rpc_nlm4_null_async(struct rpc_context *rpc, rpc_cb cb,
+                    void *private_data);
 
 /*
  * Call NLM/TEST
  *
  * Function returns
- *  0 : The command was queued successfully. The callback will be invoked once
- *      the command completes.
- * <0 : An error occured when trying to queue the command.
- *      The callback will not be invoked.
+ *  pdu : The command was queued successfully. The callback will be invoked once
+ *        the command completes.
+ * NULL : An error occured when trying to queue the command.
+ *        The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
  * RPC_STATUS_SUCCESS : We got a successful response from the server.
@@ -2026,18 +2027,19 @@ EXTERN int rpc_nlm4_null_async(struct rpc_context *rpc, rpc_cb cb,
  *                      data is NULL.
  */
 struct NLM4_TESTargs;
-EXTERN int rpc_nlm4_test_async(struct rpc_context *rpc, rpc_cb cb,
-                               struct NLM4_TESTargs *args,
-                               void *private_data);
+EXTERN struct rpc_pdu *
+rpc_nlm4_test_async(struct rpc_context *rpc, rpc_cb cb,
+                    struct NLM4_TESTargs *args,
+                    void *private_data);
 
 /*
  * Call NLM/LOCK
  *
  * Function returns
- *  0 : The command was queued successfully. The callback will be invoked once
- *      the command completes.
- * <0 : An error occured when trying to queue the command.
- *      The callback will not be invoked.
+ *  pdu : The command was queued successfully. The callback will be invoked once
+ *        the command completes.
+ * NULL : An error occured when trying to queue the command.
+ *        The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
  * RPC_STATUS_SUCCESS : We got a successful response from the server.
@@ -2048,18 +2050,19 @@ EXTERN int rpc_nlm4_test_async(struct rpc_context *rpc, rpc_cb cb,
  *                      data is NULL.
  */
 struct NLM4_LOCKargs;
-EXTERN int rpc_nlm4_lock_async(struct rpc_context *rpc, rpc_cb cb,
-                               struct NLM4_LOCKargs *args,
-                               void *private_data);
+EXTERN struct rpc_pdu *
+rpc_nlm4_lock_async(struct rpc_context *rpc, rpc_cb cb,
+                    struct NLM4_LOCKargs *args,
+                    void *private_data);
 
 /*
  * Call NLM/CANCEL
  *
  * Function returns
- *  0 : The command was queued successfully. The callback will be invoked once
- *      the command completes.
- * <0 : An error occured when trying to queue the command.
- *      The callback will not be invoked.
+ *  pdu : The command was queued successfully. The callback will be invoked once
+ *        the command completes.
+ * NULL : An error occured when trying to queue the command.
+ *        The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
  * RPC_STATUS_SUCCESS : We got a successful response from the server.
@@ -2070,18 +2073,19 @@ EXTERN int rpc_nlm4_lock_async(struct rpc_context *rpc, rpc_cb cb,
  *                      data is NULL.
  */
 struct NLM4_CANCargs;
-EXTERN int rpc_nlm4_cancel_async(struct rpc_context *rpc, rpc_cb cb,
-                                 struct NLM4_CANCargs *args,
-                                 void *private_data);
+EXTERN struct rpc_pdu *
+rpc_nlm4_cancel_async(struct rpc_context *rpc, rpc_cb cb,
+                      struct NLM4_CANCargs *args,
+                      void *private_data);
 
 /*
  * Call NLM/UNLOCK
  *
  * Function returns
- *  0 : The command was queued successfully. The callback will be invoked once
- *      the command completes.
- * <0 : An error occured when trying to queue the command.
- *      The callback will not be invoked.
+ *  pdu : The command was queued successfully. The callback will be invoked once
+ *        the command completes.
+ * NULL : An error occured when trying to queue the command.
+ *        The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
  * RPC_STATUS_SUCCESS : We got a successful response from the server.
@@ -2092,18 +2096,19 @@ EXTERN int rpc_nlm4_cancel_async(struct rpc_context *rpc, rpc_cb cb,
  *                      data is NULL.
  */
 struct NLM4_UNLOCKargs;
-EXTERN int rpc_nlm4_unlock_async(struct rpc_context *rpc, rpc_cb cb,
-                                 struct NLM4_UNLOCKargs *args,
-                                 void *private_data);
+EXTERN struct rpc_pdu *
+rpc_nlm4_unlock_async(struct rpc_context *rpc, rpc_cb cb,
+                      struct NLM4_UNLOCKargs *args,
+                      void *private_data);
 
 /*
  * Call NLM/SHARE
  *
  * Function returns
- *  0 : The command was queued successfully. The callback will be invoked once
- *      the command completes.
- * <0 : An error occured when trying to queue the command.
- *      The callback will not be invoked.
+ *  pdu : The command was queued successfully. The callback will be invoked once
+ *        the command completes.
+ * NULL : An error occured when trying to queue the command.
+ *        The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
  * RPC_STATUS_SUCCESS : We got a successful response from the server.
@@ -2114,18 +2119,19 @@ EXTERN int rpc_nlm4_unlock_async(struct rpc_context *rpc, rpc_cb cb,
  *                      data is NULL.
  */
 struct NLM4_SHAREargs;
-EXTERN int rpc_nlm4_share_async(struct rpc_context *rpc, rpc_cb cb,
-                               struct NLM4_SHAREargs *args,
-                               void *private_data);
+EXTERN struct rpc_pdu *
+rpc_nlm4_share_async(struct rpc_context *rpc, rpc_cb cb,
+                     struct NLM4_SHAREargs *args,
+                     void *private_data);
 
 /*
  * Call NLM/UNSHARE
  *
  * Function returns
- *  0 : The command was queued successfully. The callback will be invoked once
- *      the command completes.
- * <0 : An error occured when trying to queue the command.
- *      The callback will not be invoked.
+ *  pdu : The command was queued successfully. The callback will be invoked once
+ *        the command completes.
+ * NULL : An error occured when trying to queue the command.
+ *        The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
  * RPC_STATUS_SUCCESS : We got a successful response from the server.
@@ -2135,9 +2141,10 @@ EXTERN int rpc_nlm4_share_async(struct rpc_context *rpc, rpc_cb cb,
  * RPC_STATUS_CANCEL  : The command was cancelled.
  *                      data is NULL.
  */
-EXTERN int rpc_nlm4_unshare_async(struct rpc_context *rpc, rpc_cb cb,
-                                 struct NLM4_SHAREargs *args,
-                                 void *private_data);
+EXTERN struct rpc_pdu *
+rpc_nlm4_unshare_async(struct rpc_context *rpc, rpc_cb cb,
+                       struct NLM4_SHAREargs *args,
+                       void *private_data);
 
 /*
  * NSM functions
@@ -2148,10 +2155,10 @@ EXTERN char *nsmstat1_to_str(int stat);
  * Call NSM/NULL
  *
  * Function returns
- *  0 : The command was queued successfully. The callback will be invoked once
- *      the command completes.
- * <0 : An error occured when trying to queue the command.
- *      The callback will not be invoked.
+ *  pdu : The command was queued successfully. The callback will be invoked once
+ *        the command completes.
+ * NULL : An error occured when trying to queue the command.
+ *        The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
  * RPC_STATUS_SUCCESS : We got a successful response from the server.
@@ -2161,17 +2168,18 @@ EXTERN char *nsmstat1_to_str(int stat);
  * RPC_STATUS_CANCEL  : The command was cancelled.
  *                      data is NULL.
  */
-EXTERN int rpc_nsm1_null_async(struct rpc_context *rpc, rpc_cb cb,
-                               void *private_data);
+EXTERN struct rpc_pdu *
+rpc_nsm1_null_async(struct rpc_context *rpc, rpc_cb cb,
+                    void *private_data);
 
 /*
  * Call NSM/STAT
  *
  * Function returns
- *  0 : The command was queued successfully. The callback will be invoked once
- *      the command completes.
- * <0 : An error occured when trying to queue the command.
- *      The callback will not be invoked.
+ *  pdu : The command was queued successfully. The callback will be invoked once
+ *        the command completes.
+ * NULL : An error occured when trying to queue the command.
+ *        The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
  * RPC_STATUS_SUCCESS : We got a successful response from the server.
@@ -2182,18 +2190,19 @@ EXTERN int rpc_nsm1_null_async(struct rpc_context *rpc, rpc_cb cb,
  *                      data is NULL.
  */
 struct NSM1_STATargs;
-EXTERN int rpc_nsm1_stat_async(struct rpc_context *rpc, rpc_cb cb,
-                               struct NSM1_STATargs *args,
-                               void *private_data);
+EXTERN struct rpc_pdu *
+rpc_nsm1_stat_async(struct rpc_context *rpc, rpc_cb cb,
+                    struct NSM1_STATargs *args,
+                    void *private_data);
 
 /*
  * Call NSM/MON
  *
  * Function returns
- *  0 : The command was queued successfully. The callback will be invoked once
- *      the command completes.
- * <0 : An error occured when trying to queue the command.
- *      The callback will not be invoked.
+ *  pdu : The command was queued successfully. The callback will be invoked once
+ *        the command completes.
+ * NULL : An error occured when trying to queue the command.
+ *        The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
  * RPC_STATUS_SUCCESS : We got a successful response from the server.
@@ -2204,18 +2213,19 @@ EXTERN int rpc_nsm1_stat_async(struct rpc_context *rpc, rpc_cb cb,
  *                      data is NULL.
  */
 struct NSM1_MONargs;
-EXTERN int rpc_nsm1_mon_async(struct rpc_context *rpc, rpc_cb cb,
-                              struct NSM1_MONargs *args,
-                              void *private_data);
+EXTERN struct rpc_pdu *
+rpc_nsm1_mon_async(struct rpc_context *rpc, rpc_cb cb,
+                   struct NSM1_MONargs *args,
+                   void *private_data);
 
 /*
  * Call NSM/UNMON
  *
  * Function returns
- *  0 : The command was queued successfully. The callback will be invoked once
- *      the command completes.
- * <0 : An error occured when trying to queue the command.
- *      The callback will not be invoked.
+ *  pdu : The command was queued successfully. The callback will be invoked once
+ *        the command completes.
+ * NULL : An error occured when trying to queue the command.
+ *        The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
  * RPC_STATUS_SUCCESS : We got a successful response from the server.
@@ -2226,18 +2236,19 @@ EXTERN int rpc_nsm1_mon_async(struct rpc_context *rpc, rpc_cb cb,
  *                      data is NULL.
  */
 struct NSM1_UNMONargs;
-EXTERN int rpc_nsm1_unmon_async(struct rpc_context *rpc, rpc_cb cb,
-                                struct NSM1_UNMONargs *args,
-                                void *private_data);
+EXTERN struct rpc_pdu *
+rpc_nsm1_unmon_async(struct rpc_context *rpc, rpc_cb cb,
+                     struct NSM1_UNMONargs *args,
+                     void *private_data);
 
 /*
  * Call NSM/UNMONALL
  *
  * Function returns
- *  0 : The command was queued successfully. The callback will be invoked once
- *      the command completes.
- * <0 : An error occured when trying to queue the command.
- *      The callback will not be invoked.
+ *  pdu : The command was queued successfully. The callback will be invoked once
+ *        the command completes.
+ * NULL : An error occured when trying to queue the command.
+ *        The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
  * RPC_STATUS_SUCCESS : We got a successful response from the server.
@@ -2248,18 +2259,19 @@ EXTERN int rpc_nsm1_unmon_async(struct rpc_context *rpc, rpc_cb cb,
  *                      data is NULL.
  */
 struct NSM1_UNMONALLargs;
-EXTERN int rpc_nsm1_unmonall_async(struct rpc_context *rpc, rpc_cb cb,
-                                   struct NSM1_UNMONALLargs *args,
-                                   void *private_data);
+EXTERN struct rpc_pdu *
+rpc_nsm1_unmonall_async(struct rpc_context *rpc, rpc_cb cb,
+                        struct NSM1_UNMONALLargs *args,
+                        void *private_data);
 
 /*
  * Call NSM/SIMUCRASH
  *
  * Function returns
- *  0 : The command was queued successfully. The callback will be invoked once
- *      the command completes.
- * <0 : An error occured when trying to queue the command.
- *      The callback will not be invoked.
+ * pdu : The command was queued successfully. The callback will be invoked once
+ *        the command completes.
+ * NULL : An error occured when trying to queue the command.
+ *        The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
  * RPC_STATUS_SUCCESS : We got a successful response from the server.
@@ -2269,17 +2281,18 @@ EXTERN int rpc_nsm1_unmonall_async(struct rpc_context *rpc, rpc_cb cb,
  * RPC_STATUS_CANCEL  : The command was cancelled.
  *                      data is NULL.
  */
-EXTERN int rpc_nsm1_simucrash_async(struct rpc_context *rpc, rpc_cb cb,
-                                    void *private_data);
-
+EXTERN struct rpc_pdu *
+rpc_nsm1_simucrash_async(struct rpc_context *rpc, rpc_cb cb,
+                         void *private_data);
+        
 /*
  * Call NSM/NOTIFY
  *
  * Function returns
- *  0 : The command was queued successfully. The callback will be invoked once
- *      the command completes.
- * <0 : An error occured when trying to queue the command.
- *      The callback will not be invoked.
+ *  pdu : The command was queued successfully. The callback will be invoked once
+ *        the command completes.
+ * NULL : An error occured when trying to queue the command.
+ *        The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
  * RPC_STATUS_SUCCESS : We got a successful response from the server.
@@ -2290,9 +2303,10 @@ EXTERN int rpc_nsm1_simucrash_async(struct rpc_context *rpc, rpc_cb cb,
  *                      data is NULL.
  */
 struct NSM1_NOTIFYargs;
-EXTERN int rpc_nsm1_notify_async(struct rpc_context *rpc, rpc_cb cb,
-                                 struct NSM1_NOTIFYargs *args,
-                                 void *private_data);
+EXTERN struct rpc_pdu *
+rpc_nsm1_notify_async(struct rpc_context *rpc, rpc_cb cb,
+                      struct NSM1_NOTIFYargs *args,
+                      void *private_data);
 
 /*
  * NFS v4 FUNCTIONS
