@@ -429,9 +429,9 @@ static void rpc_finished_pdu(struct rpc_context *rpc)
 static int
 rpc_read_from_socket(struct rpc_context *rpc)
 {
-	uint32_t pdu_size;
+	static uint32_t pdu_size = 0;
+	static char *buf = NULL;
 	ssize_t count;
-	char *buf;
         int pos;
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
@@ -467,54 +467,58 @@ rpc_read_from_socket(struct rpc_context *rpc)
 	}
 
 	do {
-                pdu_size = 0;
-                buf = NULL;
-                switch (rpc->state) {
-                case READ_RM:
-                        /*
-                         * Read record marker,
-                         * And if this is a cleint context read the next 4 bytes
-                         * i.e. the XID on a client
-                         */
-                        pdu_size = 8;
-                        buf = (char *)&rpc->rm_xid[0];
-                        rpc->pdu = NULL;
-                        break;
-                case READ_PAYLOAD:
-                        pdu_size = rpc->rm_xid[0];
-                        buf = rpc->inbuf;
+                if (rpc->inpos == 0) {
+                        switch (rpc->state) {
+                        case READ_RM:
+                                /*
+                                 * Read record marker,
+                                 * And if this is a cleint context read the next 4 bytes
+                                 * i.e. the XID on a client
+                                 */
+                                pdu_size = 8;
+                                buf = (char *)&rpc->rm_xid[0];
+                                rpc->pdu = NULL;
+                                break;
+                        case READ_PAYLOAD:
+                                /* we already read 4 bytes into the buffer */
+                                rpc->inpos = 4;
+                                pdu_size = rpc->rm_xid[0];
+                                buf = rpc->inbuf + rpc->inpos;
 
-                        /*
-                         * If it is a READ pdu, just read part of the data
-                         * to the buffer and read the remainder directly into
-                         * the application iovec. 1024 is big enough to
-                         * "guarantee" that we get the whole onc-rpc as well
-                         * as the read3res header into the buffer.
-                         * I don't want to have to deal with reading too
-                         * little here and having to increase the limit and
-                         * restart unmarshalling from scratch.
-                         */
-                        /* We do not have rpc->pdu for server context */
-                        if (rpc->pdu && rpc->pdu->in.buf && pdu_size > 1024) {
-                                pdu_size = 1024;
+                                /*
+                                 * If it is a READ pdu, just read part of the data
+                                 * to the buffer and read the remainder directly into
+                                 * the application iovec. 1024 is big enough to
+                                 * "guarantee" that we get the whole onc-rpc as well
+                                 * as the read3res header into the buffer.
+                                 * I don't want to have to deal with reading too
+                                 * little here and having to increase the limit and
+                                 * restart unmarshalling from scratch.
+                                 */
+                                /* We do not have rpc->pdu for server context */
+                                if (rpc->pdu && rpc->pdu->in.buf && pdu_size > 1024) {
+                                        pdu_size = 1024;
+                                }
+                                break;
+                        case READ_FRAGMENT:
+                                /* we already read 4 bytes into the buffer */
+                                rpc->inpos = 4;
+                                pdu_size = rpc->rm_xid[0];
+                                buf = rpc->inbuf + rpc->inpos;
+                                break;
+                        case READ_IOVEC:
+                                buf = &rpc->pdu->in.buf[rpc->pdu->inpos];
+                                pdu_size = rpc->pdu->read_count;
+                                break;
+                        case READ_PADDING:
+                                pdu_size = rpc->rm_xid[0];
+                                buf = rpc->inbuf;
+                                break;
                         }
-                        break;
-                case READ_FRAGMENT:
-			pdu_size = rpc->rm_xid[0];
-                        buf = rpc->inbuf;
-                        break;
-                case READ_IOVEC:
-                        buf = &rpc->pdu->in.buf[rpc->pdu->inpos];
-                        pdu_size = rpc->pdu->read_count;
-                        break;
-                case READ_PADDING:
-                        pdu_size = rpc->rm_xid[0];
-                        buf = rpc->inbuf;
-                        break;
                 }
 
-		count = recv(rpc->fd, buf + rpc->inpos, pdu_size - rpc->inpos,
-                             MSG_DONTWAIT);
+                count = pdu_size - rpc->inpos;
+		count = recv(rpc->fd, buf, count, MSG_DONTWAIT);
 		if (count < 0) {
 			if (errno == EINTR || errno == EAGAIN) {
 				break;
@@ -528,7 +532,8 @@ rpc_read_from_socket(struct rpc_context *rpc)
 			return -1;
 		}
 		rpc->inpos += count;
-
+                buf += count;
+                
                 if (rpc->inpos == pdu_size) {
                         switch (rpc->state) {
                         case READ_RM:
@@ -549,7 +554,11 @@ rpc_read_from_socket(struct rpc_context *rpc)
                                 adjust_inbuf(rpc, rpc->rm_xid[0]);
                                 /* Copy the next 4 bytes into inbuf */
                                 memcpy(rpc->inbuf, &rpc->rm_xid[1], 4);
-                                rpc->inpos = 4;
+                                /* but set inpos to 0, we will update it above
+                                 * that we have already read these 4 bytes in
+                                 * PAYLOAD and FRAGMENT
+                                 */
+                                rpc->inpos = 0;   
                                 rpc->rm_xid[1] = ntohl(rpc->rm_xid[1]);
                                 if (!rpc->is_server_context) {
 #ifdef HAVE_MULTITHREADING
