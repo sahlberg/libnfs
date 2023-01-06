@@ -1750,10 +1750,10 @@ EXTERN int rquotastat_to_errno(int error);
  * Call RQUOTA1/NULL
  *
  * Function returns
- *  0 : The command was queued successfully. The callback will be invoked once
- *      the command completes.
- * <0 : An error occured when trying to queue the command.
- *      The callback will not be invoked.
+ *  pdu : The command was queued successfully. The callback will be invoked once
+ *        the command completes.
+ * NULL : An error occured when trying to queue the command.
+ *        The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
  * RPC_STATUS_SUCCESS : We got a successful response from the server.
@@ -1763,17 +1763,18 @@ EXTERN int rquotastat_to_errno(int error);
  * RPC_STATUS_CANCEL  : The command was cancelled.
  *                      data is NULL.
  */
-EXTERN int rpc_rquota1_null_async(struct rpc_context *rpc,
-                                  rpc_cb cb, void *private_data);
+EXTERN struct rpc_pdu *
+rpc_rquota1_null_async(struct rpc_context *rpc,
+                       rpc_cb cb, void *private_data);
 
 /*
  * Call RQUOTA1/GETQUOTA
  *
  * Function returns
- *  0 : The command was queued successfully. The callback will be invoked once
- *      the command completes.
- * <0 : An error occured when trying to queue the command.
- *      The callback will not be invoked.
+ *  pdu : The command was queued successfully. The callback will be invoked once
+ *        the command completes.
+ * NULL : An error occured when trying to queue the command.
+ *        The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
  * RPC_STATUS_SUCCESS : We got a successful response from the server.
@@ -1783,18 +1784,19 @@ EXTERN int rpc_rquota1_null_async(struct rpc_context *rpc,
  * RPC_STATUS_CANCEL  : The command was cancelled.
  *                      data is NULL.
  */
-EXTERN int rpc_rquota1_getquota_async(struct rpc_context *rpc, rpc_cb cb,
-                                      char *exportname, int uid,
-                                      void *private_data);
+EXTERN struct rpc_pdu *
+rpc_rquota1_getquota_async(struct rpc_context *rpc, rpc_cb cb,
+                           char *exportname, int uid,
+                           void *private_data);
 
 /*
  * Call RQUOTA1/GETACTIVEQUOTA
  *
  * Function returns
- *  0 : The command was queued successfully. The callback will be invoked once
- *      the command completes.
- * <0 : An error occured when trying to queue the command.
- *      The callback will not be invoked.
+ *  pdu : The command was queued successfully. The callback will be invoked once
+ *        the command completes.
+ * NULL : An error occured when trying to queue the command.
+ *        The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
  * RPC_STATUS_SUCCESS : We got a successful response from the server.
@@ -1804,19 +1806,20 @@ EXTERN int rpc_rquota1_getquota_async(struct rpc_context *rpc, rpc_cb cb,
  * RPC_STATUS_CANCEL  : The command was cancelled.
  *                      data is NULL.
  */
-EXTERN int rpc_rquota1_getactivequota_async(struct rpc_context *rpc, rpc_cb cb,
-                                            char *exportname, int uid,
-                                            void *private_data);
+EXTERN struct rpc_pdu *
+rpc_rquota1_getactivequota_async(struct rpc_context *rpc, rpc_cb cb,
+                                 char *exportname, int uid,
+                                 void *private_data);
 
 
 /*
  * Call RQUOTA2/NULL
  *
  * Function returns
- *  0 : The command was queued successfully. The callback will be invoked once
- *      the command completes.
- * <0 : An error occured when trying to queue the command.
- *      The callback will not be invoked.
+ *  pdu : The command was queued successfully. The callback will be invoked once
+ *        the command completes.
+ * NULL : An error occured when trying to queue the command.
+ *        The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
  * RPC_STATUS_SUCCESS : We got a successful response from the server.
@@ -1826,17 +1829,18 @@ EXTERN int rpc_rquota1_getactivequota_async(struct rpc_context *rpc, rpc_cb cb,
  * RPC_STATUS_CANCEL  : The command was cancelled.
  *                      data is NULL.
  */
-EXTERN int rpc_rquota2_null_async(struct rpc_context *rpc,
-                                  rpc_cb cb, void *private_data);
+EXTERN struct rpc_pdu *
+rpc_rquota2_null_async(struct rpc_context *rpc,
+                       rpc_cb cb, void *private_data);
 
 /*
  * Call RQUOTA2/GETQUOTA
  *
  * Function returns
- *  0 : The command was queued successfully. The callback will be invoked once
- *      the command completes.
- * <0 : An error occured when trying to queue the command.
- *      The callback will not be invoked.
+ *  pdu : The command was queued successfully. The callback will be invoked once
+ *        the command completes.
+ * NULL : An error occured when trying to queue the command.
+ *        The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
  * RPC_STATUS_SUCCESS : We got a successful response from the server.
@@ -1846,18 +1850,19 @@ EXTERN int rpc_rquota2_null_async(struct rpc_context *rpc,
  * RPC_STATUS_CANCEL  : The command was cancelled.
  *                      data is NULL.
  */
-EXTERN int rpc_rquota2_getquota_async(struct rpc_context *rpc, rpc_cb cb,
-                                      char *exportname, int type, int uid,
-                                      void *private_data);
+EXTERN struct rpc_pdu *
+rpc_rquota2_getquota_async(struct rpc_context *rpc, rpc_cb cb,
+                           char *exportname, int type, int uid,
+                           void *private_data);
 
 /*
  * Call RQUOTA2/GETACTIVEQUOTA
  *
  * Function returns
- *  0 : The command was queued successfully. The callback will be invoked once
- *      the command completes.
- * <0 : An error occured when trying to queue the command.
- *      The callback will not be invoked.
+ *  pdu : The command was queued successfully. The callback will be invoked once
+ *        the command completes.
+ * NULL : An error occured when trying to queue the command.
+ *        The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
  * RPC_STATUS_SUCCESS : We got a successful response from the server.
@@ -1867,9 +1872,10 @@ EXTERN int rpc_rquota2_getquota_async(struct rpc_context *rpc, rpc_cb cb,
  * RPC_STATUS_CANCEL  : The command was cancelled.
  *                      data is NULL.
  */
-EXTERN int rpc_rquota2_getactivequota_async(struct rpc_context *rpc, rpc_cb cb,
-                                            char *exportname, int type, int uid,
-                                            void *private_data);
+EXTERN struct rpc_pdu *
+rpc_rquota2_getactivequota_async(struct rpc_context *rpc, rpc_cb cb,
+                                 char *exportname, int type, int uid,
+                                 void *private_data);
 
 
 /*
