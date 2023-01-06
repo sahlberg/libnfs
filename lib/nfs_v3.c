@@ -4484,7 +4484,6 @@ nfs3_pread_async_internal(struct nfs_context *nfs, struct nfsfh *nfsfh,
 {
 	struct nfs_cb_data *data;
         READ3args args;
-        struct rpc_pdu *pdu;
 
         if (count > nfs_get_readmax(nfs)) {
                 count = nfs_get_readmax(nfs);
@@ -4511,8 +4510,7 @@ nfs3_pread_async_internal(struct nfs_context *nfs, struct nfsfh *nfsfh,
 	data->max_offset = data->offset;
 
         nfs3_fill_READ3args(&args, nfsfh, offset, count);
-        pdu = rpc_nfs3_read_async(nfs->rpc, nfs3_pread_cb, buf, count, &args, data);
-        if (pdu == NULL) {
+        if (rpc_nfs3_read_async(nfs->rpc, nfs3_pread_cb, buf, count, &args, data) == NULL) {
                 nfs_set_error(nfs, "RPC error: Failed to send READ "
                               "call for %s", data->path);
                 free_nfs_cb_data(data);
