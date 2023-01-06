@@ -134,6 +134,7 @@ enum input_state {
         READ_FRAGMENT = 2,
         READ_IOVEC = 3,
         READ_PADDING = 4,
+        READ_UNKNOWN = 5,
 };
 
 struct rpc_context {
