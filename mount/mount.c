@@ -49,11 +49,6 @@ int rpc_mount3_null_async(struct rpc_context *rpc, rpc_cb cb, void *private_data
 	return 0;
 }
 
-int rpc_mount_null_async(struct rpc_context *rpc, rpc_cb cb, void *private_data)
-{
-	return rpc_mount3_null_async(rpc, cb, private_data);
-}
-
 int rpc_mount3_mnt_async(struct rpc_context *rpc, rpc_cb cb, char *export, void *private_data)
 {
 	struct rpc_pdu *pdu;
@@ -78,11 +73,6 @@ int rpc_mount3_mnt_async(struct rpc_context *rpc, rpc_cb cb, char *export, void 
 	return 0;
 }
 
-int rpc_mount_mnt_async(struct rpc_context *rpc, rpc_cb cb, char *export, void *private_data)
-{
-	return rpc_mount3_mnt_async(rpc, cb, export, private_data);
-}
-
 int rpc_mount3_dump_async(struct rpc_context *rpc, rpc_cb cb, void *private_data)
 {
 	struct rpc_pdu *pdu;
@@ -99,11 +89,6 @@ int rpc_mount3_dump_async(struct rpc_context *rpc, rpc_cb cb, void *private_data
 	}
 
 	return 0;
-}
-
-int rpc_mount_dump_async(struct rpc_context *rpc, rpc_cb cb, void *private_data)
-{
-	return rpc_mount3_dump_async(rpc, cb, private_data);
 }
 
 int rpc_mount3_umnt_async(struct rpc_context *rpc, rpc_cb cb, char *export, void *private_data)
@@ -130,11 +115,6 @@ int rpc_mount3_umnt_async(struct rpc_context *rpc, rpc_cb cb, char *export, void
 	return 0;
 }
 
-int rpc_mount_umnt_async(struct rpc_context *rpc, rpc_cb cb, char *export, void *private_data)
-{
-	return rpc_mount3_umnt_async(rpc, cb, export, private_data);
-}
-
 int rpc_mount3_umntall_async(struct rpc_context *rpc, rpc_cb cb, void *private_data)
 {
 	struct rpc_pdu *pdu;
@@ -153,11 +133,6 @@ int rpc_mount3_umntall_async(struct rpc_context *rpc, rpc_cb cb, void *private_d
 	return 0;
 }
 
-int rpc_mount_umntall_async(struct rpc_context *rpc, rpc_cb cb, void *private_data)
-{
-	return rpc_mount3_umntall_async(rpc, cb, private_data);
-}
-
 int rpc_mount3_export_async(struct rpc_context *rpc, rpc_cb cb, void *private_data)
 {
 	struct rpc_pdu *pdu;
@@ -174,11 +149,6 @@ int rpc_mount3_export_async(struct rpc_context *rpc, rpc_cb cb, void *private_da
 	}
 
 	return 0;
-}
-
-int rpc_mount_export_async(struct rpc_context *rpc, rpc_cb cb, void *private_data)
-{
-	return rpc_mount3_export_async(rpc, cb, private_data);
 }
 
 char *mountstat3_to_str(int st)

@@ -631,8 +631,6 @@ EXTERN int mountstat3_to_errno(int error);
  */
 EXTERN int rpc_mount3_null_async(struct rpc_context *rpc,
                                  rpc_cb cb, void *private_data);
-EXTERN int rpc_mount_null_async(struct rpc_context *rpc,
-                                rpc_cb cb, void *private_data);
 
 /*
  * Call MOUNT3/MNT
@@ -653,8 +651,6 @@ EXTERN int rpc_mount_null_async(struct rpc_context *rpc,
  */
 EXTERN int rpc_mount3_mnt_async(struct rpc_context *rpc, rpc_cb cb,
                                 char *exportname, void *private_data);
-EXTERN int rpc_mount_mnt_async(struct rpc_context *rpc, rpc_cb cb,
-                               char *exportname, void *private_data);
 
 /*
  * Call MOUNT3/DUMP
@@ -675,8 +671,6 @@ EXTERN int rpc_mount_mnt_async(struct rpc_context *rpc, rpc_cb cb,
  */
 EXTERN int rpc_mount3_dump_async(struct rpc_context *rpc,
                                  rpc_cb cb, void *private_data);
-EXTERN int rpc_mount_dump_async(struct rpc_context *rpc,
-                                rpc_cb cb, void *private_data);
 
 /*
  * Call MOUNT3/UMNT
@@ -698,9 +692,6 @@ EXTERN int rpc_mount_dump_async(struct rpc_context *rpc,
 EXTERN int rpc_mount3_umnt_async(struct rpc_context *rpc, rpc_cb cb,
                                  char *exportname,
                                  void *private_data);
-EXTERN int rpc_mount_umnt_async(struct rpc_context *rpc, rpc_cb cb,
-                                char *exportname,
-                                void *private_data);
 
 /*
  * Call MOUNT3/UMNTALL
@@ -721,8 +712,6 @@ EXTERN int rpc_mount_umnt_async(struct rpc_context *rpc, rpc_cb cb,
  */
 EXTERN int rpc_mount3_umntall_async(struct rpc_context *rpc,
                                     rpc_cb cb, void *private_data);
-EXTERN int rpc_mount_umntall_async(struct rpc_context *rpc,
-                                   rpc_cb cb, void *private_data);
 
 /*
  * Call MOUNT3/EXPORT
@@ -743,8 +732,6 @@ EXTERN int rpc_mount_umntall_async(struct rpc_context *rpc,
  */
 EXTERN int rpc_mount3_export_async(struct rpc_context *rpc,
                                    rpc_cb cb, void *private_data);
-EXTERN int rpc_mount_export_async(struct rpc_context *rpc,
-                                  rpc_cb cb, void *private_data);
 
 /*
  * MOUNT v1 FUNCTIONS (Used with NFSv2)

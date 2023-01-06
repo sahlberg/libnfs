@@ -159,12 +159,6 @@ rpc_pmap3_callit_async
 rpc_pmap3_gettime_async
 rpc_pmap3_uaddr2taddr_async
 rpc_pmap3_taddr2uaddr_async
-rpc_mount_null_async
-rpc_mount_mnt_async
-rpc_mount_dump_async
-rpc_mount_umnt_async
-rpc_mount_umntall_async
-rpc_mount_export_async
 rpc_mount1_null_async
 rpc_mount1_mnt_async
 rpc_mount1_dump_async
