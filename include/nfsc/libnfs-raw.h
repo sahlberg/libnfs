@@ -1030,6 +1030,7 @@ rpc_nfs3_access_async(struct rpc_context *rpc, rpc_cb cb,
 struct READ3args;
 EXTERN struct rpc_pdu *
 rpc_nfs3_read_async(struct rpc_context *rpc, rpc_cb cb,
+                    void *buf, size_t count,
                     struct READ3args *args,
                     void *private_data);
 
