@@ -960,7 +960,7 @@ nfs3_mount_3_cb(struct rpc_context *rpc, int status, void *command_data,
 		md_item_cb->md_cb = md_cb;
 
 		if (rpc_mount3_mnt_async(rpc, nfs3_mount_4_cb,
-					 res->ex_dir, md_item_cb) != 0) {
+					 res->ex_dir, md_item_cb) == NULL) {
                         nfs_set_error(nfs, "%s: %s",
                                       __FUNCTION__, nfs_get_error(nfs));
 			if (md_cb->wait_count == 0) {
@@ -1051,7 +1051,7 @@ nfs3_mount_2_cb(struct rpc_context *rpc, int status, void *command_data,
                nfs->nfsi->rootfh.len);
 
 	if (nfs->nfsi->auto_traverse_mounts) {
-		if (rpc_mount3_export_async(rpc, nfs3_mount_3_cb, data) != 0) {
+		if (rpc_mount3_export_async(rpc, nfs3_mount_3_cb, data) == NULL) {
                         nfs_set_error(nfs, "%s: %s", __FUNCTION__,
                                       nfs_get_error(nfs));
 			data->cb(-ENOMEM, nfs, nfs_get_error(nfs),
@@ -1104,7 +1104,7 @@ nfs3_mount_1_cb(struct rpc_context *rpc, int status, void *command_data,
 	}
 
 	if (rpc_mount3_mnt_async(rpc, nfs3_mount_2_cb, nfs->nfsi->export,
-                                 data) != 0) {
+                                 data) == NULL) {
                 nfs_set_error(nfs, "%s: %s.", __FUNCTION__, nfs_get_error(nfs));
 		data->cb(-ENOMEM, nfs, nfs_get_error(nfs), data->private_data);
 		free_nfs_cb_data(data);
@@ -1198,7 +1198,7 @@ nfs3_umount_1_cb(struct rpc_context *rpc, int status, void *command_data,
 	}
 
 	if (rpc_mount3_umnt_async(rpc, nfs3_umount_2_cb, nfs->nfsi->export,
-                                 data) != 0) {
+                                 data) == NULL) {
                 nfs_set_error(nfs, "%s: %s.", __FUNCTION__, nfs_get_error(nfs));
 		data->cb(-ENOMEM, nfs, nfs_get_error(nfs), data->private_data);
 		free_nfs_cb_data(data);

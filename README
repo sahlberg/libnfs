@@ -18,6 +18,7 @@ Major changes:
 * rpc_nfs3_ functions have changed signatures and return a rpc_pdu *
 * rpc_pmap?_ functions have changed signatures and return a rpc_pdu *
 * rpc_rquota?_ functions have changed signatures and return a rpc_pdu *
+* rpc_mount?_ functions have changed signatures and return a rpc_pdu *
 * rpc_nfsacl_ functions have changed signatures and return a rpc_pdu *
 
 TODOs:

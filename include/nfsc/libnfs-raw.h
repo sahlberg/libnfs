@@ -616,10 +616,10 @@ EXTERN int mountstat3_to_errno(int error);
  * Call MOUNT3/NULL
  *
  * Function returns
- *  0 : The command was queued successfully. The callback will be invoked once
- *      the command completes.
- * <0 : An error occured when trying to queue the command.
- *      The callback will not be invoked.
+ *  pdu : The command was queued successfully. The callback will be invoked once
+ *        the command completes.
+ * NULL : An error occured when trying to queue the command.
+ *        The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
  * RPC_STATUS_SUCCESS : We got a successful response from the server.
@@ -629,17 +629,18 @@ EXTERN int mountstat3_to_errno(int error);
  * RPC_STATUS_CANCEL  : The command was cancelled.
  *                      data is NULL.
  */
-EXTERN int rpc_mount3_null_async(struct rpc_context *rpc,
-                                 rpc_cb cb, void *private_data);
+EXTERN struct rpc_pdu *
+rpc_mount3_null_async(struct rpc_context *rpc,
+                      rpc_cb cb, void *private_data);
 
 /*
  * Call MOUNT3/MNT
  *
  * Function returns
- *  0 : The command was queued successfully. The callback will be invoked once
- *      the command completes.
- * <0 : An error occured when trying to queue the command.
- *      The callback will not be invoked.
+ *  pdu : The command was queued successfully. The callback will be invoked once
+ *        the command completes.
+ * NULL : An error occured when trying to queue the command.
+ *        The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
  * RPC_STATUS_SUCCESS : We got a successful response from the server.
@@ -649,17 +650,18 @@ EXTERN int rpc_mount3_null_async(struct rpc_context *rpc,
  * RPC_STATUS_CANCEL  : The command was cancelled.
  *                      data is NULL.
  */
-EXTERN int rpc_mount3_mnt_async(struct rpc_context *rpc, rpc_cb cb,
-                                char *exportname, void *private_data);
+EXTERN struct rpc_pdu *
+rpc_mount3_mnt_async(struct rpc_context *rpc, rpc_cb cb,
+                     char *exportname, void *private_data);
 
 /*
  * Call MOUNT3/DUMP
  *
  * Function returns
- *  0 : The command was queued successfully. The callback will be invoked once
- *      the command completes.
- * <0 : An error occured when trying to queue the command.
- *      The callback will not be invoked.
+ *  pdu : The command was queued successfully. The callback will be invoked once
+ *        the command completes.
+ * NULL : An error occured when trying to queue the command.
+ *        The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
  * RPC_STATUS_SUCCESS : We got a successful response from the server.
@@ -669,17 +671,18 @@ EXTERN int rpc_mount3_mnt_async(struct rpc_context *rpc, rpc_cb cb,
  * RPC_STATUS_CANCEL  : The command was cancelled.
  *                      data is NULL.
  */
-EXTERN int rpc_mount3_dump_async(struct rpc_context *rpc,
-                                 rpc_cb cb, void *private_data);
+EXTERN struct rpc_pdu *
+rpc_mount3_dump_async(struct rpc_context *rpc,
+                      rpc_cb cb, void *private_data);
 
 /*
  * Call MOUNT3/UMNT
  *
  * Function returns
- *  0 : The command was queued successfully. The callback will be invoked once
- *      the command completes.
- * <0 : An error occured when trying to queue the command.
- *      The callback will not be invoked.
+ *  pdu : The command was queued successfully. The callback will be invoked once
+ *        the command completes.
+ * NULL : An error occured when trying to queue the command.
+ *        The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
  * RPC_STATUS_SUCCESS : We got a successful response from the server.
@@ -689,18 +692,19 @@ EXTERN int rpc_mount3_dump_async(struct rpc_context *rpc,
  * RPC_STATUS_CANCEL  : The command was cancelled.
  *                      data is NULL.
  */
-EXTERN int rpc_mount3_umnt_async(struct rpc_context *rpc, rpc_cb cb,
-                                 char *exportname,
-                                 void *private_data);
+EXTERN struct rpc_pdu *
+rpc_mount3_umnt_async(struct rpc_context *rpc, rpc_cb cb,
+                      char *exportname,
+                      void *private_data);
 
 /*
  * Call MOUNT3/UMNTALL
  *
  * Function returns
- *  0 : The command was queued successfully. The callback will be invoked once
- *      the command completes.
- * <0 : An error occured when trying to queue the command.
- *      The callback will not be invoked.
+ *  pdu : The command was queued successfully. The callback will be invoked once
+ *        the command completes.
+ * NULL : An error occured when trying to queue the command.
+ *        The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
  * RPC_STATUS_SUCCESS : We got a successful response from the server.
@@ -710,17 +714,18 @@ EXTERN int rpc_mount3_umnt_async(struct rpc_context *rpc, rpc_cb cb,
  * RPC_STATUS_CANCEL  : The command was cancelled.
  *                      data is NULL.
  */
-EXTERN int rpc_mount3_umntall_async(struct rpc_context *rpc,
-                                    rpc_cb cb, void *private_data);
+EXTERN struct rpc_pdu *
+rpc_mount3_umntall_async(struct rpc_context *rpc,
+                         rpc_cb cb, void *private_data);
 
 /*
  * Call MOUNT3/EXPORT
  *
  * Function returns
- *  0 : The command was queued successfully. The callback will be invoked once
- *      the command completes.
- * <0 : An error occured when trying to queue the command.
- *      The callback will not be invoked.
+ *  pdu : The command was queued successfully. The callback will be invoked once
+ *        the command completes.
+ * NULL : An error occured when trying to queue the command.
+ *        The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
  * RPC_STATUS_SUCCESS : We got a successful response from the server.
@@ -730,8 +735,9 @@ EXTERN int rpc_mount3_umntall_async(struct rpc_context *rpc,
  * RPC_STATUS_CANCEL  : The command was cancelled.
  *                      data is NULL.
  */
-EXTERN int rpc_mount3_export_async(struct rpc_context *rpc,
-                                   rpc_cb cb, void *private_data);
+EXTERN struct rpc_pdu *
+rpc_mount3_export_async(struct rpc_context *rpc,
+                        rpc_cb cb, void *private_data);
 
 /*
  * MOUNT v1 FUNCTIONS (Used with NFSv2)
@@ -740,10 +746,10 @@ EXTERN int rpc_mount3_export_async(struct rpc_context *rpc,
  * Call MOUNT1/NULL
  *
  * Function returns
- *  0 : The command was queued successfully. The callback will be invoked once
- *      the command completes.
- * <0 : An error occured when trying to queue the command.
- *      The callback will not be invoked.
+ *  pdu : The command was queued successfully. The callback will be invoked once
+ *        the command completes.
+ * NULL : An error occured when trying to queue the command.
+ *        The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
  * RPC_STATUS_SUCCESS : We got a successful response from the server.
@@ -753,17 +759,18 @@ EXTERN int rpc_mount3_export_async(struct rpc_context *rpc,
  * RPC_STATUS_CANCEL  : The command was cancelled.
  *                      data is NULL.
  */
-EXTERN int rpc_mount1_null_async(struct rpc_context *rpc,
-                                 rpc_cb cb, void *private_data);
+EXTERN struct rpc_pdu *
+rpc_mount1_null_async(struct rpc_context *rpc,
+                      rpc_cb cb, void *private_data);
 
 /*
  * Call MOUNT1/MNT
  *
  * Function returns
- *  0 : The command was queued successfully. The callback will be invoked once
- *      the command completes.
- * <0 : An error occured when trying to queue the command.
- *      The callback will not be invoked.
+ *  pdu : The command was queued successfully. The callback will be invoked once
+ *        the command completes.
+ * NULL : An error occured when trying to queue the command.
+ *        The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
  * RPC_STATUS_SUCCESS : We got a successful response from the server.
@@ -773,18 +780,19 @@ EXTERN int rpc_mount1_null_async(struct rpc_context *rpc,
  * RPC_STATUS_CANCEL  : The command was cancelled.
  *                      data is NULL.
  */
-EXTERN int rpc_mount1_mnt_async(struct rpc_context *rpc, rpc_cb cb,
-                                char *exportname,
-                                void *private_data);
+EXTERN struct rpc_pdu *
+rpc_mount1_mnt_async(struct rpc_context *rpc, rpc_cb cb,
+                     char *exportname,
+                     void *private_data);
 
 /*
  * Call MOUNT1/DUMP
  *
  * Function returns
- *  0 : The command was queued successfully. The callback will be invoked once
- *      the command completes.
- * <0 : An error occured when trying to queue the command.
- *      The callback will not be invoked.
+ *  pdu : The command was queued successfully. The callback will be invoked once
+ *        the command completes.
+ * NULL : An error occured when trying to queue the command.
+ *        The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
  * RPC_STATUS_SUCCESS : We got a successful response from the server.
@@ -794,17 +802,18 @@ EXTERN int rpc_mount1_mnt_async(struct rpc_context *rpc, rpc_cb cb,
  * RPC_STATUS_CANCEL  : The command was cancelled.
  *                      data is NULL.
  */
-EXTERN int rpc_mount1_dump_async(struct rpc_context *rpc,
-                                 rpc_cb cb, void *private_data);
+EXTERN struct rpc_pdu *
+rpc_mount1_dump_async(struct rpc_context *rpc,
+                      rpc_cb cb, void *private_data);
 
 /*
  * Call MOUNT1/UMNT
  *
  * Function returns
- *  0 : The command was queued successfully. The callback will be invoked once
- *      the command completes.
- * <0 : An error occured when trying to queue the command.
- *      The callback will not be invoked.
+ *  pdu : The command was queued successfully. The callback will be invoked once
+ *        the command completes.
+ * NULL : An error occured when trying to queue the command.
+ *        The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
  * RPC_STATUS_SUCCESS : We got a successful response from the server.
@@ -814,18 +823,19 @@ EXTERN int rpc_mount1_dump_async(struct rpc_context *rpc,
  * RPC_STATUS_CANCEL  : The command was cancelled.
  *                      data is NULL.
  */
-EXTERN int rpc_mount1_umnt_async(struct rpc_context *rpc, rpc_cb cb,
-                                 char *exportname,
-                                 void *private_data);
+EXTERN struct rpc_pdu *
+rpc_mount1_umnt_async(struct rpc_context *rpc, rpc_cb cb,
+                      char *exportname,
+                      void *private_data);
 
 /*
  * Call MOUNT1/UMNTALL
  *
  * Function returns
- *  0 : The command was queued successfully. The callback will be invoked once
- *      the command completes.
- * <0 : An error occured when trying to queue the command.
- *      The callback will not be invoked.
+ *  pdu : The command was queued successfully. The callback will be invoked once
+ *        the command completes.
+ * NULL : An error occured when trying to queue the command.
+ *        The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
  * RPC_STATUS_SUCCESS : We got a successful response from the server.
@@ -835,17 +845,18 @@ EXTERN int rpc_mount1_umnt_async(struct rpc_context *rpc, rpc_cb cb,
  * RPC_STATUS_CANCEL  : The command was cancelled.
  *                      data is NULL.
  */
-EXTERN int rpc_mount1_umntall_async(struct rpc_context *rpc,
-                                    rpc_cb cb, void *private_data);
+EXTERN struct rpc_pdu *
+rpc_mount1_umntall_async(struct rpc_context *rpc,
+                         rpc_cb cb, void *private_data);
 
 /*
  * Call MOUNT1/EXPORT
  *
  * Function returns
- *  0 : The command was queued successfully. The callback will be invoked once
- *      the command completes.
- * <0 : An error occured when trying to queue the command.
- *      The callback will not be invoked.
+ *  pdu : The command was queued successfully. The callback will be invoked once
+ *        the command completes.
+ * NULL : An error occured when trying to queue the command.
+ *        The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
  * RPC_STATUS_SUCCESS : We got a successful response from the server.
@@ -855,8 +866,9 @@ EXTERN int rpc_mount1_umntall_async(struct rpc_context *rpc,
  * RPC_STATUS_CANCEL  : The command was cancelled.
  *                      data is NULL.
  */
-EXTERN int rpc_mount1_export_async(struct rpc_context *rpc,
-                                   rpc_cb cb, void *private_data);
+EXTERN struct rpc_pdu *
+rpc_mount1_export_async(struct rpc_context *rpc,
+                        rpc_cb cb, void *private_data);
 
 
 /*
