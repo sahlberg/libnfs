@@ -13,6 +13,7 @@ Major changes:
 * The rpc_nfs_* functions have been removed. Instead use the rpc_nfs3_*
   functions. These functions have a much more consistent API (they all take a
   struct FUNC3args argument)
+* The rpc_mount_* functions have been removed. Instead use the rpc_mount3_*
 * rpc_nfs2_ functions have changed signatures and return a rpc_pdu *
 * rpc_nfs3_ functions have changed signatures and return a rpc_pdu *
 * rpc_pmap2_ functions have changed signatures and return a rpc_pdu *

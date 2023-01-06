@@ -242,7 +242,7 @@ void mount_export_cb(struct rpc_context *rpc, int status, void *data, void *priv
 	      export = export->ex_next;
 	}
 	printf("Send MOUNT/MNT command for %s\n", client->export);
-	if (rpc_mount_mnt_async(rpc, mount_mnt_cb, client->export, client) != 0) {
+	if (rpc_mount3_mnt_async(rpc, mount_mnt_cb, client->export, client) != 0) {
 		printf("Failed to send mnt request\n");
 		exit(10);
 	}
@@ -263,7 +263,7 @@ void mount_null_cb(struct rpc_context *rpc, int status, void *data, void *privat
 
 	printf("Got reply from server for MOUNT/NULL procedure.\n");
 	printf("Send MOUNT/EXPORT command\n");
-	if (rpc_mount_export_async(rpc, mount_export_cb, client) != 0) {
+	if (rpc_mount3_export_async(rpc, mount_export_cb, client) != 0) {
 		printf("Failed to send export request\n");
 		exit(10);
 	}
@@ -280,7 +280,7 @@ void mount_connect_cb(struct rpc_context *rpc, int status, void *data _U_, void 
 
 	printf("Connected to RPC.MOUNTD on %s:%d\n", client->server, client->mount_port);
 	printf("Send NULL request to check if RPC.MOUNTD is actually running\n");
-	if (rpc_mount_null_async(rpc, mount_null_cb, client) != 0) {
+	if (rpc_mount3_null_async(rpc, mount_null_cb, client) != 0) {
 		printf("Failed to send null request\n");
 		exit(10);
 	}
