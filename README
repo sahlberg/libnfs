@@ -20,6 +20,8 @@ Major changes:
 * rpc_rquota?_ functions have changed signatures and return a rpc_pdu *
 * rpc_mount?_ functions have changed signatures and return a rpc_pdu *
 * rpc_nfsacl_ functions have changed signatures and return a rpc_pdu *
+* rpc_nlm_ functions have changed signatures and return a rpc_pdu *
+* rpc_nsm1_ functions have changed signatures and return a rpc_pdu *
 
 TODOs:
 * Re-add readahead/pagecache but implement it above the nfsv3/4 layers so
@@ -33,6 +35,7 @@ TODOs:
 * Make zero-copy reads work for the raw rpc_nfs4 interface
 * Make zero-copy work for NFS4 writes
 * Unify open/create for nfs4, create should just be open with special flags
+* New state for when after reading rm/xid can not find a matching pdu (cancelled pdu?)
 
 =====
 
