@@ -86,7 +86,7 @@ void rquota_connect_cb(struct rpc_context *rpc, int status, void *data _U_, void
 
 	printf("Connected to RPC.RQUOTAD on %s:%d\n", client->server, client->rquota_port);
 	printf("Send GETQUOTA request for uid 100\n");
-	if (rpc_rquota1_getquota_async(rpc, rquota_getquota_cb, EXPORT, 100, client) != 0) {
+	if (rpc_rquota1_getquota_async(rpc, rquota_getquota_cb, EXPORT, 100, client) == NULL) {
 		printf("Failed to send getquota request\n");
 		exit(10);
 	}
