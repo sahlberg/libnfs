@@ -136,7 +136,7 @@ void acl_null_cb(struct rpc_context *rpc _U_, int status, void *data, void *priv
 
 	args.dir = client->rootfh;
 	args.mask = NFSACL_MASK_ACL_ENTRY|NFSACL_MASK_ACL_COUNT|NFSACL_MASK_ACL_DEFAULT_ENTRY|NFSACL_MASK_ACL_DEFAULT_COUNT;
-	if (rpc_nfsacl_getacl_async(rpc, acl_getacl_cb, &args, client) != 0) {
+	if (rpc_nfsacl_getacl_async(rpc, acl_getacl_cb, &args, client) == NULL) {
 		printf("Failed to send getacl request\n");
 		exit(10);
 	}
@@ -162,7 +162,7 @@ void nfs_fsinfo_cb(struct rpc_context *rpc _U_, int status, void *data, void *pr
 	printf("Write Max:%d\n", (int)res->FSINFO3res_u.resok.wtmax);
 
 	printf("Send NFSACL/NULL request\n");
-	if (rpc_nfsacl_null_async(rpc, acl_null_cb, client) != 0) {
+	if (rpc_nfsacl_null_async(rpc, acl_null_cb, client) == NULL) {
 		printf("Failed to send acl/null request\n");
 		exit(10);
 	}

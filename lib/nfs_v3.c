@@ -3825,7 +3825,7 @@ nfs3_getacl_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_cb cb,
         args.dir.data.data_len = nfsfh->fh.len;
         args.dir.data.data_val = nfsfh->fh.val;
 	args.mask = NFSACL_MASK_ACL_ENTRY|NFSACL_MASK_ACL_COUNT|NFSACL_MASK_ACL_DEFAULT_ENTRY|NFSACL_MASK_ACL_DEFAULT_COUNT;
-	if (rpc_nfsacl_getacl_async(nfs->rpc, nfs3_getacl_cb, &args, data) != 0) {
+	if (rpc_nfsacl_getacl_async(nfs->rpc, nfs3_getacl_cb, &args, data) == NULL) {
 		data->cb(-ENOMEM, nfs, nfs_get_error(nfs),
                          data->private_data);
 		free_nfs_cb_data(data);
