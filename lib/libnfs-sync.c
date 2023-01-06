@@ -2482,7 +2482,7 @@ send_nfsd_probes(struct rpc_context *rpc, INTERFACE_INFO *InterfaceList,
       return -1;
     }
 
-    if (rpc_pmap2_callit_async(rpc, MOUNT_PROGRAM, 2, 0, NULL, 0, callit_cb, data) < 0)
+    if (rpc_pmap2_callit_async(rpc, MOUNT_PROGRAM, 2, 0, NULL, 0, callit_cb, data) == NULL)
     {
       return -1;
     }
@@ -2628,7 +2628,7 @@ send_nfsd_probes(struct rpc_context *rpc, struct ifconf *ifc,
 		}
 
 		if (rpc_pmap2_callit_async(rpc, MOUNT_PROGRAM, 2, 0, NULL, 0,
-                                           callit_cb, data) < 0) {
+                                           callit_cb, data) == NULL) {
 			return -1;
 		}
 	}
