@@ -2387,6 +2387,29 @@ rpc_nfs4_compound_async2(struct rpc_context *rpc, rpc_cb cb,
                          size_t alloc_hint);
 
 /*
+ * Call NFS4/COMPOUND for read operations
+
+ * Function returns
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
+ *
+ * When the callback is invoked, status indicates the result:
+ * RPC_STATUS_SUCCESS : We got a successful response from the server.
+ *                      data is COMPOUND4res *.
+ * RPC_STATUS_ERROR   : The command failed with an error.
+ *                      data is the error string.
+ * RPC_STATUS_CANCEL  : The command was cancelled.
+ *                      data is NULL.
+ */
+EXTERN struct rpc_pdu *
+rpc_nfs4_read_async(struct rpc_context *rpc, rpc_cb cb,
+                    void *buf, size_t count,
+                    struct COMPOUND4args *args,
+                    void *private_data);
+        
+/*
  * Call <generic>/NULL
  * Function returns
  *  0 : The command was queued successfully. The callback will be invoked once

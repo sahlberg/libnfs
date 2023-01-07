@@ -1,0 +1,15 @@
+uint32_t
+zdr_READ4resok (ZDR *zdrs, READ4resok *objp)
+{
+	uint32_t pos;
+	
+	 if (!zdr_bool (zdrs, &objp->eof))
+		 return FALSE;
+	 pos = zdr_getpos(zdrs);
+	 if (!zdr_uint32_t (zdrs, &objp->data.data_len))
+		 return FALSE;
+	 zdr_setpos(zdrs, pos);
+
+	return TRUE;
+}
+

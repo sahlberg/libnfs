@@ -2766,7 +2766,6 @@ nfs4_pread_cb(struct rpc_context *rpc, int status, void *command_data,
         }
         rres = &res->resarray.resarray_val[i].nfs_resop4_u.opread.READ4res_u.resok4;
 
-        memcpy(data->filler.blob1.val, rres->data.data_val, rres->data.data_len);
         if (data->rw_data.update_pos) {
                 nfsfh->offset = data->rw_data.offset + rres->data.data_len;
         }
@@ -2799,9 +2798,6 @@ nfs4_pread_async_internal(struct nfs_context *nfs, struct nfsfh *nfsfh,
 
         data->filler.blob0.val  = nfsfh;
         data->filler.blob0.free = NULL;
-        data->filler.blob1.val  = buf;
-        data->filler.blob1.len  = count;
-        data->filler.blob1.free = NULL;
         data->rw_data.offset = offset;
         data->rw_data.update_pos = update_pos;
         
@@ -2814,8 +2810,8 @@ nfs4_pread_async_internal(struct nfs_context *nfs, struct nfsfh *nfsfh,
         args.argarray.argarray_len = i;
         args.argarray.argarray_val = op;
 
-        if (rpc_nfs4_compound_async(nfs->rpc, nfs4_pread_cb, &args,
-                                    data) == NULL) {
+        if (rpc_nfs4_read_async(nfs->rpc, nfs4_pread_cb, buf, count, &args,
+                                data) == NULL) {
                 free_nfs4_cb_data(data);
                 return -1;
         }

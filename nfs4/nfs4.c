@@ -244,3 +244,37 @@ struct rpc_pdu *rpc_nfs4_compound_async(struct rpc_context *rpc, rpc_cb cb,
 {
         return rpc_nfs4_compound_async2(rpc, cb, args, private_data, 0);
 }
+
+struct rpc_pdu *rpc_nfs4_read_async(struct rpc_context *rpc, rpc_cb cb,
+                                    void *buf, size_t count,
+                                    struct COMPOUND4args *args,
+                                    void *private_data)
+{
+	struct rpc_pdu *pdu;
+
+	pdu = rpc_allocate_pdu2(rpc, NFS4_PROGRAM, NFS_V4, NFSPROC4_COMPOUND,
+                               cb, private_data, (zdrproc_t)zdr_COMPOUND4res,
+                                sizeof(COMPOUND4res), 0);
+	if (pdu == NULL) {
+		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu for "
+                              "NFS4/COMPOUND call");
+		return NULL;
+	}
+
+	if (zdr_COMPOUND4args(&pdu->zdr,  args) == 0) {
+		rpc_set_error(rpc, "ZDR error: Failed to encode COMPOUND4args");
+		rpc_free_pdu(rpc, pdu);
+		return NULL;
+	}
+
+        pdu->in.buf = buf;
+        pdu->in.len = count;
+
+	if (rpc_queue_pdu(rpc, pdu) != 0) {
+		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for "
+                              "NFS4/COMPOUND4 call");
+		return NULL;
+	}
+
+	return pdu;
+}
