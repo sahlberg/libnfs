@@ -2246,7 +2246,7 @@ zdr_READ4args (ZDR *zdrs, READ4args *objp)
 }
 
 uint32_t
-zdr_READ4resok (ZDR *zdrs, READ4resok *objp)
+zzdr_READ4resok (ZDR *zdrs, READ4resok *objp)
 {
 	
 
@@ -4580,3 +4580,18 @@ zdr_CB_COMPOUND4res (ZDR *zdrs, CB_COMPOUND4res *objp)
 		 return FALSE;
 	return TRUE;
 }
+uint32_t
+zdr_READ4resok (ZDR *zdrs, READ4resok *objp)
+{
+	uint32_t pos;
+	
+	 if (!zdr_bool (zdrs, &objp->eof))
+		 return FALSE;
+	 pos = zdr_getpos(zdrs);
+	 if (!zdr_uint32_t (zdrs, &objp->data.data_len))
+		 return FALSE;
+	 zdr_setpos(zdrs, pos);
+
+	return TRUE;
+}
+

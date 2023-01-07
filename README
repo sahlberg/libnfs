@@ -33,7 +33,6 @@ TODOs:
 * Fragmentation is currently broken
 * All high level async functions (nfs_*async) should return a handle so that
   they can be cancelled.
-* Make zero-copy reads work for the raw rpc_nfs4 interface
 * Make zero-copy work for NFS4 writes
 * Unify open/create for nfs4, create should just be open with special flags
 

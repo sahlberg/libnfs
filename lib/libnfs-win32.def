@@ -214,7 +214,9 @@ rpc_nfs3_symlink_async
 rpc_nfs3_rename_async
 rpc_nfs3_link_async
 rpc_nfs4_compound_async
+rpc_nfs4_compound_async2
 rpc_nfs4_null_async
+rpc_nfs4_read_async
 rpc_nlm4_null_async
 rpc_nlm4_test_async
 rpc_nlm4_lock_async

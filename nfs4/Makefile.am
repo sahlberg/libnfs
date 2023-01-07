@@ -38,3 +38,5 @@ compile_rpc:
 -e "s/bool_t/uint32_t/g" \
 -e "s/register int32_t \*buf;//" \
 -e "s/int i;//" >> libnfs-raw-nfs4.c
+	sed -z -i -e "s/zdr_READ4resok/zzdr_READ4resok/" libnfs-raw-nfs4.c
+	cat libnfs-raw-nfs4.c.fragment >>libnfs-raw-nfs4.c

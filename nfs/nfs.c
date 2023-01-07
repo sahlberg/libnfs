@@ -284,13 +284,14 @@ rpc_nfs3_read_async(struct rpc_context *rpc, rpc_cb cb,
 		return NULL;
 	}
 
+        pdu->in.buf = buf;
+        pdu->in.len = count;
+ 
 	if (rpc_queue_pdu(rpc, pdu) != 0) {
 		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for NFS3/READ call");
 		return NULL;
 	}
 
-        pdu->in.buf = buf;
-        pdu->in.len = count;
 	return pdu;
 }
 
