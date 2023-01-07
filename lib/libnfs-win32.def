@@ -17,8 +17,6 @@ nfs_close_async
 nfs_closedir
 nfs_creat
 nfs_creat_async
-nfs_create
-nfs_create_async
 nfs_destroy_context
 nfs_fchmod
 nfs_fchmod_async
@@ -202,7 +200,7 @@ rpc_nfs3_commit_async
 rpc_nfs3_setattr_async
 rpc_nfs3_mkdir_async
 rpc_nfs3_rmdir_async
-rpc_nfs3_create_async
+rpc_nfs3_creat_async
 rpc_nfs3_mknod_async
 rpc_nfs3_remove_async
 rpc_nfs3_readdir_async

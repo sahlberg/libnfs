@@ -481,8 +481,8 @@ int nfs3_chown_async_internal(struct nfs_context *nfs, const char *path,
                               nfs_cb cb, void *private_data);
 int nfs3_close_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_cb cb,
                      void *private_data);
-int nfs3_create_async(struct nfs_context *nfs, const char *path, int flags,
-                      int mode, nfs_cb cb, void *private_data);
+int nfs3_creat_async(struct nfs_context *nfs, const char *path,
+                     int mode, nfs_cb cb, void *private_data);
 int nfs3_fchmod_async(struct nfs_context *nfs, struct nfsfh *nfsfh, int mode,
                       nfs_cb cb, void *private_data);
 int nfs3_fchown_async(struct nfs_context *nfs, struct nfsfh *nfsfh, int uid,
@@ -559,8 +559,8 @@ int nfs4_chown_async_internal(struct nfs_context *nfs, const char *path,
                               nfs_cb cb, void *private_data);
 int nfs4_close_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_cb cb,
                      void *private_data);
-int nfs4_create_async(struct nfs_context *nfs, const char *path, int flags,
-                      int mode, nfs_cb cb, void *private_data);
+int nfs4_creat_async(struct nfs_context *nfs, const char *path,
+                     int mode, nfs_cb cb, void *private_data);
 int nfs4_fchmod_async(struct nfs_context *nfs, struct nfsfh *nfsfh, int mode,
                       nfs_cb cb, void *private_data);
 int nfs4_fchown_async(struct nfs_context *nfs, struct nfsfh *nfsfh, int uid,

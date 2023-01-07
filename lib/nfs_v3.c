@@ -3366,8 +3366,8 @@ struct create_cb_data {
 };
 
 int
-nfs3_create_async(struct nfs_context *nfs, const char *path, int flags,
-                  int mode, nfs_cb cb, void *private_data)
+nfs3_creat_async(struct nfs_context *nfs, const char *path,
+                 int mode, nfs_cb cb, void *private_data)
 {
         return nfs3_open_async(nfs, path, O_CREAT|O_WRONLY|O_TRUNC,
                                mode, cb, private_data);

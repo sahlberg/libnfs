@@ -1331,28 +1331,21 @@ nfs_rmdir_async(struct nfs_context *nfs, const char *path, nfs_cb cb,
 }
 
 int
-nfs_create_async(struct nfs_context *nfs, const char *path, int flags,
-                  int mode, nfs_cb cb, void *private_data)
+nfs_creat_async(struct nfs_context *nfs, const char *path,
+                int mode, nfs_cb cb, void *private_data)
 {
 	switch (nfs->nfsi->version) {
         case NFS_V3:
-                return nfs3_create_async(nfs, path, flags, mode,
-                                         cb, private_data);
+                return nfs3_creat_async(nfs, path, mode,
+                                        cb, private_data);
         case NFS_V4:
-                return nfs4_create_async(nfs, path, flags, mode,
-                                         cb, private_data);
+                return nfs4_creat_async(nfs, path, mode,
+                                        cb, private_data);
         default:
                 nfs_set_error(nfs, "%s does not support NFSv%d",
                               __FUNCTION__, nfs->nfsi->version);
                 return -1;
         }
-}
-
-int
-nfs_creat_async(struct nfs_context *nfs, const char *path, int mode, nfs_cb cb,
-                void *private_data)
-{
-	return nfs_create_async(nfs, path, 0, mode, cb, private_data);
 }
 
 int
