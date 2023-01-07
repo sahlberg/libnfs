@@ -197,9 +197,9 @@ open_file(const char *url, int flags)
 			return NULL;
 		}
 	} else {
-		if (nfs_create(file_context->nfs, file_context->url->file,
-			       flags, 0660,
-			       &file_context->nfsfh) != 0) {
+		if (nfs_creat(file_context->nfs, file_context->url->file,
+			      0660,
+			      &file_context->nfsfh) != 0) {
  			fprintf(stderr, "Failed to creat file %s: %s\n",
 				       file_context->url->file,
 				       nfs_get_error(file_context->nfs));
