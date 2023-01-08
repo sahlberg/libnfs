@@ -34,7 +34,6 @@ TODOs:
 * Fragmentation is currently broken
 * All high level async functions (nfs_*async) should return a handle so that
   they can be cancelled.
-* Make zero-copy work for NFS4 writes
 
 =====
 

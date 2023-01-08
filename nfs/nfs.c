@@ -35,8 +35,6 @@
 #include "libnfs-private.h"
 #include "libnfs-raw-nfs.h"
 
-uint32_t zero_padding;
-
 char *nfsstat3_to_str(int error)
 {
 	switch (error) {
@@ -321,6 +319,7 @@ struct rpc_pdu *rpc_nfs3_write_async(struct rpc_context *rpc, rpc_cb cb,
 {
 	struct rpc_pdu *pdu;
         int start;
+        static uint32_t zero_padding;
 
 	pdu = rpc_allocate_pdu2(rpc, NFS_PROGRAM, NFS_V3, NFS3_WRITE, cb, private_data, (zdrproc_t)zdr_WRITE3res, sizeof(WRITE3res), 0);
 	if (pdu == NULL) {

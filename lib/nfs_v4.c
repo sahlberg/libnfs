@@ -3018,8 +3018,8 @@ nfs4_pwrite_async_internal(struct nfs_context *nfs, struct nfsfh *nfsfh,
         args.argarray.argarray_len = i;
         args.argarray.argarray_val = op;
 
-        if (rpc_nfs4_compound_async2(nfs->rpc, nfs4_pwrite_cb, &args,
-                                    data, count) == NULL) {
+        if (rpc_nfs4_write_async(nfs->rpc, nfs4_pwrite_cb, buf, count,
+                                 &args, data) == NULL) {
                 nfs_set_error(nfs, "PWRITE "
                         "failed: %s", rpc_get_error(nfs->rpc));
                 free_nfs4_cb_data(data);
