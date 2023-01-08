@@ -2705,7 +2705,7 @@ zdr_stable_how4 (ZDR *zdrs, stable_how4 *objp)
 }
 
 uint32_t
-zdr_WRITE4args (ZDR *zdrs, WRITE4args *objp)
+zzdr_WRITE4args (ZDR *zdrs, WRITE4args *objp)
 {
 	
 
@@ -4595,3 +4595,14 @@ zdr_READ4resok (ZDR *zdrs, READ4resok *objp)
 	return TRUE;
 }
 
+uint32_t
+zdr_WRITE4args (ZDR *zdrs, WRITE4args *objp)
+{
+	 if (!zdr_stateid4 (zdrs, &objp->stateid))
+		 return FALSE;
+	 if (!zdr_offset4 (zdrs, &objp->offset))
+		 return FALSE;
+	 if (!zdr_stable_how4 (zdrs, &objp->stable))
+		 return FALSE;
+	return TRUE;
+}

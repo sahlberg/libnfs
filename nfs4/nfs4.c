@@ -278,3 +278,72 @@ struct rpc_pdu *rpc_nfs4_read_async(struct rpc_context *rpc, rpc_cb cb,
 
 	return pdu;
 }
+
+struct rpc_pdu *rpc_nfs4_write_async(struct rpc_context *rpc, rpc_cb cb,
+                                     const void *buf, size_t count,
+                                     struct COMPOUND4args *args,
+                                     void *private_data)
+{
+	struct rpc_pdu *pdu;
+        int start;
+        uint32_t len;
+        static uint32_t zero_padding;
+ 
+	pdu = rpc_allocate_pdu2(rpc, NFS4_PROGRAM, NFS_V4, NFSPROC4_COMPOUND,
+                               cb, private_data, (zdrproc_t)zdr_COMPOUND4res,
+                                sizeof(COMPOUND4res), 0);
+	if (pdu == NULL) {
+		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu for "
+                              "NFS4/COMPOUND call");
+		return NULL;
+	}
+
+        start = zdr_getpos(&pdu->zdr);
+
+	if (zdr_COMPOUND4args(&pdu->zdr,  args) == 0) {
+		rpc_set_error(rpc, "ZDR error: Failed to encode COMPOUND4args");
+		rpc_free_pdu(rpc, pdu);
+		return NULL;
+	}
+
+        /* Add an iovector for the COMPOUND4/.../WRITE4 header */
+        if (rpc_add_iovector(rpc, &pdu->out, &pdu->outdata.data[start + 4],
+                             zdr_getpos(&pdu->zdr) - start, NULL) < 0) {
+		rpc_free_pdu(rpc, pdu);
+		return NULL;
+        }
+
+        /* Add an iovector for the length of the byte/array blob */
+        start = zdr_getpos(&pdu->zdr);
+        len = count;
+        zdr_u_int(&pdu->zdr, &len);
+        if (rpc_add_iovector(rpc, &pdu->out, &pdu->outdata.data[start + 4],
+                             4, NULL) < 0) {
+		rpc_free_pdu(rpc, pdu);
+		return NULL;
+        }
+
+        /* Add an iovector for the data itself */
+        if (rpc_add_iovector(rpc, &pdu->out, buf, count, NULL) < 0) {
+		rpc_free_pdu(rpc, pdu);
+		return NULL;
+        }
+
+        /* We may need to pad this to 4 byte boundary */
+        if (count & 0x03) {
+                if (rpc_add_iovector(rpc, &pdu->out, (char *)&zero_padding,
+                                     4 - count & 0x03,
+                                     NULL) < 0) {
+                        rpc_free_pdu(rpc, pdu);
+                        return NULL;
+                }
+        }
+
+	if (rpc_queue_pdu(rpc, pdu) != 0) {
+		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for "
+                              "NFS4/COMPOUND4 call");
+		return NULL;
+	}
+
+	return pdu;
+}

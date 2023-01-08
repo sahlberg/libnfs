@@ -2362,6 +2362,7 @@ rpc_nfs4_null_async(struct rpc_context *rpc, rpc_cb cb,
 
 /*
  * Call NFS4/COMPOUND
+ *
  * Function returns
  *  pdu : The command was queued successfully. The callback will be invoked once
  *        the command completes.
@@ -2375,6 +2376,7 @@ rpc_nfs4_null_async(struct rpc_context *rpc, rpc_cb cb,
  *                      data is the error string.
  * RPC_STATUS_CANCEL  : The command was cancelled.
  *                      data is NULL.
+ * This function can NOT be used for compounds that contain OP_READ or OP_WRITE.
  */
 struct COMPOUND4args;
 EXTERN struct rpc_pdu *
@@ -2397,6 +2399,7 @@ rpc_nfs4_compound_async(struct rpc_context *rpc, rpc_cb cb,
  *                      data is the error string.
  * RPC_STATUS_CANCEL  : The command was cancelled.
  *                      data is NULL.
+ * This function can NOT be used for compounds that contain OP_READ or OP_WRITE.
  */
 struct COMPOUND4args;
 EXTERN struct rpc_pdu *
@@ -2421,12 +2424,41 @@ rpc_nfs4_compound_async2(struct rpc_context *rpc, rpc_cb cb,
  *                      data is the error string.
  * RPC_STATUS_CANCEL  : The command was cancelled.
  *                      data is NULL.
+ * If the compound contains OP_READ you must use this function and not
+ * rpc_nfs4_compound_async()
+ * The OP_READ must be the last operation in the compound.
  */
 EXTERN struct rpc_pdu *
 rpc_nfs4_read_async(struct rpc_context *rpc, rpc_cb cb,
                     void *buf, size_t count,
                     struct COMPOUND4args *args,
                     void *private_data);
+
+/*
+ * Call NFS4/COMPOUND for write operations
+ *
+ * Function returns
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
+ *
+ * When the callback is invoked, status indicates the result:
+ * RPC_STATUS_SUCCESS : We got a successful response from the server.
+ *                      data is COMPOUND4res *.
+ * RPC_STATUS_ERROR   : The command failed with an error.
+ *                      data is the error string.
+ * RPC_STATUS_CANCEL  : The command was cancelled.
+ *                      data is NULL.
+ * If the compound contains OP_WRITE you must use this function and not
+ * rpc_nfs4_compound_async()
+ * The OP_WRITE must be the last operation in the compound.
+ */
+EXTERN struct rpc_pdu *
+rpc_nfs4_write_async(struct rpc_context *rpc, rpc_cb cb,
+                     const void *buf, size_t count,
+                     struct COMPOUND4args *args,
+                     void *private_data);
         
 /*
  * Call <generic>/NULL
