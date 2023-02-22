@@ -146,3 +146,23 @@ jobs:
             mkdir build
             cmake -B build
             make --directory build install
+
+  build-ps2-ee:
+    name: PS2 EE build
+
+    runs-on: ubuntu-latest
+    container: ps2dev/ps2dev:latest
+    steps:
+    - name: Install dependencies
+      run: |
+        apk add build-base git zip gawk python3 py3-pip bash
+
+    - name: git checkout
+      uses: actions/checkout@v3
+
+    - name: make -f Makefile.PS2_EE
+      run: |
+        cd ps2_ee
+        make -f Makefile.PS2_EE clean
+        make -f Makefile.PS2_EE
+
