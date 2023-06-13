@@ -1,3 +1,22 @@
+NOTE
+The master branch is currently in maintenance only.
+New developments are now happening in the libnfs-next-gen branch.
+That branch now supports zero-copy reads which will greatly improve
+performance on read-intensive workloads as it eliminates the memcpy()
+
+Those changes required a change to the API and since changing the read
+API will basically break the API for virtually all applications I
+decided to proceed to do all other API breaking changes that libnfs needed
+as well.
+Including changing the function signature for all raw RPC function which now
+allows applications to cancel commands that are in flight.
+
+Please consider using libnfs-next-gen for new projects going forward.
+This branch may be merged back into libnfs in a new major version of the
+library or it may become a separate project.
+=======
+
+
 LIBNFS is a client library for accessing NFS shares over a network.
 
 LIBNFS offers three different APIs, for different use :
