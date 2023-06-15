@@ -457,7 +457,9 @@ rpc_read_from_socket(struct rpc_context *rpc)
                 case READ_PAYLOAD:
                 case READ_FRAGMENT:
 			pdu_size = rpc->record_marker;
-                        adjust_inbuf(rpc, pdu_size);
+                        if (adjust_inbuf(rpc, pdu_size) != 0) {
+                            return -1;
+                        }
                         buf = rpc->inbuf + rpc->inpos;
                 }
 
