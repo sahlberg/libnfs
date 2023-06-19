@@ -1029,6 +1029,10 @@ rpc_reconnect_requeue(struct rpc_context *rpc)
 		rpc->outqueue.head->out.num_done = 0;
 	}
 
+	rpc->inpos = 0;
+	rpc->record_marker = 0;
+	rpc->state = READ_RM;
+
 	/* Socket is closed so we will not get any replies to any commands
 	 * in flight. Move them all over from the waitpdu queue back to the
          * out queue.
