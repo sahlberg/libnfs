@@ -460,10 +460,10 @@ rpc_read_from_socket(struct rpc_context *rpc)
                         if (adjust_inbuf(rpc, pdu_size) != 0) {
                             return -1;
                         }
-                        buf = rpc->inbuf + rpc->inpos;
+                        buf = rpc->inbuf;
                 }
 
-		count = recv(rpc->fd, buf, pdu_size - rpc->inpos,
+		count = recv(rpc->fd, buf + rpc->inpos, pdu_size - rpc->inpos,
                              MSG_DONTWAIT);
 		if (count < 0) {
 			if (errno == EINTR || errno == EAGAIN) {
