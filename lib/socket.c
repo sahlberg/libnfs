@@ -959,17 +959,17 @@ rpc_disconnect(struct rpc_context *rpc, const char *error)
 {
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
+	if (rpc->fd != -1) {
+		close(rpc->fd);
+		rpc->fd  = -1;
+	}
+
 	/* Do not re-disconnect if we are already disconnected */
 	if (!rpc->is_connected) {
 		return 0;
 	}
 	/* Disable autoreconnect */
 	rpc_set_autoreconnect(rpc, 0);
-
-	if (rpc->fd != -1) {
-		close(rpc->fd);
-	}
-	rpc->fd  = -1;
 
 	rpc->is_connected = 0;
 
