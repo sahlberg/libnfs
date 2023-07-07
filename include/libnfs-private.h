@@ -139,6 +139,8 @@ struct rpc_context {
         uint32_t num_hashes;
 	struct rpc_queue *waitpdu;
 	uint32_t waitpdu_len;
+	uint32_t max_waitpdu_len;
+
 #ifdef HAVE_MULTITHREADING
         int multithreading_enabled;
         libnfs_mutex_t rpc_mutex;

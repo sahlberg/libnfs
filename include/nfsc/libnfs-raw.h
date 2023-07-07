@@ -93,8 +93,27 @@ EXTERN int rpc_service(struct rpc_context *rpc, int revents);
  * Returns the number of commands in-flight. Can be used by the application
  * to check if there are any more responses we are awaiting from the server
  * or if the connection is completely idle.
+ * The number returned includes the commands on the output queue and the
+ * commands waiting from a response from the server.
  */
 EXTERN int rpc_queue_length(struct rpc_context *rpc);
+
+/*
+ * Returns the number of commands awaiting from the server.
+ * Can be used by the application to check if there are any
+ * more responses we are awaiting from the server
+ * or if the connection is completely idle.
+ */
+EXTERN int rpc_get_num_awaiting(struct rpc_context *rpc);
+
+/*
+ * Used to limit the total number of commands awaiting from the server.
+ * By default there is no limit, all commands will be sent as soon as possible.
+ * If a limit is set and it is reached then new commands will be kept on
+ * the output queue until the total number of commands in-flight goes below
+ * the limit again.
+ */
+EXTERN void rpc_set_awaiting_limit(struct rpc_context *rpc, int limit);
 
 /*
  * Set which UID/GIDs to use in the authenticator.

@@ -147,6 +147,8 @@ struct rpc_context *rpc_init_context(void)
 	rpc->gid = getgid();
 #endif
 	rpc_reset_queue(&rpc->outqueue);
+	/* Default is no limit */
+	rpc->max_waitpdu_len = 0;
 
 	/* Default is no timeout */
 	rpc->timeout = -1;

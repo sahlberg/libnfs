@@ -255,8 +255,11 @@ rpc_write_to_socket(struct rpc_context *rpc)
 #endif /* HAVE_MULTITHREADING */
 
         /* Write several pdus at once */
-	while ((pdu = rpc->outqueue.head) != NULL) {
+        while ((rpc->max_waitpdu_len == 0 ||
+                rpc->max_waitpdu_len > rpc->waitpdu_len) &&
+               (pdu = rpc->outqueue.head) != NULL) {
                 int niov = 0;
+                uint32_t num_pdus = 0;
                 char *last_buf = NULL;
                 ssize_t count;
 
@@ -289,8 +292,11 @@ rpc_write_to_socket(struct rpc_context *rpc)
                                 }
                         }
 
+                        num_pdus++;
                         pdu = pdu->next;
-                } while (pdu != NULL && niov < RPC_MAX_VECTORS);
+                } while ((rpc->max_waitpdu_len == 0 ||
+                          rpc->max_waitpdu_len > (rpc->waitpdu_len + num_pdus)) &&
+                         pdu != NULL && niov < RPC_MAX_VECTORS);
 
                 count = writev(rpc->fd, iov, niov);
                 if (count == -1) {
@@ -1198,6 +1204,18 @@ rpc_queue_length(struct rpc_context *rpc)
 #endif /* HAVE_MULTITHREADING */
 
 	return i;
+}
+
+int rpc_get_num_awaiting(struct rpc_context *rpc)
+{
+	return rpc->waitpdu_len;
+}
+
+void rpc_set_awaiting_limit(struct rpc_context *rpc, int limit)
+{
+	assert(rpc->magic == RPC_CONTEXT_MAGIC);
+
+	rpc->max_waitpdu_len = limit;
 }
 
 void
