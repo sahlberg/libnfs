@@ -11,9 +11,20 @@ jobs:
       - uses: actions/checkout@main
       - run: sudo apt install -y cmake
       - run: mkdir build
-      - run: cmake -B build
+      - run: cmake -DENABLE_EXAMPLES=ON -DENABLE_TESTS=ON -B build
       - run: make --directory build
       - run: sudo make --directory build install
+      - run: |
+          sudo apt-get install libtool-bin nfs-kernel-server valgrind
+          sudo service nfs-kernel-server stop
+          echo 10 | sudo tee /proc/fs/nfsd/nfsv4leasetime
+          echo 10 | sudo tee /proc/fs/nfsd/nfsv4gracetime
+          sudo service nfs-kernel-server start
+
+          echo "Testing with NFSv3"
+          make VERSION=3 --directory build test
+          echo "Testing with NFSv4"
+          make VERSION=4 --directory build test
 
   Linux-Musl-QEMU:
     runs-on: ubuntu-latest
