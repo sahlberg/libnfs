@@ -24,6 +24,12 @@ if(EVENT_LIBARY)
   list(APPEND EXTRA_LIBRARIES ${EVENT_LIBARY})
 endif()
 
+include_directories(../mount
+  ../nfs
+  ../nfs4
+  ../portmap
+  ../rquota)
+
 foreach(TARGET ${EXAMPLES})
   add_executable(${TARGET} ${TARGET}.c)
   target_link_libraries(${TARGET} nfs ${EXTRA_LIBRARIES})
