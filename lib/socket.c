@@ -607,6 +607,7 @@ rpc_timeout_scan(struct rpc_context *rpc)
 			if (!q->head) {
 				q->tail = NULL;
 			}
+			rpc->waitpdu_len--;
                         // qqq move to a temporary queue and process after
                         // we drop the mutex
 			rpc_set_error(rpc, "command timed out");
