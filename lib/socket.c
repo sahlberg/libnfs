@@ -816,16 +816,19 @@ rpc_connect_sockaddr_async(struct rpc_context *rpc)
 	 */
 	{
 		struct sockaddr_storage ss;
-                struct sockaddr_in *sin;
-                struct sockaddr_in6 *sin6;
+        struct sockaddr_in *sin;
+#if !defined(PS3_PPU) && !defined(PS2_EE)		
+        struct sockaddr_in6 *sin6;
+#endif
 		static int portOfs = 0;
 		const int firstPort = 512; /* >= 512 according to Sun docs */
 		const int portCount = IPPORT_RESERVED - firstPort;
 		int startOfs, port, rc;
 
-                sin  = (struct sockaddr_in *)&ss;
-                sin6 = (struct sockaddr_in6 *)&ss;
-
+        sin  = (struct sockaddr_in *)&ss;
+#if !defined(PS3_PPU) && !defined(PS2_EE)        
+		sin6 = (struct sockaddr_in6 *)&ss;
+#endif
 		if (portOfs == 0) {
 			portOfs = rpc_current_time() % 400;
 		}
