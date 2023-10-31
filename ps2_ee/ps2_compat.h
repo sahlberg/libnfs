@@ -28,6 +28,7 @@
 #include <sys/time.h>
 #include <sys/utime.h>
 #include <ps2ip.h>
+#include <unistd.h>
 
 typedef unsigned long int fsfilcnt_t;
 
@@ -35,9 +36,6 @@ typedef unsigned long int fsfilcnt_t;
 #define major(a) 0
 #define minor(a) 0
 #define O_NOFOLLOW 0
-#define X_OK 1
-#define W_OK 2
-#define R_OK 4
 
 struct statvfs {
         unsigned long int f_bsize;
@@ -59,6 +57,7 @@ struct statvfs {
 
 #define write(a,b,c) lwip_write(a,b,c)
 #define read(a,b,c) lwip_read(a,b,c)
+#undef gethostbyname /* PS2SDK has gethostbyname defined */
 #define gethostbyname(a) lwip_gethostbyname(a)
 #define close(a) lwip_close(a)
 
