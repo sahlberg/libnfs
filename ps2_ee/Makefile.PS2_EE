@@ -10,7 +10,7 @@ EE_OBJS = ../lib/init.o ../lib/pdu.o ../lib/socket.o \
 	../mount/mount.o ../mount/libnfs-raw-mount.o \
 	../portmap/portmap.o ../portmap/libnfs-raw-portmap.o \
 	../nfs/nfs.o ../nfs/libnfs-raw-nfs.o \
-	../nfs4/nfs4.o ../nfs4/libnfs-raw-nfs4.o
+	../nfs4/nfs4.o ../nfs4/libnfs-raw-nfs4.o ../nfs/nfsacl.o
 
 all: $(EE_LIB) $(EE_OBJS)
 
