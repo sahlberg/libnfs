@@ -26,54 +26,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
-int getaddrinfo(const char *node, const char*service,
-                const struct addrinfo *hints,
-                struct addrinfo **res)
-{
-        struct sockaddr_in *sin;
-        struct hostent *host;
-        int i, ip[4];
-
-        sin = malloc(sizeof(struct sockaddr_in));
-        sin->sin_len = sizeof(struct sockaddr_in);
-        sin->sin_family=AF_INET;
-
-        /* Some error checking would be nice */
-        if (sscanf(node, "%d.%d.%d.%d", ip, ip+1, ip+2, ip+3) == 4) {
-                for (i = 0; i < 4; i++) {
-                        ((char *)&sin->sin_addr.s_addr)[i] = ip[i];
-                }
-        } else {
-                host = gethostbyname(node);
-                if (host == NULL) {
-                        return -1;
-                }
-                if (host->h_addrtype != AF_INET) {
-                        return -2;
-                }
-                memcpy(&sin->sin_addr.s_addr, host->h_addr, 4);
-        }
-
-        sin->sin_port=0;
-        if (service) {
-                sin->sin_port=htons(atoi(service));
-        } 
-
-        *res = malloc(sizeof(struct addrinfo));
-
-        (*res)->ai_family = AF_INET;
-        (*res)->ai_addrlen = sizeof(struct sockaddr_in);
-        (*res)->ai_addr = (struct sockaddr *)sin;
-
-        return 0;
-}
-
-void freeaddrinfo(struct addrinfo *res)
-{
-        free(res->ai_addr);
-        free(res);
-}
+#include "ps2_compat.h"
 
 int getnameinfo(const struct sockaddr *addr, socklen_t addrlen,
                 char *host, socklen_t hostlen,
