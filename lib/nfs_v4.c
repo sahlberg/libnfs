@@ -2902,7 +2902,8 @@ nfs4_readlink_cb(struct rpc_context *rpc, int status, void *command_data,
 
         rlresok = &res->resarray.resarray_val[i].nfs_resop4_u.opreadlink.READLINK4res_u.resok4;
 
-        target = strdup(rlresok->link.utf8string_val);
+        target = strndup(rlresok->link.utf8string_val,
+                         rlresok->link.utf8string_len);
         if (target == NULL) {
                 data->cb(-ENOMEM, nfs, "Failed to allocate memory",
                          data->private_data);
