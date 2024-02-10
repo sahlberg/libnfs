@@ -112,206 +112,148 @@ int nfsstat3_to_errno(int error)
 /*
  * NFSv3
  */
-int rpc_nfs3_null_async(struct rpc_context *rpc, rpc_cb cb, void *private_data)
+struct rpc_pdu *
+rpc_nfs3_null_task(struct rpc_context *rpc, rpc_cb cb, void *private_data)
 {
 	struct rpc_pdu *pdu;
 
 	pdu = rpc_allocate_pdu(rpc, NFS_PROGRAM, NFS_V3, NFS3_NULL, cb, private_data, (zdrproc_t)zdr_void, 0);
 	if (pdu == NULL) {
 		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu for NFS3/NULL call");
-		return -1;
+		return NULL;
 	}
 
 	if (rpc_queue_pdu(rpc, pdu) != 0) {
 		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for NFS3/NULL call");
-		return -2;
+		return NULL;
 	}
 
-	return 0;
+	return pdu;
 }
 
-int rpc_nfs_null_async(struct rpc_context *rpc, rpc_cb cb, void *private_data)
-{
-	return rpc_nfs3_null_async(rpc, cb, private_data);
-}
-
-int rpc_nfs3_getattr_async(struct rpc_context *rpc, rpc_cb cb, struct GETATTR3args *args, void *private_data)
+struct rpc_pdu *
+rpc_nfs3_getattr_task(struct rpc_context *rpc, rpc_cb cb, struct GETATTR3args *args, void *private_data)
 {
 	struct rpc_pdu *pdu;
 
 	pdu = rpc_allocate_pdu(rpc, NFS_PROGRAM, NFS_V3, NFS3_GETATTR, cb, private_data, (zdrproc_t)zdr_GETATTR3res, sizeof(GETATTR3res));
 	if (pdu == NULL) {
 		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu for NFS3/GETATTR call");
-		return -1;
+		return NULL;
 	}
 
 	if (zdr_GETATTR3args(&pdu->zdr, args) == 0) {
 		rpc_set_error(rpc, "ZDR error: Failed to encode GETATTR3args");
 		rpc_free_pdu(rpc, pdu);
-		return -2;
+		return NULL;
 	}
 
 	if (rpc_queue_pdu(rpc, pdu) != 0) {
 		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for NFS3/GETATTR call");
-		return -3;
+		return NULL;
 	}
 
-	return 0;
+	return pdu;
 }
 
-int rpc_nfs_getattr_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh, void *private_data)
-{
-	GETATTR3args args;
-
-	memset(&args, 0, sizeof(GETATTR3args));
-	args.object.data.data_len = fh->data.data_len; 
-	args.object.data.data_val = fh->data.data_val; 
-
-	return rpc_nfs3_getattr_async(rpc, cb, &args, private_data);
-}
-
-int rpc_nfs3_pathconf_async(struct rpc_context *rpc, rpc_cb cb, struct PATHCONF3args *args, void *private_data)
+struct rpc_pdu *
+rpc_nfs3_pathconf_task(struct rpc_context *rpc, rpc_cb cb, struct PATHCONF3args *args, void *private_data)
 {
 	struct rpc_pdu *pdu;
 
 	pdu = rpc_allocate_pdu(rpc, NFS_PROGRAM, NFS_V3, NFS3_PATHCONF, cb, private_data, (zdrproc_t)zdr_PATHCONF3res, sizeof(PATHCONF3res));
 	if (pdu == NULL) {
 		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu for NFS3/PATHCONF call");
-		return -1;
+		return NULL;
 	}
 
 	if (zdr_PATHCONF3args(&pdu->zdr, args) == 0) {
 		rpc_set_error(rpc, "ZDR error: Failed to encode PATHCONF3args");
 		rpc_free_pdu(rpc, pdu);
-		return -2;
+		return NULL;
 	}
 
 	if (rpc_queue_pdu(rpc, pdu) != 0) {
 		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for NFS3/PATHCONF call");
-		return -3;
+		return NULL;
 	}
 
-	return 0;
+	return pdu;
 }
 
-int rpc_nfs_pathconf_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh, void *private_data)
-{
-	PATHCONF3args args;
-
-	memset(&args, 0, sizeof(PATHCONF3args));
-	args.object.data.data_len = fh->data.data_len; 
-	args.object.data.data_val = fh->data.data_val; 
-
-	return rpc_nfs3_pathconf_async(rpc, cb, &args, private_data);
-}
-
-int rpc_nfs3_lookup_async(struct rpc_context *rpc, rpc_cb cb, struct LOOKUP3args *args, void *private_data)
+struct rpc_pdu *
+rpc_nfs3_lookup_task(struct rpc_context *rpc, rpc_cb cb, struct LOOKUP3args *args, void *private_data)
 {
 	struct rpc_pdu *pdu;
 
 	pdu = rpc_allocate_pdu(rpc, NFS_PROGRAM, NFS_V3, NFS3_LOOKUP, cb, private_data, (zdrproc_t)zdr_LOOKUP3res, sizeof(LOOKUP3res));
 	if (pdu == NULL) {
 		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu for NFS3/LOOKUP call");
-		return -1;
+		return NULL;
 	}
 
 	if (zdr_LOOKUP3args(&pdu->zdr, args) == 0) {
 		rpc_set_error(rpc, "ZDR error: Failed to encode LOOKUP3args");
 		rpc_free_pdu(rpc, pdu);
-		return -2;
+		return NULL;
 	}
 
 	if (rpc_queue_pdu(rpc, pdu) != 0) {
 		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for NFS3/LOOKUP call");
-		return -3;
+		return NULL;
 	}
 
-	return 0;
+	return pdu;
 }
 
-int rpc_nfs_lookup_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh, char *name, void *private_data)
-{
-	LOOKUP3args args;
-
-	memset(&args, 0, sizeof(LOOKUP3args));
-	args.what.dir.data.data_len = fh->data.data_len; 
-	args.what.dir.data.data_val = fh->data.data_val; 
-	args.what.name              = name;
-
-	return rpc_nfs3_lookup_async(rpc, cb, &args, private_data);
-}
-
-int rpc_nfs3_access_async(struct rpc_context *rpc, rpc_cb cb, struct ACCESS3args *args, void *private_data)
+struct rpc_pdu *
+rpc_nfs3_access_task(struct rpc_context *rpc, rpc_cb cb, struct ACCESS3args *args, void *private_data)
 {
 	struct rpc_pdu *pdu;
 
 	pdu = rpc_allocate_pdu(rpc, NFS_PROGRAM, NFS_V3, NFS3_ACCESS, cb, private_data, (zdrproc_t)zdr_ACCESS3res, sizeof(ACCESS3res));
 	if (pdu == NULL) {
 		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu for NFS3/ACCESS call");
-		return -1;
+		return NULL;
 	}
 
 	if (zdr_ACCESS3args(&pdu->zdr, args) == 0) {
 		rpc_set_error(rpc, "ZDR error: Failed to encode ACCESS3args");
 		rpc_free_pdu(rpc, pdu);
-		return -2;
+		return NULL;
 	}
 
 	if (rpc_queue_pdu(rpc, pdu) != 0) {
 		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for NFS3/ACCESS call");
-		return -3;
+		return NULL;
 	}
 
-	return 0;
+	return pdu;
 }
 
-int rpc_nfs_access_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh, int access, void *private_data)
-{
-	ACCESS3args args;
-
-	memset(&args, 0, sizeof(ACCESS3args));
-	args.object.data.data_len = fh->data.data_len;
-	args.object.data.data_val = fh->data.data_val;
-	args.access = access;
-
-	return rpc_nfs3_access_async(rpc, cb, &args, private_data);
-}
-
-int rpc_nfs3_read_async(struct rpc_context *rpc, rpc_cb cb, struct READ3args *args, void *private_data)
+struct rpc_pdu *
+rpc_nfs3_read_task(struct rpc_context *rpc, rpc_cb cb, struct READ3args *args, void *private_data)
 {
 	struct rpc_pdu *pdu;
 
 	pdu = rpc_allocate_pdu(rpc, NFS_PROGRAM, NFS_V3, NFS3_READ, cb, private_data, (zdrproc_t)zdr_READ3res, sizeof(READ3res));
 	if (pdu == NULL) {
 		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu for NFS3/READ call");
-		return -1;
+		return NULL;
 	}
 
 	if (zdr_READ3args(&pdu->zdr, args) == 0) {
 		rpc_set_error(rpc, "ZDR error: Failed to encode READ3args");
 		rpc_free_pdu(rpc, pdu);
-		return -2;
+		return NULL;
 	}
 
 	if (rpc_queue_pdu(rpc, pdu) != 0) {
 		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for NFS3/READ call");
-		return -3;
+		return NULL;
 	}
 
-	return 0;
-}
-
-int rpc_nfs_read_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh, uint64_t offset, uint64_t count, void *private_data)
-{
-	READ3args args;
-
-	memset(&args, 0, sizeof(READ3args));
-	args.file.data.data_len = fh->data.data_len;
-	args.file.data.data_val = fh->data.data_val;
-	args.offset = offset;
-	args.count = (count3)count;
-
-	return rpc_nfs3_read_async(rpc, cb, &args, private_data);
+	return pdu;
 }
 
 /* Replacement WRITE3args so that we can add the data as an iovector
@@ -333,7 +275,8 @@ zdr_WRITE3args_zerocopy(ZDR *zdrs, WRITE3args *objp)
 	return TRUE;
 }
 
-int rpc_nfs3_write_async(struct rpc_context *rpc, rpc_cb cb, struct WRITE3args *args, void *private_data)
+struct rpc_pdu *
+rpc_nfs3_write_task(struct rpc_context *rpc, rpc_cb cb, struct WRITE3args *args, void *private_data)
 {
 	struct rpc_pdu *pdu;
         int start;
@@ -341,7 +284,7 @@ int rpc_nfs3_write_async(struct rpc_context *rpc, rpc_cb cb, struct WRITE3args *
 	pdu = rpc_allocate_pdu2(rpc, NFS_PROGRAM, NFS_V3, NFS3_WRITE, cb, private_data, (zdrproc_t)zdr_WRITE3res, sizeof(WRITE3res), 0);
 	if (pdu == NULL) {
 		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu for NFS3/WRITE call");
-		return -1;
+		return NULL;
 	}
 
         start = zdr_getpos(&pdu->zdr);
@@ -349,14 +292,14 @@ int rpc_nfs3_write_async(struct rpc_context *rpc, rpc_cb cb, struct WRITE3args *
 	if (zdr_WRITE3args_zerocopy(&pdu->zdr, args) == 0) {
 		rpc_set_error(rpc, "ZDR error: Failed to encode WRITE3args");
 		rpc_free_pdu(rpc, pdu);
-		return -2;
+		return NULL;
 	}
 
         /* Add an iovector for the WRITE3 header */
         if (rpc_add_iovector(rpc, &pdu->out, &pdu->outdata.data[start + 4],
                              zdr_getpos(&pdu->zdr) - start, NULL) < 0) {
 		rpc_free_pdu(rpc, pdu);
-		return -1;
+		return NULL;
         }
 
         /* Add an iovector for the length of the byte/array blob */
@@ -365,14 +308,14 @@ int rpc_nfs3_write_async(struct rpc_context *rpc, rpc_cb cb, struct WRITE3args *
         if (rpc_add_iovector(rpc, &pdu->out, &pdu->outdata.data[start + 4],
                              4, NULL) < 0) {
 		rpc_free_pdu(rpc, pdu);
-		return -1;
+		return NULL;
         }
 
         /* Add an iovector for the data itself */
         if (rpc_add_iovector(rpc, &pdu->out, args->data.data_val,
                              args->data.data_len, NULL) < 0) {
 		rpc_free_pdu(rpc, pdu);
-		return -1;
+		return NULL;
         }
 
         /* We may need to pad this to 4 byte boundary */
@@ -381,954 +324,786 @@ int rpc_nfs3_write_async(struct rpc_context *rpc, rpc_cb cb, struct WRITE3args *
                                      4 - args->data.data_len & 0x03,
                                      NULL) < 0) {
                         rpc_free_pdu(rpc, pdu);
-                        return -1;
+                        return NULL;
                 }
         }
 
 	if (rpc_queue_pdu(rpc, pdu) != 0) {
 		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for NFS3/WRITE call");
-		return -3;
+		return NULL;
 	}
 
-	return 0;
+	return pdu;
 }
 
-int rpc_nfs_write_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh, char *buf, uint64_t offset, uint64_t count, int stable_how, void *private_data)
-{
-	WRITE3args args;
-
-	memset(&args, 0, sizeof(WRITE3args));
-	args.file.data.data_len = fh->data.data_len;
-	args.file.data.data_val = fh->data.data_val;
-	args.offset = offset;
-	args.count  = (count3)count;
-	args.stable = stable_how;
-	args.data.data_len = (count3)count;
-	args.data.data_val = buf;
-
-	return rpc_nfs3_write_async(rpc, cb, &args, private_data);
-}
-
-int rpc_nfs3_commit_async(struct rpc_context *rpc, rpc_cb cb, struct COMMIT3args *args, void *private_data)
+struct rpc_pdu *
+rpc_nfs3_commit_task(struct rpc_context *rpc, rpc_cb cb, struct COMMIT3args *args, void *private_data)
 {
 	struct rpc_pdu *pdu;
 
 	pdu = rpc_allocate_pdu(rpc, NFS_PROGRAM, NFS_V3, NFS3_COMMIT, cb, private_data, (zdrproc_t)zdr_COMMIT3res, sizeof(COMMIT3res));
 	if (pdu == NULL) {
 		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu for NFS3/COMMIT call");
-		return -1;
+		return NULL;
 	}
 
 	if (zdr_COMMIT3args(&pdu->zdr, args) == 0) {
 		rpc_set_error(rpc, "ZDR error: Failed to encode COMMIT3args");
 		rpc_free_pdu(rpc, pdu);
-		return -2;
+		return NULL;
 	}
 
 	if (rpc_queue_pdu(rpc, pdu) != 0) {
 		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for NFS3/COMMIT call");
-		return -3;
+		return NULL;
 	}
 
-	return 0;
+	return pdu;
 }
 
-int rpc_nfs_commit_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh, void *private_data)
-{
-	COMMIT3args args;
-
-	memset(&args, 0, sizeof(COMMIT3args));
-	args.file.data.data_len = fh->data.data_len;
-	args.file.data.data_val = fh->data.data_val;
-	args.offset = 0;
-	args.count  = 0;
-
-	return rpc_nfs3_commit_async(rpc, cb, &args, private_data);
-}
-
-int rpc_nfs3_setattr_async(struct rpc_context *rpc, rpc_cb cb, SETATTR3args *args, void *private_data)
+struct rpc_pdu *
+rpc_nfs3_setattr_task(struct rpc_context *rpc, rpc_cb cb, SETATTR3args *args, void *private_data)
 {
 	struct rpc_pdu *pdu;
 
 	pdu = rpc_allocate_pdu(rpc, NFS_PROGRAM, NFS_V3, NFS3_SETATTR, cb, private_data, (zdrproc_t)zdr_SETATTR3res, sizeof(SETATTR3res));
 	if (pdu == NULL) {
 		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu for NFS3/SETATTR call");
-		return -1;
+		return NULL;
 	}
 
 	if (zdr_SETATTR3args(&pdu->zdr, args) == 0) {
 		rpc_set_error(rpc, "ZDR error: Failed to encode SETATTR3args");
 		rpc_free_pdu(rpc, pdu);
-		return -2;
+		return NULL;
 	}
 
 	if (rpc_queue_pdu(rpc, pdu) != 0) {
 		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for NFS3/SETATTR call");
-		return -3;
+		return NULL;
 	}
 
-	return 0;
+	return pdu;
 }
 
-int rpc_nfs_setattr_async(struct rpc_context *rpc, rpc_cb cb, SETATTR3args *args, void *private_data)
-{
-	return rpc_nfs3_setattr_async(rpc, cb, args, private_data);
-}
-
-int rpc_nfs3_mkdir_async(struct rpc_context *rpc, rpc_cb cb, MKDIR3args *args, void *private_data)
+struct rpc_pdu *
+rpc_nfs3_mkdir_task(struct rpc_context *rpc, rpc_cb cb, MKDIR3args *args, void *private_data)
 {
 	struct rpc_pdu *pdu;
 
 	pdu = rpc_allocate_pdu(rpc, NFS_PROGRAM, NFS_V3, NFS3_MKDIR, cb, private_data, (zdrproc_t)zdr_MKDIR3res, sizeof(MKDIR3res));
 	if (pdu == NULL) {
 		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu for NFS3/MKDIR call");
-		return -1;
+		return NULL;
 	}
 
 	if (zdr_MKDIR3args(&pdu->zdr, args) == 0) {
 		rpc_set_error(rpc, "ZDR error: Failed to encode MKDIR3args");
 		rpc_free_pdu(rpc, pdu);
-		return -2;
+		return NULL;
 	}
 
 	if (rpc_queue_pdu(rpc, pdu) != 0) {
 		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for NFS3/MKDIR call");
-		return -3;
+		return NULL;
 	}
 
-	return 0;
+	return pdu;
 }
 
-int rpc_nfs_mkdir_async(struct rpc_context *rpc, rpc_cb cb, MKDIR3args *args, void *private_data)
-{
-	return rpc_nfs3_mkdir_async(rpc, cb, args, private_data);
-}
-
-int rpc_nfs3_rmdir_async(struct rpc_context *rpc, rpc_cb cb, struct RMDIR3args *args, void *private_data)
+struct rpc_pdu *
+rpc_nfs3_rmdir_task(struct rpc_context *rpc, rpc_cb cb, struct RMDIR3args *args, void *private_data)
 {
 	struct rpc_pdu *pdu;
 
 	pdu = rpc_allocate_pdu(rpc, NFS_PROGRAM, NFS_V3, NFS3_RMDIR, cb, private_data, (zdrproc_t)zdr_RMDIR3res, sizeof(RMDIR3res));
 	if (pdu == NULL) {
 		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu for NFS3/RMDIR call");
-		return -1;
+		return NULL;
 	}
 
 	if (zdr_RMDIR3args(&pdu->zdr, args) == 0) {
 		rpc_set_error(rpc, "ZDR error: Failed to encode RMDIR3args");
 		rpc_free_pdu(rpc, pdu);
-		return -2;
+		return NULL;
 	}
 
 	if (rpc_queue_pdu(rpc, pdu) != 0) {
 		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for NFS3/RMDIR call");
-		return -3;
+		return NULL;
 	}
 
-	return 0;
+	return pdu;
 }
 
-int rpc_nfs_rmdir_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh, char *dir, void *private_data)
-{
-	RMDIR3args args;
-
-	memset(&args, 0, sizeof(RMDIR3args));
-	args.object.dir.data.data_len = fh->data.data_len;
-	args.object.dir.data.data_val = fh->data.data_val;
-	args.object.name = dir;
-
-	return rpc_nfs3_rmdir_async(rpc, cb, &args, private_data);
-}
-
-int rpc_nfs3_create_async(struct rpc_context *rpc, rpc_cb cb, CREATE3args *args, void *private_data)
+struct rpc_pdu *
+rpc_nfs3_create_task(struct rpc_context *rpc, rpc_cb cb, CREATE3args *args, void *private_data)
 {
 	struct rpc_pdu *pdu;
 
 	pdu = rpc_allocate_pdu(rpc, NFS_PROGRAM, NFS_V3, NFS3_CREATE, cb, private_data, (zdrproc_t)zdr_CREATE3res, sizeof(CREATE3res));
 	if (pdu == NULL) {
 		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu for NFS3/CREATE call");
-		return -1;
+		return NULL;
 	}
 
 	if (zdr_CREATE3args(&pdu->zdr, args) == 0) {
 		rpc_set_error(rpc, "ZDR error: Failed to encode CREATE3args");
 		rpc_free_pdu(rpc, pdu);
-		return -2;
+		return NULL;
 	}
 
 	if (rpc_queue_pdu(rpc, pdu) != 0) {
 		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for NFS3/CREATE call");
-		return -3;
+		return NULL;
 	}
 
-	return 0;
+	return pdu;
 }
 
-int rpc_nfs_create_async(struct rpc_context *rpc, rpc_cb cb, CREATE3args *args, void *private_data)
-{
-	return rpc_nfs3_create_async(rpc, cb, args, private_data);
-}
-
-int rpc_nfs3_mknod_async(struct rpc_context *rpc, rpc_cb cb, struct MKNOD3args *args, void *private_data)
+struct rpc_pdu *
+rpc_nfs3_mknod_task(struct rpc_context *rpc, rpc_cb cb, struct MKNOD3args *args, void *private_data)
 {
 	struct rpc_pdu *pdu;
 
 	pdu = rpc_allocate_pdu(rpc, NFS_PROGRAM, NFS_V3, NFS3_MKNOD, cb, private_data, (zdrproc_t)zdr_MKNOD3res, sizeof(MKNOD3res));
 	if (pdu == NULL) {
 		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu for NFS3/MKNOD call");
-		return -1;
+		return NULL;
 	}
 
 	if (zdr_MKNOD3args(&pdu->zdr, args) == 0) {
 		rpc_set_error(rpc, "ZDR error: Failed to encode MKNOD3args");
 		rpc_free_pdu(rpc, pdu);
-		return -2;
+		return NULL;
 	}
 
 	if (rpc_queue_pdu(rpc, pdu) != 0) {
 		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for NFS3/MKNOD call");
-		return -3;
+		return NULL;
 	}
 
-	return 0;
+	return pdu;
 }
 
-int rpc_nfs_mknod_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh, char *file, int mode, int major, int minor, void *private_data)
-{
-	MKNOD3args args;
-
-	memset(&args, 0, sizeof(MKNOD3args));
-	args.where.dir.data.data_len = fh->data.data_len;
-	args.where.dir.data.data_val = fh->data.data_val;
-	args.where.name = file;
-
-	switch (mode & S_IFMT) {
-	case S_IFCHR:
-		args.what.type = NF3CHR;
-		args.what.mknoddata3_u.chr_device.dev_attributes.mode.set_it = 1;
-		args.what.mknoddata3_u.chr_device.dev_attributes.mode.set_mode3_u.mode = mode & (S_IRUSR|S_IWUSR|S_IXUSR|S_IRGRP|S_IWGRP|S_IXGRP|S_IROTH|S_IWOTH|S_IXOTH);
-		args.what.mknoddata3_u.chr_device.spec.specdata1 = major;
-		args.what.mknoddata3_u.chr_device.spec.specdata2 = minor;
-		break;
-	case S_IFBLK:
-		args.what.type = NF3BLK;
-		args.what.mknoddata3_u.blk_device.dev_attributes.mode.set_it = 1;
-		args.what.mknoddata3_u.blk_device.dev_attributes.mode.set_mode3_u.mode = mode & (S_IRUSR|S_IWUSR|S_IXUSR|S_IRGRP|S_IWGRP|S_IXGRP|S_IROTH|S_IWOTH|S_IXOTH);
-		args.what.mknoddata3_u.blk_device.spec.specdata1 = major;
-		args.what.mknoddata3_u.blk_device.spec.specdata2 = minor;
-	case S_IFSOCK:
-		args.what.type = NF3SOCK;
-		args.what.mknoddata3_u.sock_attributes.mode.set_it = 1;
-		args.what.mknoddata3_u.sock_attributes.mode.set_mode3_u.mode = mode & (S_IRUSR|S_IWUSR|S_IXUSR|S_IRGRP|S_IWGRP|S_IXGRP|S_IROTH|S_IWOTH|S_IXOTH);
-		break;
-	case S_IFIFO:
-		args.what.type = NF3FIFO;
-		args.what.mknoddata3_u.pipe_attributes.mode.set_it = 1;
-		args.what.mknoddata3_u.pipe_attributes.mode.set_mode3_u.mode = mode & (S_IRUSR|S_IWUSR|S_IXUSR|S_IRGRP|S_IWGRP|S_IXGRP|S_IROTH|S_IWOTH|S_IXOTH);
-		break;
-	default:
-		rpc_set_error(rpc, "Invalid file type for NFS3/MKNOD call");
-		return -1;
-	}
-
-	return rpc_nfs3_mknod_async(rpc, cb, &args, private_data);
-}
-
-int rpc_nfs3_remove_async(struct rpc_context *rpc, rpc_cb cb, struct REMOVE3args *args, void *private_data)
+struct rpc_pdu *
+rpc_nfs3_remove_task(struct rpc_context *rpc, rpc_cb cb, struct REMOVE3args *args, void *private_data)
 {
 	struct rpc_pdu *pdu;
 
 	pdu = rpc_allocate_pdu(rpc, NFS_PROGRAM, NFS_V3, NFS3_REMOVE, cb, private_data, (zdrproc_t)zdr_REMOVE3res, sizeof(REMOVE3res));
 	if (pdu == NULL) {
 		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu for NFS3/REMOVE call");
-		return -1;
+		return NULL;
 	}
 
 	if (zdr_REMOVE3args(&pdu->zdr, args) == 0) {
 		rpc_set_error(rpc, "ZDR error: Failed to encode REMOVE3args");
 		rpc_free_pdu(rpc, pdu);
-		return -2;
+		return NULL;
 	}
 
 	if (rpc_queue_pdu(rpc, pdu) != 0) {
 		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for NFS3/REMOVE call");
-		return -3;
+		return NULL;
 	}
 
-	return 0;
+	return pdu;
 }
 
-int rpc_nfs_remove_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh, char *file, void *private_data)
-{
-	REMOVE3args args;
-
-	memset(&args, 0, sizeof(REMOVE3args));
-	args.object.dir.data.data_len = fh->data.data_len;
-	args.object.dir.data.data_val = fh->data.data_val;
-	args.object.name = file;
-
-	return rpc_nfs3_remove_async(rpc, cb, &args, private_data);
-}
-
-int rpc_nfs3_readdir_async(struct rpc_context *rpc, rpc_cb cb, struct READDIR3args *args, void *private_data)
+struct rpc_pdu *
+rpc_nfs3_readdir_task(struct rpc_context *rpc, rpc_cb cb, struct READDIR3args *args, void *private_data)
 {
 	struct rpc_pdu *pdu;
 
 	pdu = rpc_allocate_pdu(rpc, NFS_PROGRAM, NFS_V3, NFS3_READDIR, cb, private_data, (zdrproc_t)zdr_READDIR3res, sizeof(READDIR3res));
 	if (pdu == NULL) {
 		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu for NFS3/READDIR call");
-		return -1;
+		return NULL;
 	}
 
 	if (zdr_READDIR3args(&pdu->zdr, args) == 0) {
 		rpc_set_error(rpc, "ZDR error: Failed to encode READDIR3args");
 		rpc_free_pdu(rpc, pdu);
-		return -2;
+		return NULL;
 	}
 
 	if (rpc_queue_pdu(rpc, pdu) != 0) {
 		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for NFS3/READDIR call");
-		return -3;
+		return NULL;
 	}
 
-	return 0;
+	return pdu;
 }
 
-int rpc_nfs_readdir_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh, uint64_t cookie, char *cookieverf, int count, void *private_data)
-{
-	READDIR3args args;
-
-	memset(&args, 0, sizeof(READDIR3args));
-	args.dir.data.data_len = fh->data.data_len;
-	args.dir.data.data_val = fh->data.data_val;
-	args.cookie = cookie;
-	memcpy(&args.cookieverf, cookieverf, sizeof(cookieverf3)); 
-	args.count = count;
-
-	return rpc_nfs3_readdir_async(rpc, cb, &args, private_data);
-}
-
-int rpc_nfs3_readdirplus_async(struct rpc_context *rpc, rpc_cb cb, struct READDIRPLUS3args *args, void *private_data)
+struct rpc_pdu *
+rpc_nfs3_readdirplus_task(struct rpc_context *rpc, rpc_cb cb, struct READDIRPLUS3args *args, void *private_data)
 {
 	struct rpc_pdu *pdu;
 
 	pdu = rpc_allocate_pdu(rpc, NFS_PROGRAM, NFS_V3, NFS3_READDIRPLUS, cb, private_data, (zdrproc_t)zdr_READDIRPLUS3res, sizeof(READDIRPLUS3res));
 	if (pdu == NULL) {
 		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu for NFS3/READDIRPLUS call");
-		return -1;
+		return NULL;
 	}
 
 	if (zdr_READDIRPLUS3args(&pdu->zdr, args) == 0) {
 		rpc_set_error(rpc, "ZDR error: Failed to encode READDIRPLUS3args");
 		rpc_free_pdu(rpc, pdu);
-		return -2;
+		return NULL;
 	}
 
 	if (rpc_queue_pdu(rpc, pdu) != 0) {
 		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for NFS3/READDIRPLUS call");
-		return -3;
+		return NULL;
 	}
 
-	return 0;
+	return pdu;
 }
 
-int rpc_nfs_readdirplus_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh, uint64_t cookie, char *cookieverf, int count, void *private_data)
-{
-	READDIRPLUS3args args;
-
-	memset(&args, 0, sizeof(READDIRPLUS3args));
-	args.dir.data.data_len = fh->data.data_len;
-	args.dir.data.data_val = fh->data.data_val;
-	args.cookie = cookie;
-	memcpy(&args.cookieverf, cookieverf, sizeof(cookieverf3)); 
-	args.dircount = count;
-	args.maxcount = count * 8;
-
-	return rpc_nfs3_readdirplus_async(rpc, cb, &args, private_data);
-}
-
-int rpc_nfs3_fsstat_async(struct rpc_context *rpc, rpc_cb cb, struct FSSTAT3args *args, void *private_data)
+struct rpc_pdu *
+rpc_nfs3_fsstat_task(struct rpc_context *rpc, rpc_cb cb, struct FSSTAT3args *args, void *private_data)
 {
 	struct rpc_pdu *pdu;
 
 	pdu = rpc_allocate_pdu(rpc, NFS_PROGRAM, NFS_V3, NFS3_FSSTAT, cb, private_data, (zdrproc_t)zdr_FSSTAT3res, sizeof(FSSTAT3res));
 	if (pdu == NULL) {
 		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu for NFS3/FSSTAT call");
-		return -1;
+		return NULL;
 	}
 
 	if (zdr_FSSTAT3args(&pdu->zdr, args) == 0) {
 		rpc_set_error(rpc, "ZDR error: Failed to encode FSSTAT3args");
 		rpc_free_pdu(rpc, pdu);
-		return -2;
+		return NULL;
 	}
 
 	if (rpc_queue_pdu(rpc, pdu) != 0) {
 		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for NFS3/FSSTAT call");
-		return -3;
+		return NULL;
 	}
 
-	return 0;
+	return pdu;
 }
 
-int rpc_nfs_fsstat_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh, void *private_data)
-{
-	FSSTAT3args args;
-
-	memset(&args, 0, sizeof(FSSTAT3args));
-	args.fsroot.data.data_len = fh->data.data_len; 
-	args.fsroot.data.data_val = fh->data.data_val; 
-
-	return rpc_nfs3_fsstat_async(rpc, cb, &args, private_data);
-}
-
-int rpc_nfs3_fsinfo_async(struct rpc_context *rpc, rpc_cb cb, struct FSINFO3args *args, void *private_data)
+struct rpc_pdu *
+rpc_nfs3_fsinfo_task(struct rpc_context *rpc, rpc_cb cb, struct FSINFO3args *args, void *private_data)
 {
 	struct rpc_pdu *pdu;
 
 	pdu = rpc_allocate_pdu(rpc, NFS_PROGRAM, NFS_V3, NFS3_FSINFO, cb, private_data, (zdrproc_t)zdr_FSINFO3res, sizeof(FSINFO3res));
 	if (pdu == NULL) {
 		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu for NFS3/FSINFO call");
-		return -1;
+		return NULL;
 	}
 
 	if (zdr_FSINFO3args(&pdu->zdr, args) == 0) {
 		rpc_set_error(rpc, "ZDR error: Failed to encode FSINFO3args");
 		rpc_free_pdu(rpc, pdu);
-		return -2;
+		return NULL;
 	}
 
 	if (rpc_queue_pdu(rpc, pdu) != 0) {
 		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for NFS3/FSINFO call");
-		return -3;
+		return NULL;
 	}
 
-	return 0;
+	return pdu;
 }
 
-int rpc_nfs_fsinfo_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh, void *private_data)
-{
-	FSINFO3args args;
-
-	memset(&args, 0, sizeof(FSINFO3args));
-	args.fsroot.data.data_len = fh->data.data_len; 
-	args.fsroot.data.data_val = fh->data.data_val; 
-
-	return rpc_nfs3_fsinfo_async(rpc, cb, &args, private_data);
-}
-
-int rpc_nfs3_readlink_async(struct rpc_context *rpc, rpc_cb cb, READLINK3args *args, void *private_data)
+struct rpc_pdu *
+rpc_nfs3_readlink_task(struct rpc_context *rpc, rpc_cb cb, READLINK3args *args, void *private_data)
 {
 	struct rpc_pdu *pdu;
 
 	pdu = rpc_allocate_pdu(rpc, NFS_PROGRAM, NFS_V3, NFS3_READLINK, cb, private_data, (zdrproc_t)zdr_READLINK3res, sizeof(READLINK3res));
 	if (pdu == NULL) {
 		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu for NFS3/READLINK call");
-		return -1;
+		return NULL;
 	}
 
 	if (zdr_READLINK3args(&pdu->zdr, args) == 0) {
 		rpc_set_error(rpc, "ZDR error: Failed to encode READLINK3args");
 		rpc_free_pdu(rpc, pdu);
-		return -2;
+		return NULL;
 	}
 
 	if (rpc_queue_pdu(rpc, pdu) != 0) {
 		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for NFS3/READLINK call");
-		return -3;
+		return NULL;
 	}
 
-	return 0;
+	return pdu;
 }
 
-int rpc_nfs_readlink_async(struct rpc_context *rpc, rpc_cb cb, READLINK3args *args, void *private_data)
-{
-	return rpc_nfs3_readlink_async(rpc, cb, args, private_data);
-}
-
-int rpc_nfs3_symlink_async(struct rpc_context *rpc, rpc_cb cb, SYMLINK3args *args, void *private_data)
+struct rpc_pdu *
+rpc_nfs3_symlink_task(struct rpc_context *rpc, rpc_cb cb, SYMLINK3args *args, void *private_data)
 {
 	struct rpc_pdu *pdu;
 
 	pdu = rpc_allocate_pdu(rpc, NFS_PROGRAM, NFS_V3, NFS3_SYMLINK, cb, private_data, (zdrproc_t)zdr_SYMLINK3res, sizeof(SYMLINK3res));
 	if (pdu == NULL) {
 		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu for NFS3/SYMLINK call");
-		return -1;
+		return NULL;
 	}
 
 	if (zdr_SYMLINK3args(&pdu->zdr, args) == 0) {
 		rpc_set_error(rpc, "ZDR error: Failed to encode SYMLINK3args");
 		rpc_free_pdu(rpc, pdu);
-		return -2;
+		return NULL;
 	}
 
 	if (rpc_queue_pdu(rpc, pdu) != 0) {
 		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for NFS3/SYMLINK call");
-		return -3;
+		return NULL;
 	}
 
-	return 0;
+	return pdu;
 }
 
-int rpc_nfs_symlink_async(struct rpc_context *rpc, rpc_cb cb, SYMLINK3args *args, void *private_data)
-{
-	return rpc_nfs3_symlink_async(rpc, cb, args, private_data);
-}
-
-int rpc_nfs3_rename_async(struct rpc_context *rpc, rpc_cb cb, struct RENAME3args *args, void *private_data)
+struct rpc_pdu *
+rpc_nfs3_rename_task(struct rpc_context *rpc, rpc_cb cb, struct RENAME3args *args, void *private_data)
 {
 	struct rpc_pdu *pdu;
 
 	pdu = rpc_allocate_pdu(rpc, NFS_PROGRAM, NFS_V3, NFS3_RENAME, cb, private_data, (zdrproc_t)zdr_RENAME3res, sizeof(RENAME3res));
 	if (pdu == NULL) {
 		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu for NFS3/RENAME call");
-		return -1;
+		return NULL;
 	}
 
 	if (zdr_RENAME3args(&pdu->zdr, args) == 0) {
 		rpc_set_error(rpc, "ZDR error: Failed to encode RENAME3args");
 		rpc_free_pdu(rpc, pdu);
-		return -2;
+		return NULL;
 	}
 
 	if (rpc_queue_pdu(rpc, pdu) != 0) {
 		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for NFS3/RENAME call");
-		return -3;
+		return NULL;
 	}
 
-	return 0;
+	return pdu;
 }
 
-int rpc_nfs_rename_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *olddir, char *oldname, struct nfs_fh3 *newdir, char *newname, void *private_data)
-{
-	RENAME3args args;
-
-	memset(&args, 0, sizeof(RENAME3args));
-	args.from.dir.data.data_len = olddir->data.data_len;
-	args.from.dir.data.data_val = olddir->data.data_val;
-	args.from.name = oldname;
-	args.to.dir.data.data_len = newdir->data.data_len;
-	args.to.dir.data.data_val = newdir->data.data_val;
-	args.to.name = newname;
-
-	return rpc_nfs3_rename_async(rpc, cb, &args, private_data);
-}
-
-int rpc_nfs3_link_async(struct rpc_context *rpc, rpc_cb cb, struct LINK3args *args, void *private_data)
+struct rpc_pdu *
+rpc_nfs3_link_task(struct rpc_context *rpc, rpc_cb cb, struct LINK3args *args, void *private_data)
 {
 	struct rpc_pdu *pdu;
 
 	pdu = rpc_allocate_pdu(rpc, NFS_PROGRAM, NFS_V3, NFS3_LINK, cb, private_data, (zdrproc_t)zdr_LINK3res, sizeof(LINK3res));
 	if (pdu == NULL) {
 		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu for NFS3/LINK call");
-		return -1;
+		return NULL;
 	}
 
 	if (zdr_LINK3args(&pdu->zdr, args) == 0) {
 		rpc_set_error(rpc, "ZDR error: Failed to encode LINK3args");
 		rpc_free_pdu(rpc, pdu);
-		return -2;
+		return NULL;
 	}
 
 	if (rpc_queue_pdu(rpc, pdu) != 0) {
 		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for NFS3/LINK call");
-		return -3;
+		return NULL;
 	}
 
-	return 0;
-}
-
-int rpc_nfs_link_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *file, struct nfs_fh3 *newdir, char *newname, void *private_data)
-{
-	LINK3args args;
-
-	memset(&args, 0, sizeof(LINK3args));
-	args.file.data.data_len = file->data.data_len;
-	args.file.data.data_val = file->data.data_val;
-	args.link.dir.data.data_len = newdir->data.data_len;
-	args.link.dir.data.data_val = newdir->data.data_val;
-	args.link.name = newname;
-
-	return rpc_nfs3_link_async(rpc, cb, &args, private_data);
+	return pdu;
 }
 
 /*
  * NFSv2
  */
-int rpc_nfs2_null_async(struct rpc_context *rpc, rpc_cb cb, void *private_data)
+struct rpc_pdu *
+rpc_nfs2_null_task(struct rpc_context *rpc, rpc_cb cb, void *private_data)
 {
 	struct rpc_pdu *pdu;
 
 	pdu = rpc_allocate_pdu(rpc, NFS_PROGRAM, NFS_V2, NFS2_NULL, cb, private_data, (zdrproc_t)zdr_void, 0);
 	if (pdu == NULL) {
 		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu for NFS2/NULL call");
-		return -1;
+		return NULL;
 	}
 
 	if (rpc_queue_pdu(rpc, pdu) != 0) {
 		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for NFS2/NULL call");
-		return -2;
+		return NULL;
 	}
 
-	return 0;
+	return pdu;
 }
 
-int rpc_nfs2_getattr_async(struct rpc_context *rpc, rpc_cb cb, struct GETATTR2args *args, void *private_data)
+struct rpc_pdu *
+rpc_nfs2_getattr_task(struct rpc_context *rpc, rpc_cb cb, struct GETATTR2args *args, void *private_data)
 {
 	struct rpc_pdu *pdu;
 
 	pdu = rpc_allocate_pdu(rpc, NFS_PROGRAM, NFS_V2, NFS2_GETATTR, cb, private_data, (zdrproc_t)zdr_GETATTR2res, sizeof(GETATTR2res));
 	if (pdu == NULL) {
 		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu for NFS2/GETATTR call");
-		return -1;
+		return NULL;
 	}
 
 	if (zdr_GETATTR2args(&pdu->zdr, args) == 0) {
 		rpc_set_error(rpc, "ZDR error: Failed to encode GETATTR2args");
 		rpc_free_pdu(rpc, pdu);
-		return -2;
+		return NULL;
 	}
 
 	if (rpc_queue_pdu(rpc, pdu) != 0) {
 		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for NFS2/GETATTR call");
-		return -3;
+		return NULL;
 	}
 
-	return 0;
+	return pdu;
 }
 
-int rpc_nfs2_setattr_async(struct rpc_context *rpc, rpc_cb cb, SETATTR2args *args, void *private_data)
+struct rpc_pdu *
+rpc_nfs2_setattr_task(struct rpc_context *rpc, rpc_cb cb, SETATTR2args *args, void *private_data)
 {
 	struct rpc_pdu *pdu;
 
 	pdu = rpc_allocate_pdu(rpc, NFS_PROGRAM, NFS_V2, NFS2_SETATTR, cb, private_data, (zdrproc_t)zdr_SETATTR2res, sizeof(SETATTR2res));
 	if (pdu == NULL) {
 		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu for NFS2/SETATTR call");
-		return -1;
+		return NULL;
 	}
 
 	if (zdr_SETATTR2args(&pdu->zdr, args) == 0) {
 		rpc_set_error(rpc, "ZDR error: Failed to encode SETATTR2args");
 		rpc_free_pdu(rpc, pdu);
-		return -2;
+		return NULL;
 	}
 
 	if (rpc_queue_pdu(rpc, pdu) != 0) {
 		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for NFS2/SETATTR call");
-		return -3;
+		return NULL;
 	}
 
-	return 0;
+	return pdu;
 }
 
-int rpc_nfs2_lookup_async(struct rpc_context *rpc, rpc_cb cb, struct LOOKUP2args *args, void *private_data)
+struct rpc_pdu *
+rpc_nfs2_lookup_task(struct rpc_context *rpc, rpc_cb cb, struct LOOKUP2args *args, void *private_data)
 {
 	struct rpc_pdu *pdu;
 
 	pdu = rpc_allocate_pdu(rpc, NFS_PROGRAM, NFS_V2, NFS2_LOOKUP, cb, private_data, (zdrproc_t)zdr_LOOKUP2res, sizeof(LOOKUP2res));
 	if (pdu == NULL) {
 		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu for NFS2/LOOKUP call");
-		return -1;
+		return NULL;
 	}
 
 	if (zdr_LOOKUP2args(&pdu->zdr, args) == 0) {
 		rpc_set_error(rpc, "ZDR error: Failed to encode LOOKUP2args");
 		rpc_free_pdu(rpc, pdu);
-		return -2;
+		return NULL;
 	}
 
 	if (rpc_queue_pdu(rpc, pdu) != 0) {
 		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for NFS2/LOOKUP call");
-		return -3;
+		return NULL;
 	}
 
-	return 0;
+	return pdu;
 }
 
-int rpc_nfs2_readlink_async(struct rpc_context *rpc, rpc_cb cb, READLINK2args *args, void *private_data)
+struct rpc_pdu *
+rpc_nfs2_readlink_task(struct rpc_context *rpc, rpc_cb cb, READLINK2args *args, void *private_data)
 {
 	struct rpc_pdu *pdu;
 
 	pdu = rpc_allocate_pdu(rpc, NFS_PROGRAM, NFS_V2, NFS2_READLINK, cb, private_data, (zdrproc_t)zdr_READLINK2res, sizeof(READLINK2res));
 	if (pdu == NULL) {
 		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu for NFS2/READLINK call");
-		return -1;
+		return NULL;
 	}
 
 	if (zdr_READLINK2args(&pdu->zdr, args) == 0) {
 		rpc_set_error(rpc, "ZDR error: Failed to encode READLINK2args");
 		rpc_free_pdu(rpc, pdu);
-		return -2;
+		return NULL;
 	}
 
 	if (rpc_queue_pdu(rpc, pdu) != 0) {
 		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for NFS2/READLINK call");
-		return -3;
+		return NULL;
 	}
 
-	return 0;
+	return pdu;
 }
 
-int rpc_nfs2_read_async(struct rpc_context *rpc, rpc_cb cb, struct READ2args *args, void *private_data)
+struct rpc_pdu *
+rpc_nfs2_read_task(struct rpc_context *rpc, rpc_cb cb, struct READ2args *args, void *private_data)
 {
 	struct rpc_pdu *pdu;
 
 	pdu = rpc_allocate_pdu(rpc, NFS_PROGRAM, NFS_V2, NFS2_READ, cb, private_data, (zdrproc_t)zdr_READ2res, sizeof(READ2res));
 	if (pdu == NULL) {
 		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu for NFS2/READ call");
-		return -1;
+		return NULL;
 	}
 
 	if (zdr_READ2args(&pdu->zdr, args) == 0) {
 		rpc_set_error(rpc, "ZDR error: Failed to encode READ2args");
 		rpc_free_pdu(rpc, pdu);
-		return -2;
+		return NULL;
 	}
 
 	if (rpc_queue_pdu(rpc, pdu) != 0) {
 		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for NFS2/READ call");
-		return -3;
+		return NULL;
 	}
 
-	return 0;
+	return pdu;
 }
 
-int rpc_nfs2_write_async(struct rpc_context *rpc, rpc_cb cb, struct WRITE2args *args, void *private_data)
+struct rpc_pdu *
+rpc_nfs2_write_task(struct rpc_context *rpc, rpc_cb cb, struct WRITE2args *args, void *private_data)
 {
 	struct rpc_pdu *pdu;
 
 	pdu = rpc_allocate_pdu2(rpc, NFS_PROGRAM, NFS_V2, NFS2_WRITE, cb, private_data, (zdrproc_t)zdr_WRITE2res, sizeof(WRITE2res), args->totalcount);
 	if (pdu == NULL) {
 		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu for NFS2/WRITE call");
-		return -1;
+		return NULL;
 	}
 
 	if (zdr_WRITE2args(&pdu->zdr, args) == 0) {
 		rpc_set_error(rpc, "ZDR error: Failed to encode WRITE2args");
 		rpc_free_pdu(rpc, pdu);
-		return -2;
+		return NULL;
 	}
 
 	if (rpc_queue_pdu(rpc, pdu) != 0) {
 		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for NFS2/WRITE call");
-		return -3;
+		return NULL;
 	}
 
-	return 0;
+	return pdu;
 }
 
-int rpc_nfs2_create_async(struct rpc_context *rpc, rpc_cb cb, CREATE2args *args, void *private_data)
+struct rpc_pdu *
+rpc_nfs2_create_task(struct rpc_context *rpc, rpc_cb cb, CREATE2args *args, void *private_data)
 {
 	struct rpc_pdu *pdu;
 
 	pdu = rpc_allocate_pdu(rpc, NFS_PROGRAM, NFS_V2, NFS2_CREATE, cb, private_data, (zdrproc_t)zdr_CREATE2res, sizeof(CREATE2res));
 	if (pdu == NULL) {
 		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu for NFS2/CREATE call");
-		return -1;
+		return NULL;
 	}
 
 	if (zdr_CREATE2args(&pdu->zdr, args) == 0) {
 		rpc_set_error(rpc, "ZDR error: Failed to encode CREATE2args");
 		rpc_free_pdu(rpc, pdu);
-		return -2;
+		return NULL;
 	}
 
 	if (rpc_queue_pdu(rpc, pdu) != 0) {
 		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for NFS2/CREATE call");
-		return -3;
+		return NULL;
 	}
 
-	return 0;
+	return pdu;
 }
 
-int rpc_nfs2_remove_async(struct rpc_context *rpc, rpc_cb cb, struct REMOVE2args *args, void *private_data)
+struct rpc_pdu *
+rpc_nfs2_remove_task(struct rpc_context *rpc, rpc_cb cb, struct REMOVE2args *args, void *private_data)
 {
 	struct rpc_pdu *pdu;
 
 	pdu = rpc_allocate_pdu(rpc, NFS_PROGRAM, NFS_V2, NFS2_REMOVE, cb, private_data, (zdrproc_t)zdr_REMOVE2res, sizeof(REMOVE2res));
 	if (pdu == NULL) {
 		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu for NFS3/REMOVE call");
-		return -1;
+		return NULL;
 	}
 
 	if (zdr_REMOVE2args(&pdu->zdr, args) == 0) {
 		rpc_set_error(rpc, "ZDR error: Failed to encode REMOVE2args");
 		rpc_free_pdu(rpc, pdu);
-		return -2;
+		return NULL;
 	}
 
 	if (rpc_queue_pdu(rpc, pdu) != 0) {
 		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for NFS2/REMOVE call");
-		return -3;
+		return NULL;
 	}
 
-	return 0;
+	return pdu;
 }
 
-int rpc_nfs2_rename_async(struct rpc_context *rpc, rpc_cb cb, struct RENAME2args *args, void *private_data)
+struct rpc_pdu *
+rpc_nfs2_rename_task(struct rpc_context *rpc, rpc_cb cb, struct RENAME2args *args, void *private_data)
 {
 	struct rpc_pdu *pdu;
 
 	pdu = rpc_allocate_pdu(rpc, NFS_PROGRAM, NFS_V2, NFS2_RENAME, cb, private_data, (zdrproc_t)zdr_RENAME2res, sizeof(RENAME2res));
 	if (pdu == NULL) {
 		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu for NFS2/RENAME call");
-		return -1;
+		return NULL;
 	}
 
 	if (zdr_RENAME2args(&pdu->zdr, args) == 0) {
 		rpc_set_error(rpc, "ZDR error: Failed to encode RENAME2args");
 		rpc_free_pdu(rpc, pdu);
-		return -2;
+		return NULL;
 	}
 
 	if (rpc_queue_pdu(rpc, pdu) != 0) {
 		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for NFS2/RENAME call");
-		return -3;
+		return NULL;
 	}
 
-	return 0;
+	return pdu;
 }
 
-int rpc_nfs2_link_async(struct rpc_context *rpc, rpc_cb cb, LINK2args *args, void *private_data)
+struct rpc_pdu *
+rpc_nfs2_link_task(struct rpc_context *rpc, rpc_cb cb, LINK2args *args, void *private_data)
 {
 	struct rpc_pdu *pdu;
 
 	pdu = rpc_allocate_pdu(rpc, NFS_PROGRAM, NFS_V2, NFS2_LINK, cb, private_data, (zdrproc_t)zdr_LINK2res, sizeof(LINK2res));
 	if (pdu == NULL) {
 		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu for NFS2/LINK call");
-		return -1;
+		return NULL;
 	}
 
 	if (zdr_LINK2args(&pdu->zdr, args) == 0) {
 		rpc_set_error(rpc, "ZDR error: Failed to encode LINK2args");
 		rpc_free_pdu(rpc, pdu);
-		return -2;
+		return NULL;
 	}
 
 	if (rpc_queue_pdu(rpc, pdu) != 0) {
 		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for NFS2/LINK call");
-		return -3;
+		return NULL;
 	}
 
-	return 0;
+	return pdu;
 }
 
-int rpc_nfs2_symlink_async(struct rpc_context *rpc, rpc_cb cb, SYMLINK2args *args, void *private_data)
+struct rpc_pdu *
+rpc_nfs2_symlink_task(struct rpc_context *rpc, rpc_cb cb, SYMLINK2args *args, void *private_data)
 {
 	struct rpc_pdu *pdu;
 
 	pdu = rpc_allocate_pdu(rpc, NFS_PROGRAM, NFS_V2, NFS2_SYMLINK, cb, private_data, (zdrproc_t)zdr_SYMLINK2res, sizeof(SYMLINK2res));
 	if (pdu == NULL) {
 		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu for NFS2/SYMLINK call");
-		return -1;
+		return NULL;
 	}
 
 	if (zdr_SYMLINK2args(&pdu->zdr, args) == 0) {
 		rpc_set_error(rpc, "ZDR error: Failed to encode SYMLINK2args");
 		rpc_free_pdu(rpc, pdu);
-		return -2;
+		return NULL;
 	}
 
 	if (rpc_queue_pdu(rpc, pdu) != 0) {
 		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for NFS2/SYMLINK call");
-		return -3;
+		return NULL;
 	}
 
-	return 0;
+	return pdu;
 }
 
-int rpc_nfs2_mkdir_async(struct rpc_context *rpc, rpc_cb cb, MKDIR2args *args, void *private_data)
+struct rpc_pdu *
+rpc_nfs2_mkdir_task(struct rpc_context *rpc, rpc_cb cb, MKDIR2args *args, void *private_data)
 {
 	struct rpc_pdu *pdu;
 
 	pdu = rpc_allocate_pdu(rpc, NFS_PROGRAM, NFS_V2, NFS2_MKDIR, cb, private_data, (zdrproc_t)zdr_MKDIR2res, sizeof(MKDIR2res));
 	if (pdu == NULL) {
 		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu for NFS2/MKDIR call");
-		return -1;
+		return NULL;
 	}
 
 	if (zdr_MKDIR2args(&pdu->zdr, args) == 0) {
 		rpc_set_error(rpc, "ZDR error: Failed to encode MKDIR2args");
 		rpc_free_pdu(rpc, pdu);
-		return -2;
+		return NULL;
 	}
 
 	if (rpc_queue_pdu(rpc, pdu) != 0) {
 		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for NFS2/MKDIR call");
-		return -3;
+		return NULL;
 	}
 
-	return 0;
+	return pdu;
 }
 
-int rpc_nfs2_rmdir_async(struct rpc_context *rpc, rpc_cb cb, struct RMDIR2args *args, void *private_data)
+struct rpc_pdu *
+rpc_nfs2_rmdir_task(struct rpc_context *rpc, rpc_cb cb, struct RMDIR2args *args, void *private_data)
 {
 	struct rpc_pdu *pdu;
 
 	pdu = rpc_allocate_pdu(rpc, NFS_PROGRAM, NFS_V2, NFS2_RMDIR, cb, private_data, (zdrproc_t)zdr_RMDIR2res, sizeof(RMDIR2res));
 	if (pdu == NULL) {
 		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu for NFS2/RMDIR call");
-		return -1;
+		return NULL;
 	}
 
 	if (zdr_RMDIR2args(&pdu->zdr, args) == 0) {
 		rpc_set_error(rpc, "ZDR error: Failed to encode RMDIR2args");
 		rpc_free_pdu(rpc, pdu);
-		return -2;
+		return NULL;
 	}
 
 	if (rpc_queue_pdu(rpc, pdu) != 0) {
 		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for NFS2/RMDIR call");
-		return -3;
+		return NULL;
 	}
 
-	return 0;
+	return pdu;
 }
 
-int rpc_nfs2_readdir_async(struct rpc_context *rpc, rpc_cb cb, struct READDIR2args *args, void *private_data)
+struct rpc_pdu *
+rpc_nfs2_readdir_task(struct rpc_context *rpc, rpc_cb cb, struct READDIR2args *args, void *private_data)
 {
 	struct rpc_pdu *pdu;
 
 	pdu = rpc_allocate_pdu(rpc, NFS_PROGRAM, NFS_V2, NFS2_READDIR, cb, private_data, (zdrproc_t)zdr_READDIR2res, sizeof(READDIR2res));
 	if (pdu == NULL) {
 		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu for NFS2/READDIR call");
-		return -1;
+		return NULL;
 	}
 
 	if (zdr_READDIR2args(&pdu->zdr,  args) == 0) {
 		rpc_set_error(rpc, "ZDR error: Failed to encode READDIR2args");
 		rpc_free_pdu(rpc, pdu);
-		return -2;
+		return NULL;
 	}
 
 	if (rpc_queue_pdu(rpc, pdu) != 0) {
 		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for NFS2/READDIR call");
-		return -3;
+		return NULL;
 	}
 
-	return 0;
+	return pdu;
 }
 
-int rpc_nfs2_statfs_async(struct rpc_context *rpc, rpc_cb cb, struct STATFS2args *args, void *private_data)
+struct rpc_pdu *
+rpc_nfs2_statfs_task(struct rpc_context *rpc, rpc_cb cb, struct STATFS2args *args, void *private_data)
 {
 	struct rpc_pdu *pdu;
 
 	pdu = rpc_allocate_pdu(rpc, NFS_PROGRAM, NFS_V2, NFS2_STATFS, cb, private_data, (zdrproc_t)zdr_STATFS2res, sizeof(STATFS2res));
 	if (pdu == NULL) {
 		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu for NFS2/STATFS call");
-		return -1;
+		return NULL;
 	}
 
 	if (zdr_STATFS2args(&pdu->zdr,  args) == 0) {
 		rpc_set_error(rpc, "ZDR error: Failed to encode STATFS2args");
 		rpc_free_pdu(rpc, pdu);
-		return -2;
+		return NULL;
 	}
 
 	if (rpc_queue_pdu(rpc, pdu) != 0) {
 		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for NFS2/STATFS call");
-		return -3;
+		return NULL;
 	}
 
-	return 0;
+	return pdu;
 }

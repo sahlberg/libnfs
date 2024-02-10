@@ -716,8 +716,8 @@ rpc_connect_program_4_cb(struct rpc_context *rpc, int status,
 		return;
 	}
 
-        if (rpc_null_async(rpc, data->program, data->version,
-                           rpc_connect_program_5_cb, data) != 0) {
+        if (rpc_null_task(rpc, data->program, data->version,
+                          rpc_connect_program_5_cb, data) == NULL) {
                 data->cb(rpc, RPC_STATUS_ERROR, command_data, data->private_data);
                 free_rpc_cb_data(data);
                 return;
@@ -799,10 +799,10 @@ rpc_connect_program_2_cb(struct rpc_context *rpc, int status,
 
 	switch (rpc->s.ss_family) {
 	case AF_INET:
-		if (rpc_pmap2_getport_async(rpc, data->program, data->version,
-                                            IPPROTO_TCP,
-                                            rpc_connect_program_3_cb,
-                                            private_data) != 0) {
+		if (rpc_pmap2_getport_task(rpc, data->program, data->version,
+                                           IPPROTO_TCP,
+                                           rpc_connect_program_3_cb,
+                                           private_data) == NULL) {
 			data->cb(rpc, RPC_STATUS_ERROR, command_data, data->private_data);
 			free_rpc_cb_data(data);
 			return;
@@ -814,9 +814,9 @@ rpc_connect_program_2_cb(struct rpc_context *rpc, int status,
 		map.netid="";
 		map.addr="";
 		map.owner="";
-		if (rpc_pmap3_getaddr_async(rpc, &map,
-                                            rpc_connect_program_3_cb,
-                                            private_data) != 0) {
+		if (rpc_pmap3_getaddr_task(rpc, &map,
+                                           rpc_connect_program_3_cb,
+                                           private_data) == NULL) {
 			data->cb(rpc, RPC_STATUS_ERROR, command_data, data->private_data);
 			free_rpc_cb_data(data);
 			return;
@@ -844,16 +844,16 @@ rpc_connect_program_1_cb(struct rpc_context *rpc, int status,
 
 	switch (rpc->s.ss_family) {
 	case AF_INET:
-		if (rpc_pmap2_null_async(rpc, rpc_connect_program_2_cb,
-                                         data) != 0) {
+		if (rpc_pmap2_null_task(rpc, rpc_connect_program_2_cb,
+                                         data) == NULL) {
 			data->cb(rpc, RPC_STATUS_ERROR, command_data, data->private_data);
 			free_rpc_cb_data(data);
 			return;
 		}
 		break;
 	case AF_INET6:
-		if (rpc_pmap3_null_async(rpc, rpc_connect_program_2_cb,
-                                         data) != 0) {
+		if (rpc_pmap3_null_task(rpc, rpc_connect_program_2_cb,
+                                        data) == NULL) {
 			data->cb(rpc, RPC_STATUS_ERROR, command_data, data->private_data);
 			free_rpc_cb_data(data);
 			return;
@@ -2083,7 +2083,7 @@ mount_export_4_cb(struct rpc_context *rpc, int status, void *command_data,
 		return;
 	}
 
-	if (rpc_mount3_export_async(rpc, mount_export_5_cb, data) != 0) {
+	if (rpc_mount3_export_task(rpc, mount_export_5_cb, data) == NULL) {
 		data->cb(rpc, -ENOMEM, command_data, data->private_data);
 		free_mount_cb_data(data);
 		return;
@@ -2191,9 +2191,9 @@ nfs_get_timeout(struct nfs_context *nfs)
 	return rpc_get_timeout(nfs->rpc);
 }
 
-int
-rpc_null_async(struct rpc_context *rpc, int program, int version, rpc_cb cb,
-               void *private_data)
+struct rpc_pdu *
+rpc_null_task(struct rpc_context *rpc, int program, int version, rpc_cb cb,
+              void *private_data)
 {
 	struct rpc_pdu *pdu;
 
@@ -2202,14 +2202,14 @@ rpc_null_async(struct rpc_context *rpc, int program, int version, rpc_cb cb,
 	if (pdu == NULL) {
 		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu "
                               "for NULL call");
-		return -1;
+		return NULL;
 	}
 
 	if (rpc_queue_pdu(rpc, pdu) != 0) {
 		rpc_set_error(rpc, "Out of memory. Failed to queue pdu "
                               "for NULL call");
-		return -1;
+		return NULL;
 	}
 
-	return 0;
+	return pdu;
 }

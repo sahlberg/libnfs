@@ -220,7 +220,7 @@ int main(int argc _U_, char *argv[] _U_)
 			exit(10);
 		}
 
-		if (rpc_pmap2_callit_async(rpc, MOUNT_PROGRAM, 2, 0, NULL, 0, pm_cb, &data) < 0) {
+		if (rpc_pmap2_callit_task(rpc, MOUNT_PROGRAM, 2, 0, NULL, 0, pm_cb, &data) == NULL) {
 			printf("Failed to set up callit function\n");
 			exit(10);
 		}

@@ -1380,8 +1380,8 @@ nfs4_lookup_path_1_cb(struct rpc_context *rpc, int status, void *command_data,
         args.argarray.argarray_len = i;
         args.argarray.argarray_val = op;
 
-        if (rpc_nfs4_compound_async(nfs->rpc, nfs4_lookup_path_2_cb, &args,
-                                    data) != 0) {
+        if (rpc_nfs4_compound_task(nfs->rpc, nfs4_lookup_path_2_cb, &args,
+                                   data) == NULL) {
                 nfs_set_error(nfs, "Failed to queue READLINK command. %s",
                               nfs_get_error(nfs));
                 data->cb(-ENOMEM, nfs, nfs_get_error(nfs), data->private_data);
@@ -1426,8 +1426,8 @@ nfs4_lookup_path_async(struct nfs_context *nfs,
         args.argarray.argarray_len = i + num_op;
         args.argarray.argarray_val = op;
 
-        if (rpc_nfs4_compound_async(nfs->rpc, nfs4_lookup_path_1_cb, &args,
-                                    data) != 0) {
+        if (rpc_nfs4_compound_task(nfs->rpc, nfs4_lookup_path_1_cb, &args,
+                                   data) == NULL) {
                 nfs_set_error(nfs, "Failed to queue LOOKUP command. %s",
                               nfs_get_error(nfs));
                 free(path);
@@ -1567,8 +1567,8 @@ nfs4_mount_2_cb(struct rpc_context *rpc, int status, void *command_data,
         args.argarray.argarray_len = i;
         args.argarray.argarray_val = op;
 
-        if (rpc_nfs4_compound_async(rpc, nfs4_mount_3_cb, &args,
-                                    private_data) != 0) {
+        if (rpc_nfs4_compound_task(rpc, nfs4_mount_3_cb, &args,
+                                   private_data) == NULL) {
                 nfs_set_error(nfs, "Failed to queue SETCLIENTID_CONFIRM. %s",
                               nfs_get_error(nfs));
                 data->cb(-ENOMEM, nfs, nfs_get_error(nfs), data->private_data);
@@ -1601,7 +1601,7 @@ nfs4_mount_1_cb(struct rpc_context *rpc, int status, void *command_data,
         args.argarray.argarray_len = i;
         args.argarray.argarray_val = op;
 
-        if (rpc_nfs4_compound_async(rpc, nfs4_mount_2_cb, &args, data) != 0) {
+        if (rpc_nfs4_compound_task(rpc, nfs4_mount_2_cb, &args, data) == NULL) {
                 nfs_set_error(nfs, "Failed to queue SETCLIENTID. %s",
                               nfs_get_error(nfs));
                 data->cb(-ENOMEM, nfs, nfs_get_error(nfs), data->private_data);
@@ -1997,8 +1997,8 @@ nfs4_open_truncate_cb(struct rpc_context *rpc, int status, void *command_data,
         args.argarray.argarray_len = i;
         args.argarray.argarray_val = op;
 
-        if (rpc_nfs4_compound_async(nfs->rpc, nfs4_open_setattr_cb, &args,
-                                    data) != 0) {
+        if (rpc_nfs4_compound_task(nfs->rpc, nfs4_open_setattr_cb, &args,
+                                   data) == NULL) {
                 data->cb(-ENOMEM, nfs, nfs_get_error(nfs), data->private_data);
                 free_nfs4_cb_data(data);
                 return;
@@ -2028,8 +2028,8 @@ nfs4_open_chmod_cb(struct rpc_context *rpc, int status, void *command_data,
         args.argarray.argarray_len = i;
         args.argarray.argarray_val = op;
 
-        if (rpc_nfs4_compound_async(nfs->rpc, nfs4_open_setattr_cb, &args,
-                                    data) != 0) {
+        if (rpc_nfs4_compound_task(nfs->rpc, nfs4_open_setattr_cb, &args,
+                                   data) == NULL) {
                 data->cb(-ENOMEM, nfs, nfs_get_error(nfs), data->private_data);
                 free_nfs4_cb_data(data);
                 return;
@@ -2170,8 +2170,8 @@ nfs4_open_cb(struct rpc_context *rpc, int status, void *command_data,
                 args.argarray.argarray_len = i;
                 args.argarray.argarray_val = op;
 
-                if (rpc_nfs4_compound_async(rpc, nfs4_open_confirm_cb, &args,
-                                            private_data) != 0) {
+                if (rpc_nfs4_compound_task(rpc, nfs4_open_confirm_cb, &args,
+                                           private_data) == NULL) {
                         data->cb(-ENOMEM, nfs, nfs_get_error(nfs),
                                  data->private_data);
                         free_nfs4_cb_data(data);
@@ -2581,8 +2581,8 @@ nfs4_fstat64_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_cb cb,
         args.argarray.argarray_len = i;
         args.argarray.argarray_val = op;
 
-        if (rpc_nfs4_compound_async(nfs->rpc, nfs4_xstat64_cb, &args,
-                                    data) != 0) {
+        if (rpc_nfs4_compound_task(nfs->rpc, nfs4_xstat64_cb, &args,
+                                   data) == NULL) {
                 free_nfs4_cb_data(data);
                 return -1;
         }
@@ -2660,8 +2660,8 @@ nfs4_getacl_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_cb cb,
         args.argarray.argarray_len = i;
         args.argarray.argarray_val = op;
 
-        if (rpc_nfs4_compound_async(nfs->rpc, nfs4_getacl_cb, &args,
-                                    data) != 0) {
+        if (rpc_nfs4_compound_task(nfs->rpc, nfs4_getacl_cb, &args,
+                                   data) == NULL) {
                 free_nfs4_cb_data(data);
                 return -1;
         }
@@ -2732,8 +2732,8 @@ nfs4_close_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_cb cb,
         args.argarray.argarray_len = i;
         args.argarray.argarray_val = op;
 
-        if (rpc_nfs4_compound_async(nfs->rpc, nfs4_close_cb, &args,
-                                    data) != 0) {
+        if (rpc_nfs4_compound_task(nfs->rpc, nfs4_close_cb, &args,
+                                   data) == NULL) {
                 data->filler.blob0.val = NULL;
                 free_nfs4_cb_data(data);
                 return -1;
@@ -2811,8 +2811,8 @@ nfs4_pread_async_internal(struct nfs_context *nfs, struct nfsfh *nfsfh,
         args.argarray.argarray_len = i;
         args.argarray.argarray_val = op;
 
-        if (rpc_nfs4_compound_async(nfs->rpc, nfs4_pread_cb, &args,
-                                    data) != 0) {
+        if (rpc_nfs4_compound_task(nfs->rpc, nfs4_pread_cb, &args,
+                                   data) == NULL) {
                 free_nfs4_cb_data(data);
                 return -1;
         }
@@ -3019,8 +3019,8 @@ nfs4_pwrite_async_internal(struct nfs_context *nfs, struct nfsfh *nfsfh,
         args.argarray.argarray_len = i;
         args.argarray.argarray_val = op;
 
-        if (rpc_nfs4_compound_async2(nfs->rpc, nfs4_pwrite_cb, &args,
-                                    data, count) != 0) {
+        if (rpc_nfs4_compound_task2(nfs->rpc, nfs4_pwrite_cb, &args,
+                                    data, count) == NULL) {
                 nfs_set_error(nfs, "PWRITE "
                         "failed: %s", rpc_get_error(nfs->rpc));
                 free_nfs4_cb_data(data);
@@ -3126,8 +3126,8 @@ nfs4_write_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t count,
                 data->filler.blob1.len = (int)count;
                 data->filler.blob1.free = NULL;
 
-                if (rpc_nfs4_compound_async2(nfs->rpc, nfs4_write_append_cb,
-                                            &args, data, count) != 0) {
+                if (rpc_nfs4_compound_task2(nfs->rpc, nfs4_write_append_cb,
+                                            &args, data, count) == NULL) {
                         nfs_set_error(nfs, "PWRITE "
                                 "failed: %s", rpc_get_error(nfs->rpc));
                         free_nfs4_cb_data(data);
@@ -3591,8 +3591,8 @@ nfs4_opendir_continue(struct nfs_context *nfs, struct nfs4_cb_data *data)
         args.argarray.argarray_len = i;
         args.argarray.argarray_val = op;
 
-        if (rpc_nfs4_compound_async(nfs->rpc, nfs4_opendir_2_cb, &args,
-                                    data) != 0) {
+        if (rpc_nfs4_compound_task(nfs->rpc, nfs4_opendir_2_cb, &args,
+                                   data) == NULL) {
                 nfs_set_error(nfs, "Failed to queue READDIR command. %s",
                               nfs_get_error(nfs));
                 data->cb(-ENOMEM, nfs, nfs_get_error(nfs), data->private_data);
@@ -3872,8 +3872,8 @@ nfs4_truncate_open_cb(struct rpc_context *rpc, int status, void *command_data,
         args.argarray.argarray_len = i;
         args.argarray.argarray_val = op;
 
-        if (rpc_nfs4_compound_async(nfs->rpc, nfs4_truncate_close_cb, &args,
-                                    data) != 0) {
+        if (rpc_nfs4_compound_task(nfs->rpc, nfs4_truncate_close_cb, &args,
+                                   data) == NULL) {
                 /* Not much we can do but leak one fd on the server :( */
                 data->cb(-ENOMEM, nfs, nfs_get_error(nfs), data->private_data);
                 free_nfs4_cb_data(data);
@@ -3971,8 +3971,8 @@ nfs4_fsync_async(struct nfs_context *nfs, struct nfsfh *fh, nfs_cb cb,
         args.argarray.argarray_len = i;
         args.argarray.argarray_val = op;
 
-        if (rpc_nfs4_compound_async(nfs->rpc, nfs4_fsync_cb, &args,
-                                    data) != 0) {
+        if (rpc_nfs4_compound_task(nfs->rpc, nfs4_fsync_cb, &args,
+                                   data) == NULL) {
                 data->filler.blob0.val = NULL;
                 free_nfs4_cb_data(data);
                 return -1;
@@ -4022,8 +4022,8 @@ nfs4_ftruncate_async(struct nfs_context *nfs, struct nfsfh *fh,
         args.argarray.argarray_len = i;
         args.argarray.argarray_val = op;
 
-        if (rpc_nfs4_compound_async(nfs->rpc, nfs4_fsync_cb, &args,
-                                    data) != 0) {
+        if (rpc_nfs4_compound_task(nfs->rpc, nfs4_fsync_cb, &args,
+                                   data) == NULL) {
                 data->filler.blob0.val = NULL;
                 free_nfs4_cb_data(data);
                 return -1;
@@ -4142,8 +4142,8 @@ nfs4_lseek_async(struct nfs_context *nfs, struct nfsfh *fh, int64_t offset,
         args.argarray.argarray_len = i;
         args.argarray.argarray_val = op;
 
-        if (rpc_nfs4_compound_async(nfs->rpc, nfs4_lseek_cb, &args,
-                                    data) != 0) {
+        if (rpc_nfs4_compound_task(nfs->rpc, nfs4_lseek_cb, &args,
+                                   data) == NULL) {
                 free_nfs4_cb_data(data);
                 return -1;
         }
@@ -4255,8 +4255,8 @@ nfs4_lockf_async(struct nfs_context *nfs, struct nfsfh *fh,
         args.argarray.argarray_len = i;
         args.argarray.argarray_val = op;
 
-        if (rpc_nfs4_compound_async(nfs->rpc, nfs4_lockf_cb, &args,
-                                    data) != 0) {
+        if (rpc_nfs4_compound_task(nfs->rpc, nfs4_lockf_cb, &args,
+                                   data) == NULL) {
                 free_nfs4_cb_data(data);
                 return -1;
         }
@@ -4360,8 +4360,8 @@ nfs4_fcntl_async_internal(struct nfs_context *nfs, struct nfsfh *fh,
         args.argarray.argarray_len = i;
         args.argarray.argarray_val = op;
 
-        if (rpc_nfs4_compound_async(nfs->rpc, nfs4_fcntl_cb, &args,
-                                    data) != 0) {
+        if (rpc_nfs4_compound_task(nfs->rpc, nfs4_fcntl_cb, &args,
+                                   data) == NULL) {
                 free_nfs4_cb_data(data);
                 return -1;
         }
@@ -4467,9 +4467,9 @@ nfs4_fcntl_async(struct nfs_context *nfs, struct nfsfh *fh,
                         args.argarray.argarray_len = i;
                         args.argarray.argarray_val = op;
 
-                        if (rpc_nfs4_compound_async(nfs->rpc,
-                                                    nfs4_fcntl_stat_cb,
-                                                    &args, data) != 0) {
+                        if (rpc_nfs4_compound_task(nfs->rpc,
+                                                   nfs4_fcntl_stat_cb,
+                                                   &args, data) == NULL) {
                                 free_nfs4_cb_data(data);
                                 return -1;
                         }
@@ -4734,8 +4734,8 @@ nfs4_statvfs_async_internal(struct nfs_context *nfs, const char *path,
         args.argarray.argarray_len = i;
         args.argarray.argarray_val = op;
 
-        if (rpc_nfs4_compound_async(nfs->rpc, nfs4_statvfs_cb, &args,
-                                    data) != 0) {
+        if (rpc_nfs4_compound_task(nfs->rpc, nfs4_statvfs_cb, &args,
+                                   data) == NULL) {
                 free_nfs4_cb_data(data);
                 return -1;
         }
@@ -4862,8 +4862,8 @@ nfs4_fchmod_async(struct nfs_context *nfs, struct nfsfh *fh, int mode,
         args.argarray.argarray_len = i;
         args.argarray.argarray_val = op;
 
-        if (rpc_nfs4_compound_async(nfs->rpc, nfs4_fsync_cb, &args,
-                                    data) != 0) {
+        if (rpc_nfs4_compound_task(nfs->rpc, nfs4_fsync_cb, &args,
+                                   data) == NULL) {
                 data->filler.blob0.val = NULL;
                 free_nfs4_cb_data(data);
                 return -1;
@@ -5013,8 +5013,8 @@ nfs4_fchown_async(struct nfs_context *nfs, struct nfsfh *fh, int uid, int gid,
         args.argarray.argarray_len = i;
         args.argarray.argarray_val = op;
 
-        if (rpc_nfs4_compound_async(nfs->rpc, nfs4_fsync_cb, &args,
-                                    data) != 0) {
+        if (rpc_nfs4_compound_task(nfs->rpc, nfs4_fsync_cb, &args,
+                                   data) == NULL) {
                 data->filler.blob0.val = NULL;
                 free_nfs4_cb_data(data);
                 return -1;

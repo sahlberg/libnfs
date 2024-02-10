@@ -86,7 +86,7 @@ void rquota_connect_cb(struct rpc_context *rpc, int status, void *data _U_, void
 
 	printf("Connected to RPC.RQUOTAD on %s:%d\n", client->server, client->rquota_port);
 	printf("Send GETQUOTA request for uid 100\n");
-	if (rpc_rquota1_getquota_async(rpc, rquota_getquota_cb, EXPORT, 100, client) != 0) {
+	if (rpc_rquota1_getquota_task(rpc, rquota_getquota_cb, EXPORT, 100, client) == NULL) {
 		printf("Failed to send getquota request\n");
 		exit(10);
 	}
@@ -136,7 +136,7 @@ void acl_null_cb(struct rpc_context *rpc _U_, int status, void *data, void *priv
 
 	args.dir = client->rootfh;
 	args.mask = NFSACL_MASK_ACL_ENTRY|NFSACL_MASK_ACL_COUNT|NFSACL_MASK_ACL_DEFAULT_ENTRY|NFSACL_MASK_ACL_DEFAULT_COUNT;
-	if (rpc_nfsacl_getacl_async(rpc, acl_getacl_cb, &args, client) != 0) {
+	if (rpc_nfsacl3_getacl_task(rpc, acl_getacl_cb, &args, client) == NULL) {
 		printf("Failed to send getacl request\n");
 		exit(10);
 	}
@@ -162,7 +162,7 @@ void nfs_fsinfo_cb(struct rpc_context *rpc _U_, int status, void *data, void *pr
 	printf("Write Max:%d\n", (int)res->FSINFO3res_u.resok.wtmax);
 
 	printf("Send NFSACL/NULL request\n");
-	if (rpc_nfsacl_null_async(rpc, acl_null_cb, client) != 0) {
+	if (rpc_nfsacl3_null_task(rpc, acl_null_cb, client) == NULL) {
 		printf("Failed to send acl/null request\n");
 		exit(10);
 	}
@@ -182,7 +182,7 @@ void nfs_connect_cb(struct rpc_context *rpc, int status, void *data _U_, void *p
 	printf("Connected to RPC.NFSD on %s:%d\n", client->server, client->mount_port);
 	printf("Send FSINFO request\n");
 	args.fsroot = client->rootfh;
-	if (rpc_nfs3_fsinfo_async(rpc, nfs_fsinfo_cb, &args, client) != 0) {
+	if (rpc_nfs3_fsinfo_task(rpc, nfs_fsinfo_cb, &args, client) == NULL) {
 		printf("Failed to send fsinfo request\n");
 		exit(10);
 	}
@@ -242,7 +242,7 @@ void mount_export_cb(struct rpc_context *rpc, int status, void *data, void *priv
 	      export = export->ex_next;
 	}
 	printf("Send MOUNT/MNT command for %s\n", client->export);
-	if (rpc_mount_mnt_async(rpc, mount_mnt_cb, client->export, client) != 0) {
+	if (rpc_mount3_mnt_task(rpc, mount_mnt_cb, client->export, client) == NULL) {
 		printf("Failed to send mnt request\n");
 		exit(10);
 	}
@@ -263,7 +263,7 @@ void mount_null_cb(struct rpc_context *rpc, int status, void *data, void *privat
 
 	printf("Got reply from server for MOUNT/NULL procedure.\n");
 	printf("Send MOUNT/EXPORT command\n");
-	if (rpc_mount_export_async(rpc, mount_export_cb, client) != 0) {
+	if (rpc_mount3_export_task(rpc, mount_export_cb, client) == NULL) {
 		printf("Failed to send export request\n");
 		exit(10);
 	}
@@ -280,7 +280,7 @@ void mount_connect_cb(struct rpc_context *rpc, int status, void *data _U_, void 
 
 	printf("Connected to RPC.MOUNTD on %s:%d\n", client->server, client->mount_port);
 	printf("Send NULL request to check if RPC.MOUNTD is actually running\n");
-	if (rpc_mount_null_async(rpc, mount_null_cb, client) != 0) {
+	if (rpc_mount3_null_task(rpc, mount_null_cb, client) == NULL) {
 		printf("Failed to send null request\n");
 		exit(10);
 	}
@@ -341,7 +341,7 @@ void pmap_getport1_cb(struct rpc_context *rpc, int status, void *data, void *pri
 	}		
 
 	printf("Send getport request asking for MOUNT port\n");
-	if (rpc_pmap2_getport_async(rpc, MOUNT_PROGRAM, MOUNT_V3, IPPROTO_TCP, pmap_getport2_cb, client) != 0) {
+	if (rpc_pmap2_getport_task(rpc, MOUNT_PROGRAM, MOUNT_V3, IPPROTO_TCP, pmap_getport2_cb, client) == NULL) {
 		printf("Failed to send getport request\n");
 		exit(10);
 	}
@@ -373,7 +373,7 @@ void pmap_dump_cb(struct rpc_context *rpc, int status, void *data, void *private
 	}
 
 	printf("Send getport request asking for MOUNT port\n");
-	if (rpc_pmap2_getport_async(rpc, RQUOTA_PROGRAM, RQUOTA_V1, IPPROTO_TCP, pmap_getport1_cb, client) != 0) {
+	if (rpc_pmap2_getport_task(rpc, RQUOTA_PROGRAM, RQUOTA_V1, IPPROTO_TCP, pmap_getport1_cb, client) == NULL) {
 		printf("Failed to send getport request\n");
 		exit(10);
 	}
@@ -394,7 +394,7 @@ void pmap_null_cb(struct rpc_context *rpc, int status, void *data, void *private
 
 	printf("Got reply from server for PORTMAP/NULL procedure.\n");
 	printf("Send PMAP/DUMP command\n");
-	if (rpc_pmap2_dump_async(rpc, pmap_dump_cb, client) != 0) {
+	if (rpc_pmap2_dump_task(rpc, pmap_dump_cb, client) == NULL) {
 		printf("Failed to send getport request\n");
 		exit(10);
 	}
@@ -411,7 +411,7 @@ void pmap_connect_cb(struct rpc_context *rpc, int status, void *data _U_, void *
 	}
 
 	printf("Send NULL request to check if portmapper is actually running\n");
-	if (rpc_pmap2_null_async(rpc, pmap_null_cb, client) != 0) {
+	if (rpc_pmap2_null_task(rpc, pmap_null_cb, client) == NULL) {
 		printf("Failed to send null request\n");
 		exit(10);
 	}

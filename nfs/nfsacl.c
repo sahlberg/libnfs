@@ -30,70 +30,73 @@
 #include "libnfs-raw-nfs.h"
 
 
-int rpc_nfsacl_null_async(struct rpc_context *rpc, rpc_cb cb, void *private_data)
+struct rpc_pdu *
+rpc_nfsacl3_null_task(struct rpc_context *rpc, rpc_cb cb, void *private_data)
 {
 	struct rpc_pdu *pdu;
 
 	pdu = rpc_allocate_pdu(rpc, NFSACL_PROGRAM, NFSACL_V3, NFSACL3_NULL, cb, private_data, (zdrproc_t)zdr_void, 0);
 	if (pdu == NULL) {
 		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu for nfsacl/null call");
-		return -1;
+		return NULL;
 	}
 
 	if (rpc_queue_pdu(rpc, pdu) != 0) {
 		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for nfsacl/null call");
-		return -2;
+		return NULL;
 	}
 
-	return 0;
+	return pdu;
 }
 
 
-int rpc_nfsacl_getacl_async(struct rpc_context *rpc, rpc_cb cb, struct GETACL3args *args, void *private_data)
+struct rpc_pdu *
+rpc_nfsacl3_getacl_task(struct rpc_context *rpc, rpc_cb cb, struct GETACL3args *args, void *private_data)
 {
 	struct rpc_pdu *pdu;
 
 	pdu = rpc_allocate_pdu(rpc, NFSACL_PROGRAM, NFSACL_V3, NFSACL3_GETACL, cb, private_data, (zdrproc_t)zdr_GETACL3res, sizeof(GETACL3res));
 	if (pdu == NULL) {
 		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu for nfsacl/getacl call");
-		return -1;
+		return NULL;
 	}
 
 	if (zdr_GETACL3args(&pdu->zdr, args) == 0) {
 		rpc_set_error(rpc, "ZDR error: Failed to encode GETACL3args");
 		rpc_free_pdu(rpc, pdu);
-		return -2;
+		return NULL;
 	}
 
 	if (rpc_queue_pdu(rpc, pdu) != 0) {
 		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for nfsacl/getacl call");
-		return -2;
+		return NULL;
 	}
 
-	return 0;
+	return pdu;
 }
 
-int rpc_nfsacl_setacl_async(struct rpc_context *rpc, rpc_cb cb, struct SETACL3args *args, void *private_data)
+struct rpc_pdu *
+rpc_nfsacl3_setacl_task(struct rpc_context *rpc, rpc_cb cb, struct SETACL3args *args, void *private_data)
 {
 	struct rpc_pdu *pdu;
 
 	pdu = rpc_allocate_pdu(rpc, NFSACL_PROGRAM, NFSACL_V3, NFSACL3_SETACL, cb, private_data, (zdrproc_t)zdr_SETACL3res, sizeof(SETACL3res));
 	if (pdu == NULL) {
 		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu for nfsacl/setacl call");
-		return -1;
+		return NULL;
 	}
 
 	if (zdr_SETACL3args(&pdu->zdr, args) == 0) {
 		rpc_set_error(rpc, "ZDR error: Failed to encode SETACL3args");
 		rpc_free_pdu(rpc, pdu);
-		return -2;
+		return NULL;
 	}
 
 	if (rpc_queue_pdu(rpc, pdu) != 0) {
 		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for nfsacl/setacl call");
-		return -2;
+		return NULL;
 	}
 
-	return 0;
+	return pdu;
 }
 

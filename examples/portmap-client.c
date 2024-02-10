@@ -343,7 +343,7 @@ void pmap_connect_cb(struct rpc_context *rpc, int status, void *data _U_, void *
 		exit(10);
 	}
 
-	if (rpc_pmap2_null_async(rpc, pmap_null_cb, client) != 0) {
+	if (rpc_pmap2_null_task(rpc, pmap_null_cb, client) == NULL) {
 		printf("Failed to send null request\n");
 		exit(10);
 	}
@@ -481,42 +481,42 @@ int main(int argc _U_, char *argv[] _U_)
 	wait_until_finished(rpc, &client);
 
 	if (null2) {
-		if (rpc_pmap2_null_async(rpc, pmap2_null_cb, &client) != 0) {
+		if (rpc_pmap2_null_task(rpc, pmap2_null_cb, &client) == NULL) {
 			printf("Failed to send NULL2 request\n");
 			exit(10);
 		}
 		wait_until_finished(rpc, &client);
 	}
 	if (dump2) {
-		if (rpc_pmap2_dump_async(rpc, pmap2_dump_cb, &client) != 0) {
+		if (rpc_pmap2_dump_task(rpc, pmap2_dump_cb, &client) == NULL) {
 			printf("Failed to send DUMP2 request\n");
 			exit(10);
 		}
 		wait_until_finished(rpc, &client);
 	}
 	if (null3) {
-		if (rpc_pmap3_null_async(rpc, pmap3_null_cb, &client) != 0) {
+		if (rpc_pmap3_null_task(rpc, pmap3_null_cb, &client) == NULL) {
 			printf("Failed to send NULL3 request\n");
 			exit(10);
 		}
 		wait_until_finished(rpc, &client);
 	}
 	if (dump3) {
-		if (rpc_pmap3_dump_async(rpc, pmap3_dump_cb, &client) != 0) {
+		if (rpc_pmap3_dump_task(rpc, pmap3_dump_cb, &client) == NULL) {
 			printf("Failed to send DUMP3 request\n");
 			exit(10);
 		}
 		wait_until_finished(rpc, &client);
 	}
 	if (gettime3) {
-		if (rpc_pmap3_gettime_async(rpc, pmap3_gettime_cb, &client) != 0) {
+		if (rpc_pmap3_gettime_task(rpc, pmap3_gettime_cb, &client) == NULL) {
 			printf("Failed to send GETTIME3 request\n");
 			exit(10);
 		}
 		wait_until_finished(rpc, &client);
 	}
 	if (u2t3) {
-		if (rpc_pmap3_uaddr2taddr_async(rpc, u2t3string, pmap3_uaddr2taddr_cb, &client) != 0) {
+		if (rpc_pmap3_uaddr2taddr_task(rpc, u2t3string, pmap3_uaddr2taddr_cb, &client) == NULL) {
 			printf("Failed to send UADDR2TADDR3 request\n");
 			exit(10);
 		}
@@ -530,21 +530,21 @@ int main(int argc _U_, char *argv[] _U_)
 		map.netid = getaddr3netid;
 		map.addr  = getaddr3addr;
 		map.owner = getaddr3owner;
-		if (rpc_pmap3_getaddr_async(rpc, &map, pmap3_getaddr_cb, &client) != 0) {
+		if (rpc_pmap3_getaddr_task(rpc, &map, pmap3_getaddr_cb, &client) == NULL) {
 			printf("Failed to send GETADDR3 request\n");
 			exit(10);
 		}
 		wait_until_finished(rpc, &client);
 	}
 	if (set2) {
-		if (rpc_pmap2_set_async(rpc, set2prog, set2vers, set2prot, set2port, pmap2_set_cb, &client) != 0) {
+		if (rpc_pmap2_set_task(rpc, set2prog, set2vers, set2prot, set2port, pmap2_set_cb, &client) == NULL) {
 			printf("Failed to send SET2 request\n");
 			exit(10);
 		}
 		wait_until_finished(rpc, &client);
 	}
 	if (unset2) {
-		if (rpc_pmap2_unset_async(rpc, unset2prog, unset2vers, unset2prot, unset2port, pmap2_unset_cb, &client) != 0) {
+		if (rpc_pmap2_unset_task(rpc, unset2prog, unset2vers, unset2prot, unset2port, pmap2_unset_cb, &client) == NULL) {
 			printf("Failed to send UNSET2 request\n");
 			exit(10);
 		}
@@ -558,7 +558,7 @@ int main(int argc _U_, char *argv[] _U_)
 		map.netid = set3netid;
 		map.addr  = set3addr;
 		map.owner = set3owner;
-		if (rpc_pmap3_set_async(rpc, &map, pmap3_set_cb, &client) != 0) {
+		if (rpc_pmap3_set_task(rpc, &map, pmap3_set_cb, &client) == NULL) {
 			printf("Failed to send SET3 request\n");
 			exit(10);
 		}
@@ -572,7 +572,7 @@ int main(int argc _U_, char *argv[] _U_)
 		map.netid = unset3netid;
 		map.addr  = unset3addr;
 		map.owner = unset3owner;
-		if (rpc_pmap3_unset_async(rpc, &map, pmap3_unset_cb, &client) != 0) {
+		if (rpc_pmap3_unset_task(rpc, &map, pmap3_unset_cb, &client) == NULL) {
 			printf("Failed to send UNSET3 request\n");
 			exit(10);
 		}

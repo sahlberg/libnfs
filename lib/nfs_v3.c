@@ -354,9 +354,9 @@ nfs3_lookup_path_async_internal(struct nfs_context *nfs, struct nfs_attr *attr,
 			rl_args.symlink.data.data_len = fh->len;
 			rl_args.symlink.data.data_val = fh->val;
 
-			if (rpc_nfs3_readlink_async(nfs->rpc,
-                                                    nfs3_lookup_path_2_cb,
-                                                    &rl_args, data) != 0) {
+			if (rpc_nfs3_readlink_task(nfs->rpc,
+                                                   nfs3_lookup_path_2_cb,
+                                                   &rl_args, data) == NULL) {
 				nfs_set_error(nfs, "RPC error: Failed to "
                                               "send READLINK call for %s",
                                               data->path);
@@ -412,8 +412,8 @@ nfs3_lookup_path_async_internal(struct nfs_context *nfs, struct nfs_attr *attr,
 	args.what.dir.data.data_val = fh->val;
 	args.what.name = path;
 
-	if (rpc_nfs3_lookup_async(nfs->rpc, nfs3_lookup_path_1_cb,
-                                  &args, data) != 0) {
+	if (rpc_nfs3_lookup_task(nfs->rpc, nfs3_lookup_path_1_cb,
+                                 &args, data) == NULL) {
 		nfs_set_error(nfs, "RPC error: Failed to send lookup "
                               "call for %s", data->path);
 		data->cb(-ENOMEM, nfs, nfs_get_error(nfs),
@@ -562,8 +562,8 @@ nfs3_lookuppath_async(struct nfs_context *nfs, const char *path, int no_follow,
 	memset(&args, 0, sizeof(GETATTR3args));
 	args.object.data.data_len = fh->len;
 	args.object.data.data_val = fh->val;
-	if (rpc_nfs3_getattr_async(nfs->rpc, nfs3_lookup_path_getattr_cb,
-                                   &args, data) != 0) {
+	if (rpc_nfs3_getattr_task(nfs->rpc, nfs3_lookup_path_getattr_cb,
+                                  &args, data) == NULL) {
 		free_nfs_cb_data(data);
 		return -1;
 	}
@@ -647,8 +647,8 @@ nfs3_mount_7_cb(struct rpc_context *rpc, int status, void *command_data,
 		args.object.data.data_len = mnt->fh.len;
 		args.object.data.data_val = mnt->fh.val;
 
-		if (rpc_nfs3_getattr_async(rpc, nfs3_mount_8_cb, &args,
-					   ma_item) != 0) {
+		if (rpc_nfs3_getattr_task(rpc, nfs3_mount_8_cb, &args,
+                                          ma_item) == NULL) {
                         nfs_set_error(nfs, "%s: %s", __FUNCTION__,
                                       nfs_get_error(nfs));
 			free(ma_item);
@@ -723,7 +723,7 @@ nfs3_mount_6_cb(struct rpc_context *rpc, int status, void *command_data,
 	args.object.data.data_len = nfs->nfsi->rootfh.len;
 	args.object.data.data_val = nfs->nfsi->rootfh.val;
 
-	if (rpc_nfs3_getattr_async(rpc, nfs3_mount_7_cb, &args, data) != 0) {
+	if (rpc_nfs3_getattr_task(rpc, nfs3_mount_7_cb, &args, data) == NULL) {
                 nfs_set_error(nfs, "%s: %s", __FUNCTION__, nfs_get_error(nfs));
 		data->cb(-ENOMEM, nfs, nfs_get_error(nfs), data->private_data);
 		free_nfs_cb_data(data);
@@ -753,7 +753,7 @@ nfs3_mount_5_cb(struct rpc_context *rpc, int status, void *command_data,
 
 	args.fsroot.data.data_len = nfs->nfsi->rootfh.len;
 	args.fsroot.data.data_val = nfs->nfsi->rootfh.val;
-	if (rpc_nfs3_fsinfo_async(rpc, nfs3_mount_6_cb, &args, data) != 0) {
+	if (rpc_nfs3_fsinfo_task(rpc, nfs3_mount_6_cb, &args, data) == NULL) {
                 nfs_set_error(nfs, "%s: %s", __FUNCTION__, nfs_get_error(nfs));
 		data->cb(-ENOMEM, nfs, nfs_get_error(nfs), data->private_data);
 		free_nfs_cb_data(data);
@@ -960,8 +960,8 @@ nfs3_mount_3_cb(struct rpc_context *rpc, int status, void *command_data,
 		}
 		md_item_cb->md_cb = md_cb;
 
-		if (rpc_mount3_mnt_async(rpc, nfs3_mount_4_cb,
-					 res->ex_dir, md_item_cb) != 0) {
+		if (rpc_mount3_mnt_task(rpc, nfs3_mount_4_cb,
+                                        res->ex_dir, md_item_cb) == NULL) {
                         nfs_set_error(nfs, "%s: %s",
                                       __FUNCTION__, nfs_get_error(nfs));
 			if (md_cb->wait_count == 0) {
@@ -1052,7 +1052,7 @@ nfs3_mount_2_cb(struct rpc_context *rpc, int status, void *command_data,
                nfs->nfsi->rootfh.len);
 
 	if (nfs->nfsi->auto_traverse_mounts) {
-		if (rpc_mount3_export_async(rpc, nfs3_mount_3_cb, data) != 0) {
+		if (rpc_mount3_export_task(rpc, nfs3_mount_3_cb, data) == NULL) {
                         nfs_set_error(nfs, "%s: %s", __FUNCTION__,
                                       nfs_get_error(nfs));
 			data->cb(-ENOMEM, nfs, nfs_get_error(nfs),
@@ -1104,8 +1104,8 @@ nfs3_mount_1_cb(struct rpc_context *rpc, int status, void *command_data,
 		return;
 	}
 
-	if (rpc_mount3_mnt_async(rpc, nfs3_mount_2_cb, nfs->nfsi->export,
-                                 data) != 0) {
+	if (rpc_mount3_mnt_task(rpc, nfs3_mount_2_cb, nfs->nfsi->export,
+                                data) == NULL) {
                 nfs_set_error(nfs, "%s: %s.", __FUNCTION__, nfs_get_error(nfs));
 		data->cb(-ENOMEM, nfs, nfs_get_error(nfs), data->private_data);
 		free_nfs_cb_data(data);
@@ -1198,8 +1198,8 @@ nfs3_umount_1_cb(struct rpc_context *rpc, int status, void *command_data,
 		return;
 	}
 
-	if (rpc_mount3_umnt_async(rpc, nfs3_umount_2_cb, nfs->nfsi->export,
-                                 data) != 0) {
+	if (rpc_mount3_umnt_task(rpc, nfs3_umount_2_cb, nfs->nfsi->export,
+                                 data) == NULL) {
                 nfs_set_error(nfs, "%s: %s.", __FUNCTION__, nfs_get_error(nfs));
 		data->cb(-ENOMEM, nfs, nfs_get_error(nfs), data->private_data);
 		free_nfs_cb_data(data);
@@ -1326,7 +1326,7 @@ nfs3_link_continue_2_internal(struct nfs_context *nfs,
 	args.link.dir.data.data_len = link_data->newdir.len;
         args.link.dir.data.data_val = link_data->newdir.val;
 	args.link.name = link_data->newobject;
-	if (rpc_nfs3_link_async(nfs->rpc, nfs3_link_cb, &args, data) != 0) {
+	if (rpc_nfs3_link_task(nfs->rpc, nfs3_link_cb, &args, data) == NULL) {
 		nfs_set_error(nfs, "RPC error: Failed to send LINK "
                               "call for %s", data->path);
 		data->cb(-ENOMEM, nfs, nfs_get_error(nfs), data->private_data);
@@ -1498,7 +1498,7 @@ nfs3_rename_continue_2_internal(struct nfs_context *nfs,
 	args.to.dir.data.data_len = rename_data->newdir.len;
 	args.to.dir.data.data_val = rename_data->newdir.val;
 	args.to.name = rename_data->newobject;
-	if (rpc_nfs3_rename_async(nfs->rpc, nfs3_rename_cb, &args, data) != 0) {
+	if (rpc_nfs3_rename_task(nfs->rpc, nfs3_rename_cb, &args, data) == NULL) {
 		nfs_set_error(nfs, "RPC error: Failed to send RENAME "
                               "call for %s", data->path);
 		data->cb(-ENOMEM, nfs, nfs_get_error(nfs),
@@ -1681,8 +1681,8 @@ nfs3_symlink_continue_internal(struct nfs_context *nfs,
 	args.symlink.symlink_attributes.mode.set_mode3_u.mode = S_IRUSR|S_IWUSR|S_IXUSR|S_IRGRP|S_IWGRP|S_IXGRP|S_IROTH|S_IWOTH|S_IXOTH;
 	args.symlink.symlink_data = symlink_data->target;
 
-	if (rpc_nfs3_symlink_async(nfs->rpc, nfs3_symlink_cb,
-                                   &args, data) != 0) {
+	if (rpc_nfs3_symlink_task(nfs->rpc, nfs3_symlink_cb,
+                                  &args, data) == NULL) {
 		nfs_set_error(nfs, "RPC error: Failed to send SYMLINK "
                               "call for %s", data->path);
 		data->cb(-ENOMEM, nfs, nfs_get_error(nfs), data->private_data);
@@ -1806,8 +1806,8 @@ nfs3_access2_continue_internal(struct nfs_context *nfs,
 	args.object.data.data_val = data->fh.val;
 	args.access = ACCESS3_READ | ACCESS3_LOOKUP | ACCESS3_MODIFY | ACCESS3_EXTEND | ACCESS3_DELETE | ACCESS3_EXECUTE;
 
-	if (rpc_nfs3_access_async(nfs->rpc, nfs3_access2_cb,
-                                  &args, data) != 0) {
+	if (rpc_nfs3_access_task(nfs->rpc, nfs3_access2_cb,
+                                 &args, data) == NULL) {
 		data->cb(-ENOMEM, nfs, nfs_get_error(nfs),
                          data->private_data);
 		free_nfs_cb_data(data);
@@ -1910,7 +1910,7 @@ nfs3_access_continue_internal(struct nfs_context *nfs,
 	args.object.data.data_val = data->fh.val;
 	args.access = nfsmode;
 
-	if (rpc_nfs3_access_async(nfs->rpc, nfs3_access_cb, &args, data) != 0) {
+	if (rpc_nfs3_access_task(nfs->rpc, nfs3_access_cb, &args, data) == NULL) {
 		data->cb(-ENOMEM, nfs, nfs_get_error(nfs),
                          data->private_data);
 		free_nfs_cb_data(data);
@@ -1987,8 +1987,8 @@ nfs3_utimes_continue_internal(struct nfs_context *nfs,
 		args.new_attributes.mtime.set_it = SET_TO_SERVER_TIME;
 	}
 
-	if (rpc_nfs3_setattr_async(nfs->rpc, nfs3_utimes_cb,
-                                   &args, data) != 0) {
+	if (rpc_nfs3_setattr_task(nfs->rpc, nfs3_utimes_cb,
+                                  &args, data) == NULL) {
 		nfs_set_error(nfs, "RPC error: Failed to send SETATTR "
                               "call for %s", data->path);
 		data->cb(-ENOMEM, nfs, nfs_get_error(nfs),
@@ -2111,7 +2111,7 @@ nfs3_chown_continue_internal(struct nfs_context *nfs,
 		args.new_attributes.gid.set_gid3_u.gid = chown_data->gid;
 	}
 
-	if (rpc_nfs3_setattr_async(nfs->rpc, nfs3_chown_cb, &args, data) != 0) {
+	if (rpc_nfs3_setattr_task(nfs->rpc, nfs3_chown_cb, &args, data) == NULL) {
 		nfs_set_error(nfs, "RPC error: Failed to send SETATTR "
                               "call for %s", data->path);
 		data->cb(-ENOMEM, nfs, nfs_get_error(nfs),
@@ -2238,7 +2238,7 @@ nfs3_chmod_continue_internal(struct nfs_context *nfs,
 	args.new_attributes.mode.set_it = 1;
 	args.new_attributes.mode.set_mode3_u.mode = (mode3)data->continue_int;
 
-	if (rpc_nfs3_setattr_async(nfs->rpc, nfs3_chmod_cb, &args, data) != 0) {
+	if (rpc_nfs3_setattr_task(nfs->rpc, nfs3_chmod_cb, &args, data) == NULL) {
 		nfs_set_error(nfs, "RPC error: Failed to send SETATTR "
                               "call for %s", data->path);
 		data->cb(-ENOMEM, nfs, nfs_get_error(nfs),
@@ -2338,8 +2338,8 @@ nfs3_readlink_continue_internal(struct nfs_context *nfs,
 	args.symlink.data.data_val = data->fh.val;
 	args.symlink.data.data_len = data->fh.len;
 
-	if (rpc_nfs3_readlink_async(nfs->rpc, nfs3_readlink_1_cb,
-                                    &args, data) != 0) {
+	if (rpc_nfs3_readlink_task(nfs->rpc, nfs3_readlink_1_cb,
+                                   &args, data) == NULL) {
 		nfs_set_error(nfs, "RPC error: Failed to send READLINK "
                               "call for %s", data->path);
 		data->cb(-ENOMEM, nfs, nfs_get_error(nfs),
@@ -2437,8 +2437,8 @@ nfs3_statvfs_continue_internal(struct nfs_context *nfs,
 
 	args.fsroot.data.data_len = data->fh.len;
 	args.fsroot.data.data_val = data->fh.val;
-	if (rpc_nfs3_fsstat_async(nfs->rpc, nfs3_statvfs_1_cb,
-                                  &args, data) != 0) {
+	if (rpc_nfs3_fsstat_task(nfs->rpc, nfs3_statvfs_1_cb,
+                                 &args, data) == NULL) {
 		nfs_set_error(nfs, "RPC error: Failed to send FSSTAT "
                               "call for %s", data->path);
 		data->cb(-ENOMEM, nfs, nfs_get_error(nfs),
@@ -2562,8 +2562,8 @@ nfs3_lseek_async(struct nfs_context *nfs, struct nfsfh *nfsfh, int64_t offset,
 	args.object.data.data_len = nfsfh->fh.len;
 	args.object.data.data_val = nfsfh->fh.val;
 
-	if (rpc_nfs3_getattr_async(nfs->rpc, nfs3_lseek_1_cb,
-                                   &args, data) != 0) {
+	if (rpc_nfs3_getattr_task(nfs->rpc, nfs3_lseek_1_cb,
+                                  &args, data) == NULL) {
 		free(data);
 		return -1;
 	}
@@ -2710,8 +2710,8 @@ lookup_missing_attributes(struct nfs_context *nfs,
 		args.what.dir.data.data_val = data->fh.val;
 		args.what.name = nfsdirent->name;
 
-		if (rpc_nfs3_lookup_async(nfs->rpc, nfs3_opendir_3_cb, &args,
-					  rdpe_lookup_cb_data) != 0) {
+		if (rpc_nfs3_lookup_task(nfs->rpc, nfs3_opendir_3_cb, &args,
+                                         rdpe_lookup_cb_data) == NULL) {
 			nfs_set_error(nfs, "RPC error: Failed to send "
 				      "READDIR LOOKUP call");
 
@@ -2804,8 +2804,8 @@ nfs3_opendir_2_cb(struct rpc_context *rpc, int status, void *command_data,
                        sizeof(cookieverf3));
 		args.count = nfs->nfsi->readdir_dircount;
 
-	     	if (rpc_nfs3_readdir_async(nfs->rpc, nfs3_opendir_2_cb,
-                                           &args, data) != 0) {
+	     	if (rpc_nfs3_readdir_task(nfs->rpc, nfs3_opendir_2_cb,
+                                          &args, data) == NULL) {
 			nfs_set_error(nfs, "RPC error: Failed to send "
                                       "READDIR call for %s", data->path);
 			data->cb(-ENOMEM, nfs, nfs_get_error(nfs),
@@ -2861,8 +2861,8 @@ nfs3_opendir_cb(struct rpc_context *rpc, int status, void *command_data,
 		memset(&args.cookieverf, 0, sizeof(cookieverf3));
 		args.count = nfs->nfsi->readdir_dircount;
 
-		if (rpc_nfs3_readdir_async(nfs->rpc, nfs3_opendir_2_cb,
-                                           &args, data) != 0) {
+		if (rpc_nfs3_readdir_task(nfs->rpc, nfs3_opendir_2_cb,
+                                          &args, data) == NULL) {
 			nfs_set_error(nfs, "RPC error: Failed to send "
                                       "READDIR call for %s", data->path);
 			data->cb(-ENOMEM, nfs, nfs_get_error(nfs),
@@ -3000,8 +3000,8 @@ nfs3_opendir_cb(struct rpc_context *rpc, int status, void *command_data,
 		args.dircount = nfs->nfsi->readdir_dircount;
 		args.maxcount = nfs->nfsi->readdir_maxcount;
 
-	     	if (rpc_nfs3_readdirplus_async(nfs->rpc, nfs3_opendir_cb,
-                                               &args, data) != 0) {
+	     	if (rpc_nfs3_readdirplus_task(nfs->rpc, nfs3_opendir_cb,
+                                              &args, data) == NULL) {
 			nfs_set_error(nfs, "RPC error: Failed to send "
                                       "READDIRPLUS call for %s", data->path);
 			data->cb(-ENOMEM, nfs, nfs_get_error(nfs),
@@ -3070,8 +3070,8 @@ nfs3_opendir_continue_internal(struct nfs_context *nfs,
 	memset(&args.cookieverf, 0, sizeof(cookieverf3));
 	args.dircount = nfs->nfsi->readdir_dircount;
 	args.maxcount = nfs->nfsi->readdir_maxcount;
-	if (rpc_nfs3_readdirplus_async(nfs->rpc, nfs3_opendir_cb,
-                                       &args, data) != 0) {
+	if (rpc_nfs3_readdirplus_task(nfs->rpc, nfs3_opendir_cb,
+                                      &args, data) == NULL) {
 		nfs_set_error(nfs, "RPC error: Failed to send "
                               "READDIRPLUS call for %s", data->path);
 		data->cb(-ENOMEM, nfs, nfs_get_error(nfs),
@@ -3205,7 +3205,7 @@ nfs3_mknod_continue_internal(struct nfs_context *nfs,
 		return -1;
 	}
 
-	if (rpc_nfs3_mknod_async(nfs->rpc, nfs3_mknod_cb, &args, data) != 0) {
+	if (rpc_nfs3_mknod_task(nfs->rpc, nfs3_mknod_cb, &args, data) == NULL) {
 		data->cb(-ENOMEM, nfs, nfs_get_error(nfs),
                          data->private_data);
 		free_nfs_cb_data(data);
@@ -3311,7 +3311,7 @@ nfs3_unlink_continue_internal(struct nfs_context *nfs,
 	args.object.dir.data.data_len = data->fh.len;
         args.object.dir.data.data_val = data->fh.val;
 	args.object.name = str;
-	if (rpc_nfs3_remove_async(nfs->rpc, nfs3_unlink_cb, &args, data) != 0) {
+	if (rpc_nfs3_remove_task(nfs->rpc, nfs3_unlink_cb, &args, data) == NULL) {
 		nfs_set_error(nfs, "RPC error: Failed to send REMOVE "
                               "call for %s", data->path);
 		data->cb(-ENOMEM, nfs, nfs_get_error(nfs),
@@ -3484,8 +3484,8 @@ nfs3_create_2_cb(struct rpc_context *rpc, int status, void *command_data,
 		args.new_attributes.size.set_it = 1;
 		args.new_attributes.size.set_size3_u.size = 0;
 
-		if (rpc_nfs3_setattr_async(nfs->rpc, nfs3_create_trunc_cb,
-				&args, data) != 0) {
+		if (rpc_nfs3_setattr_task(nfs->rpc, nfs3_create_trunc_cb,
+                                          &args, data) == NULL) {
 			nfs_set_error(nfs, "RPC error: Failed to send "
 				"SETATTR call for %s", data->path);
 			data->cb(-ENOMEM, nfs, nfs_get_error(nfs),
@@ -3538,8 +3538,8 @@ nfs3_create_1_cb(struct rpc_context *rpc, int status, void *command_data,
 	args.what.dir.data.data_val = data->fh.val;
 	args.what.name = str;
 
-	if (rpc_nfs3_lookup_async(nfs->rpc, nfs3_create_2_cb,
-                                  &args, data) != 0) {
+	if (rpc_nfs3_lookup_task(nfs->rpc, nfs3_create_2_cb,
+                                 &args, data) == NULL) {
 		nfs_set_error(nfs, "RPC error: Failed to send lookup "
                               "call for %s/%s", data->saved_path, str);
 		data->cb(-ENOMEM, nfs, nfs_get_error(nfs),
@@ -3569,8 +3569,8 @@ nfs3_create_continue_internal(struct nfs_context *nfs,
 	args.how.createhow3_u.obj_attributes.mode.set_it = 1;
 	args.how.createhow3_u.obj_attributes.mode.set_mode3_u.mode = cb_data->mode;
 
-	if (rpc_nfs3_create_async(nfs->rpc, nfs3_create_1_cb,
-                                  &args, data) != 0) {
+	if (rpc_nfs3_create_task(nfs->rpc, nfs3_create_1_cb,
+                                 &args, data) == NULL) {
 		nfs_set_error(nfs, "RPC error: Failed to send CREATE "
                               "call for %s/%s", data->path, str);
 		data->cb(-ENOMEM, nfs, nfs_get_error(nfs),
@@ -3677,7 +3677,7 @@ nfs3_rmdir_continue_internal(struct nfs_context *nfs,
 	args.object.dir.data.data_len = data->fh.len;
 	args.object.dir.data.data_val = data->fh.val;
 	args.object.name = str;
-	if (rpc_nfs3_rmdir_async(nfs->rpc, nfs3_rmdir_cb, &args, data) != 0) {
+	if (rpc_nfs3_rmdir_task(nfs->rpc, nfs3_rmdir_cb, &args, data) == NULL) {
 		nfs_set_error(nfs, "RPC error: Failed to send RMDIR "
                               "call for %s", data->path);
 		data->cb(-ENOMEM, nfs, nfs_get_error(nfs),
@@ -3779,7 +3779,7 @@ nfs3_mkdir_continue_internal(struct nfs_context *nfs,
 	args.attributes.mode.set_it = 1;
 	args.attributes.mode.set_mode3_u.mode = mode;
 
-	if (rpc_nfs3_mkdir_async(nfs->rpc, nfs3_mkdir_cb, &args, data) != 0) {
+	if (rpc_nfs3_mkdir_task(nfs->rpc, nfs3_mkdir_cb, &args, data) == NULL) {
 		nfs_set_error(nfs, "RPC error: Failed to send MKDIR "
                               "call for %s", data->path);
 		data->cb(-ENOMEM, nfs, nfs_get_error(nfs),
@@ -3925,8 +3925,8 @@ nfs3_ftruncate_async(struct nfs_context *nfs, struct nfsfh *nfsfh,
 	args.new_attributes.size.set_it = 1;
 	args.new_attributes.size.set_size3_u.size = length;
 
-	if (rpc_nfs3_setattr_async(nfs->rpc, nfs3_ftruncate_cb,
-                                   &args, data) != 0) {
+	if (rpc_nfs3_setattr_task(nfs->rpc, nfs3_ftruncate_cb,
+                                  &args, data) == NULL) {
 		nfs_set_error(nfs, "RPC error: Failed to send SETATTR "
                               "call for %s", data->path);
 		data->cb(-ENOMEM, nfs, nfs_get_error(nfs),
@@ -3989,7 +3989,7 @@ nfs3_fsync_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_cb cb,
 	args.file.data.data_val = nfsfh->fh.val;
 	args.offset = 0;
 	args.count = 0;
-	if (rpc_nfs3_commit_async(nfs->rpc, nfs3_fsync_cb, &args, data) != 0) {
+	if (rpc_nfs3_commit_task(nfs->rpc, nfs3_fsync_cb, &args, data) == NULL) {
 		nfs_set_error(nfs, "RPC error: Failed to send COMMIT "
                               "call for %s", data->path);
 		data->cb(-ENOMEM, nfs, nfs_get_error(nfs),
@@ -4082,7 +4082,7 @@ nfs3_getacl_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_cb cb,
         args.dir.data.data_len = nfsfh->fh.len;
         args.dir.data.data_val = nfsfh->fh.val;
 	args.mask = NFSACL_MASK_ACL_ENTRY|NFSACL_MASK_ACL_COUNT|NFSACL_MASK_ACL_DEFAULT_ENTRY|NFSACL_MASK_ACL_DEFAULT_COUNT;
-	if (rpc_nfsacl_getacl_async(nfs->rpc, nfs3_getacl_cb, &args, data) != 0) {
+	if (rpc_nfsacl3_getacl_task(nfs->rpc, nfs3_getacl_cb, &args, data) == NULL) {
 		data->cb(-ENOMEM, nfs, nfs_get_error(nfs),
                          data->private_data);
 		free_nfs_cb_data(data);
@@ -4193,8 +4193,8 @@ nfs3_fstat_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_cb cb,
 	args.object.data.data_len = nfsfh->fh.len;
 	args.object.data.data_val = nfsfh->fh.val;
 
-	if (rpc_nfs3_getattr_async(nfs->rpc, nfs3_stat_1_cb, &args,
-                                   data) != 0) {
+	if (rpc_nfs3_getattr_task(nfs->rpc, nfs3_stat_1_cb, &args,
+                                  data) == NULL) {
 		data->cb(-ENOMEM, nfs, nfs_get_error(nfs),
                          data->private_data);
 		free_nfs_cb_data(data);
@@ -4287,8 +4287,8 @@ nfs3_stat64_continue_internal(struct nfs_context *nfs,
 	args.object.data.data_len = data->fh.len;
 	args.object.data.data_val = data->fh.val;
 
-	if (rpc_nfs3_getattr_async(nfs->rpc, nfs3_stat64_1_cb,
-                                   &args, data) != 0) {
+	if (rpc_nfs3_getattr_task(nfs->rpc, nfs3_stat64_1_cb,
+                                  &args, data) == NULL) {
 		data->cb(-ENOMEM, nfs, nfs_get_error(nfs),
                          data->private_data);
 		free_nfs_cb_data(data);
@@ -4332,8 +4332,8 @@ nfs3_fstat64_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_cb cb,
 	args.object.data.data_len = nfsfh->fh.len;
 	args.object.data.data_val = nfsfh->fh.val;
 
-	if (rpc_nfs3_getattr_async(nfs->rpc, nfs3_stat64_1_cb, &args,
-                                   data) != 0) {
+	if (rpc_nfs3_getattr_task(nfs->rpc, nfs3_stat64_1_cb, &args,
+                                  data) == NULL) {
 		data->cb(-ENOMEM, nfs, nfs_get_error(nfs),
                          data->private_data);
 		free_nfs_cb_data(data);
@@ -4353,8 +4353,8 @@ nfs3_stat_continue_internal(struct nfs_context *nfs,
 	args.object.data.data_len = data->fh.len;
 	args.object.data.data_val = data->fh.val;
 
-	if (rpc_nfs3_getattr_async(nfs->rpc, nfs3_stat_1_cb, &args,
-                                   data) != 0) {
+	if (rpc_nfs3_getattr_task(nfs->rpc, nfs3_stat_1_cb, &args,
+                                  data) == NULL) {
 		data->cb(-ENOMEM, nfs, nfs_get_error(nfs),
                          data->private_data);
 		free_nfs_cb_data(data);
@@ -4511,9 +4511,9 @@ nfs3_pwrite_mcb(struct rpc_context *rpc, int status, void *command_data,
                                                              mdata->count,
                                                              &data->usrbuf[mdata->offset - data->offset]);
 					data->num_calls++;
-					if (rpc_nfs3_write_async(nfs->rpc,
-                                                                 nfs3_pwrite_mcb,
-                                                                 &args, mdata) == 0) {
+					if (rpc_nfs3_write_task(nfs->rpc,
+                                                                nfs3_pwrite_mcb,
+                                                                &args, mdata)) {
 						return;
 					} else {
 						data->num_calls--;
@@ -4624,8 +4624,8 @@ nfs3_pwrite_async_internal(struct nfs_context *nfs, struct nfsfh *nfsfh,
                                      &buf[offset - data->offset]);
 
 		data->num_calls++;
-		if (rpc_nfs3_write_async(nfs->rpc, nfs3_pwrite_mcb,
-                                         &args, mdata) != 0) {
+		if (rpc_nfs3_write_task(nfs->rpc, nfs3_pwrite_mcb,
+                                        &args, mdata) == NULL) {
 			data->num_calls--;
 			nfs_set_error(nfs, "RPC error: Failed to send WRITE "
                                       "call for %s", data->path);
@@ -4670,8 +4670,8 @@ nfs3_write_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t count,
 		args.object.data.data_len = nfsfh->fh.len;
 		args.object.data.data_val = nfsfh->fh.val;
 
-		if (rpc_nfs3_getattr_async(nfs->rpc, nfs3_write_append_cb,
-                                           &args, data) != 0) {
+		if (rpc_nfs3_getattr_task(nfs->rpc, nfs3_write_append_cb,
+                                          &args, data) == NULL) {
 			free_nfs_cb_data(data);
 			return -1;
 		}
@@ -4775,10 +4775,9 @@ nfs3_pread_mcb(struct rpc_context *rpc, int status, void *command_data,
                                                             mdata->offset,
                                                             mdata->count);
 					data->num_calls++;
-					if (rpc_nfs3_read_async(nfs->rpc,
-                                                                nfs3_pread_mcb,
-                                                                &args, mdata)
-                                            == 0) {
+					if (rpc_nfs3_read_task(nfs->rpc,
+                                                               nfs3_pread_mcb,
+                                                               &args, mdata)) {
 						return;
 					} else {
 						data->num_calls--;
@@ -4959,8 +4958,8 @@ nfs3_pread_async_internal(struct nfs_context *nfs, struct nfsfh *nfsfh,
 		nfs3_fill_READ3args(&args, nfsfh, offset, readcount);
 
 		data->num_calls++;
-		if (rpc_nfs3_read_async(nfs->rpc, nfs3_pread_mcb,
-                                        &args, mdata) != 0) {
+		if (rpc_nfs3_read_task(nfs->rpc, nfs3_pread_mcb,
+                                       &args, mdata) == NULL) {
 			data->num_calls--;
 			nfs_set_error(nfs, "RPC error: Failed to send READ "
                                       "call for %s", data->path);
@@ -5137,8 +5136,8 @@ nfs3_open_cb(struct rpc_context *rpc, int status, void *command_data,
 		args.new_attributes.size.set_it = 1;
 		args.new_attributes.size.set_size3_u.size = 0;
 
-		if (rpc_nfs3_setattr_async(nfs->rpc, nfs3_open_trunc_cb, &args,
-				data) != 0) {
+		if (rpc_nfs3_setattr_task(nfs->rpc, nfs3_open_trunc_cb, &args,
+                                          data) == NULL) {
 			nfs_set_error(nfs, "RPC error: Failed to send "
                                       "SETATTR call for %s", data->path);
 			data->cb(-ENOMEM, nfs, nfs_get_error(nfs),
@@ -5199,7 +5198,7 @@ nfs3_open_continue_internal(struct nfs_context *nfs,
 	args.object.data.data_val = data->fh.val;
 	args.access = nfsmode;
 
-	if (rpc_nfs3_access_async(nfs->rpc, nfs3_open_cb, &args, data) != 0) {
+	if (rpc_nfs3_access_task(nfs->rpc, nfs3_open_cb, &args, data) == NULL) {
 		data->cb(-ENOMEM, nfs, nfs_get_error(nfs),
 				data->private_data);
 		free_nfs_cb_data(data);

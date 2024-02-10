@@ -631,4 +631,3 @@ int rpc_process_pdu(struct rpc_context *rpc, char *buf, int size)
 	zdr_destroy(&zdr);
 	return 0;
 }
-

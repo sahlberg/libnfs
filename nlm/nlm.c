@@ -27,166 +27,173 @@
 #include "libnfs-private.h"
 #include "libnfs-raw-nlm.h"
 
-int rpc_nlm4_null_async(struct rpc_context *rpc, rpc_cb cb, void *private_data)
+struct rpc_pdu *
+rpc_nlm4_null_task(struct rpc_context *rpc, rpc_cb cb, void *private_data)
 {
 	struct rpc_pdu *pdu;
 
 	pdu = rpc_allocate_pdu(rpc, NLM_PROGRAM, NLM_V4, NLM4_NULL, cb, private_data, (zdrproc_t)zdr_void, 0);
 	if (pdu == NULL) {
 		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu for nlm/null call");
-		return -1;
+		return NULL;
 	}
 
 	if (rpc_queue_pdu(rpc, pdu) != 0) {
 		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for nlm/null call");
-		return -1;
+		return NULL;
 	}
 
-	return 0;
+	return pdu;
 }
 
-int rpc_nlm4_test_async(struct rpc_context *rpc, rpc_cb cb, struct NLM4_TESTargs *args, void *private_data)
+struct rpc_pdu *
+rpc_nlm4_test_task(struct rpc_context *rpc, rpc_cb cb, struct NLM4_TESTargs *args, void *private_data)
 {
 	struct rpc_pdu *pdu;
 
 	pdu = rpc_allocate_pdu(rpc, NLM_PROGRAM, NLM_V4, NLM4_TEST, cb, private_data, (zdrproc_t)zdr_NLM4_TESTres, sizeof(NLM4_TESTres));
 	if (pdu == NULL) {
 		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu for nlm/test call");
-		return -1;
+		return NULL;
 	}
 
 	if (zdr_NLM4_TESTargs(&pdu->zdr, args) == 0) {
 		rpc_set_error(rpc, "ZDR error: Failed to encode NLM4_TESTargs");
 		rpc_free_pdu(rpc, pdu);
-		return -2;
+		return NULL;
 	}
 
 	if (rpc_queue_pdu(rpc, pdu) != 0) {
 		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for nlm/test call");
-		return -1;
+		return NULL;
 	}
 
-	return 0;
+	return pdu;
 }
 
-int rpc_nlm4_lock_async(struct rpc_context *rpc, rpc_cb cb, struct NLM4_LOCKargs *args, void *private_data)
+struct rpc_pdu *
+rpc_nlm4_lock_task(struct rpc_context *rpc, rpc_cb cb, struct NLM4_LOCKargs *args, void *private_data)
 {
 	struct rpc_pdu *pdu;
 
 	pdu = rpc_allocate_pdu(rpc, NLM_PROGRAM, NLM_V4, NLM4_LOCK, cb, private_data, (zdrproc_t)zdr_NLM4_LOCKres, sizeof(NLM4_LOCKres));
 	if (pdu == NULL) {
 		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu for nlm/lock call");
-		return -1;
+		return NULL;
 	}
 
 	if (zdr_NLM4_LOCKargs(&pdu->zdr, args) == 0) {
 		rpc_set_error(rpc, "ZDR error: Failed to encode NLM4_LOCKargs");
 		rpc_free_pdu(rpc, pdu);
-		return -2;
+		return NULL;
 	}
 
 	if (rpc_queue_pdu(rpc, pdu) != 0) {
 		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for nlm/lock call");
-		return -1;
+		return NULL;
 	}
 
-	return 0;
+	return pdu;
 }
 
-int rpc_nlm4_cancel_async(struct rpc_context *rpc, rpc_cb cb, struct NLM4_CANCargs *args, void *private_data)
+struct rpc_pdu *
+rpc_nlm4_cancel_task(struct rpc_context *rpc, rpc_cb cb, struct NLM4_CANCargs *args, void *private_data)
 {
 	struct rpc_pdu *pdu;
 
 	pdu = rpc_allocate_pdu(rpc, NLM_PROGRAM, NLM_V4, NLM4_CANCEL, cb, private_data, (zdrproc_t)zdr_NLM4_CANCres, sizeof(NLM4_CANCres));
 	if (pdu == NULL) {
 		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu for nlm/cancel call");
-		return -1;
+		return NULL;
 	}
 
 	if (zdr_NLM4_CANCargs(&pdu->zdr, args) == 0) {
 		rpc_set_error(rpc, "ZDR error: Failed to encode NLM4_CANCargs");
 		rpc_free_pdu(rpc, pdu);
-		return -2;
+		return NULL;
 	}
 
 	if (rpc_queue_pdu(rpc, pdu) != 0) {
 		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for nlm/cancel call");
-		return -1;
+		return NULL;
 	}
 
-	return 0;
+	return pdu;
 }
 
-int rpc_nlm4_unlock_async(struct rpc_context *rpc, rpc_cb cb, struct NLM4_UNLOCKargs *args, void *private_data)
+struct rpc_pdu *
+rpc_nlm4_unlock_task(struct rpc_context *rpc, rpc_cb cb, struct NLM4_UNLOCKargs *args, void *private_data)
 {
 	struct rpc_pdu *pdu;
 
 	pdu = rpc_allocate_pdu(rpc, NLM_PROGRAM, NLM_V4, NLM4_UNLOCK, cb, private_data, (zdrproc_t)zdr_NLM4_UNLOCKres, sizeof(NLM4_UNLOCKres));
 	if (pdu == NULL) {
 		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu for nlm/unlock call");
-		return -1;
+		return NULL;
 	}
 
 	if (zdr_NLM4_UNLOCKargs(&pdu->zdr, args) == 0) {
 		rpc_set_error(rpc, "ZDR error: Failed to encode NLM4_UNLOCKargs");
 		rpc_free_pdu(rpc, pdu);
-		return -2;
+		return NULL;
 	}
 
 	if (rpc_queue_pdu(rpc, pdu) != 0) {
 		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for nlm/unlock call");
-		return -1;
+		return NULL;
 	}
 
-	return 0;
+	return pdu;
 }
 
-int rpc_nlm4_share_async(struct rpc_context *rpc, rpc_cb cb, struct NLM4_SHAREargs *args, void *private_data)
+struct rpc_pdu *
+rpc_nlm4_share_task(struct rpc_context *rpc, rpc_cb cb, struct NLM4_SHAREargs *args, void *private_data)
 {
 	struct rpc_pdu *pdu;
 
 	pdu = rpc_allocate_pdu(rpc, NLM_PROGRAM, NLM_V4, NLM4_SHARE, cb, private_data, (zdrproc_t)zdr_NLM4_SHAREres, sizeof(NLM4_SHAREres));
 	if (pdu == NULL) {
 		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu for nlm/lock call");
-		return -1;
+		return NULL;
 	}
 
 	if (zdr_NLM4_SHAREargs(&pdu->zdr, args) == 0) {
 		rpc_set_error(rpc, "ZDR error: Failed to encode NLM4_LOCKargs");
 		rpc_free_pdu(rpc, pdu);
-		return -2;
+		return NULL;
 	}
 
 	if (rpc_queue_pdu(rpc, pdu) != 0) {
 		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for nlm/lock call");
-		return -1;
+		return NULL;
 	}
 
-	return 0;
+	return pdu;
 }
 
-int rpc_nlm4_unshare_async(struct rpc_context *rpc, rpc_cb cb, struct NLM4_SHAREargs *args, void *private_data)
+struct rpc_pdu *
+rpc_nlm4_unshare_task(struct rpc_context *rpc, rpc_cb cb, struct NLM4_SHAREargs *args, void *private_data)
 {
 	struct rpc_pdu *pdu;
 
 	pdu = rpc_allocate_pdu(rpc, NLM_PROGRAM, NLM_V4, NLM4_UNSHARE, cb, private_data, (zdrproc_t)zdr_NLM4_UNSHAREres, sizeof(NLM4_UNSHAREres));
 	if (pdu == NULL) {
 		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu for nlm/lock call");
-		return -1;
+		return NULL;
 	}
 
 	if (zdr_NLM4_UNSHAREargs(&pdu->zdr, args) == 0) {
 		rpc_set_error(rpc, "ZDR error: Failed to encode NLM4_LOCKargs");
 		rpc_free_pdu(rpc, pdu);
-		return -2;
+		return NULL;
 	}
 
 	if (rpc_queue_pdu(rpc, pdu) != 0) {
 		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for nlm/lock call");
-		return -1;
+		return NULL;
 	}
 
-	return 0;
+	return pdu;
 }
 
 char *nlmstat4_to_str(int st)
