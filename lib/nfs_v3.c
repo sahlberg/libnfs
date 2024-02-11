@@ -387,7 +387,6 @@ nfs3_lookup_path_async_internal(struct nfs_context *nfs, struct nfs_attr *attr,
 		      data->path++;
 		}
 	}
-
 	if (*path == 0) {
 		data->fh.len = fh->len;
 		data->fh.val = malloc(data->fh.len);
@@ -702,8 +701,8 @@ nfs3_mount_6_cb(struct rpc_context *rpc, int status, void *command_data,
 	if (nfs->nfsi->readmax > NFS_MAX_XFER_SIZE)
 		nfs->nfsi->readmax = NFS_MAX_XFER_SIZE;
 	else if (nfs->nfsi->readmax < NFSMAXDATA2) {
-		nfs_set_error(nfs, "server max rsize of %" PRIu64,
-                              nfs->nfsi->readmax);
+		nfs_set_error(nfs, "server max rsize of %d",
+                              (int)nfs->nfsi->readmax);
 		data->cb(-EINVAL, nfs, nfs_get_error(nfs), data->private_data);
 		free_nfs_cb_data(data);
 		return;
@@ -712,8 +711,8 @@ nfs3_mount_6_cb(struct rpc_context *rpc, int status, void *command_data,
 	if (nfs->nfsi->writemax > NFS_MAX_XFER_SIZE)
 		nfs->nfsi->writemax = NFS_MAX_XFER_SIZE;
 	else if (nfs->nfsi->writemax < NFSMAXDATA2) {
-		nfs_set_error(nfs, "server max wsize of %" PRIu64,
-                              nfs->nfsi->writemax);
+		nfs_set_error(nfs, "server max wsize of %d",
+                              (int)nfs->nfsi->writemax);
 		data->cb(-EINVAL, nfs, nfs_get_error(nfs), data->private_data);
 		free_nfs_cb_data(data);
 		return;
@@ -3366,267 +3365,12 @@ struct create_cb_data {
        int mode;
 };
 
-static void
-free_create_cb_data(void *ptr)
-{
-	struct create_cb_data *data = ptr;
-
-	free(data->path);
-	free(data);
-}
-
-static void
-nfs3_create_trunc_cb(struct rpc_context *rpc, int status, void *command_data,
-                     void *private_data)
-{
-	struct nfs_cb_data *data = private_data;
-	struct nfs_context *nfs = data->nfs;
-	struct nfsfh *nfsfh = data->nfsfh;
-	SETATTR3res *res;
-
-	assert(rpc->magic == RPC_CONTEXT_MAGIC);
-
-	if (check_nfs3_error(nfs, status, data, command_data)) {
-		free_nfs_cb_data(data);
-		nfs_free_nfsfh(nfsfh);
-		return;
-	}
-
-	res = command_data;
-	if (res->status != NFS3_OK) {
-		nfs_set_error(nfs, "NFS: Setattr failed with %s(%d)",
-                              nfsstat3_to_str(res->status),
-                              nfsstat3_to_errno(res->status));
-		data->cb(nfsstat3_to_errno(res->status), nfs,
-                         nfs_get_error(nfs), data->private_data);
-		free_nfs_cb_data(data);
-		nfs_free_nfsfh(nfsfh);
-		return;
-	}
-
-	nfs_dircache_drop(nfs, &data->fh);
-	data->cb(0, nfs, nfsfh, data->private_data);
-	free_nfs_cb_data(data);
-}
-
-static void
-nfs3_create_2_cb(struct rpc_context *rpc, int status, void *command_data,
-                 void *private_data)
-{
-	LOOKUP3res *res;
-	struct nfs_cb_data *data = private_data;
-	struct nfs_context *nfs = data->nfs;
-	struct nfsfh *nfsfh;
-	struct create_cb_data *cb_data = data->continue_data;
-	char *str = cb_data->path;
-
-	assert(rpc->magic == RPC_CONTEXT_MAGIC);
-
-	if (check_nfs3_error(nfs, status, data, command_data)) {
-		free_nfs_cb_data(data);
-		return;
-	}
-
-	str = &str[strlen(str) + 1];
-	res = command_data;
-	if (res->status != NFS3_OK) {
-		nfs_set_error(nfs, "NFS: CREATE of %s/%s failed with "
-                              "%s(%d)", data->saved_path, str,
-                              nfsstat3_to_str(res->status),
-                              nfsstat3_to_errno(res->status));
-		data->cb(nfsstat3_to_errno(res->status), nfs,
-                         nfs_get_error(nfs), data->private_data);
-		free_nfs_cb_data(data);
-		return;
-	}
-
-	nfsfh = malloc(sizeof(struct nfsfh));
-	if (nfsfh == NULL) {
-		nfs_set_error(nfs, "NFS: Failed to allocate nfsfh structure");
-		data->cb(-ENOMEM, nfs, nfs_get_error(nfs),
-                         data->private_data);
-		free_nfs_cb_data(data);
-		return;
-	}
-	memset(nfsfh, 0, sizeof(struct nfsfh));
-
-	if (cb_data->flags & O_SYNC) {
-		nfsfh->is_sync = 1;
-	}
-	if (cb_data->flags & O_APPEND) {
-		nfsfh->is_append = 1;
-	}
-
-	/* copy the filehandle */
-	nfsfh->fh.len = res->LOOKUP3res_u.resok.object.data.data_len;
-	nfsfh->fh.val = malloc(nfsfh->fh.len);
-	if (nfsfh->fh.val == NULL) {
-		nfs_set_error(nfs, "Out of memory: Failed to allocate "
-                              "fh structure");
-		data->cb(-ENOMEM, nfs, nfs_get_error(nfs), data->private_data);
-		free_nfs_cb_data(data);
-		free(nfsfh);
-		return;
-	}
-	memcpy(nfsfh->fh.val,
-               res->LOOKUP3res_u.resok.object.data.data_val,
-               nfsfh->fh.len);
-
-	/* Try to truncate it if we were requested to */
-	if (cb_data->flags & O_TRUNC) {
-		SETATTR3args args;
-
-		data->nfsfh = nfsfh;
-
-		memset(&args, 0, sizeof(SETATTR3args));
-		args.object.data.data_len = nfsfh->fh.len;
-		args.object.data.data_val = nfsfh->fh.val;
-		args.new_attributes.size.set_it = 1;
-		args.new_attributes.size.set_size3_u.size = 0;
-
-		if (rpc_nfs3_setattr_task(nfs->rpc, nfs3_create_trunc_cb,
-                                          &args, data) == NULL) {
-			nfs_set_error(nfs, "RPC error: Failed to send "
-				"SETATTR call for %s", data->path);
-			data->cb(-ENOMEM, nfs, nfs_get_error(nfs),
-				data->private_data);
-			free_nfs_cb_data(data);
-			nfs_free_nfsfh(nfsfh);
-			return;
-		}
-		return;
-	}
-
-	nfs_dircache_drop(nfs, &data->fh);
-	data->cb(0, nfs, nfsfh, data->private_data);
-	free_nfs_cb_data(data);
-}
-
-static void
-nfs3_create_1_cb(struct rpc_context *rpc, int status, void *command_data,
-                 void *private_data)
-{
-	CREATE3res *res;
-	struct nfs_cb_data *data = private_data;
-	struct nfs_context *nfs = data->nfs;
-	struct create_cb_data *cb_data = data->continue_data;
-	char *str = cb_data->path;
-	LOOKUP3args args;
-
-	assert(rpc->magic == RPC_CONTEXT_MAGIC);
-
-	if (check_nfs3_error(nfs, status, data, command_data)) {
-		free_nfs_cb_data(data);
-		return;
-	}
-
-	str = &str[strlen(str) + 1];
-	res = command_data;
-	if (res->status != NFS3_OK) {
-		nfs_set_error(nfs, "NFS: CREATE of %s/%s failed with "
-                              "%s(%d)", data->saved_path, str,
-                              nfsstat3_to_str(res->status),
-                              nfsstat3_to_errno(res->status));
-		data->cb(nfsstat3_to_errno(res->status), nfs,
-                         nfs_get_error(nfs), data->private_data);
-		free_nfs_cb_data(data);
-		return;
-	}
-
-	memset(&args, 0, sizeof(LOOKUP3args));
-	args.what.dir.data.data_len = data->fh.len;
-	args.what.dir.data.data_val = data->fh.val;
-	args.what.name = str;
-
-	if (rpc_nfs3_lookup_task(nfs->rpc, nfs3_create_2_cb,
-                                 &args, data) == NULL) {
-		nfs_set_error(nfs, "RPC error: Failed to send lookup "
-                              "call for %s/%s", data->saved_path, str);
-		data->cb(-ENOMEM, nfs, nfs_get_error(nfs),
-                         data->private_data);
-		free_nfs_cb_data(data);
-		return;
-	}
-	return;
-}
-
-static int
-nfs3_create_continue_internal(struct nfs_context *nfs,
-                              struct nfs_attr *attr _U_,
-                              struct nfs_cb_data *data)
-{
-	struct create_cb_data *cb_data = data->continue_data;
-	char *str = cb_data->path;
-	CREATE3args args;
-
-	str = &str[strlen(str) + 1];
-
-	memset(&args, 0, sizeof(CREATE3args));
-	args.where.dir.data.data_len = data->fh.len;
-	args.where.dir.data.data_val = data->fh.val;
-	args.where.name = str;
-	args.how.mode = (cb_data->flags & O_EXCL) ? GUARDED : UNCHECKED;
-	args.how.createhow3_u.obj_attributes.mode.set_it = 1;
-	args.how.createhow3_u.obj_attributes.mode.set_mode3_u.mode = cb_data->mode;
-
-	if (rpc_nfs3_create_task(nfs->rpc, nfs3_create_1_cb,
-                                 &args, data) == NULL) {
-		nfs_set_error(nfs, "RPC error: Failed to send CREATE "
-                              "call for %s/%s", data->path, str);
-		data->cb(-ENOMEM, nfs, nfs_get_error(nfs),
-                         data->private_data);
-		free_nfs_cb_data(data);
-		return -1;
-	}
-	return 0;
-}
-
 int
-nfs3_create_async(struct nfs_context *nfs, const char *path, int flags,
-                  int mode, nfs_cb cb, void *private_data)
+nfs3_creat_async(struct nfs_context *nfs, const char *path,
+                 int mode, nfs_cb cb, void *private_data)
 {
-	struct create_cb_data *cb_data;
-	char *ptr;
-
-	cb_data = malloc(sizeof(struct create_cb_data));
-	if (cb_data == NULL) {
-		nfs_set_error(nfs, "Out of memory, failed to allocate "
-                              "mode buffer for cb data");
-		return -1;
-	}
-
-        ptr = strrchr(path, '/');
-        if (ptr) {
-                cb_data->path = strdup(path);
-                if (cb_data->path == NULL) {
-                        nfs_set_error(nfs, "Out of memory, failed to allocate "
-                                      "buffer for creat path");
-                        return -1;
-                }
-                ptr = strrchr(cb_data->path, '/');
-                *ptr = 0;
-        } else {
-                cb_data->path = malloc(strlen(path) + 2);
-                if (cb_data->path == NULL) {
-                        nfs_set_error(nfs, "Out of memory, failed to allocate "
-                                      "buffer for creat path");
-                        return -1;
-                }
-                sprintf(cb_data->path, "%c%s", '\0', path);
-        }
-
-	cb_data->flags = flags;
-	cb_data->mode = mode;
-
-	/* new_path now points to the parent directory and beyond the
-         * null terminator is the new object to create */
-	if (nfs3_lookuppath_async(nfs, cb_data->path, 0, cb, private_data,
-                                  nfs3_create_continue_internal, cb_data,
-                                  free_create_cb_data, 0) != 0) {
-		return -1;
-	}
-
-	return 0;
+        return nfs3_open_async(nfs, path, O_CREAT|O_WRONLY|O_TRUNC,
+                               mode, cb, private_data);
 }
 
 static void
@@ -3907,7 +3651,6 @@ nfs3_ftruncate_async(struct nfs_context *nfs, struct nfsfh *nfsfh,
 	struct nfs_cb_data *data;
 	SETATTR3args args;
 
-	nfs_pagecache_invalidate(nfs, nfsfh);
 	data = malloc(sizeof(struct nfs_cb_data));
 	if (data == NULL) {
 		nfs_set_error(nfs, "out of memory: failed to allocate "
@@ -4438,7 +4181,9 @@ nfs3_write_append_cb(struct rpc_context *rpc, int status, void *command_data,
 		return;
 	}
 
-	if (nfs3_pwrite_async_internal(nfs, data->nfsfh, res->GETATTR3res_u.resok.obj_attributes.size, data->count, data->usrbuf, data->cb, data->private_data, 1) != 0) {
+	if (nfs3_pwrite_async_internal(nfs, data->nfsfh,
+                                       data->usrbuf, data->count, res->GETATTR3res_u.resok.obj_attributes.size, 
+                                       data->cb, data->private_data, 1) != 0) {
 		data->cb(-ENOMEM, nfs, nfs_get_error(nfs),
                          data->private_data);
 		free_nfs_cb_data(data);
@@ -4557,7 +4302,6 @@ nfs3_pwrite_mcb(struct rpc_context *rpc, int status, void *command_data,
 		data->nfsfh->offset = data->max_offset;
 	}
 
-	nfs_pagecache_put(&data->nfsfh->pagecache, data->offset, data->usrbuf, data->count);
 	data->cb((int)(data->max_offset - data->offset), nfs, NULL, data->private_data);
 
 	free_nfs_cb_data(data);
@@ -4565,11 +4309,15 @@ nfs3_pwrite_mcb(struct rpc_context *rpc, int status, void *command_data,
 
 int
 nfs3_pwrite_async_internal(struct nfs_context *nfs, struct nfsfh *nfsfh,
-                           uint64_t offset, size_t count, const char *buf,
+                           const char *buf, size_t count, uint64_t offset,
                            nfs_cb cb, void *private_data, int update_pos)
 {
 	struct nfs_cb_data *data;
 
+        if (count > nfs_get_writemax(nfs)) {
+                count = nfs_get_writemax(nfs);
+        }
+        
         nfsfh->is_dirty = 1;
 	data = malloc(sizeof(struct nfs_cb_data));
 	if (data == NULL) {
@@ -4601,7 +4349,7 @@ nfs3_pwrite_async_internal(struct nfs_context *nfs, struct nfsfh *nfsfh,
 		WRITE3args args;
 
 		if (writecount > nfs_get_writemax(nfs)) {
-		  writecount = (size_t)nfs_get_writemax(nfs);
+		  writecount = nfs_get_writemax(nfs);
 		}
 
 		mdata = malloc(sizeof(struct nfs_mcb_data));
@@ -4646,8 +4394,9 @@ nfs3_pwrite_async_internal(struct nfs_context *nfs, struct nfsfh *nfsfh,
 }
 
 int
-nfs3_write_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t count,
-                const void *buf, nfs_cb cb, void *private_data)
+nfs3_write_async(struct nfs_context *nfs, struct nfsfh *nfsfh,
+                 const void *buf, size_t count,
+                 nfs_cb cb, void *private_data)
 {
 	if (nfsfh->is_append) {
 		struct GETATTR3args args;
@@ -4677,8 +4426,8 @@ nfs3_write_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t count,
 		}
 		return 0;
 	}
-	return nfs3_pwrite_async_internal(nfs, nfsfh, nfsfh->offset,
-                                          (size_t)count, buf,
+	return nfs3_pwrite_async_internal(nfs, nfsfh,
+                                          buf, count, nfsfh->offset,
                                           cb, private_data, 1);
 }
 
@@ -4694,158 +4443,58 @@ nfs3_fill_READ3args(READ3args *args, struct nfsfh *fh, uint64_t offset,
 }
 
 static void
-nfs3_pread_mcb(struct rpc_context *rpc, int status, void *command_data,
+nfs3_pread_cb(struct rpc_context *rpc, int status, void *command_data,
                void *private_data)
 {
-	struct nfs_mcb_data *mdata = private_data;
-	struct nfs_cb_data *data = mdata->data;
+	struct nfs_cb_data *data = private_data;
 	struct nfs_context *nfs = data->nfs;
 	READ3res *res;
-	int cb_err;
-	void *cb_data;
+	int count;
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
-	data->num_calls--;
-
-	/* Flag the failure but do not invoke callback until we have
-	 * received all responses.
-	 */
-	if (status == RPC_STATUS_ERROR) {
-		data->error = 1;
-	}
-	if (status == RPC_STATUS_CANCEL) {
-		data->cancel = 1;
-	}
-	if (status == RPC_STATUS_TIMEOUT) {
-		data->cancel = 1;
-	}
-
-	if (status == RPC_STATUS_SUCCESS) {
-		res = command_data;
-		if (res->status != NFS3_OK) {
-			nfs_set_error(nfs, "NFS: Read failed with %s(%d)",
-                                      nfsstat3_to_str(res->status),
-                                      nfsstat3_to_errno(res->status));
-			data->error = 1;
-		} else {
-			size_t count = res->READ3res_u.resok.count;
-			if (count < data->count && data->buffer == NULL) {
-				/* we need a reassembly buffer after all */
-				data->buffer = malloc(mdata->count);
-				if (data->buffer == NULL) {
-					data->oom = 1;
-					goto out;
-				}
-			}
-			if (count > 0) {
-				if (count == data->count && data->buffer == NULL) {
-					data->buffer = res->READ3res_u.resok.data.data_val;
-					data->not_my_buffer = 1;
-				} else if (count <= mdata->count) {
-                                        if (data->buffer == NULL) {
-                                                data->buffer = malloc(data->org_count);
-                                                if (data->buffer == NULL) {
-                                                        data->oom = 1;
-                                                        goto out;
-                                                }
-                                        }
-					/* copy data into reassembly buffer */
-					memcpy(&data->buffer[mdata->offset - data->offset], res->READ3res_u.resok.data.data_val, count);
-				} else {
-					nfs_set_error(nfs, "NFS: Read overflow. Server has sent more data than requested!");
-					data->error = 1;
-					goto out;
-				}
-				if (data->max_offset < mdata->offset + count) {
-					data->max_offset = mdata->offset + count;
-				}
-			}
-			/* check if we have received a short read */
-			if (count < mdata->count && !res->READ3res_u.resok.eof) {
-				if (count == 0) {
-					nfs_set_error(nfs, "NFS: Read failed. No bytes read and not at EOF!");
-					data->error = 1;
-				} else {
-					/* reissue reminder of this read request */
-					READ3args args;
-					mdata->offset += count;
-					mdata->count -= count;
-					nfs3_fill_READ3args(&args, data->nfsfh,
-                                                            mdata->offset,
-                                                            mdata->count);
-					data->num_calls++;
-					if (rpc_nfs3_read_task(nfs->rpc,
-                                                               nfs3_pread_mcb,
-                                                               &args, mdata)) {
-						return;
-					} else {
-						data->num_calls--;
-						nfs_set_error(nfs, "RPC error: Failed to send READ call for %s", data->path);
-						data->oom = 1;
-					}
-				}
-			}
-		}
-	}
-
-out:
-	free(mdata);
-
-	if (data->num_calls > 0) {
-		/* still waiting for more replies */
-		return;
-	}
-	if (data->oom != 0) {
-		data->cb(-ENOMEM, nfs, command_data, data->private_data);
-		free_nfs_cb_data(data);
-		return;
-	}
-	if (data->error != 0) {
-		data->cb(-EFAULT, nfs, command_data, data->private_data);
-		free_nfs_cb_data(data);
-		return;
-	}
-	if (data->cancel != 0) {
-		data->cb(-EINTR, nfs, "Command was cancelled",
-                         data->private_data);
+	if (check_nfs3_error(nfs, status, data, command_data)) {
 		free_nfs_cb_data(data);
 		return;
 	}
 
-	data->nfsfh->ra.fh_offset = data->max_offset;
+	res = command_data;
+        if (res->status != NFS3_OK) {
+                nfs_set_error(nfs, "NFS: Read failed with %s(%d)",
+                              nfsstat3_to_str(res->status),
+                              nfsstat3_to_errno(res->status));
+		data->cb(nfsstat3_to_errno(res->status), nfs, command_data, data->private_data);
+		free_nfs_cb_data(data);
+		return;
+        }
 
-	nfs_pagecache_put(&data->nfsfh->pagecache, data->offset, data->buffer,
-                          (size_t)(data->max_offset - data->offset));
-
-	if (data->max_offset > data->org_offset + data->org_count) {
-		data->max_offset = data->org_offset + data->org_count;
-	}
-	if (data->update_pos) {
-		data->nfsfh->offset = data->max_offset;
-	}
-
-	cb_err = (int)(data->max_offset - data->org_offset);
-	cb_data = data->buffer + (data->org_offset - data->offset);
-	data->cb(cb_err, nfs, cb_data, data->private_data);
+        count = (int)res->READ3res_u.resok.count;
+        if (data->update_pos) {
+                data->nfsfh->offset = data->offset + count;
+        }
+	data->cb(count, nfs, NULL, data->private_data);
 	free_nfs_cb_data(data);
 	return;
 }
 
 int
 nfs3_pread_async_internal(struct nfs_context *nfs, struct nfsfh *nfsfh,
-                          uint64_t offset, size_t count, nfs_cb cb,
-                          void *private_data, int update_pos)
+                          void *buf, size_t count, uint64_t offset,
+                          nfs_cb cb, void *private_data, int update_pos)
 {
 	struct nfs_cb_data *data;
+        READ3args args;
 
-	data = malloc(sizeof(struct nfs_cb_data));
+        if (count > nfs_get_readmax(nfs)) {
+                count = nfs_get_readmax(nfs);
+        }
+        
+	data = calloc(1, sizeof(struct nfs_cb_data));
 	if (data == NULL) {
 		nfs_set_error(nfs, "out of memory: failed to allocate "
                               "nfs_cb_data structure");
 		return -1;
 	}
-	memset(data, 0, sizeof(struct nfs_cb_data));
 	data->nfs          = nfs;
 	data->cb           = cb;
 	data->private_data = private_data;
@@ -4856,127 +4505,19 @@ nfs3_pread_async_internal(struct nfs_context *nfs, struct nfsfh *nfsfh,
 
 	assert(data->num_calls == 0);
 
-	if (nfsfh->pagecache.num_entries) {
-		/* align start offset to blocksize */
-		count += offset & (NFS_BLKSIZE - 1);
-		offset &= ~(NFS_BLKSIZE - 1);
-
-		/* align end offset to blocksize */
-		count += NFS_BLKSIZE - 1 ;
-		count &= ~(NFS_BLKSIZE - 1);
-	}
-
 	data->offset = offset;
 	data->count = (count3)count;
-
-	if (nfsfh->pagecache.num_entries) {
-		while (count > 0) {
-			char *cdata = nfs_pagecache_get(&nfsfh->pagecache,
-                                                        offset);
-			if (!cdata) {
-				break;
-			}
-			/* we copy data from the pagecache so we need a
-                         * reassembly buffer */
-			if (data->buffer == NULL) {
-				data->buffer = malloc(data->count);
-				if (data->buffer == NULL) {
-					free_nfs_cb_data(data);
-					return -ENOMEM;
-				}
-			}
-			memcpy(data->buffer + offset - data->offset, cdata,
-                               NFS_BLKSIZE);
-			offset += NFS_BLKSIZE;
-			count -= NFS_BLKSIZE;
-		}
-		if (!count) {
-			data->nfsfh->ra.fh_offset = data->offset + data->count;
-			if (update_pos) {
-				data->nfsfh->offset = data->org_offset + data->org_count;
-			}
-			data->cb(data->org_count, nfs, data->buffer + (data->org_offset - data->offset), data->private_data);
-			free_nfs_cb_data(data);
-			return 0;
-		}
-	}
-
-	if (nfs->rpc->readahead) {
-		nfsfh->ra.cur_ra = MAX(NFS_BLKSIZE, nfsfh->ra.cur_ra);
-		if (offset >= nfsfh->ra.fh_offset &&
-			offset <= nfsfh->ra.fh_offset + nfsfh->ra.cur_ra + NFS_BLKSIZE) {
-			if (nfs->rpc->readahead > nfsfh->ra.cur_ra) {
-				nfsfh->ra.cur_ra <<= 1;
-			}
-		} else {
-			nfsfh->ra.cur_ra = 0;
-		}
-		count += nfsfh->ra.cur_ra;
-		data->count += nfsfh->ra.cur_ra;
-	}
-
-	if ((data->count > nfs_get_readmax(nfs) || data->count > data->org_count) &&
-	    (data->buffer == NULL || nfsfh->ra.cur_ra > 0)) {
-		/* we do readahead, a big read or aligned out the request so we
-		 * need a (bigger) reassembly buffer */
-		data->buffer = realloc(data->buffer, data->count + nfsfh->ra.cur_ra);
-		if (data->buffer == NULL) {
-			free_nfs_cb_data(data);
-			return -ENOMEM;
-		}
-	}
-
 	data->max_offset = data->offset;
 
-	/* chop requests into chunks of at most READMAX bytes if necessary.
-	 * we send all reads in parallel so that performance is still good.
-	 */
-	do {
-		size_t readcount = count;
-		struct nfs_mcb_data *mdata;
-		READ3args args;
+        nfs3_fill_READ3args(&args, nfsfh, offset, count);
+        if (rpc_nfs3_read_task(nfs->rpc, nfs3_pread_cb, buf, count, &args, data) == NULL) {
+                nfs_set_error(nfs, "RPC error: Failed to send READ "
+                              "call for %s", data->path);
+                free_nfs_cb_data(data);
+                return -1;
+        }
 
-		if (readcount > nfs_get_readmax(nfs)) {
-		  readcount = (size_t)nfs_get_readmax(nfs);
-		}
-
-		mdata = malloc(sizeof(struct nfs_mcb_data));
-		if (mdata == NULL) {
-			nfs_set_error(nfs, "out of memory: failed to allocate nfs_mcb_data structure");
-			if (data->num_calls == 0) {
-				free_nfs_cb_data(data);
-				return -1;
-			}
-			data->oom = 1;
-			break;
-		}
-		memset(mdata, 0, sizeof(struct nfs_mcb_data));
-		mdata->data   = data;
-		mdata->offset = offset;
-		mdata->count  = readcount;
-
-		nfs3_fill_READ3args(&args, nfsfh, offset, readcount);
-
-		data->num_calls++;
-		if (rpc_nfs3_read_task(nfs->rpc, nfs3_pread_mcb,
-                                       &args, mdata) == NULL) {
-			data->num_calls--;
-			nfs_set_error(nfs, "RPC error: Failed to send READ "
-                                      "call for %s", data->path);
-			free(mdata);
-			if (data->num_calls == 0) {
-				free_nfs_cb_data(data);
-				return -1;
-			}
-			data->oom = 1;
-			break;
-		}
-
-		count               -= readcount;
-		offset              += readcount;
-	 } while (count > 0);
-
-	 return 0;
+        return 0;
 }
 
 static int
@@ -5164,9 +4705,6 @@ nfs3_open_cb(struct rpc_context *rpc, int status, void *command_data,
 		nfsfh->is_append = 1;
 	}
 
-    /* init the pagecache */
-    nfs_pagecache_init(nfs, nfsfh);
-
 	/* steal the filehandle */
 	nfsfh->fh = data->fh;
 	data->fh.val = NULL;
@@ -5183,6 +4721,12 @@ nfs3_open_continue_internal(struct nfs_context *nfs,
 	int nfsmode = 0;
 	ACCESS3args args;
 
+        if ((data->continue_int & (O_CREAT|O_EXCL)) == (O_CREAT|O_EXCL)) {
+                nfs_set_error(nfs, "File allready exist when opening with O_CREAT|O_EXCL");
+		data->cb(-EEXIST, nfs, nfs_get_error(nfs), data->private_data);
+		free_nfs_cb_data(data);
+		return -1;
+        }
 	if (data->continue_int & O_WRONLY) {
 		nfsmode |= ACCESS3_MODIFY;
 	}
@@ -5207,21 +4751,231 @@ nfs3_open_continue_internal(struct nfs_context *nfs,
 	return 0;
 }
 
+struct open_cb_data {
+        nfs_cb cb;
+        void *private_data;
+        char *path;
+        int flags;
+        int mode;
+};
+
+static void
+free_open_cb_data(void *ptr)
+{
+	struct open_cb_data *data = ptr;
+
+	free(data->path);
+	free(data);
+}
+
+
+
+static void nfs3_open_create_cb(int err, struct nfs_context *nfs, void *ret_data,
+                         void *private_data)
+{
+	struct open_cb_data *cb_data = private_data;
+
+        if (err) {
+		cb_data->cb(nfsstat3_to_errno(err), nfs,
+                         nfs_get_error(nfs), cb_data->private_data);
+                free_open_cb_data(cb_data);
+                return;
+        }
+        
+        cb_data->cb(0, nfs, ret_data, cb_data->private_data);
+        free_open_cb_data(cb_data);
+}
+
+static void
+nfs3_create_1_cb(struct rpc_context *rpc, int status, void *command_data,
+                 void *private_data)
+{
+	CREATE3res *res;
+	struct nfs_cb_data *data = private_data;
+	struct nfs_context *nfs = data->nfs;
+	struct open_cb_data *cb_data = data->continue_data;
+	struct nfsfh *nfsfh;
+
+	assert(rpc->magic == RPC_CONTEXT_MAGIC);
+
+	res = command_data;
+	if (check_nfs3_error(nfs, status, data, command_data)) {
+		free_nfs_cb_data(data);
+		return;
+	}
+
+	if (res->status != NFS3_OK) {
+		nfs_set_error(nfs, "NFS: CREATE3 of %s failed with "
+                              "%s(%d)", data->saved_path,
+                              nfsstat3_to_str(res->status),
+                              nfsstat3_to_errno(res->status));
+		data->cb(nfsstat3_to_errno(res->status), nfs,
+                         nfs_get_error(nfs), data->private_data);
+		free_nfs_cb_data(data);
+		return;
+	}
+
+	nfsfh = malloc(sizeof(struct nfsfh));
+	if (nfsfh == NULL) {
+		nfs_set_error(nfs, "NFS: Failed to allocate nfsfh structure");
+		data->cb(-ENOMEM, nfs, nfs_get_error(nfs),
+                         data->private_data);
+		free_nfs_cb_data(data);
+		return;
+	}
+	memset(nfsfh, 0, sizeof(struct nfsfh));
+
+	if (cb_data->flags & O_SYNC) {
+		nfsfh->is_sync = 1;
+	}
+	if (cb_data->flags & O_APPEND) {
+		nfsfh->is_append = 1;
+	}
+
+	/* copy the filehandle */
+	nfsfh->fh.len = res->CREATE3res_u.resok.obj.post_op_fh3_u.handle.data.data_len;
+	nfsfh->fh.val = malloc(nfsfh->fh.len);
+	if (nfsfh->fh.val == NULL) {
+		nfs_set_error(nfs, "Out of memory: Failed to allocate "
+                              "fh structure");
+		data->cb(-ENOMEM, nfs, nfs_get_error(nfs), data->private_data);
+		free_nfs_cb_data(data);
+		free(nfsfh);
+		return;
+	}
+	memcpy(nfsfh->fh.val,
+               res->CREATE3res_u.resok.obj.post_op_fh3_u.handle.data.data_val,
+               nfsfh->fh.len);
+
+        
+	nfs_dircache_drop(nfs, &data->fh);
+	data->cb(0, nfs, nfsfh, data->private_data);
+        free_nfs_cb_data(data);
+        return;
+}
+
+static int
+nfs3_create_continue_internal(struct nfs_context *nfs,
+                              struct nfs_attr *attr _U_,
+                              struct nfs_cb_data *data)
+{
+	struct open_cb_data *cb_data = data->continue_data;
+	char *str = cb_data->path;
+	CREATE3args args;
+
+	str = &str[strlen(str) + 1];
+
+	memset(&args, 0, sizeof(CREATE3args));
+	args.where.dir.data.data_len = data->fh.len;
+	args.where.dir.data.data_val = data->fh.val;
+	args.where.name = str;
+	args.how.mode = (cb_data->flags & O_EXCL) ? GUARDED : UNCHECKED;
+	args.how.createhow3_u.obj_attributes.mode.set_it = 1;
+	args.how.createhow3_u.obj_attributes.mode.set_mode3_u.mode = cb_data->mode;
+
+	if (rpc_nfs3_create_task(nfs->rpc, nfs3_create_1_cb,
+                                 &args, data) == NULL) {
+		nfs_set_error(nfs, "RPC error: Failed to send CREATE "
+                              "call for %s/%s", data->path, str);
+		data->cb(-ENOMEM, nfs, nfs_get_error(nfs),
+                         data->private_data);
+		free_open_cb_data(data);
+		return -1;
+	}
+	return 0;
+}
+
+static void nfs3_initial_open_cb(int err, struct nfs_context *nfs, void *ret_data,
+                         void *private_data)
+{
+	struct open_cb_data *cb_data = private_data;
+        char *ptr;
+
+        if (err == -EEXIST && (cb_data->flags & (O_CREAT|O_EXCL)) == (O_CREAT|O_EXCL)) {
+		cb_data->cb(-EEXIST, nfs,
+                         nfs_get_error(nfs), cb_data->private_data);
+                free_open_cb_data(cb_data);
+                return;
+        }
+        if (err == -NFS3ERR_NOENT && (cb_data->flags & O_CREAT)) {
+                ptr = strrchr(cb_data->path, '/');
+                if (ptr) {
+                        *ptr++ = 0;
+                } else {
+                        /*
+                         * We have a simple path to a top level name and no
+                         * leading slashes. Make room for an extra character so
+                         * we can create a path that is '\0' and then followed
+                         * by the object we wish to create.
+                         */
+                        ptr = malloc(strlen(cb_data->path) + 1);
+                        if (ptr == NULL) {
+                                cb_data->cb(-ENOMEM, nfs,
+                                            nfs_get_error(nfs),
+                                            cb_data->private_data);
+                                free_open_cb_data(cb_data);
+                                return;
+                        }
+                        ptr[0] = 0;
+                        memcpy(&ptr[1], cb_data->path, strlen(cb_data->path));
+                        free(cb_data->path);
+                        cb_data->path = ptr;
+                }
+                /*
+                 * New_path now points to the parent directory and beyond the
+                 * null terminator is the new object to create
+                 */
+                if (nfs3_lookuppath_async(nfs, cb_data->path, 0,
+                                          nfs3_open_create_cb, cb_data,
+                                          nfs3_create_continue_internal, cb_data,
+                                          NULL, 0) != 0) {
+                        cb_data->cb(-ENOMEM, nfs,
+                                    nfs_get_error(nfs), cb_data->private_data);
+                        free_open_cb_data(cb_data);
+                        return;
+                }
+                return;
+        }
+        if (err) {
+                cb_data->cb(nfsstat3_to_errno(err), nfs,
+                            nfs_get_error(nfs), cb_data->private_data);
+                free_open_cb_data(cb_data);
+                return;
+        }
+        cb_data->cb(0, nfs, ret_data, cb_data->private_data);
+        free_open_cb_data(cb_data);
+}
+
 /* TODO add the plumbing for mode */
 int
 nfs3_open_async(struct nfs_context *nfs, const char *path, int flags,
                 int mode, nfs_cb cb, void *private_data)
 {
-        if (flags & O_CREAT) {
-                return nfs3_create_async(nfs, path, flags, mode,
-                                         cb, private_data);
+	struct open_cb_data *cb_data;
+
+	cb_data = calloc(1, sizeof(struct open_cb_data));
+	if (cb_data == NULL) {
+		nfs_set_error(nfs, "Out of memory: failed to allocate "
+			"nfs_cb_data structure");
+		return -ENOMEM;
+	}
+        cb_data->path               = strdup(path);
+        if (cb_data->path == NULL) {
+		nfs_set_error(nfs, "Out of memory: failed to strup path");
+                free_open_cb_data(cb_data);
+		return -ENOMEM;
         }
-        
-	if (nfs3_lookuppath_async(nfs, path, 0, cb, private_data,
-                                  nfs3_open_continue_internal,
-                                  NULL, NULL, flags) != 0) {
+	cb_data->cb                 = cb;
+	cb_data->private_data       = private_data;
+        cb_data->flags              = flags;
+        cb_data->mode               = mode;
+
+	if (nfs3_lookuppath_async(nfs, path, 0, nfs3_initial_open_cb, cb_data,
+                                  nfs3_open_continue_internal, NULL,
+                                  NULL, flags) != 0) {
+                free_open_cb_data(cb_data);
 		return -1;
 	}
-
 	return 0;
 }
+

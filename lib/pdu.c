@@ -365,9 +365,10 @@ int rpc_queue_pdu(struct rpc_context *rpc, struct rpc_pdu *pdu)
 	return 0;
 }
 
-static int rpc_process_reply(struct rpc_context *rpc, struct rpc_pdu *pdu, ZDR *zdr)
+static int rpc_process_reply(struct rpc_context *rpc, ZDR *zdr)
 {
 	struct rpc_msg msg;
+        struct rpc_pdu *pdu = rpc->pdu;
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
@@ -394,6 +395,10 @@ static int rpc_process_reply(struct rpc_context *rpc, struct rpc_pdu *pdu, ZDR *
 	}
 	switch (msg.body.rbody.reply.areply.stat) {
 	case SUCCESS:
+                if (pdu->in.buf) {
+                        rpc->pdu->free_pdu = 1;
+                        break;
+                }
 		pdu->cb(rpc, RPC_STATUS_SUCCESS, pdu->zdr_decode_buf, pdu->private_data);
 		break;
 	case PROG_UNAVAIL:
@@ -551,14 +556,69 @@ static int rpc_process_call(struct rpc_context *rpc, ZDR *zdr)
         return rpc_send_error_reply(rpc, &call, PROC_UNAVAIL, 0 ,0);
 }
 
-int rpc_process_pdu(struct rpc_context *rpc, char *buf, int size)
+struct rpc_pdu *rpc_find_pdu(struct rpc_context *rpc, uint32_t xid)
 {
 	struct rpc_pdu *pdu, *prev_pdu;
 	struct rpc_queue *q;
-	ZDR zdr;
-	int pos;
 	unsigned int hash;
-	uint32_t xid;
+
+#ifdef HAVE_MULTITHREADING
+        if (rpc->multithreading_enabled) {
+                nfs_mt_mutex_lock(&rpc->rpc_mutex);
+        }
+#endif /* HAVE_MULTITHREADING */
+
+	/* Look up the transaction in a hash table of our requests */
+	hash = rpc_hash_xid(rpc, rpc->rm_xid[1]);
+	q = &rpc->waitpdu[hash];
+
+	/* Follow the hash chain.  Linear traverse singly-linked list,
+	 * but track previous entry for optimised removal */
+	prev_pdu = NULL;
+	for (pdu=q->head; pdu; pdu=pdu->next) {
+		if (pdu->xid != rpc->rm_xid[1]) {
+			prev_pdu = pdu;
+			continue;
+		}
+		if (rpc->is_udp == 0 || rpc->is_broadcast == 0) {
+			/* Singly-linked but we track head and tail */
+			if (pdu == q->head)
+				q->head = pdu->next;
+			if (pdu == q->tail)
+				q->tail = prev_pdu;
+			if (prev_pdu != NULL)
+				prev_pdu->next = pdu->next;
+			rpc->waitpdu_len--;
+		}
+                break;
+        }
+
+#ifdef HAVE_MULTITHREADING
+        if (rpc->multithreading_enabled) {
+                nfs_mt_mutex_unlock(&rpc->rpc_mutex);
+        }
+#endif /* HAVE_MULTITHREADING */
+
+        return pdu;
+}
+
+int rpc_cancel_pdu(struct rpc_context *rpc, struct rpc_pdu *pdu)
+{
+        /*
+         * Use rpc_find_pdu() to locate it and remove it from the input list.
+         */
+        pdu = rpc_find_pdu(rpc, pdu->xid);
+        if (pdu) {
+                rpc_free_pdu(rpc, pdu);
+                return 0;
+        }
+
+        return -ENOENT;
+}
+
+int rpc_process_pdu(struct rpc_context *rpc, char *buf, int size)
+{
+	ZDR zdr;
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
@@ -573,61 +633,16 @@ int rpc_process_pdu(struct rpc_context *rpc, char *buf, int size)
                 return ret;
         }
 
-	pos = zdr_getpos(&zdr);
-	if (zdr_u_int(&zdr, &xid) == 0) {
-		rpc_set_error(rpc, "zdr_int reading xid failed");
-		zdr_destroy(&zdr);
-		return -1;
-	}
-	zdr_setpos(&zdr, pos);
-
-	/* Look up the transaction in a hash table of our requests */
-	hash = rpc_hash_xid(rpc, xid);
-#ifdef HAVE_MULTITHREADING
-        if (rpc->multithreading_enabled) {
-                nfs_mt_mutex_lock(&rpc->rpc_mutex);
+        if (rpc_process_reply(rpc, &zdr) != 0) {
+                rpc_set_error(rpc, "rpc_procdess_reply failed");
         }
-#endif /* HAVE_MULTITHREADING */
-	q = &rpc->waitpdu[hash];
 
-	/* Follow the hash chain.  Linear traverse singly-linked list,
-	 * but track previous entry for optimised removal */
-	prev_pdu = NULL;
-	for (pdu=q->head; pdu; pdu=pdu->next) {
-		if (pdu->xid != xid) {
-			prev_pdu = pdu;
-			continue;
-		}
-		if (rpc->is_udp == 0 || rpc->is_broadcast == 0) {
-			/* Singly-linked but we track head and tail */
-			if (pdu == q->head)
-				q->head = pdu->next;
-			if (pdu == q->tail)
-				q->tail = prev_pdu;
-			if (prev_pdu != NULL)
-				prev_pdu->next = pdu->next;
-			rpc->waitpdu_len--;
-		}
-#ifdef HAVE_MULTITHREADING
-                if (rpc->multithreading_enabled) {
-                        nfs_mt_mutex_unlock(&rpc->rpc_mutex);
-                }
-#endif /* HAVE_MULTITHREADING */
-		if (rpc_process_reply(rpc, pdu, &zdr) != 0) {
-			rpc_set_error(rpc, "rpc_procdess_reply failed");
-		}
-		zdr_destroy(&zdr);
-		if (rpc->is_udp == 0 || rpc->is_broadcast == 0) {
-			rpc_free_pdu(rpc, pdu);
-		}
-		return 0;
-	}
-#ifdef HAVE_MULTITHREADING
-        if (rpc->multithreading_enabled) {
-                nfs_mt_mutex_unlock(&rpc->rpc_mutex);
+        if (rpc->fragments == NULL && rpc->pdu && rpc->pdu->in.buf) {
+                memcpy(&rpc->pdu->zdr, &zdr, sizeof(zdr));
+                rpc->pdu->free_zdr = 1;
+        } else {
+                zdr_destroy(&zdr);
         }
-#endif /* HAVE_MULTITHREADING */
-
-	zdr_destroy(&zdr);
-	return 0;
+        return 0;
 }
+

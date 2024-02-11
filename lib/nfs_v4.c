@@ -2770,15 +2770,14 @@ nfs4_pread_cb(struct rpc_context *rpc, int status, void *command_data,
                 nfsfh->offset = data->rw_data.offset + rres->data.data_len;
         }
 
-        data->cb(rres->data.data_len, nfs, rres->data.data_val,
-                 data->private_data);
+        data->cb(rres->data.data_len, nfs, NULL, data->private_data);
         free_nfs4_cb_data(data);
 }
 
 int
 nfs4_pread_async_internal(struct nfs_context *nfs, struct nfsfh *nfsfh,
-                          uint64_t offset, size_t count, nfs_cb cb,
-                          void *private_data, int update_pos)
+                          void *buf, size_t count, uint64_t offset,
+                          nfs_cb cb, void *private_data, int update_pos)
 {
         COMPOUND4args args;
         nfs_argop4 op[2];
@@ -2811,8 +2810,8 @@ nfs4_pread_async_internal(struct nfs_context *nfs, struct nfsfh *nfsfh,
         args.argarray.argarray_len = i;
         args.argarray.argarray_val = op;
 
-        if (rpc_nfs4_compound_task(nfs->rpc, nfs4_pread_cb, &args,
-                                   data) == NULL) {
+        if (rpc_nfs4_read_task(nfs->rpc, nfs4_pread_cb, buf, count, &args,
+                               data) == NULL) {
                 free_nfs4_cb_data(data);
                 return -1;
         }
@@ -3019,8 +3018,8 @@ nfs4_pwrite_async_internal(struct nfs_context *nfs, struct nfsfh *nfsfh,
         args.argarray.argarray_len = i;
         args.argarray.argarray_val = op;
 
-        if (rpc_nfs4_compound_task2(nfs->rpc, nfs4_pwrite_cb, &args,
-                                    data, count) == NULL) {
+        if (rpc_nfs4_write_task(nfs->rpc, nfs4_pwrite_cb, buf, count,
+                                &args, data) == NULL) {
                 nfs_set_error(nfs, "PWRITE "
                         "failed: %s", rpc_get_error(nfs->rpc));
                 free_nfs4_cb_data(data);
@@ -3143,10 +3142,10 @@ nfs4_write_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t count,
 }
 
 int
-nfs4_create_async(struct nfs_context *nfs, const char *path, int flags,
-                  int mode, nfs_cb cb, void *private_data)
+nfs4_creat_async(struct nfs_context *nfs, const char *path,
+                 int mode, nfs_cb cb, void *private_data)
 {
-        return nfs4_open_async(nfs, path, O_CREAT | flags, mode,
+        return nfs4_open_async(nfs, path, O_CREAT|O_WRONLY|O_TRUNC, mode,
                                cb, private_data);
 }
 

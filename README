@@ -1,4 +1,19 @@
-This is the final release of the old API.
+--- Read this first
+This version 2 of the libnfs API. It is not compatible with the earlier API.
+All rpc_<protocol>_<function>_async() functions have been changed to
+rpc_<protocol>_<dunction>_task().
+The _task() functions return a struct rpc_pdu * which can later be used
+to cancel an inflight command.
+
+nfs_[]read and nfs_[p]write functions have new signatures.
+Pay attention to any compiler warnings when compiling against this new API.
+
+The symbol LIBNFS_API_V2 can be used to identify that the library uses the new
+API.
+
+This version of the library supports zero-copy read and write for NFS v3/4
+---
+
 
 LIBNFS is a client library for accessing NFS shares over a network.
 
@@ -62,8 +77,6 @@ Arguments supported by libnfs are :
                      default it 65534 on Windows and getuid() on unixen.
  gid=<int>         : GID value to use when talking to the server.
                      default it 65534 on Windows and getgid() on unixen.
- readahead=<int>   : Enable readahead for files and set the maximum amount
-                     of readahead to <int> bytes.
  auto-traverse-mounts=<0|1>
                    : Should libnfs try to traverse across nested mounts
                      automatically or not. Default is 1 == enabled.

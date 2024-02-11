@@ -1,3 +1,4 @@
+/* -*-  mode:c; tab-width:8; c-basic-offset:8; indent-tabs-mode:nil;  -*- */
 /*
    Copyright (C) 2010 by Ronnie Sahlberg <ronniesahlberg@gmail.com>
 
@@ -33,8 +34,6 @@
 #include "libnfs-raw.h"
 #include "libnfs-private.h"
 #include "libnfs-raw-nfs.h"
-
-uint32_t zero_padding;
 
 char *nfsstat3_to_str(int error)
 {
@@ -112,8 +111,8 @@ int nfsstat3_to_errno(int error)
 /*
  * NFSv3
  */
-struct rpc_pdu *
-rpc_nfs3_null_task(struct rpc_context *rpc, rpc_cb cb, void *private_data)
+struct rpc_pdu *rpc_nfs3_null_task(struct rpc_context *rpc, rpc_cb cb,
+                                   void *private_data)
 {
 	struct rpc_pdu *pdu;
 
@@ -131,8 +130,9 @@ rpc_nfs3_null_task(struct rpc_context *rpc, rpc_cb cb, void *private_data)
 	return pdu;
 }
 
-struct rpc_pdu *
-rpc_nfs3_getattr_task(struct rpc_context *rpc, rpc_cb cb, struct GETATTR3args *args, void *private_data)
+struct rpc_pdu *rpc_nfs3_getattr_task(struct rpc_context *rpc, rpc_cb cb,
+                                      struct GETATTR3args *args,
+                                      void *private_data)
 {
 	struct rpc_pdu *pdu;
 
@@ -156,8 +156,9 @@ rpc_nfs3_getattr_task(struct rpc_context *rpc, rpc_cb cb, struct GETATTR3args *a
 	return pdu;
 }
 
-struct rpc_pdu *
-rpc_nfs3_pathconf_task(struct rpc_context *rpc, rpc_cb cb, struct PATHCONF3args *args, void *private_data)
+struct rpc_pdu *rpc_nfs3_pathconf_task(struct rpc_context *rpc, rpc_cb cb,
+                                       struct PATHCONF3args *args,
+                                       void *private_data)
 {
 	struct rpc_pdu *pdu;
 
@@ -181,8 +182,9 @@ rpc_nfs3_pathconf_task(struct rpc_context *rpc, rpc_cb cb, struct PATHCONF3args 
 	return pdu;
 }
 
-struct rpc_pdu *
-rpc_nfs3_lookup_task(struct rpc_context *rpc, rpc_cb cb, struct LOOKUP3args *args, void *private_data)
+struct rpc_pdu *rpc_nfs3_lookup_task(struct rpc_context *rpc, rpc_cb cb,
+                                     struct LOOKUP3args *args,
+                                     void *private_data)
 {
 	struct rpc_pdu *pdu;
 
@@ -206,8 +208,9 @@ rpc_nfs3_lookup_task(struct rpc_context *rpc, rpc_cb cb, struct LOOKUP3args *arg
 	return pdu;
 }
 
-struct rpc_pdu *
-rpc_nfs3_access_task(struct rpc_context *rpc, rpc_cb cb, struct ACCESS3args *args, void *private_data)
+struct rpc_pdu *rpc_nfs3_access_task(struct rpc_context *rpc, rpc_cb cb,
+                                     struct ACCESS3args *args,
+                                     void *private_data)
 {
 	struct rpc_pdu *pdu;
 
@@ -231,23 +234,57 @@ rpc_nfs3_access_task(struct rpc_context *rpc, rpc_cb cb, struct ACCESS3args *arg
 	return pdu;
 }
 
+uint32_t
+zdr_READ3resok_zero_copy (ZDR *zdrs, READ3resok *objp)
+{
+        if (!zdr_post_op_attr (zdrs, &objp->file_attributes))
+                return FALSE;
+        if (!zdr_count3 (zdrs, &objp->count))
+                return FALSE;
+        if (!zdr_bool (zdrs, &objp->eof))
+                return FALSE;
+	return TRUE;
+}
+
+uint32_t
+zdr_READ3res_zero_copy (ZDR *zdrs, READ3res *objp)
+{
+        if (!zdr_nfsstat3 (zdrs, &objp->status))
+                return FALSE;
+	switch (objp->status) {
+	case NFS3_OK:
+		 if (!zdr_READ3resok_zero_copy (zdrs, &objp->READ3res_u.resok))
+			 return FALSE;
+		break;
+	default:
+		 if (!zdr_READ3resfail (zdrs, &objp->READ3res_u.resfail))
+			 return FALSE;
+		break;
+	}
+	return TRUE;
+}
+
 struct rpc_pdu *
-rpc_nfs3_read_task(struct rpc_context *rpc, rpc_cb cb, struct READ3args *args, void *private_data)
+rpc_nfs3_read_task(struct rpc_context *rpc, rpc_cb cb,
+                   void *buf, size_t count,
+                   struct READ3args *args, void *private_data)
 {
 	struct rpc_pdu *pdu;
 
-	pdu = rpc_allocate_pdu(rpc, NFS_PROGRAM, NFS_V3, NFS3_READ, cb, private_data, (zdrproc_t)zdr_READ3res, sizeof(READ3res));
+	pdu = rpc_allocate_pdu(rpc, NFS_PROGRAM, NFS_V3, NFS3_READ, cb, private_data, (zdrproc_t)zdr_READ3res_zero_copy, sizeof(READ3res));
 	if (pdu == NULL) {
 		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu for NFS3/READ call");
 		return NULL;
 	}
-
 	if (zdr_READ3args(&pdu->zdr, args) == 0) {
 		rpc_set_error(rpc, "ZDR error: Failed to encode READ3args");
 		rpc_free_pdu(rpc, pdu);
 		return NULL;
 	}
 
+        pdu->in.buf = buf;
+        pdu->in.len = count;
+ 
 	if (rpc_queue_pdu(rpc, pdu) != 0) {
 		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for NFS3/READ call");
 		return NULL;
@@ -256,7 +293,8 @@ rpc_nfs3_read_task(struct rpc_context *rpc, rpc_cb cb, struct READ3args *args, v
 	return pdu;
 }
 
-/* Replacement WRITE3args so that we can add the data as an iovector
+/*
+ * Replacement WRITE3args so that we can add the data as an iovector
  * instead of marshalling it in the out buffer.
  * This will marshall the WRITE3args structure except for the final
  * byte/array for the actual data.
@@ -275,11 +313,13 @@ zdr_WRITE3args_zerocopy(ZDR *zdrs, WRITE3args *objp)
 	return TRUE;
 }
 
-struct rpc_pdu *
-rpc_nfs3_write_task(struct rpc_context *rpc, rpc_cb cb, struct WRITE3args *args, void *private_data)
+struct rpc_pdu *rpc_nfs3_write_task(struct rpc_context *rpc, rpc_cb cb,
+                                    struct WRITE3args *args,
+                                    void *private_data)
 {
 	struct rpc_pdu *pdu;
         int start;
+        static uint32_t zero_padding;
 
 	pdu = rpc_allocate_pdu2(rpc, NFS_PROGRAM, NFS_V3, NFS3_WRITE, cb, private_data, (zdrproc_t)zdr_WRITE3res, sizeof(WRITE3res), 0);
 	if (pdu == NULL) {
@@ -336,8 +376,9 @@ rpc_nfs3_write_task(struct rpc_context *rpc, rpc_cb cb, struct WRITE3args *args,
 	return pdu;
 }
 
-struct rpc_pdu *
-rpc_nfs3_commit_task(struct rpc_context *rpc, rpc_cb cb, struct COMMIT3args *args, void *private_data)
+struct rpc_pdu *rpc_nfs3_commit_task(struct rpc_context *rpc, rpc_cb cb,
+                                     struct COMMIT3args *args,
+                                     void *private_data)
 {
 	struct rpc_pdu *pdu;
 
@@ -362,7 +403,8 @@ rpc_nfs3_commit_task(struct rpc_context *rpc, rpc_cb cb, struct COMMIT3args *arg
 }
 
 struct rpc_pdu *
-rpc_nfs3_setattr_task(struct rpc_context *rpc, rpc_cb cb, SETATTR3args *args, void *private_data)
+rpc_nfs3_setattr_task(struct rpc_context *rpc, rpc_cb cb, SETATTR3args *args,
+                      void *private_data)
 {
 	struct rpc_pdu *pdu;
 
@@ -386,8 +428,8 @@ rpc_nfs3_setattr_task(struct rpc_context *rpc, rpc_cb cb, SETATTR3args *args, vo
 	return pdu;
 }
 
-struct rpc_pdu *
-rpc_nfs3_mkdir_task(struct rpc_context *rpc, rpc_cb cb, MKDIR3args *args, void *private_data)
+struct rpc_pdu *rpc_nfs3_mkdir_task(struct rpc_context *rpc, rpc_cb cb,
+                                    MKDIR3args *args, void *private_data)
 {
 	struct rpc_pdu *pdu;
 
@@ -411,8 +453,9 @@ rpc_nfs3_mkdir_task(struct rpc_context *rpc, rpc_cb cb, MKDIR3args *args, void *
 	return pdu;
 }
 
-struct rpc_pdu *
-rpc_nfs3_rmdir_task(struct rpc_context *rpc, rpc_cb cb, struct RMDIR3args *args, void *private_data)
+struct rpc_pdu *rpc_nfs3_rmdir_task(struct rpc_context *rpc, rpc_cb cb,
+                                    struct RMDIR3args *args,
+                                    void *private_data)
 {
 	struct rpc_pdu *pdu;
 
@@ -436,8 +479,8 @@ rpc_nfs3_rmdir_task(struct rpc_context *rpc, rpc_cb cb, struct RMDIR3args *args,
 	return pdu;
 }
 
-struct rpc_pdu *
-rpc_nfs3_create_task(struct rpc_context *rpc, rpc_cb cb, CREATE3args *args, void *private_data)
+struct rpc_pdu *rpc_nfs3_create_task(struct rpc_context *rpc, rpc_cb cb,
+                                     CREATE3args *args, void *private_data)
 {
 	struct rpc_pdu *pdu;
 
@@ -461,8 +504,9 @@ rpc_nfs3_create_task(struct rpc_context *rpc, rpc_cb cb, CREATE3args *args, void
 	return pdu;
 }
 
-struct rpc_pdu *
-rpc_nfs3_mknod_task(struct rpc_context *rpc, rpc_cb cb, struct MKNOD3args *args, void *private_data)
+struct rpc_pdu *rpc_nfs3_mknod_task(struct rpc_context *rpc, rpc_cb cb,
+                                    struct MKNOD3args *args,
+                                    void *private_data)
 {
 	struct rpc_pdu *pdu;
 
@@ -486,8 +530,9 @@ rpc_nfs3_mknod_task(struct rpc_context *rpc, rpc_cb cb, struct MKNOD3args *args,
 	return pdu;
 }
 
-struct rpc_pdu *
-rpc_nfs3_remove_task(struct rpc_context *rpc, rpc_cb cb, struct REMOVE3args *args, void *private_data)
+struct rpc_pdu *rpc_nfs3_remove_task(struct rpc_context *rpc, rpc_cb cb,
+                                     struct REMOVE3args *args,
+                                     void *private_data)
 {
 	struct rpc_pdu *pdu;
 
@@ -511,8 +556,9 @@ rpc_nfs3_remove_task(struct rpc_context *rpc, rpc_cb cb, struct REMOVE3args *arg
 	return pdu;
 }
 
-struct rpc_pdu *
-rpc_nfs3_readdir_task(struct rpc_context *rpc, rpc_cb cb, struct READDIR3args *args, void *private_data)
+struct rpc_pdu *rpc_nfs3_readdir_task(struct rpc_context *rpc, rpc_cb cb,
+                                      struct READDIR3args *args,
+                                      void *private_data)
 {
 	struct rpc_pdu *pdu;
 
@@ -536,8 +582,9 @@ rpc_nfs3_readdir_task(struct rpc_context *rpc, rpc_cb cb, struct READDIR3args *a
 	return pdu;
 }
 
-struct rpc_pdu *
-rpc_nfs3_readdirplus_task(struct rpc_context *rpc, rpc_cb cb, struct READDIRPLUS3args *args, void *private_data)
+struct rpc_pdu *rpc_nfs3_readdirplus_task(struct rpc_context *rpc, rpc_cb cb,
+                                          struct READDIRPLUS3args *args,
+                                          void *private_data)
 {
 	struct rpc_pdu *pdu;
 
@@ -561,8 +608,9 @@ rpc_nfs3_readdirplus_task(struct rpc_context *rpc, rpc_cb cb, struct READDIRPLUS
 	return pdu;
 }
 
-struct rpc_pdu *
-rpc_nfs3_fsstat_task(struct rpc_context *rpc, rpc_cb cb, struct FSSTAT3args *args, void *private_data)
+struct rpc_pdu *rpc_nfs3_fsstat_task(struct rpc_context *rpc, rpc_cb cb,
+                                     struct FSSTAT3args *args,
+                                     void *private_data)
 {
 	struct rpc_pdu *pdu;
 
@@ -586,8 +634,9 @@ rpc_nfs3_fsstat_task(struct rpc_context *rpc, rpc_cb cb, struct FSSTAT3args *arg
 	return pdu;
 }
 
-struct rpc_pdu *
-rpc_nfs3_fsinfo_task(struct rpc_context *rpc, rpc_cb cb, struct FSINFO3args *args, void *private_data)
+struct rpc_pdu *rpc_nfs3_fsinfo_task(struct rpc_context *rpc, rpc_cb cb,
+                                     struct FSINFO3args *args,
+                                     void *private_data)
 {
 	struct rpc_pdu *pdu;
 
@@ -612,7 +661,8 @@ rpc_nfs3_fsinfo_task(struct rpc_context *rpc, rpc_cb cb, struct FSINFO3args *arg
 }
 
 struct rpc_pdu *
-rpc_nfs3_readlink_task(struct rpc_context *rpc, rpc_cb cb, READLINK3args *args, void *private_data)
+rpc_nfs3_readlink_task(struct rpc_context *rpc, rpc_cb cb,
+                       READLINK3args *args, void *private_data)
 {
 	struct rpc_pdu *pdu;
 
@@ -636,8 +686,8 @@ rpc_nfs3_readlink_task(struct rpc_context *rpc, rpc_cb cb, READLINK3args *args, 
 	return pdu;
 }
 
-struct rpc_pdu *
-rpc_nfs3_symlink_task(struct rpc_context *rpc, rpc_cb cb, SYMLINK3args *args, void *private_data)
+struct rpc_pdu *rpc_nfs3_symlink_task(struct rpc_context *rpc, rpc_cb cb,
+                                       SYMLINK3args *args, void *private_data)
 {
 	struct rpc_pdu *pdu;
 
@@ -661,8 +711,9 @@ rpc_nfs3_symlink_task(struct rpc_context *rpc, rpc_cb cb, SYMLINK3args *args, vo
 	return pdu;
 }
 
-struct rpc_pdu *
-rpc_nfs3_rename_task(struct rpc_context *rpc, rpc_cb cb, struct RENAME3args *args, void *private_data)
+struct rpc_pdu *rpc_nfs3_rename_task(struct rpc_context *rpc, rpc_cb cb,
+                                     struct RENAME3args *args,
+                                     void *private_data)
 {
 	struct rpc_pdu *pdu;
 
@@ -686,8 +737,8 @@ rpc_nfs3_rename_task(struct rpc_context *rpc, rpc_cb cb, struct RENAME3args *arg
 	return pdu;
 }
 
-struct rpc_pdu *
-rpc_nfs3_link_task(struct rpc_context *rpc, rpc_cb cb, struct LINK3args *args, void *private_data)
+struct rpc_pdu *rpc_nfs3_link_task(struct rpc_context *rpc, rpc_cb cb,
+                                   struct LINK3args *args, void *private_data)
 {
 	struct rpc_pdu *pdu;
 
@@ -714,8 +765,8 @@ rpc_nfs3_link_task(struct rpc_context *rpc, rpc_cb cb, struct LINK3args *args, v
 /*
  * NFSv2
  */
-struct rpc_pdu *
-rpc_nfs2_null_task(struct rpc_context *rpc, rpc_cb cb, void *private_data)
+struct rpc_pdu *rpc_nfs2_null_task(struct rpc_context *rpc, rpc_cb cb,
+                                   void *private_data)
 {
 	struct rpc_pdu *pdu;
 
@@ -733,8 +784,9 @@ rpc_nfs2_null_task(struct rpc_context *rpc, rpc_cb cb, void *private_data)
 	return pdu;
 }
 
-struct rpc_pdu *
-rpc_nfs2_getattr_task(struct rpc_context *rpc, rpc_cb cb, struct GETATTR2args *args, void *private_data)
+struct rpc_pdu *rpc_nfs2_getattr_task(struct rpc_context *rpc, rpc_cb cb,
+                                      struct GETATTR2args *args,
+                                      void *private_data)
 {
 	struct rpc_pdu *pdu;
 
@@ -758,8 +810,8 @@ rpc_nfs2_getattr_task(struct rpc_context *rpc, rpc_cb cb, struct GETATTR2args *a
 	return pdu;
 }
 
-struct rpc_pdu *
-rpc_nfs2_setattr_task(struct rpc_context *rpc, rpc_cb cb, SETATTR2args *args, void *private_data)
+struct rpc_pdu *rpc_nfs2_setattr_task(struct rpc_context *rpc, rpc_cb cb,
+                                      SETATTR2args *args, void *private_data)
 {
 	struct rpc_pdu *pdu;
 
@@ -783,8 +835,9 @@ rpc_nfs2_setattr_task(struct rpc_context *rpc, rpc_cb cb, SETATTR2args *args, vo
 	return pdu;
 }
 
-struct rpc_pdu *
-rpc_nfs2_lookup_task(struct rpc_context *rpc, rpc_cb cb, struct LOOKUP2args *args, void *private_data)
+struct rpc_pdu *rpc_nfs2_lookup_task(struct rpc_context *rpc, rpc_cb cb,
+                                     struct LOOKUP2args *args,
+                                     void *private_data)
 {
 	struct rpc_pdu *pdu;
 
@@ -808,8 +861,8 @@ rpc_nfs2_lookup_task(struct rpc_context *rpc, rpc_cb cb, struct LOOKUP2args *arg
 	return pdu;
 }
 
-struct rpc_pdu *
-rpc_nfs2_readlink_task(struct rpc_context *rpc, rpc_cb cb, READLINK2args *args, void *private_data)
+struct rpc_pdu *rpc_nfs2_readlink_task(struct rpc_context *rpc, rpc_cb cb,
+                                       READLINK2args *args, void *private_data)
 {
 	struct rpc_pdu *pdu;
 
@@ -833,8 +886,8 @@ rpc_nfs2_readlink_task(struct rpc_context *rpc, rpc_cb cb, READLINK2args *args, 
 	return pdu;
 }
 
-struct rpc_pdu *
-rpc_nfs2_read_task(struct rpc_context *rpc, rpc_cb cb, struct READ2args *args, void *private_data)
+struct rpc_pdu *rpc_nfs2_read_task(struct rpc_context *rpc, rpc_cb cb,
+                                   struct READ2args *args, void *private_data)
 {
 	struct rpc_pdu *pdu;
 
@@ -858,8 +911,9 @@ rpc_nfs2_read_task(struct rpc_context *rpc, rpc_cb cb, struct READ2args *args, v
 	return pdu;
 }
 
-struct rpc_pdu *
-rpc_nfs2_write_task(struct rpc_context *rpc, rpc_cb cb, struct WRITE2args *args, void *private_data)
+struct rpc_pdu *rpc_nfs2_write_task(struct rpc_context *rpc, rpc_cb cb,
+                                    struct WRITE2args *args,
+                                    void *private_data)
 {
 	struct rpc_pdu *pdu;
 
@@ -883,8 +937,8 @@ rpc_nfs2_write_task(struct rpc_context *rpc, rpc_cb cb, struct WRITE2args *args,
 	return pdu;
 }
 
-struct rpc_pdu *
-rpc_nfs2_create_task(struct rpc_context *rpc, rpc_cb cb, CREATE2args *args, void *private_data)
+struct rpc_pdu *rpc_nfs2_create_task(struct rpc_context *rpc, rpc_cb cb,
+                                     CREATE2args *args, void *private_data)
 {
 	struct rpc_pdu *pdu;
 
@@ -908,8 +962,9 @@ rpc_nfs2_create_task(struct rpc_context *rpc, rpc_cb cb, CREATE2args *args, void
 	return pdu;
 }
 
-struct rpc_pdu *
-rpc_nfs2_remove_task(struct rpc_context *rpc, rpc_cb cb, struct REMOVE2args *args, void *private_data)
+struct rpc_pdu *rpc_nfs2_remove_task(struct rpc_context *rpc, rpc_cb cb,
+                                     struct REMOVE2args *args,
+                                     void *private_data)
 {
 	struct rpc_pdu *pdu;
 
@@ -933,8 +988,9 @@ rpc_nfs2_remove_task(struct rpc_context *rpc, rpc_cb cb, struct REMOVE2args *arg
 	return pdu;
 }
 
-struct rpc_pdu *
-rpc_nfs2_rename_task(struct rpc_context *rpc, rpc_cb cb, struct RENAME2args *args, void *private_data)
+struct rpc_pdu *rpc_nfs2_rename_task(struct rpc_context *rpc, rpc_cb cb,
+                                     struct RENAME2args *args,
+                                     void *private_data)
 {
 	struct rpc_pdu *pdu;
 
@@ -958,8 +1014,8 @@ rpc_nfs2_rename_task(struct rpc_context *rpc, rpc_cb cb, struct RENAME2args *arg
 	return pdu;
 }
 
-struct rpc_pdu *
-rpc_nfs2_link_task(struct rpc_context *rpc, rpc_cb cb, LINK2args *args, void *private_data)
+struct rpc_pdu *rpc_nfs2_link_task(struct rpc_context *rpc, rpc_cb cb,
+                                   LINK2args *args, void *private_data)
 {
 	struct rpc_pdu *pdu;
 
@@ -983,8 +1039,8 @@ rpc_nfs2_link_task(struct rpc_context *rpc, rpc_cb cb, LINK2args *args, void *pr
 	return pdu;
 }
 
-struct rpc_pdu *
-rpc_nfs2_symlink_task(struct rpc_context *rpc, rpc_cb cb, SYMLINK2args *args, void *private_data)
+struct rpc_pdu *rpc_nfs2_symlink_task(struct rpc_context *rpc, rpc_cb cb,
+                                      SYMLINK2args *args, void *private_data)
 {
 	struct rpc_pdu *pdu;
 
@@ -1008,8 +1064,8 @@ rpc_nfs2_symlink_task(struct rpc_context *rpc, rpc_cb cb, SYMLINK2args *args, vo
 	return pdu;
 }
 
-struct rpc_pdu *
-rpc_nfs2_mkdir_task(struct rpc_context *rpc, rpc_cb cb, MKDIR2args *args, void *private_data)
+struct rpc_pdu *rpc_nfs2_mkdir_task(struct rpc_context *rpc, rpc_cb cb,
+                                    MKDIR2args *args, void *private_data)
 {
 	struct rpc_pdu *pdu;
 
@@ -1033,8 +1089,9 @@ rpc_nfs2_mkdir_task(struct rpc_context *rpc, rpc_cb cb, MKDIR2args *args, void *
 	return pdu;
 }
 
-struct rpc_pdu *
-rpc_nfs2_rmdir_task(struct rpc_context *rpc, rpc_cb cb, struct RMDIR2args *args, void *private_data)
+struct rpc_pdu *rpc_nfs2_rmdir_task(struct rpc_context *rpc, rpc_cb cb,
+                                    struct RMDIR2args *args,
+                                    void *private_data)
 {
 	struct rpc_pdu *pdu;
 
@@ -1058,8 +1115,9 @@ rpc_nfs2_rmdir_task(struct rpc_context *rpc, rpc_cb cb, struct RMDIR2args *args,
 	return pdu;
 }
 
-struct rpc_pdu *
-rpc_nfs2_readdir_task(struct rpc_context *rpc, rpc_cb cb, struct READDIR2args *args, void *private_data)
+struct rpc_pdu *rpc_nfs2_readdir_task(struct rpc_context *rpc, rpc_cb cb,
+                                      struct READDIR2args *args,
+                                      void *private_data)
 {
 	struct rpc_pdu *pdu;
 
@@ -1083,8 +1141,9 @@ rpc_nfs2_readdir_task(struct rpc_context *rpc, rpc_cb cb, struct READDIR2args *a
 	return pdu;
 }
 
-struct rpc_pdu *
-rpc_nfs2_statfs_task(struct rpc_context *rpc, rpc_cb cb, struct STATFS2args *args, void *private_data)
+struct rpc_pdu *rpc_nfs2_statfs_task(struct rpc_context *rpc, rpc_cb cb,
+                                     struct STATFS2args *args,
+                                     void *private_data)
 {
 	struct rpc_pdu *pdu;
 

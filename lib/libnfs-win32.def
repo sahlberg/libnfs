@@ -68,7 +68,6 @@ nfs_parse_url_full
 nfs_parse_url_dir
 nfs_parse_url_incomplete
 nfs_destroy_url
-nfs_pagecache_invalidate
 nfs_pread
 nfs_pread_async
 nfs_pwrite
@@ -94,9 +93,6 @@ nfs_set_gid
 nfs_set_hash_size
 nfs_set_mountport
 nfs_set_nfsport
-nfs_set_pagecache
-nfs_set_pagecache_ttl
-nfs_set_readahead
 nfs_set_readdir_max_buffer_size
 nfs_set_readmax
 nfs_set_tcp_syncnt
@@ -139,7 +135,7 @@ nfs4_acl_free
 nfs4_getacl
 nfs4_getacl_async
 win32_poll
-rpc_cancel_task
+rpc_cancel_pdu
 rpc_connect_async
 rpc_connect_port_async
 rpc_connect_program_async

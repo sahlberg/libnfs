@@ -2246,7 +2246,7 @@ zdr_READ4args (ZDR *zdrs, READ4args *objp)
 }
 
 uint32_t
-zdr_READ4resok (ZDR *zdrs, READ4resok *objp)
+zzdr_READ4resok (ZDR *zdrs, READ4resok *objp)
 {
 	
 
@@ -2705,7 +2705,7 @@ zdr_stable_how4 (ZDR *zdrs, stable_how4 *objp)
 }
 
 uint32_t
-zdr_WRITE4args (ZDR *zdrs, WRITE4args *objp)
+zzdr_WRITE4args (ZDR *zdrs, WRITE4args *objp)
 {
 	
 
@@ -4577,6 +4577,32 @@ zdr_CB_COMPOUND4res (ZDR *zdrs, CB_COMPOUND4res *objp)
 		 return FALSE;
 	 if (!zdr_array (zdrs, (char **)&objp->resarray.resarray_val, (u_int *) &objp->resarray.resarray_len, ~0,
 		sizeof (nfs_cb_resop4), (zdrproc_t) zdr_nfs_cb_resop4))
+		 return FALSE;
+	return TRUE;
+}
+uint32_t
+zdr_READ4resok (ZDR *zdrs, READ4resok *objp)
+{
+	uint32_t pos;
+	
+	 if (!zdr_bool (zdrs, &objp->eof))
+		 return FALSE;
+	 pos = zdr_getpos(zdrs);
+	 if (!zdr_uint32_t (zdrs, &objp->data.data_len))
+		 return FALSE;
+	 zdr_setpos(zdrs, pos);
+
+	return TRUE;
+}
+
+uint32_t
+zdr_WRITE4args (ZDR *zdrs, WRITE4args *objp)
+{
+	 if (!zdr_stateid4 (zdrs, &objp->stateid))
+		 return FALSE;
+	 if (!zdr_offset4 (zdrs, &objp->offset))
+		 return FALSE;
+	 if (!zdr_stable_how4 (zdrs, &objp->stable))
 		 return FALSE;
 	return TRUE;
 }

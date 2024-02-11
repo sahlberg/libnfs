@@ -61,6 +61,8 @@ struct client {
        int is_finished;
 };
 
+char buf[64];
+
 void mount_export_cb(struct rpc_context *mount_context, int status, void *data, void *private_data)
 {
 	struct client *client = private_data;
@@ -158,7 +160,7 @@ void nfs_read_cb(int status, struct nfs_context *nfs, void *data, void *private_
 	}
 
 	printf("read successful with %d bytes of data\n", status);
-	read_data = data;
+	read_data = buf;
 	for (i=0;i<16;i++) {
 		printf("%02x ", read_data[i]&0xff);
 	}
@@ -184,7 +186,7 @@ void nfs_open_cb(int status, struct nfs_context *nfs, void *data, void *private_
 	client->nfsfh = nfsfh;
 	printf("Got reply from server for open(%s). Handle:%p\n", NFSFILE, data);
 	printf("Read first 64 bytes\n");
-	if (nfs_pread_async(nfs, nfsfh, 0, 64, nfs_read_cb, client) != 0) {
+	if (nfs_pread_async(nfs, nfsfh, buf, 64, 0, nfs_read_cb, client) != 0) {
 		printf("Failed to start async nfs open\n");
 		exit(10);
 	}
