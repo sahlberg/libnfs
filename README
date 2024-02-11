@@ -57,7 +57,7 @@ URL-FORMAT:
 Libnfs uses RFC2224 style URLs extended with some minor libnfs extensions.
 The basic syntax of these URLs is :
 
-nfs://<server|ipv4|ipv6>[:<port>]/path[?arg=val[&arg=val]*]
+nfs://[<username>@]<server|ipv4|ipv6>[:<port>]/path[?arg=val[&arg=val]*]
 
 Special characters in 'path' are escaped using %-hex-hex syntax.
 
@@ -77,6 +77,7 @@ Arguments supported by libnfs are :
                      default it 65534 on Windows and getuid() on unixen.
  gid=<int>         : GID value to use when talking to the server.
                      default it 65534 on Windows and getgid() on unixen.
+ sec=<krb5>        : Specify the security mode.
  auto-traverse-mounts=<0|1>
                    : Should libnfs try to traverse across nested mounts
                      automatically or not. Default is 1 == enabled.

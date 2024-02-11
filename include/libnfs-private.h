@@ -137,6 +137,7 @@ enum input_state {
         READ_UNKNOWN = 5,
 };
 
+struct gss_ctx_id_struct;
 struct rpc_context {
 	uint32_t magic;
 	int fd;
@@ -194,6 +195,18 @@ struct rpc_context {
 	char ifname[IFNAMSIZ];
 	int poll_timeout;
 
+#ifdef HAVE_LIBKRB5
+        const char *username;
+        enum rpc_sec wanted_sec;
+        enum rpc_sec sec;
+        uint32_t gss_seqno;
+        int context_len;
+        char *context;
+        
+        void *auth_data; /* for krb5 */
+        struct gss_ctx_id_struct *gss_context;
+#endif /* HAVE_LIBKRB5 */
+
         /* Is a server context ? */
         int is_server_context;
         struct rpc_endpoint *endpoints;
@@ -235,6 +248,10 @@ struct rpc_pdu {
         uint32_t flags;
 
 	uint64_t timeout;
+#ifdef HAVE_LIBKRB5
+        uint32_t gss_seqno;
+        char creds[64];
+#endif
 };
 
 void rpc_reset_queue(struct rpc_queue *q);

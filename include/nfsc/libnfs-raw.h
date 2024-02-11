@@ -125,6 +125,11 @@ EXTERN void rpc_set_gid(struct rpc_context *rpc, int gid);
 EXTERN void rpc_set_auxiliary_gids(struct rpc_context *rpc, uint32_t len, uint32_t* gids);
 
 /*
+ * Used in GSSAPI mode
+ */
+EXTERN int rpc_set_username(struct rpc_context *rpc, const char *username);
+
+/*
  * Create a server context.
  */
 EXTERN struct rpc_context *rpc_init_server_context(int s);
@@ -2479,7 +2484,6 @@ rpc_nfs4_write_task(struct rpc_context *rpc, rpc_cb cb,
 EXTERN struct rpc_pdu *
 rpc_null_task(struct rpc_context *rpc, int program, int version,
                rpc_cb cb, void *private_data);
-
 
 #ifdef __cplusplus
 }

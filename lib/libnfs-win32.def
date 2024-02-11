@@ -95,9 +95,11 @@ nfs_set_mountport
 nfs_set_nfsport
 nfs_set_readdir_max_buffer_size
 nfs_set_readmax
+nfs_set_security
 nfs_set_tcp_syncnt
 nfs_set_timeout
 nfs_set_uid
+rpc_set_username
 nfs_set_version
 nfs_set_writemax
 nfs_stat

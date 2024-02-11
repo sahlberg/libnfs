@@ -1,4 +1,5 @@
 set(SOURCES init.c
+            krb5-wrapper.c
             libnfs.c
             libnfs-sync.c
             libnfs-zdr.c

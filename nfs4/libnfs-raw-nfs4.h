@@ -2285,6 +2285,69 @@ struct CB_COMPOUND4res {
 };
 typedef struct CB_COMPOUND4res CB_COMPOUND4res;
 
+enum rpc_gss_proc_t {
+	RPCSEC_GSS_DATA = 0,
+	RPCSEC_GSS_INIT = 1,
+	RPCSEC_GSS_CONTINUE_INIT = 2,
+	RPCSEC_GSS_DESTROY = 3,
+};
+typedef enum rpc_gss_proc_t rpc_gss_proc_t;
+
+struct rpc_gss_cred_vers_1_t {
+	rpc_gss_proc_t gss_proc;
+	u_int seq_num;
+	rpc_gss_svc_t service;
+	struct {
+		u_int handle_len;
+		char *handle_val;
+	} handle;
+};
+typedef struct rpc_gss_cred_vers_1_t rpc_gss_cred_vers_1_t;
+#define RPCSEC_GSS_VERS_1 1
+
+struct rpc_gss_cred_t {
+	u_int vers;
+	union {
+		rpc_gss_cred_vers_1_t rpc_gss_cred_vers_1_t;
+	} rpc_gss_cred_t_u;
+};
+typedef struct rpc_gss_cred_t rpc_gss_cred_t;
+
+struct rpc_gss_init_arg {
+	struct {
+		u_int gss_token_len;
+		char *gss_token_val;
+	} gss_token;
+};
+typedef struct rpc_gss_init_arg rpc_gss_init_arg;
+
+struct rpc_gss_init_res {
+	struct {
+		u_int handle_len;
+		char *handle_val;
+	} handle;
+	u_int gss_major;
+	u_int gss_minor;
+	u_int seq_window;
+	struct {
+		u_int gss_token_len;
+		char *gss_token_val;
+	} gss_token;
+};
+typedef struct rpc_gss_init_res rpc_gss_init_res;
+
+struct rpc_gss_integ_data {
+	struct {
+		u_int databody_integ_len;
+		char *databody_integ_val;
+	} databody_integ;
+	struct {
+		u_int checksum_len;
+		char *checksum_val;
+	} checksum;
+};
+typedef struct rpc_gss_integ_data rpc_gss_integ_data;
+
 #define NFS4_PROGRAM 100003
 #define NFS_V4 4
 
@@ -2645,6 +2708,12 @@ extern  uint32_t zdr_nfs_cb_argop4 (ZDR *, nfs_cb_argop4*);
 extern  uint32_t zdr_nfs_cb_resop4 (ZDR *, nfs_cb_resop4*);
 extern  uint32_t zdr_CB_COMPOUND4args (ZDR *, CB_COMPOUND4args*);
 extern  uint32_t zdr_CB_COMPOUND4res (ZDR *, CB_COMPOUND4res*);
+extern  uint32_t zdr_rpc_gss_proc_t (ZDR *, rpc_gss_proc_t*);
+extern  uint32_t zdr_rpc_gss_cred_vers_1_t (ZDR *, rpc_gss_cred_vers_1_t*);
+extern  uint32_t zdr_rpc_gss_cred_t (ZDR *, rpc_gss_cred_t*);
+extern  uint32_t zdr_rpc_gss_init_arg (ZDR *, rpc_gss_init_arg*);
+extern  uint32_t zdr_rpc_gss_init_res (ZDR *, rpc_gss_init_res*);
+extern  uint32_t zdr_rpc_gss_integ_data (ZDR *, rpc_gss_integ_data*);
 
 #else /* K&R C */
 extern uint32_t zdr_nfs_ftype4 ();
@@ -2960,6 +3029,12 @@ extern uint32_t zdr_nfs_cb_argop4 ();
 extern uint32_t zdr_nfs_cb_resop4 ();
 extern uint32_t zdr_CB_COMPOUND4args ();
 extern uint32_t zdr_CB_COMPOUND4res ();
+extern uint32_t zdr_rpc_gss_proc_t ();
+extern uint32_t zdr_rpc_gss_cred_vers_1_t ();
+extern uint32_t zdr_rpc_gss_cred_t ();
+extern uint32_t zdr_rpc_gss_init_arg ();
+extern uint32_t zdr_rpc_gss_init_res ();
+extern uint32_t zdr_rpc_gss_integ_data ();
 
 #endif /* K&R C */
 

@@ -24,6 +24,15 @@ if(ENABLE_TESTS)
 endif()
 
 include(cmake/Macros.cmake)
+
+if(IOS)
+    find_package(GSSAPI)
+
+    if(GSSAPI_FOUND)
+        add_definitions(-DHAVE_LIBKRB5)
+    endif()
+endif()
+    
 include(cmake/ConfigureChecks.cmake)
 
 include_directories(${CMAKE_CURRENT_BINARY_DIR}

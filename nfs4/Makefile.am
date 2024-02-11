@@ -36,7 +36,7 @@ compile_rpc:
 -e "s/xdr/zdr/g" \
 -e "s/XDR/ZDR/g" \
 -e "s/bool_t/uint32_t/g" \
--e "s/register int32_t \*buf;//" \
+-e "s/register int32_t \*buf;/register int32_t *buf;\n    buf = NULL;/" \
 -e "s/int i;//" >> libnfs-raw-nfs4.c
 	sed -z -i -e "s/zdr_READ4resok/zzdr_READ4resok/" libnfs-raw-nfs4.c
 	sed -z -i -e "s/zdr_WRITE4args/zzdr_WRITE4args/" libnfs-raw-nfs4.c
