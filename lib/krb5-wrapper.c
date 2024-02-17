@@ -281,8 +281,7 @@ krb5_auth_request(struct rpc_context *rpc,
         /* TODO return -errno instead of just -1 */
         /* NOTE: this call is not async, a helper thread should be used if that
          * is an issue */
-        auth_data->req_flags = GSS_C_SEQUENCE_FLAG | GSS_C_MUTUAL_FLAG |
-                GSS_C_REPLAY_FLAG;
+        auth_data->req_flags = GSS_C_MUTUAL_FLAG;
         if (auth_data->cred == GSS_C_NO_CREDENTIAL) {
                 input_token=GSS_C_NO_BUFFER;
         }
