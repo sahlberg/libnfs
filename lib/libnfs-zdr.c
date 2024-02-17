@@ -412,6 +412,7 @@ static bool_t libnfs_opaque_verf(ZDR *zdrs, struct opaque_verf *verf)
                                 return FALSE;
                         }
                         gss_release_buffer(&min, &output_token);
+                        break;
                 }
                 // fallthrough
 #endif
