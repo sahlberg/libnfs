@@ -165,7 +165,7 @@ void
 nfs_set_security(struct nfs_context *nfs, enum rpc_sec sec)
 {
 #ifdef HAVE_LIBKRB5
-        nfs->rpc->wanted_sec = RPC_SEC_KRB5;
+        nfs->rpc->wanted_sec = sec;
 #endif
 }
 
