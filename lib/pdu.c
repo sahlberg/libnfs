@@ -440,26 +440,50 @@ static int rpc_process_reply(struct rpc_context *rpc, ZDR *zdr)
                         break;
                 }
 #ifdef HAVE_LIBKRB5
-                if (msg.body.rbody.reply.areply.verf.oa_length &&
-                    pdu->gss_seqno > 0) {
+                if (msg.body.rbody.reply.areply.verf.oa_flavor == AUTH_GSS) {
                         uint32_t maj, min;
                         gss_buffer_desc message_buffer, token_buffer;
                         uint32_t seqno;
 
-                        seqno = htonl(pdu->gss_seqno);
-                        message_buffer.value = (char *)&seqno;
-                        message_buffer.length = 4;
+                        /* This is the the gss token from the NULL reply
+                         * that finished authentication.
+                         */
+                        if (pdu->gss_seqno == 0) {
+                                struct rpc_gss_init_res *gir = (struct rpc_gss_init_res *)pdu->zdr_decode_buf;
 
-                        token_buffer.value = msg.body.rbody.reply.areply.verf.oa_base;
-                        token_buffer.length = msg.body.rbody.reply.areply.verf.oa_length;
-                        maj = gss_verify_mic(&min,
-                                             rpc->gss_context,
-                                             &message_buffer,
-                                             &token_buffer,
-                                             GSS_C_QOP_DEFAULT);
-                        if (maj && maj != 16) {
-                                pdu->cb(rpc, RPC_STATUS_ERROR, "gss_verify_mic failed for the verifier", pdu->private_data);
-                                break;
+                                rpc->context_len = gir->handle.handle_len;
+                                free(rpc->context);
+                                rpc->context = malloc(rpc->context_len);
+                                if (rpc->context == NULL) {
+                                        pdu->cb(rpc, RPC_STATUS_ERROR, "Failed to allocate rpc->context", pdu->private_data);
+                                        break;
+                                }
+                                memcpy(rpc->context, gir->handle.handle_val, rpc->context_len);
+
+                                if (krb5_auth_request(rpc, rpc->auth_data,
+                                                      (unsigned char *)gir->gss_token.gss_token_val,
+                                                      gir->gss_token.gss_token_len) < 0) {
+                                        pdu->cb(rpc, RPC_STATUS_ERROR, "krb5_auth_request returned error", pdu->private_data);
+                                        break;
+                                }
+                        }
+
+                        if (pdu->gss_seqno > 0) {
+                                seqno = htonl(pdu->gss_seqno);
+                                message_buffer.value = (char *)&seqno;
+                                message_buffer.length = 4;
+
+                                token_buffer.value = msg.body.rbody.reply.areply.verf.oa_base;
+                                token_buffer.length = msg.body.rbody.reply.areply.verf.oa_length;
+                                maj = gss_verify_mic(&min,
+                                                     rpc->gss_context,
+                                                     &message_buffer,
+                                                     &token_buffer,
+                                                     GSS_C_QOP_DEFAULT);
+                                if (maj) {
+                                        pdu->cb(rpc, RPC_STATUS_ERROR, "gss_verify_mic failed for the verifier", pdu->private_data);
+                                        break;
+                                }
                         }
                 }
 #endif

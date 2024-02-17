@@ -406,9 +406,11 @@ static bool_t libnfs_opaque_verf(ZDR *zdrs, struct opaque_verf *verf)
                         buf = output_token.value;
                         len = output_token.length;
                         if (!libnfs_zdr_u_int(zdrs, &verf->oa_flavor)) {
+                                gss_release_buffer(&min, &output_token);
                                 return FALSE;
                         }
                         if (!libnfs_zdr_bytes(zdrs, &buf, &len, len)) {
+                                gss_release_buffer(&min, &output_token);
                                 return FALSE;
                         }
                         gss_release_buffer(&min, &output_token);

@@ -297,6 +297,7 @@ krb5_auth_request(struct rpc_context *rpc,
                                    &auth_data->output_token,
                                    NULL,
                                    NULL);
+        rpc->gss_context = auth_data->context;
 
         /* GSS_C_MUTUAL_FLAG expects the acceptor to send a token so
          * a second call to gss_init_sec_context is required to complete the session.
@@ -310,7 +311,6 @@ krb5_auth_request(struct rpc_context *rpc,
                 return -1;
         }
 
-        rpc->gss_context = auth_data->context;
         return 0;
 }
 

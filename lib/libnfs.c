@@ -646,7 +646,6 @@ rpc_connect_program_6_cb(struct rpc_context *rpc, int status,
                          void *command_data, void *private_data)
 {
 	struct rpc_cb_data *data = private_data;
-	struct rpc_gss_init_res *gir = command_data;
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
@@ -655,24 +654,6 @@ rpc_connect_program_6_cb(struct rpc_context *rpc, int status,
 		free_rpc_cb_data(data);
 		return;
 	}
-
-        rpc->context_len = gir->handle.handle_len;
-        free(rpc->context);
-        rpc->context = malloc(rpc->context_len);
-        if (rpc->context == NULL) {
-                data->cb(rpc, -ENOMEM, NULL, data->private_data);
-                free_rpc_cb_data(data);
-        }
-        memcpy(rpc->context, gir->handle.handle_val, rpc->context_len);
-
-        if (krb5_auth_request(rpc, rpc->auth_data,
-                              (unsigned char *)gir->gss_token.gss_token_val,
-                              gir->gss_token.gss_token_len) < 0) {
-                data->cb(rpc, RPC_STATUS_ERROR, rpc_get_error(rpc),
-                         data->private_data);
-                free_rpc_cb_data(data);
-                return;
-        }
         
 	data->cb(rpc, status, NULL, data->private_data);
 	free_rpc_cb_data(data);
