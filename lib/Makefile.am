@@ -16,6 +16,7 @@ libnfs_la_CPPFLAGS = -I$(abs_top_srcdir)/include \
 
 libnfs_la_SOURCES = \
 	init.c \
+	krb5-wrapper.c \
 	libnfs.c \
 	libnfs-sync.c \
 	libnfs-zdr.c \
@@ -29,7 +30,8 @@ libnfs_la_SOURCES = \
 SOCURRENT=14
 SOREVISION=0
 SOAGE=0
-libnfs_la_LDFLAGS = -version-info $(SOCURRENT):$(SOREVISION):$(SOAGE)
+libnfs_la_LDFLAGS = -version-info $(SOCURRENT):$(SOREVISION):$(SOAGE) \
+	$(MAYBE_LIBKRB5)
 if HAVE_WIN32
 libnfs_la_LDFLAGS += -no-undefined
 endif

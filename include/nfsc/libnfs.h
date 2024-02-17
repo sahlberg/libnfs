@@ -139,6 +139,18 @@ struct AUTH;
 EXTERN void nfs_set_auth(struct nfs_context *nfs, struct AUTH *auth);
 
 /*
+ * Used to set which security to use.
+ */
+enum rpc_sec {
+        RPC_SEC_UNDEFINED = 0,
+        RPC_SEC_KRB5,
+        //RPC_SEC_KRB5I,
+        //RPC_SEC_KRB5P,
+};
+EXTERN void nfs_set_security(struct nfs_context *nfs, enum rpc_sec sec);
+        
+        
+/*
  * Used if you need to bind to a specific interface.
  * Only available on platforms that support SO_BINDTODEVICE.
  */

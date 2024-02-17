@@ -26,22 +26,6 @@
 #include "config.h"
 #endif
 
-#ifdef AROS
-#include "aros_compat.h"
-#endif
-
-#ifdef PS2_EE
-#include "ps2_compat.h"
-#endif
-
-#ifdef PS3_PPU
-#include "ps3_compat.h"
-#endif
-
-#ifdef WIN32
-#include <win32/win32_compat.h>
-#endif
-
 #ifdef HAVE_UTIME_H
 #include <utime.h>
 #endif
@@ -89,6 +73,10 @@
 #include "libnfs-raw-mount.h"
 #include "libnfs-raw-portmap.h"
 #include "libnfs-private.h"
+
+#ifdef HAVE_LIBKRB5
+#include "krb5-wrapper.h"
+#endif
 
 void
 nfs_free_nfsdir(struct nfsdir *nfsdir)
@@ -171,6 +159,14 @@ void
 nfs_set_auth(struct nfs_context *nfs, struct AUTH *auth)
 {
 	rpc_set_auth(nfs->rpc, auth);
+}
+
+void
+nfs_set_security(struct nfs_context *nfs, enum rpc_sec sec)
+{
+#ifdef HAVE_LIBKRB5
+        nfs->rpc->wanted_sec = RPC_SEC_KRB5;
+#endif
 }
 
 int
@@ -263,6 +259,15 @@ nfs_set_context_args(struct nfs_context *nfs, const char *arg, const char *val)
 		} else {
 			nfs_set_readdir_max_buffer_size(nfs, atoi(val), atoi(val));
 		}
+#ifdef HAVE_LIBKRB5
+	} else if (nfs->rpc && !strcmp(arg, "sec")) {
+                /*
+                 * We switch to AUTH_GSS after the first call to NFS/NULL call.
+                 */
+                if (!strcmp(val, "krb5")) {
+                        nfs_set_security(nfs, RPC_SEC_KRB5);
+                }
+#endif
 	}
 	return 0;
 }
@@ -420,6 +425,12 @@ flags:
 		}
 	}
 
+        strp =strchr(urls->server, '@');
+        if (strp && nfs->rpc) {
+                *strp++ = '\0';
+                rpc_set_username(nfs->rpc, urls->server);
+                urls->server = strdup(strp);
+        }
 	if (urls->server && strlen(urls->server) <= 1) {
 		free(urls->server);
 		urls->server = NULL;
@@ -489,7 +500,9 @@ nfs_init_context(void)
 		free(nfs);
 		return NULL;
 	}
-
+#ifdef HAVE_LIBKRB5
+        rpc_set_username(nfs->rpc, cuserid(NULL));
+#endif
 	nfs->nfsi->cwd = strdup("/");
 	nfs->nfsi->mask = 022;
 	nfs->nfsi->auto_traverse_mounts = 1;
@@ -556,7 +569,6 @@ nfs_destroy_context(struct nfs_context *nfs)
         free(nfs->nfsi->cwd);
         free(nfs->nfsi->rootfh.val);
         free(nfs->nfsi->client_name);
-
 	while (nfs->nfsi->dircache) {
 		struct nfsdir *nfsdir = nfs->nfsi->dircache;
 		LIBNFS_LIST_REMOVE(&nfs->nfsi->dircache, nfsdir);
@@ -597,6 +609,76 @@ void free_rpc_cb_data(struct rpc_cb_data *data)
 static int
 rpc_connect_port_internal(struct rpc_context *rpc, int port, struct rpc_cb_data *data);
 
+#ifdef HAVE_LIBKRB5
+struct rpc_pdu *
+rpc_null_task_gss(struct rpc_context *rpc, int program, int version,
+                  rpc_gss_init_arg *arg,
+                  rpc_cb cb, void *private_data)
+{
+	struct rpc_pdu *pdu;
+        
+	pdu = rpc_allocate_pdu(rpc, program, version, 0, cb, private_data,
+                               (zdrproc_t)zdr_rpc_gss_init_res, sizeof(struct rpc_gss_init_res));
+	if (pdu == NULL) {
+		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu "
+                              "for NULL call");
+		return NULL;
+	}
+
+        /* add the krb5 blob */
+	if (zdr_rpc_gss_init_arg(&pdu->zdr, arg) == 0) {
+		rpc_set_error(rpc, "ZDR error: Failed to encode blob");
+		rpc_free_pdu(rpc, pdu);
+		return NULL;
+	}
+
+	if (rpc_queue_pdu(rpc, pdu) != 0) {
+		rpc_set_error(rpc, "Out of memory. Failed to queue pdu "
+                              "for NULL call");
+		return NULL;
+	}
+
+	return pdu;
+}
+
+static void
+rpc_connect_program_6_cb(struct rpc_context *rpc, int status,
+                         void *command_data, void *private_data)
+{
+	struct rpc_cb_data *data = private_data;
+	struct rpc_gss_init_res *gir = command_data;
+
+	assert(rpc->magic == RPC_CONTEXT_MAGIC);
+
+	if (status != RPC_STATUS_SUCCESS) {
+		data->cb(rpc, status, command_data, data->private_data);
+		free_rpc_cb_data(data);
+		return;
+	}
+
+        rpc->context_len = gir->handle.handle_len;
+        free(rpc->context);
+        rpc->context = malloc(rpc->context_len);
+        if (rpc->context == NULL) {
+                data->cb(rpc, -ENOMEM, NULL, data->private_data);
+                free_rpc_cb_data(data);
+        }
+        memcpy(rpc->context, gir->handle.handle_val, rpc->context_len);
+
+        if (krb5_auth_request(rpc, rpc->auth_data,
+                              (unsigned char *)gir->gss_token.gss_token_val,
+                              gir->gss_token.gss_token_len) < 0) {
+                data->cb(rpc, RPC_STATUS_ERROR, rpc_get_error(rpc),
+                         data->private_data);
+                free_rpc_cb_data(data);
+                return;
+        }
+        
+	data->cb(rpc, status, NULL, data->private_data);
+	free_rpc_cb_data(data);
+}
+#endif /* HAVE_LIBKRB5 */
+
 static void
 rpc_connect_program_5_cb(struct rpc_context *rpc, int status,
                          void *command_data, void *private_data)
@@ -614,6 +696,44 @@ rpc_connect_program_5_cb(struct rpc_context *rpc, int status,
 		return;
 	}
 
+#ifdef HAVE_LIBKRB5
+        if (data->program == 100003 && rpc->wanted_sec != RPC_SEC_UNDEFINED) {
+                rpc_gss_init_arg gia;
+
+                rpc->sec = rpc->wanted_sec;
+
+                libnfs_authgss_init(rpc);
+                rpc->auth_data = krb5_auth_init(rpc,
+                                                data->server,
+                                                rpc->username);
+                if (rpc->auth_data == NULL) {
+                        data->cb(rpc, RPC_STATUS_ERROR, rpc_get_error(rpc),
+                                 data->private_data);
+                        free_rpc_cb_data(data);
+                        return;
+                }
+
+                if (krb5_auth_request(rpc, rpc->auth_data,
+                                      NULL, 0) < 0) {
+                        data->cb(rpc, RPC_STATUS_ERROR, rpc_get_error(rpc),
+                                 data->private_data);
+                        free_rpc_cb_data(data);
+                        return;
+                }
+
+
+                gia.gss_token.gss_token_len = krb5_get_output_token_length(rpc->auth_data);
+                gia.gss_token.gss_token_val = (char *)krb5_get_output_token_buffer(rpc->auth_data);
+                if (rpc_null_task_gss(rpc, data->program, data->version,
+                                  &gia,
+                                  rpc_connect_program_6_cb, data) == NULL) {
+                        data->cb(rpc, RPC_STATUS_ERROR, command_data, data->private_data);
+                        free_rpc_cb_data(data);
+                        return;
+                }
+                return;
+        }
+#endif
 	data->cb(rpc, status, NULL, data->private_data);
 	free_rpc_cb_data(data);
 }

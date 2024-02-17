@@ -41,6 +41,22 @@ AC_ARG_ENABLE([examples],
 	      [ENABLE_EXAMPLES=$enableval],
 	      [ENABLE_EXAMPLES="no"])
 
+AC_ARG_WITH([libkrb5],
+            [AS_HELP_STRING([--without-libkrb5],
+                            [Do not link with libkrb5 even if available.])])
+AS_IF([test "x$with_libkrb5" != "xno"], [
+    MAYBE_LIBKRB5="-lgssapi_krb5"
+    AC_DEFINE([HAVE_LIBKRB5], [1], [Whether we use gssapi_krb5 or not])
+    AC_MSG_NOTICE([Build with gssapi_krb5 support])
+    dnl  Check for gssapi/gssapi.h
+    AC_CHECK_HEADERS([gssapi/gssapi.h], [], [
+        AC_MSG_ERROR([You need gssapi development files to compile libsmb2.])
+    ])
+], [
+    MAYBE_LIBKRB5=""
+    AC_MSG_NOTICE([Build WITHOUT gssapi_krb5 support])
+])
+
 # We need popt to compile the examples
 if test x$ENABLE_EXAMPLES = xyes; then
 AC_MSG_CHECKING(whether libpopt is available)
@@ -118,6 +134,8 @@ else
   AC_MSG_NOTICE(getpwnam() support is missing.)
   AC_MSG_NOTICE(Compiling without getpwnam() support.)
 fi
+
+AC_SUBST([MAYBE_LIBKRB5])
 
 AC_ARG_ENABLE([werror], [AS_HELP_STRING([--disable-werror],
               [Disables building with -Werror by default])])

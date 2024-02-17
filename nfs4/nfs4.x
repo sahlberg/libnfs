@@ -2370,3 +2370,45 @@ program NFS4_CALLBACK {
                         CB_COMPOUND(CB_COMPOUND4args) = 1;
         } = 1;
 } = 0x40000000;
+
+/*
+ * GSS definitions
+ */
+/* RPCSEC_GSS control procedures */
+enum rpc_gss_proc_t {
+        RPCSEC_GSS_DATA = 0,
+        RPCSEC_GSS_INIT = 1,
+        RPCSEC_GSS_CONTINUE_INIT = 2,
+        RPCSEC_GSS_DESTROY = 3
+};
+
+struct rpc_gss_cred_vers_1_t {
+    rpc_gss_proc_t gss_proc;  /* control procedure */
+    unsigned int seq_num;   /* sequence number */
+    rpc_gss_svc_t service; /* service used */
+    opaque handle<>;       /* context handle */
+};
+
+const RPCSEC_GSS_VERS_1 = 1;
+
+union rpc_gss_cred_t switch (unsigned int vers) { /* version of RPCSEC_GSS */
+    case RPCSEC_GSS_VERS_1:
+        rpc_gss_cred_vers_1_t rpc_gss_cred_vers_1_t;
+};
+
+struct rpc_gss_init_arg {
+    opaque gss_token<>;
+};
+
+struct rpc_gss_init_res {
+        opaque handle<>;
+        unsigned int gss_major;
+        unsigned int gss_minor;
+        unsigned int seq_window;
+        opaque gss_token<>;
+};
+
+struct rpc_gss_integ_data {
+    opaque databody_integ<>;
+    opaque checksum<>;
+};

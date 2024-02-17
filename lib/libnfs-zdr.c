@@ -21,6 +21,12 @@
  * i.e. zdrmem_create() buffers.
  * It aims to be compatible with normal rpcgen generated functions.
  */
+
+/*
+  RFC2203:  5.2.3.1  struct rpc_gss_init_res  is what the NULL reply contains
+  Credentials   type, len + struct rpc_gss_cred_vers_1_t
+*/
+
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
@@ -57,6 +63,11 @@
 #include "libnfs.h"
 #include "libnfs-raw.h"
 #include "libnfs-private.h"
+#include "libnfs-raw-nfs4.h"
+
+#ifdef HAVE_LIBKRB5
+#include "krb5-wrapper.h"
+#endif
 
 struct zdr_mem {
        struct zdr_mem *next;
@@ -64,7 +75,7 @@ struct zdr_mem {
        char buf[1];
 };
 
-struct opaque_auth _null_auth;
+struct opaque_verf _null_auth;
 
 bool_t libnfs_zdr_setpos(ZDR *zdrs, uint32_t pos)
 {
@@ -76,6 +87,11 @@ bool_t libnfs_zdr_setpos(ZDR *zdrs, uint32_t pos)
 uint32_t libnfs_zdr_getpos(ZDR *zdrs)
 {
 	return zdrs->pos;
+}
+
+char *libnfs_zdr_getptr(ZDR *zdrs)
+{
+        return zdrs->buf;
 }
 
 void libnfs_zdrmem_create(ZDR *zdrs, const caddr_t addr, uint32_t size, enum zdr_op xop)
@@ -352,15 +368,61 @@ void libnfs_zdr_free(zdrproc_t proc, char *objp)
 {
 }
 
-static bool_t libnfs_opaque_auth(ZDR *zdrs, struct opaque_auth *auth)
+static bool_t libnfs_opaque_cred(ZDR *zdrs, struct opaque_cred *cred)
 {
-	if (!libnfs_zdr_u_int(zdrs, &auth->oa_flavor)) {
+	if (!libnfs_zdr_u_int(zdrs, &cred->oa_flavor)) {
 		return FALSE;
 	}
 
-	if (!libnfs_zdr_bytes(zdrs, &auth->oa_base, &auth->oa_length, auth->oa_length)) {
-		return FALSE;
-	}
+        if (!libnfs_zdr_bytes(zdrs, &cred->oa_base, &cred->oa_length, cred->oa_length)) {
+                return FALSE;
+        }
+
+	return TRUE;
+}
+
+static bool_t libnfs_opaque_verf(ZDR *zdrs, struct opaque_verf *verf)
+{
+#ifdef HAVE_LIBKRB5
+        uint32_t maj, min;
+        gss_buffer_desc message_buffer, output_token;
+        char *buf;
+        uint32_t len;
+
+#endif
+        switch (verf->oa_flavor) {
+#ifdef HAVE_LIBKRB5
+        case AUTH_GSS:
+                if (zdrs->x_op ==ZDR_ENCODE && verf->gss_context) {
+                        message_buffer.length = zdr_getpos(zdrs);
+                        message_buffer.value = zdr_getptr(zdrs);
+                        maj = gss_get_mic(&min, verf->gss_context,
+                                          GSS_C_QOP_DEFAULT,
+                                          &message_buffer,
+                                          &output_token);
+                        if (maj != GSS_S_COMPLETE) {
+                                return FALSE;
+                        }
+                        buf = output_token.value;
+                        len = output_token.length;
+                        if (!libnfs_zdr_u_int(zdrs, &verf->oa_flavor)) {
+                                return FALSE;
+                        }
+                        if (!libnfs_zdr_bytes(zdrs, &buf, &len, len)) {
+                                return FALSE;
+                        }
+                        gss_release_buffer(&min, &output_token);
+                }
+                // fallthrough
+#endif
+        default:
+                if (!libnfs_zdr_u_int(zdrs, &verf->oa_flavor)) {
+                        return FALSE;
+                }
+                if (!libnfs_zdr_bytes(zdrs, &verf->oa_base, &verf->oa_length, verf->oa_length)) {
+                        return FALSE;
+                }
+        }
 
 	return TRUE;
 }
@@ -391,13 +453,13 @@ static bool_t libnfs_rpc_call_body(struct rpc_context *rpc, ZDR *zdrs, struct ca
 		return FALSE;
 	}
 
-	if (!libnfs_opaque_auth(zdrs, &cmb->cred)) {
+	if (!libnfs_opaque_cred(zdrs, &cmb->cred)) {
 		rpc_set_error(rpc, "libnfs_rpc_call_body failed to encode "
 			"CRED");
 		return FALSE;
 	}
 
-	if (!libnfs_opaque_auth(zdrs, &cmb->verf)) {
+	if (!libnfs_opaque_verf(zdrs, &cmb->verf)) {
 		rpc_set_error(rpc, "libnfs_rpc_call_body failed to encode "
 			"VERF");
 		return FALSE;
@@ -408,7 +470,7 @@ static bool_t libnfs_rpc_call_body(struct rpc_context *rpc, ZDR *zdrs, struct ca
 
 static bool_t libnfs_accepted_reply(ZDR *zdrs, struct accepted_reply *ar)
 {
-	if (!libnfs_opaque_auth(zdrs, &ar->verf)) {
+	if (!libnfs_opaque_verf(zdrs, &ar->verf)) {
 		return FALSE;
 	}
 
@@ -596,6 +658,47 @@ struct AUTH *libnfs_authunix_create(const char *host, uint32_t uid, uint32_t gid
 
 	return auth;
 }
+
+#ifdef HAVE_LIBKRB5
+int libnfs_authgss_init(struct rpc_context *rpc)
+{
+        rpc->gss_seqno = 0;
+        rpc->context_len = 0;
+        free(rpc->context);
+        rpc->context = NULL;
+
+        free(rpc->auth->ah_cred.oa_base);
+        rpc->auth->ah_cred.oa_base = NULL;
+
+        rpc->auth->ah_cred.oa_flavor = AUTH_GSS;
+        
+	return 0;
+}
+
+int libnfs_authgss_gen_creds(struct rpc_context *rpc, ZDR *zdr)
+{
+        struct rpc_gss_cred_t gss;
+        struct rpc_gss_cred_vers_1_t *gss_v1;
+
+        gss.vers = 1;
+        gss_v1 = &gss.rpc_gss_cred_t_u.rpc_gss_cred_vers_1_t;
+        if (rpc->gss_seqno == 0) {
+                gss_v1->gss_proc = RPCSEC_GSS_INIT;
+        } else {
+                gss_v1->gss_proc = RPCSEC_GSS_DATA;
+        }
+        gss_v1->seq_num = rpc->gss_seqno;
+        gss_v1->service = RPC_GSS_SVC_NONE;
+        gss_v1->handle.handle_val = rpc->context;
+        gss_v1->handle.handle_len = rpc->context_len;
+        
+        if (!zdr_rpc_gss_cred_t(zdr, &gss)) {
+                return -1;
+        }
+        
+	return 0;
+}
+#endif /* HAVE_LIBKRB5 */
 
 struct AUTH *libnfs_authunix_create_default(void)
 {

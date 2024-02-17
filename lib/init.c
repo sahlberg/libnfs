@@ -59,6 +59,14 @@
 #include "libnfs-raw.h"
 #include "libnfs-private.h"
 
+#ifdef HAVE_LIBKRB5
+#include "krb5-wrapper.h"
+#endif
+
+#ifndef discard_const
+#define discard_const(ptr) ((void *)((intptr_t)(ptr)))
+#endif
+
 uint64_t rpc_current_time(void)
 {
 #ifdef HAVE_CLOCK_GETTIME
@@ -218,6 +226,15 @@ struct rpc_context *rpc_init_udp_context(void)
 	}
 	
 	return rpc;
+}
+
+int rpc_set_username(struct rpc_context *rpc, const char *username)
+{
+#ifdef HAVE_LIBKRB5
+        free(discard_const(rpc->username));
+        rpc->username = strdup(username);
+#endif
+        return 0;
 }
 
 void rpc_set_auth(struct rpc_context *rpc, struct AUTH *auth)
@@ -431,6 +448,12 @@ void rpc_destroy_context(struct rpc_context *rpc)
 #ifdef HAVE_MULTITHREADING
         nfs_mt_mutex_destroy(&rpc->rpc_mutex);
 #endif /* HAVE_MULTITHREADING */
+#ifdef HAVE_LIBKRB5
+        if (rpc->auth_data) {
+                krb5_free_auth_data(rpc->auth_data);
+        }
+        free(discard_const(rpc->username));
+#endif
 	free(rpc);
 }
 
