@@ -64,6 +64,7 @@ struct nfs_url {
 #endif
 
 #ifdef WIN32
+#include <winsock2.h>
 #ifdef HAVE_FUSE_H
 #include <fuse.h>
 #else
