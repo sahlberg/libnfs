@@ -439,6 +439,7 @@ void rpc_destroy_context(struct rpc_context *rpc)
 		rpc->error_string = NULL;
 	}
 
+        free(rpc->context);
         free(rpc->waitpdu);
         rpc->waitpdu = NULL;
 	free(rpc->inbuf);

@@ -227,6 +227,11 @@ struct rpc_pdu *rpc_allocate_pdu2(struct rpc_context *rpc, int program, int vers
                                 level = RPC_GSS_SVC_INTEGRITY;
                         }
                         break;
+                case RPC_SEC_KRB5P:
+                        if (pdu->gss_seqno > 0) {
+                                level = RPC_GSS_SVC_PRIVACY;
+                        }
+                        break;
                 }
                 if (libnfs_authgss_gen_creds(rpc, &tmpzdr, level) < 0) {
                         zdr_destroy(&tmpzdr);
@@ -263,6 +268,7 @@ struct rpc_pdu *rpc_allocate_pdu2(struct rpc_context *rpc, int program, int vers
         case RPC_SEC_UNDEFINED:
         case RPC_SEC_KRB5:
                 break;
+        case RPC_SEC_KRB5P:
         case RPC_SEC_KRB5I:
                 if (pdu->gss_seqno > 0) {
                         pdu->start_of_payload = zdr_getpos(&pdu->zdr);
@@ -299,12 +305,15 @@ struct rpc_pdu *rpc_allocate_pdu(struct rpc_context *rpc, int program, int versi
 
 void rpc_free_pdu(struct rpc_context *rpc, struct rpc_pdu *pdu)
 {
+        uint32_t min;
+
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
 	if (pdu->zdr_decode_buf != NULL) {
 		zdr_free(pdu->zdr_decode_fn, pdu->zdr_decode_buf);
 	}
 
+        gss_release_buffer(&min, &pdu->output_buffer);
 	zdr_destroy(&pdu->zdr);
 
         rpc_free_iovector(rpc, &pdu->out);
@@ -334,7 +343,7 @@ int rpc_queue_pdu(struct rpc_context *rpc, struct rpc_pdu *pdu)
         uint32_t maj, min, val, len;
         gss_buffer_desc message_buffer, output_token;
         char *buf;
-#endif
+#endif /* HAVE_LIBKRB5 */
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
@@ -344,36 +353,63 @@ int rpc_queue_pdu(struct rpc_context *rpc, struct rpc_pdu *pdu)
         case RPC_SEC_KRB5:
                 break;
         case RPC_SEC_KRB5I:
-                if (pdu->gss_seqno > 0) {
-                        pos = zdr_getpos(&pdu->zdr);
-                        zdr_setpos(&pdu->zdr, pdu->start_of_payload);
-                        val = pos - pdu->start_of_payload - 4;
-                        if (!libnfs_zdr_u_int(&pdu->zdr, &val)) {
-                                rpc_free_pdu(rpc, pdu);
-                                return -1;
-                        }
-                        zdr_setpos(&pdu->zdr, pos);
-                        
-                        /* checksum */
-                        message_buffer.length = zdr_getpos(&pdu->zdr) - pdu->start_of_payload - 4;
-                        message_buffer.value = zdr_getptr(&pdu->zdr) + pdu->start_of_payload + 4;
-                        maj = gss_get_mic(&min, rpc->gss_context,
-                                          GSS_C_QOP_DEFAULT,
-                                          &message_buffer,
-                                          &output_token);
-                        if (maj != GSS_S_COMPLETE) {
-                                rpc_free_pdu(rpc, pdu);
-                                return -1;
-                        }
-                        buf = output_token.value;
-                        len = output_token.length;
-                        if (!libnfs_zdr_bytes(&pdu->zdr, &buf, &len, len)) {
-                                gss_release_buffer(&min, &output_token);
-                                rpc_free_pdu(rpc, pdu);
-                                return -1;
-                        }
-                        gss_release_buffer(&min, &output_token);
+                if (pdu->gss_seqno == 0) {
+                        break;
                 }
+                pos = zdr_getpos(&pdu->zdr);
+                zdr_setpos(&pdu->zdr, pdu->start_of_payload);
+                val = pos - pdu->start_of_payload - 4;
+                if (!libnfs_zdr_u_int(&pdu->zdr, &val)) {
+                        rpc_free_pdu(rpc, pdu);
+                        return -1;
+                }
+                zdr_setpos(&pdu->zdr, pos);
+                        
+                /* checksum */
+                message_buffer.length = zdr_getpos(&pdu->zdr) - pdu->start_of_payload - 4;
+                message_buffer.value = zdr_getptr(&pdu->zdr) + pdu->start_of_payload + 4;
+                maj = gss_get_mic(&min, rpc->gss_context,
+                                  GSS_C_QOP_DEFAULT,
+                                  &message_buffer,
+                                  &output_token);
+                if (maj != GSS_S_COMPLETE) {
+                        rpc_free_pdu(rpc, pdu);
+                        return -1;
+                }
+                buf = output_token.value;
+                len = output_token.length;
+                if (!libnfs_zdr_bytes(&pdu->zdr, &buf, &len, len)) {
+                        gss_release_buffer(&min, &output_token);
+                        rpc_free_pdu(rpc, pdu);
+                        return -1;
+                }
+                gss_release_buffer(&min, &output_token);
+                break;
+        case RPC_SEC_KRB5P:
+                if (pdu->gss_seqno == 0) {
+                        break;
+                }
+                pos = zdr_getpos(&pdu->zdr);
+                message_buffer.length = zdr_getpos(&pdu->zdr) - pdu->start_of_payload - 4;
+                message_buffer.value = zdr_getptr(&pdu->zdr) + pdu->start_of_payload + 4;
+                maj = gss_wrap (&min, rpc->gss_context, 1,
+                                GSS_C_QOP_DEFAULT,
+                                &message_buffer,
+                                NULL,
+                                &output_token);
+                if (maj != GSS_S_COMPLETE) {
+                        rpc_free_pdu(rpc, pdu);
+                        return -1;
+                }
+                zdr_setpos(&pdu->zdr, pdu->start_of_payload);
+                buf = output_token.value;
+                len = output_token.length;
+                if (!libnfs_zdr_bytes(&pdu->zdr, &buf, &len, len)) {
+                        gss_release_buffer(&min, &output_token);
+                        rpc_free_pdu(rpc, pdu);
+                        return -1;
+                }
+                gss_release_buffer(&min, &output_token);
                 break;
         }
 #endif /* HAVE_LIBKRB5 */
@@ -508,6 +544,11 @@ static int rpc_process_reply(struct rpc_context *rpc, ZDR *zdr)
 #ifdef HAVE_LIBKRB5
         if (rpc->sec == RPC_SEC_KRB5I && pdu->gss_seqno > 0) {
                 msg.body.rbody.reply.areply.reply_data.results.krb5i = 1;
+        }
+        if (rpc->sec == RPC_SEC_KRB5P && pdu->gss_seqno > 0) {
+                msg.body.rbody.reply.areply.reply_data.results.krb5p = 1;
+                msg.body.rbody.reply.areply.reply_data.results.output_buffer = &pdu->output_buffer;
+                msg.body.rbody.reply.areply.verf.gss_context = rpc->gss_context;
         }
 #endif
 	if (zdr_replymsg(rpc, zdr, &msg) == 0) {

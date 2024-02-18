@@ -27,6 +27,10 @@
 #include <net/if.h>
 #endif
 
+#ifdef HAVE_LIBKRB5
+#include "lib/krb5-wrapper.h"
+#endif
+
 #if !defined(WIN32) && !defined(PS2_EE)
 #include <sys/socket.h>  /* struct sockaddr_storage */
 #endif
@@ -252,6 +256,7 @@ struct rpc_pdu {
         uint32_t gss_seqno;
         char creds[64];
         int start_of_payload;
+        gss_buffer_desc output_buffer;
 #endif
 };
 

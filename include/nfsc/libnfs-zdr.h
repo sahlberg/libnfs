@@ -194,6 +194,8 @@ struct accepted_reply {
 
                         /* GSS */
                         uint32_t krb5i;
+                        uint32_t krb5p;
+                        void *output_buffer;
 		} results;
 		struct {
 			uint32_t	low;

@@ -264,6 +264,9 @@ nfs_set_context_args(struct nfs_context *nfs, const char *arg, const char *val)
                 /*
                  * We switch to AUTH_GSS after the first call to NFS/NULL call.
                  */
+                if (!strcmp(val, "krb5p")) {
+                        nfs_set_security(nfs, RPC_SEC_KRB5P);
+                }
                 if (!strcmp(val, "krb5i")) {
                         nfs_set_security(nfs, RPC_SEC_KRB5I);
                 }

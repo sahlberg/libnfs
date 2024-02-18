@@ -416,7 +416,6 @@ static bool_t libnfs_opaque_verf(ZDR *zdrs, struct opaque_verf *verf)
                         break;
                 }
                 // fallthrough
-                // qqq break?
 #endif
         default:
                 if (!libnfs_zdr_u_int(zdrs, &verf->oa_flavor)) {
@@ -473,6 +472,11 @@ static bool_t libnfs_rpc_call_body(struct rpc_context *rpc, ZDR *zdrs, struct ca
 
 static bool_t libnfs_accepted_reply(ZDR *zdrs, struct accepted_reply *ar)
 {
+#ifdef HAVE_LIBKRB5
+        uint32_t maj, min, len, tmp;
+        gss_buffer_desc message_buffer, *output_buffer;
+#endif
+
 	if (!libnfs_opaque_verf(zdrs, &ar->verf)) {
 		return FALSE;
 	}
@@ -483,11 +487,31 @@ static bool_t libnfs_accepted_reply(ZDR *zdrs, struct accepted_reply *ar)
 
 	switch (ar->stat) {
 	case SUCCESS:
-                if (ar->reply_data.results.krb5i) {
-                        uint32_t tmp;
+#ifdef HAVE_LIBKRB5
+                if (zdrs->x_op ==ZDR_DECODE && ar->reply_data.results.krb5p) {
+                        libnfs_zdr_u_int(zdrs, &len);
+
+                        message_buffer.length = len;
+                        message_buffer.value = zdr_getptr(zdrs) + zdr_getpos(zdrs);
+                        output_buffer = ar->reply_data.results.output_buffer;
+                        maj = gss_unwrap (&min, ar->verf.gss_context,
+                                          &message_buffer,
+                                          output_buffer,
+                                          NULL,
+                                          NULL);
+                        if (maj) {
+                                return FALSE;
+                        }
+                        zdrs->buf = (char *)output_buffer->value + 4;
+                        zdrs->pos = 0;
+                        zdrs->size = output_buffer->length - 4;
+                }
+                if (zdrs->x_op ==ZDR_DECODE && ar->reply_data.results.krb5i) {
+                        /* TODO should check the signature */
                         libnfs_zdr_u_int(zdrs, &tmp);
                         libnfs_zdr_u_int(zdrs, &tmp);
                 }
+#endif /* HAVE_LIBKRB5 */
 		if (!ar->reply_data.results.proc(zdrs, ar->reply_data.results.where)) {
 			return FALSE;
 		}

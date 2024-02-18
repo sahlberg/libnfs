@@ -93,6 +93,7 @@ krb5_free_auth_data(struct private_auth_data *auth)
                 }
         }
 
+        gss_release_cred(&min, &auth->cred);
         gss_release_buffer(&min, &auth->output_token);
 
         if (auth->target_name) {
@@ -227,7 +228,7 @@ krb5_auth_init(struct rpc_context *rpc,
                 switch (rpc->sec) {
                 case RPC_SEC_KRB5:
                 case RPC_SEC_KRB5I:
-                //case RPC_SEC_KRB5P:
+                case RPC_SEC_KRB5P:
                         wantMech.elements = discard_const(&spnego_mech_krb5);
                         break;
                 case RPC_SEC_UNDEFINED:
@@ -286,6 +287,9 @@ krb5_auth_request(struct rpc_context *rpc,
         auth_data->req_flags = GSS_C_MUTUAL_FLAG;
         if (auth_data->wanted_sec == RPC_SEC_KRB5I) {
                 auth_data->req_flags |= GSS_C_INTEG_FLAG;
+        }
+        if (auth_data->wanted_sec == RPC_SEC_KRB5P) {
+                auth_data->req_flags |= GSS_C_CONF_FLAG;
         }
         if (auth_data->cred == GSS_C_NO_CREDENTIAL) {
                 input_token=GSS_C_NO_BUFFER;
