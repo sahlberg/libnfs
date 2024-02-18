@@ -305,7 +305,9 @@ struct rpc_pdu *rpc_allocate_pdu(struct rpc_context *rpc, int program, int versi
 
 void rpc_free_pdu(struct rpc_context *rpc, struct rpc_pdu *pdu)
 {
+#ifdef HAVE_LIBKRB5
         uint32_t min;
+#endif /* HAVE_LIBKRB5 */
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
@@ -313,7 +315,9 @@ void rpc_free_pdu(struct rpc_context *rpc, struct rpc_pdu *pdu)
 		zdr_free(pdu->zdr_decode_fn, pdu->zdr_decode_buf);
 	}
 
+#ifdef HAVE_LIBKRB5
         gss_release_buffer(&min, &pdu->output_buffer);
+#endif /* HAVE_LIBKRB5 */
 	zdr_destroy(&pdu->zdr);
 
         rpc_free_iovector(rpc, &pdu->out);
