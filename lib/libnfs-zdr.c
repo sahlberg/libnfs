@@ -388,7 +388,6 @@ static bool_t libnfs_opaque_verf(ZDR *zdrs, struct opaque_verf *verf)
         gss_buffer_desc message_buffer, output_token;
         char *buf;
         uint32_t len;
-
 #endif
         switch (verf->oa_flavor) {
 #ifdef HAVE_LIBKRB5
@@ -417,6 +416,7 @@ static bool_t libnfs_opaque_verf(ZDR *zdrs, struct opaque_verf *verf)
                         break;
                 }
                 // fallthrough
+                // qqq break?
 #endif
         default:
                 if (!libnfs_zdr_u_int(zdrs, &verf->oa_flavor)) {
@@ -483,6 +483,11 @@ static bool_t libnfs_accepted_reply(ZDR *zdrs, struct accepted_reply *ar)
 
 	switch (ar->stat) {
 	case SUCCESS:
+                if (ar->reply_data.results.krb5i) {
+                        uint32_t tmp;
+                        libnfs_zdr_u_int(zdrs, &tmp);
+                        libnfs_zdr_u_int(zdrs, &tmp);
+                }
 		if (!ar->reply_data.results.proc(zdrs, ar->reply_data.results.where)) {
 			return FALSE;
 		}
@@ -678,7 +683,7 @@ int libnfs_authgss_init(struct rpc_context *rpc)
 	return 0;
 }
 
-int libnfs_authgss_gen_creds(struct rpc_context *rpc, ZDR *zdr)
+int libnfs_authgss_gen_creds(struct rpc_context *rpc, ZDR *zdr, int level)
 {
         struct rpc_gss_cred_t gss;
         struct rpc_gss_cred_vers_1_t *gss_v1;
@@ -691,7 +696,7 @@ int libnfs_authgss_gen_creds(struct rpc_context *rpc, ZDR *zdr)
                 gss_v1->gss_proc = RPCSEC_GSS_DATA;
         }
         gss_v1->seq_num = rpc->gss_seqno;
-        gss_v1->service = RPC_GSS_SVC_NONE;
+        gss_v1->service = level;
         gss_v1->handle.handle_val = rpc->context;
         gss_v1->handle.handle_len = rpc->context_len;
         

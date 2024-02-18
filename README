@@ -77,7 +77,7 @@ Arguments supported by libnfs are :
                      default it 65534 on Windows and getuid() on unixen.
  gid=<int>         : GID value to use when talking to the server.
                      default it 65534 on Windows and getgid() on unixen.
- sec=<krb5>        : Specify the security mode.
+ sec=<krb5|krb5i>  : Specify the security mode.
  auto-traverse-mounts=<0|1>
                    : Should libnfs try to traverse across nested mounts
                      automatically or not. Default is 1 == enabled.

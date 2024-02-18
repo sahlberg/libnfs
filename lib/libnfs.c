@@ -264,6 +264,9 @@ nfs_set_context_args(struct nfs_context *nfs, const char *arg, const char *val)
                 /*
                  * We switch to AUTH_GSS after the first call to NFS/NULL call.
                  */
+                if (!strcmp(val, "krb5i")) {
+                        nfs_set_security(nfs, RPC_SEC_KRB5I);
+                }
                 if (!strcmp(val, "krb5")) {
                         nfs_set_security(nfs, RPC_SEC_KRB5);
                 }
@@ -686,7 +689,8 @@ rpc_connect_program_5_cb(struct rpc_context *rpc, int status,
                 libnfs_authgss_init(rpc);
                 rpc->auth_data = krb5_auth_init(rpc,
                                                 data->server,
-                                                rpc->username);
+                                                rpc->username,
+                                                rpc->wanted_sec);
                 if (rpc->auth_data == NULL) {
                         data->cb(rpc, RPC_STATUS_ERROR, rpc_get_error(rpc),
                                  data->private_data);

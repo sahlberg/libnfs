@@ -251,6 +251,7 @@ struct rpc_pdu {
 #ifdef HAVE_LIBKRB5
         uint32_t gss_seqno;
         char creds[64];
+        int start_of_payload;
 #endif
 };
 

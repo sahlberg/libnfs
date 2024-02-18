@@ -191,6 +191,9 @@ struct accepted_reply {
 		struct {
 			caddr_t	where;
 			zdrproc_t proc;
+
+                        /* GSS */
+                        uint32_t krb5i;
 		} results;
 		struct {
 			uint32_t	low;
@@ -302,7 +305,7 @@ struct AUTH *libnfs_authunix_create(const char *host, uint32_t uid, uint32_t gid
 struct AUTH *libnfs_authunix_create_default(void);
 
 int libnfs_authgss_init(struct rpc_context *rpc);
-int libnfs_authgss_gen_creds(struct rpc_context *rpc, ZDR *zdr);
+int libnfs_authgss_gen_creds(struct rpc_context *rpc, ZDR *zdr, int level);
 
 #define auth_destroy libnfs_auth_destroy
 void libnfs_auth_destroy(struct AUTH *auth);

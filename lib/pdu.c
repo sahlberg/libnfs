@@ -152,6 +152,9 @@ struct rpc_pdu *rpc_allocate_pdu2(struct rpc_context *rpc, int program, int vers
 	struct rpc_pdu *pdu;
 	struct rpc_msg msg;
 	int pdu_size;
+#ifdef HAVE_LIBKRB5
+        uint32_t val;
+#endif
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
@@ -208,16 +211,28 @@ struct rpc_pdu *rpc_allocate_pdu2(struct rpc_context *rpc, int program, int vers
 #endif /* HAVE_MULTITHREADING */
         if (rpc->sec != RPC_SEC_UNDEFINED) {
                 ZDR tmpzdr;
+                int level = RPC_GSS_SVC_NONE;
+
                 pdu->gss_seqno = rpc->gss_seqno;
 
                 zdrmem_create(&tmpzdr, pdu->creds, 64, ZDR_ENCODE);
-                if (libnfs_authgss_gen_creds(rpc, &tmpzdr) < 0) {
+                switch (rpc->sec) {
+                case RPC_SEC_UNDEFINED:
+                        break;
+                case RPC_SEC_KRB5:
+                        level = RPC_GSS_SVC_NONE;
+                        break;
+                case RPC_SEC_KRB5I:
+                        if (pdu->gss_seqno > 0) {
+                                level = RPC_GSS_SVC_INTEGRITY;
+                        }
+                        break;
+                }
+                if (libnfs_authgss_gen_creds(rpc, &tmpzdr, level) < 0) {
                         zdr_destroy(&tmpzdr);
                         rpc_set_error(rpc, "zdr_callmsg failed with %s",
                                       rpc_get_error(rpc));
-                        zdr_destroy(&pdu->zdr);
-                        free(pdu);
-                        return NULL;
+                        goto failed;
                 }
                 msg.body.cbody.cred.oa_flavor = AUTH_GSS;
                 msg.body.cbody.cred.oa_length = tmpzdr.pos;
@@ -240,16 +255,41 @@ struct rpc_pdu *rpc_allocate_pdu2(struct rpc_context *rpc, int program, int vers
 	if (zdr_callmsg(rpc, &pdu->zdr, &msg) == 0) {
 		rpc_set_error(rpc, "zdr_callmsg failed with %s",
 			      rpc_get_error(rpc));
-		zdr_destroy(&pdu->zdr);
-		free(pdu);
-		return NULL;
+                goto failed;
 	}
         
+#ifdef HAVE_LIBKRB5
+        switch (rpc->sec) {
+        case RPC_SEC_UNDEFINED:
+        case RPC_SEC_KRB5:
+                break;
+        case RPC_SEC_KRB5I:
+                if (pdu->gss_seqno > 0) {
+                        pdu->start_of_payload = zdr_getpos(&pdu->zdr);
+                        val = 0; /* dummy length, will fill in below once we know */
+                        if (!libnfs_zdr_u_int(&pdu->zdr, &val)) {
+                                goto failed;
+                       }
+                        val = pdu->gss_seqno;
+                        if (!libnfs_zdr_u_int(&pdu->zdr, &val)) {
+                                goto failed;
+                        }
+                }
+                break;
+        }
+#endif /* HAVE_LIBKRB5 */
+
         /* Add an iovector for the header */
         rpc_add_iovector(rpc, &pdu->out, &pdu->outdata.data[4],
                          zdr_getpos(&pdu->zdr), NULL);
 
 	return pdu;
+ failed:
+        rpc_set_error(rpc, "zdr_callmsg failed with %s",
+                      rpc_get_error(rpc));
+        zdr_destroy(&pdu->zdr);
+        free(pdu);
+        return NULL;
 }
 
 struct rpc_pdu *rpc_allocate_pdu(struct rpc_context *rpc, int program, int version, int procedure, rpc_cb cb, void *private_data, zdrproc_t zdr_decode_fn, int zdr_decode_bufsize)
@@ -288,11 +328,57 @@ void rpc_set_next_xid(struct rpc_context *rpc, uint32_t xid)
 
 int rpc_queue_pdu(struct rpc_context *rpc, struct rpc_pdu *pdu)
 {
-	int i, size = 0, pos = zdr_getpos(&pdu->zdr);
+	int i, size = 0, pos;
         uint32_t recordmarker;
+#ifdef HAVE_LIBKRB5
+        uint32_t maj, min, val, len;
+        gss_buffer_desc message_buffer, output_token;
+        char *buf;
+#endif
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
+#ifdef HAVE_LIBKRB5
+        switch (rpc->sec) {
+        case RPC_SEC_UNDEFINED:
+        case RPC_SEC_KRB5:
+                break;
+        case RPC_SEC_KRB5I:
+                if (pdu->gss_seqno > 0) {
+                        pos = zdr_getpos(&pdu->zdr);
+                        zdr_setpos(&pdu->zdr, pdu->start_of_payload);
+                        val = pos - pdu->start_of_payload - 4;
+                        if (!libnfs_zdr_u_int(&pdu->zdr, &val)) {
+                                rpc_free_pdu(rpc, pdu);
+                                return -1;
+                        }
+                        zdr_setpos(&pdu->zdr, pos);
+                        
+                        /* checksum */
+                        message_buffer.length = zdr_getpos(&pdu->zdr) - pdu->start_of_payload - 4;
+                        message_buffer.value = zdr_getptr(&pdu->zdr) + pdu->start_of_payload + 4;
+                        maj = gss_get_mic(&min, rpc->gss_context,
+                                          GSS_C_QOP_DEFAULT,
+                                          &message_buffer,
+                                          &output_token);
+                        if (maj != GSS_S_COMPLETE) {
+                                rpc_free_pdu(rpc, pdu);
+                                return -1;
+                        }
+                        buf = output_token.value;
+                        len = output_token.length;
+                        if (!libnfs_zdr_bytes(&pdu->zdr, &buf, &len, len)) {
+                                gss_release_buffer(&min, &output_token);
+                                rpc_free_pdu(rpc, pdu);
+                                return -1;
+                        }
+                        gss_release_buffer(&min, &output_token);
+                }
+                break;
+        }
+#endif /* HAVE_LIBKRB5 */
+
+        pos = zdr_getpos(&pdu->zdr);
 	if (rpc->timeout > 0) {
 		pdu->timeout = rpc_current_time() + rpc->timeout;
 #ifndef HAVE_CLOCK_GETTIME
@@ -419,6 +505,11 @@ static int rpc_process_reply(struct rpc_context *rpc, ZDR *zdr)
 	}
 	msg.body.rbody.reply.areply.reply_data.results.where = pdu->zdr_decode_buf;
 	msg.body.rbody.reply.areply.reply_data.results.proc  = pdu->zdr_decode_fn;
+#ifdef HAVE_LIBKRB5
+        if (rpc->sec == RPC_SEC_KRB5I && pdu->gss_seqno > 0) {
+                msg.body.rbody.reply.areply.reply_data.results.krb5i = 1;
+        }
+#endif
 	if (zdr_replymsg(rpc, zdr, &msg) == 0) {
 		rpc_set_error(rpc, "zdr_replymsg failed in rpc_process_reply: "
 			      "%s", rpc_get_error(rpc));

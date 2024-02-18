@@ -144,7 +144,7 @@ EXTERN void nfs_set_auth(struct nfs_context *nfs, struct AUTH *auth);
 enum rpc_sec {
         RPC_SEC_UNDEFINED = 0,
         RPC_SEC_KRB5,
-        //RPC_SEC_KRB5I,
+        RPC_SEC_KRB5I,
         //RPC_SEC_KRB5P,
 };
 EXTERN void nfs_set_security(struct nfs_context *nfs, enum rpc_sec sec);

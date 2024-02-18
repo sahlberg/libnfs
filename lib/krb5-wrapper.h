@@ -55,6 +55,7 @@ struct private_auth_data {
         uint32_t req_flags;
         gss_buffer_desc output_token;
         char *g_server;
+        int wanted_sec;
 };
 
 void
@@ -63,7 +64,8 @@ krb5_free_auth_data(struct private_auth_data *auth);
 struct private_auth_data *
 krb5_auth_init(struct rpc_context *rpc,
                const char *server,
-               const char *user_name);
+               const char *user_name,
+               int wanted_sec);
 
 void
 krb5_set_gss_error(struct rpc_context *rpc, char *func,

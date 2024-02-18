@@ -145,7 +145,8 @@ display_status(int type, uint32_t err)
 struct private_auth_data *
 krb5_auth_init(struct rpc_context *rpc,
                const char *server,
-               const char *user_name)
+               const char *user_name,
+               int wanted_sec)
 {
         struct private_auth_data *auth_data;
         gss_buffer_desc target = GSS_C_EMPTY_BUFFER;
@@ -163,6 +164,7 @@ krb5_auth_init(struct rpc_context *rpc,
                 return NULL;
         }
         auth_data->context = GSS_C_NO_CONTEXT;
+        auth_data->wanted_sec = wanted_sec;
 
         if (asprintf(&auth_data->g_server, "nfs@%s", server) < 0) {
                 rpc_set_error(rpc, "Failed to allocate server string");
@@ -224,7 +226,7 @@ krb5_auth_init(struct rpc_context *rpc,
                 
                 switch (rpc->sec) {
                 case RPC_SEC_KRB5:
-                //case RPC_SEC_KRB5I:
+                case RPC_SEC_KRB5I:
                 //case RPC_SEC_KRB5P:
                         wantMech.elements = discard_const(&spnego_mech_krb5);
                         break;
@@ -282,6 +284,9 @@ krb5_auth_request(struct rpc_context *rpc,
         /* NOTE: this call is not async, a helper thread should be used if that
          * is an issue */
         auth_data->req_flags = GSS_C_MUTUAL_FLAG;
+        if (auth_data->wanted_sec == RPC_SEC_KRB5I) {
+                auth_data->req_flags |= GSS_C_INTEG_FLAG;
+        }
         if (auth_data->cred == GSS_C_NO_CREDENTIAL) {
                 input_token=GSS_C_NO_BUFFER;
         }
