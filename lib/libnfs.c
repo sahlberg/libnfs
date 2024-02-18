@@ -266,15 +266,21 @@ nfs_set_context_args(struct nfs_context *nfs, const char *arg, const char *val)
                  */
                 if (!strcmp(val, "krb5p")) {
                         nfs_set_security(nfs, RPC_SEC_KRB5P);
-                }
-                if (!strcmp(val, "krb5i")) {
+                } else if (!strcmp(val, "krb5i")) {
                         nfs_set_security(nfs, RPC_SEC_KRB5I);
-                }
-                if (!strcmp(val, "krb5")) {
+                } else  if (!strcmp(val, "krb5")) {
                         nfs_set_security(nfs, RPC_SEC_KRB5);
+                } else {
+			nfs_set_error(nfs, "Unknown/unsupported sec type : %s",
+				      val);
+			return -1;
                 }
 #endif
-	}
+	} else {
+                nfs_set_error(nfs, "Unknown url argument : %s",
+                              arg);
+                return -1;
+        }
 	return 0;
 }
 
