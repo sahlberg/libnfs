@@ -419,11 +419,6 @@ static int rpc_process_reply(struct rpc_context *rpc, ZDR *zdr)
 	}
 	msg.body.rbody.reply.areply.reply_data.results.where = pdu->zdr_decode_buf;
 	msg.body.rbody.reply.areply.reply_data.results.proc  = pdu->zdr_decode_fn;
-#ifdef HAVE_LIBKRB5
-        if (rpc->sec != RPC_SEC_UNDEFINED) {
-                msg.body.rbody.reply.areply.verf.gss_context = rpc->gss_context;
-        }
-#endif
 	if (zdr_replymsg(rpc, zdr, &msg) == 0) {
 		rpc_set_error(rpc, "zdr_replymsg failed in rpc_process_reply: "
 			      "%s", rpc_get_error(rpc));
