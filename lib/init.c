@@ -439,7 +439,6 @@ void rpc_destroy_context(struct rpc_context *rpc)
 		rpc->error_string = NULL;
 	}
 
-        free(rpc->context);
         free(rpc->waitpdu);
         rpc->waitpdu = NULL;
 	free(rpc->inbuf);
@@ -454,7 +453,8 @@ void rpc_destroy_context(struct rpc_context *rpc)
                 krb5_free_auth_data(rpc->auth_data);
         }
         free(discard_const(rpc->username));
-#endif
+        free(rpc->context);
+#endif /* HAVE_LIBKRB5 */
 	free(rpc);
 }
 
