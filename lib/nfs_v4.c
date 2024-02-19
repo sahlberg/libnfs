@@ -274,13 +274,12 @@ init_cb_data_full_path(struct nfs_context *nfs, const char *path)
 {
         struct nfs4_cb_data *data;
 
-        data = malloc(sizeof(*data));
+        data = calloc(1, sizeof(*data));
         if (data == NULL) {
                 nfs_set_error(nfs, "Out of memory. Failed to allocate "
                               "cb data");
                 return NULL;
         }
-        memset(data, 0, sizeof(*data));
 
         data->nfs          = nfs;
         data->path = nfs4_resolve_path(nfs, path);
@@ -1516,7 +1515,7 @@ nfs4_mount_3_cb(struct rpc_context *rpc, int status, void *command_data,
 
         data->filler.func = nfs4_populate_getfh;
         data->filler.max_op = 1;
-        data->filler.data = malloc(2 * sizeof(uint32_t));
+        data->filler.data = calloc(2, sizeof(uint32_t));
         if (data->filler.data == NULL) {
                 nfs_set_error(nfs, "Out of memory. Failed to allocate "
                               "data structure.");
@@ -1524,7 +1523,6 @@ nfs4_mount_3_cb(struct rpc_context *rpc, int status, void *command_data,
                 free_nfs4_cb_data(data);
                 return;
         }
-        memset(data->filler.data, 0, 2 * sizeof(uint32_t));
 
 
         if (nfs4_lookup_path_async(nfs, data, nfs4_mount_4_cb) < 0) {
@@ -1633,13 +1631,12 @@ nfs4_mount_async(struct nfs_context *nfs, const char *server,
         nfs->nfsi->export = new_export;
 
 
-        data = malloc(sizeof(*data));
+        data = calloc(1, sizeof(*data));
         if (data == NULL) {
                 nfs_set_error(nfs, "Out of memory. Failed to allocate "
                               "memory for nfs mount data");
                 return -1;
         }
-        memset(data, 0, sizeof(*data));
 
         data->nfs          = nfs;
         data->cb           = cb;
@@ -1706,7 +1703,7 @@ int nfs4_chdir_async(struct nfs_context *nfs, const char *path,
         data->private_data  = private_data;
         data->filler.func   = nfs4_populate_getattr;
         data->filler.max_op = 1;
-        data->filler.data   = malloc(2 * sizeof(uint32_t));
+        data->filler.data   = calloc(2, sizeof(uint32_t));
         if (data->filler.data == NULL) {
                 nfs_set_error(nfs, "Out of memory. Failed to allocate "
                               "data structure.");
@@ -1714,7 +1711,6 @@ int nfs4_chdir_async(struct nfs_context *nfs, const char *path,
                 free_nfs4_cb_data(data);
                 return -1;
         }
-        memset(data->filler.data, 0, 2 * sizeof(uint32_t));
 
         if (nfs4_lookup_path_async(nfs, data, nfs4_chdir_1_cb) < 0) {
                 free_nfs4_cb_data(data);
@@ -1776,7 +1772,7 @@ nfs4_stat64_async(struct nfs_context *nfs, const char *path,
         data->private_data  = private_data;
         data->filler.func   = nfs4_populate_getattr;
         data->filler.max_op = 1;
-        data->filler.data   = malloc(2 * sizeof(uint32_t));
+        data->filler.data   = calloc(2, sizeof(uint32_t));
         if (data->filler.data == NULL) {
                 nfs_set_error(nfs, "Out of memory. Failed to allocate "
                               "data structure.");
@@ -1784,7 +1780,6 @@ nfs4_stat64_async(struct nfs_context *nfs, const char *path,
                 free_nfs4_cb_data(data);
                 return -1;
         }
-        memset(data->filler.data, 0, 2 * sizeof(uint32_t));
 
         if (nfs4_lookup_path_async(nfs, data, nfs4_xstat64_cb) < 0) {
                 free_nfs4_cb_data(data);
@@ -2115,7 +2110,7 @@ nfs4_open_cb(struct rpc_context *rpc, int status, void *command_data,
         }
         gresok = &res->resarray.resarray_val[i].nfs_resop4_u.opgetfh.GETFH4res_u.resok4;
 
-        fh = malloc(sizeof(*fh));
+        fh = calloc(1, sizeof(*fh));
         if (fh == NULL) {
                 nfs_set_error(nfs, "Out of memory. Failed to allocate "
                               "nfsfh");
@@ -2123,7 +2118,6 @@ nfs4_open_cb(struct rpc_context *rpc, int status, void *command_data,
                 free_nfs4_cb_data(data);
                 return;
         }
-        memset(fh, 0 , sizeof(*fh));
 
         data->filler.blob0.val  = fh;
         data->filler.blob0.free = (blob_free)nfs_free_nfsfh;
@@ -2562,13 +2556,12 @@ nfs4_fstat64_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_cb cb,
         struct nfs4_cb_data *data;
         int i;
 
-        data = malloc(sizeof(*data));
+        data = calloc(1, sizeof(*data));
         if (data == NULL) {
                 nfs_set_error(nfs, "Out of memory. Failed to allocate "
                               "cb data");
                 return -1;
         }
-        memset(data, 0, sizeof(*data));
 
         data->nfs          = nfs;
         data->cb           = cb;
@@ -2641,13 +2634,12 @@ nfs4_getacl_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_cb cb,
         struct nfs4_cb_data *data;
         int i;
 
-        data = malloc(sizeof(*data));
+        data = calloc(1, sizeof(*data));
         if (data == NULL) {
                 nfs_set_error(nfs, "Out of memory. Failed to allocate "
                               "cb data");
                 return -1;
         }
-        memset(data, 0, sizeof(*data));
 
         data->nfs          = nfs;
         data->cb           = cb;
@@ -2702,13 +2694,12 @@ nfs4_close_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_cb cb,
         struct nfs4_cb_data *data;
         int i;
 
-        data = malloc(sizeof(*data));
+        data = calloc(1, sizeof(*data));
         if (data == NULL) {
                 nfs_set_error(nfs, "Out of memory. Failed to allocate "
                               "cb data");
                 return -1;
         }
-        memset(data, 0, sizeof(*data));
 
 #ifdef HAVE_MULTITHREADING
         if (nfs->rpc->multithreading_enabled) {
@@ -2784,13 +2775,12 @@ nfs4_pread_async_internal(struct nfs_context *nfs, struct nfsfh *nfsfh,
         struct nfs4_cb_data *data;
         int i;
 
-        data = malloc(sizeof(*data));
+        data = calloc(1, sizeof(*data));
         if (data == NULL) {
                 nfs_set_error(nfs, "Out of memory. Failed to allocate "
                               "cb data");
                 return -1;
         }
-        memset(data, 0, sizeof(*data));
 
         data->nfs          = nfs;
         data->cb           = cb;
@@ -2992,13 +2982,12 @@ nfs4_pwrite_async_internal(struct nfs_context *nfs, struct nfsfh *nfsfh,
         struct nfs4_cb_data *data;
         int i;
 
-        data = malloc(sizeof(*data));
+        data = calloc(1, sizeof(*data));
         if (data == NULL) {
                 nfs_set_error(nfs, "Out of memory. Failed to allocate "
                               "cb data");
                 return -1;
         }
-        memset(data, 0, sizeof(*data));
 
         data->nfs          = nfs;
         data->cb           = cb;
@@ -3094,13 +3083,12 @@ nfs4_write_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t count,
                 struct nfs4_cb_data *data;
                 int i;
 
-                data = malloc(sizeof(*data));
+                data = calloc(1, sizeof(*data));
                 if (data == NULL) {
                         nfs_set_error(nfs, "Out of memory. Failed to allocate "
                                       "cb data");
                         return -1;
                 }
-                memset(data, 0, sizeof(*data));
 
                 data->nfs          = nfs;
                 data->cb           = cb;
@@ -3212,7 +3200,7 @@ nfs4_link_1_cb(struct rpc_context *rpc, int status, void *command_data,
         gfhresok = &res->resarray.resarray_val[i].nfs_resop4_u.opgetfh.GETFH4res_u.resok4;
 
         /* oldpath fh */
-        fh = malloc(sizeof(*fh));
+        fh = calloc(1, sizeof(*fh));
         if (fh == NULL) {
                 nfs_set_error(nfs, "Out of memory. Failed to allocate "
                               "nfsfh");
@@ -3220,7 +3208,6 @@ nfs4_link_1_cb(struct rpc_context *rpc, int status, void *command_data,
                 free_nfs4_cb_data(data);
                 return;
         }
-        memset(fh, 0 , sizeof(*fh));
         data->filler.blob0.val  = fh;
         data->filler.blob0.free = (blob_free)nfs_free_nfsfh;
 
@@ -3345,7 +3332,7 @@ nfs4_rename_1_cb(struct rpc_context *rpc, int status, void *command_data,
         gfhresok = &res->resarray.resarray_val[i].nfs_resop4_u.opgetfh.GETFH4res_u.resok4;
 
         /* newpath fh */
-        fh = malloc(sizeof(*fh));
+        fh = calloc(1, sizeof(*fh));
         if (fh == NULL) {
                 nfs_set_error(nfs, "Out of memory. Failed to allocate "
                               "nfsfh");
@@ -3353,7 +3340,6 @@ nfs4_rename_1_cb(struct rpc_context *rpc, int status, void *command_data,
                 free_nfs4_cb_data(data);
                 return;
         }
-        memset(fh, 0 , sizeof(*fh));
         data->filler.blob0.val  = fh;
         data->filler.blob0.free = (blob_free)nfs_free_nfsfh;
 
@@ -3728,7 +3714,7 @@ nfs4_opendir_cb(struct rpc_context *rpc, int status, void *command_data,
         }
         gresok = &res->resarray.resarray_val[i].nfs_resop4_u.opgetfh.GETFH4res_u.resok4;
 
-        fh = malloc(sizeof(*fh));
+        fh = calloc(1, sizeof(*fh));
         if (fh == NULL) {
                 nfs_set_error(nfs, "Out of memory. Failed to allocate "
                               "nfsfh");
@@ -3736,7 +3722,6 @@ nfs4_opendir_cb(struct rpc_context *rpc, int status, void *command_data,
                 free_nfs4_cb_data(data);
                 return;
         }
-        memset(fh, 0 , sizeof(*fh));
 
         data->filler.blob0.val  = fh;
         data->filler.blob0.free = (blob_free)nfs_free_nfsfh;
@@ -3796,24 +3781,22 @@ nfs4_opendir_async(struct nfs_context *nfs, const char *path, nfs_cb cb,
         data->filler.func = nfs4_populate_readdir;
         data->filler.max_op = 2;
 
-	nfsdir = malloc(sizeof(struct nfsdir));
+	nfsdir = calloc(1, sizeof(struct nfsdir));
 	if (nfsdir == NULL) {
                 free_nfs4_cb_data(data);
 		nfs_set_error(nfs, "failed to allocate buffer for nfsdir");
 		return -1;
 	}
-	memset(nfsdir, 0, sizeof(struct nfsdir));
 
         data->filler.blob1.val = nfsdir;
         data->filler.blob1.free = (blob_free)nfs_free_nfsdir;
 
-	data->filler.blob2.val = malloc(sizeof(uint64_t));
+	data->filler.blob2.val = calloc(1, sizeof(uint64_t));
 	if (data->filler.blob2.val == NULL) {
                 free_nfs4_cb_data(data);
 		nfs_set_error(nfs, "failed to allocate buffer for cookie");
 		return -1;
 	}
-	memset(data->filler.blob2.val, 0, sizeof(uint64_t));
         data->filler.blob2.free = (blob_free)free;
 
         if (nfs4_lookup_path_async(nfs, data, nfs4_opendir_cb) < 0) {
@@ -3950,12 +3933,11 @@ nfs4_fsync_async(struct nfs_context *nfs, struct nfsfh *fh, nfs_cb cb,
         struct nfs4_cb_data *data;
         int i;
 
-        data = malloc(sizeof(*data));
+        data = calloc(1, sizeof(*data));
         if (data == NULL) {
                 nfs_set_error(nfs, "Out of memory.");
                 return -1;
         }
-        memset(data, 0, sizeof(*data));
 
         data->nfs          = nfs;
         data->cb           = cb;
@@ -3989,18 +3971,17 @@ nfs4_ftruncate_async(struct nfs_context *nfs, struct nfsfh *fh,
         struct nfs4_cb_data *data;
         int i;
 
-        data = malloc(sizeof(*data));
+        data = calloc(1, sizeof(*data));
         if (data == NULL) {
                 nfs_set_error(nfs, "Out of memory.");
                 return -1;
         }
-        memset(data, 0, sizeof(*data));
 
         data->nfs          = nfs;
         data->cb           = cb;
         data->private_data = private_data;
 
-        data->filler.blob3.val = malloc(12);
+        data->filler.blob3.val = calloc(1, 12);
         if (data->filler.blob3.val == NULL) {
                 nfs_set_error(nfs, "Out of memory");
                 free_nfs4_cb_data(data);
@@ -4008,7 +3989,6 @@ nfs4_ftruncate_async(struct nfs_context *nfs, struct nfsfh *fh,
         }
         data->filler.blob3.free = free;
 
-        memset(data->filler.blob3.val, 0, 12);
         length = nfs_hton64(length);
         memcpy(data->filler.blob3.val, &length, sizeof(uint64_t));
         
@@ -4112,12 +4092,11 @@ nfs4_lseek_async(struct nfs_context *nfs, struct nfsfh *fh, int64_t offset,
 		return 0;
 	}
 
-        data = malloc(sizeof(*data));
+        data = calloc(1, sizeof(*data));
         if (data == NULL) {
                 nfs_set_error(nfs, "Out of memory.");
                 return -1;
         }
-        memset(data, 0, sizeof(*data));
 
         data->nfs          = nfs;
         data->cb           = cb;
@@ -4214,12 +4193,11 @@ nfs4_lockf_async(struct nfs_context *nfs, struct nfsfh *fh,
         struct nfs4_cb_data *data;
         int i;
 
-        data = malloc(sizeof(*data));
+        data = calloc(1, sizeof(*data));
         if (data == NULL) {
                 nfs_set_error(nfs, "Out of memory.");
                 return -1;
         }
-        memset(data, 0, sizeof(*data));
 
         data->nfs          = nfs;
         data->cb           = cb;
@@ -4428,12 +4406,11 @@ nfs4_fcntl_async(struct nfs_context *nfs, struct nfsfh *fh,
         nfs_argop4 op[2];
         int i;
 
-        data = malloc(sizeof(*data));
+        data = calloc(1, sizeof(*data));
         if (data == NULL) {
                 nfs_set_error(nfs, "Out of memory.");
                 return -1;
         }
-        memset(data, 0, sizeof(*data));
 
         data->nfs          = nfs;
         data->cb           = cb;
@@ -4709,12 +4686,11 @@ nfs4_statvfs_async_internal(struct nfs_context *nfs, const char *path,
         nfs_argop4 op[2];
         int i;
 
-        data = malloc(sizeof(*data));
+        data = calloc(1, sizeof(*data));
         if (data == NULL) {
                 nfs_set_error(nfs, "Out of memory.");
                 return -1;
         }
-        memset(data, 0, sizeof(*data));
 
         data->nfs          = nfs;
         data->cb           = cb;
@@ -4830,12 +4806,11 @@ nfs4_fchmod_async(struct nfs_context *nfs, struct nfsfh *fh, int mode,
         uint32_t m;
         int i;
 
-        data = malloc(sizeof(*data));
+        data = calloc(1, sizeof(*data));
         if (data == NULL) {
                 nfs_set_error(nfs, "Out of memory.");
                 return -1;
         }
-        memset(data, 0, sizeof(*data));
 
         data->nfs          = nfs;
         data->cb           = cb;
@@ -4880,13 +4855,12 @@ nfs4_create_chown_buffer(struct nfs_context *nfs, struct nfs4_cb_data *data,
         int i, l;
         uint32_t len;
 
-        data->filler.blob3.val = malloc(CHOWN_BLOB_SIZE);
+        data->filler.blob3.val = calloc(1, CHOWN_BLOB_SIZE);
         if (data->filler.blob3.val == NULL) {
                 nfs_set_error(nfs, "Out of memory");
                 return -1;
         }
         data->filler.blob3.free = free;
-        memset(data->filler.blob3.val, 0, CHOWN_BLOB_SIZE);
         
         i = 0;
         str = data->filler.blob3.val;
@@ -4986,12 +4960,11 @@ nfs4_fchown_async(struct nfs_context *nfs, struct nfsfh *fh, int uid, int gid,
         struct nfs4_cb_data *data;
         int i;
 
-        data = malloc(sizeof(*data));
+        data = calloc(1, sizeof(*data));
         if (data == NULL) {
                 nfs_set_error(nfs, "Out of memory.");
                 return -1;
         }
-        memset(data, 0, sizeof(*data));
 
         data->nfs          = nfs;
         data->cb           = cb;
@@ -5183,12 +5156,11 @@ nfs4_utimes_async_internal(struct nfs_context *nfs, const char *path,
         }
 
         data->filler.blob3.len = 2 * (4 + 8 + 4);
-        buf = data->filler.blob3.val = malloc(data->filler.blob3.len);
+        buf = data->filler.blob3.val = calloc(1, data->filler.blob3.len);
         if (data->filler.blob3.val == NULL) {
                 nfs_set_error(nfs, "Out of memory");
                 return -1;
         }
-        memset(buf, 0, data->filler.blob3.len);
         data->filler.blob3.free = free;
 
         if (times != NULL) {
