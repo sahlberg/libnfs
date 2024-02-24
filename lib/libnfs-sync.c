@@ -95,6 +95,10 @@
 #include <sys/sockio.h>
 #endif
 
+#if defined(__sun)
+#include <sys/sockio.h>
+#endif
+
 #ifdef HAVE_SYS_TIME_H
 #include <sys/time.h>
 #endif
