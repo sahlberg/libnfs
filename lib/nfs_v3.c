@@ -4908,7 +4908,7 @@ static void nfs3_initial_open_cb(int err, struct nfs_context *nfs, void *ret_dat
                          * we can create a path that is '\0' and then followed
                          * by the object we wish to create.
                          */
-                        ptr = malloc(strlen(cb_data->path) + 1);
+                        ptr = calloc(1, strlen(cb_data->path) + 2);
                         if (ptr == NULL) {
                                 cb_data->cb(-ENOMEM, nfs,
                                             nfs_get_error(nfs),
