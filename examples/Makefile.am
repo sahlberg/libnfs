@@ -1,4 +1,4 @@
-noinst_PROGRAMS = nfsclient-async nfsclient-raw nfsclient-sync nfsclient-bcast nfsclient-listservers nfs-fh nfs-io nfs-ln nfs4-cat portmap-client portmap-server
+noinst_PROGRAMS = nfsclient-async nfsclient-raw nfsclient-sync nfsclient-bcast nfsclient-listservers nfs-fh nfs-io nfs-ln nfs4-cat portmap-client portmap-server nfs-writefile
 
 if HAVE_TALLOC_TEVENT
 noinst_PROGRAMS += nfs4-cat-talloc
@@ -21,6 +21,7 @@ AM_CPPFLAGS = \
 	"-D_U_=__attribute__((unused))"
 
 COMMON_LIBS = ../lib/libnfs.la -lpopt
+nfs_writefile_LDADD = $(COMMON_LIBS)
 nfsclient_async_LDADD = $(COMMON_LIBS)
 nfsclient_raw_LDADD = $(COMMON_LIBS)
 nfsclient_sync_LDADD = $(COMMON_LIBS)
