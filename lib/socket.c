@@ -277,6 +277,7 @@ rpc_write_to_socket(struct rpc_context *rpc)
                                 }
                                 buf += num_done;
                                 len -= num_done;
+                                num_done = 0;
 
                                 /* Concatenate continous blocks */
                                 if (last_buf != buf) {
