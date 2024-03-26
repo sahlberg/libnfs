@@ -1617,10 +1617,20 @@ nfs4_mount_async(struct nfs_context *nfs, const char *server,
         int port;
 
         new_server = strdup(server);
+	if (new_server == NULL) {
+		nfs_set_error(nfs, "out of memory. failed to allocate "
+			      "memory for nfs server string");
+		return -1;
+	}
         free(nfs->nfsi->server);
         nfs->nfsi->server = new_server;
 
         new_export = strdup(export);
+	if (new_export == NULL) {
+		nfs_set_error(nfs, "out of memory. failed to allocate "
+			      "memory for nfs export string");
+		return -1;
+	}
         if (nfs_normalize_path(nfs, new_export)) {
                 nfs_set_error(nfs, "Bad export path. %s",
                               nfs_get_error(nfs));

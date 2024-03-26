@@ -1119,23 +1119,31 @@ nfs3_mount_async(struct nfs_context *nfs, const char *server,
 	struct nfs_cb_data *data;
 	char *new_server, *new_export;
 
-	data = malloc(sizeof(struct nfs_cb_data));
+	new_server = strdup(server);
+	if (new_server == NULL) {
+		nfs_set_error(nfs, "out of memory. failed to allocate "
+			      "memory for nfs server string");
+		return -1;
+	}
+        free(nfs->nfsi->server);
+	nfs->nfsi->server = new_server;
+        
+	new_export = strdup(export);
+	if (new_export == NULL) {
+		nfs_set_error(nfs, "out of memory. failed to allocate "
+			      "memory for nfs export string");
+		return -1;
+	}
+        free(nfs->nfsi->export);
+	nfs->nfsi->export  = new_export;
+
+        data = calloc(1, sizeof(*data));
 	if (data == NULL) {
 		nfs_set_error(nfs, "out of memory. failed to allocate "
 			      "memory for nfs mount data");
 		return -1;
 	}
-	memset(data, 0, sizeof(struct nfs_cb_data));
-	new_server = strdup(server);
-	new_export = strdup(export);
-	if (nfs->nfsi->server != NULL) {
-		free(nfs->nfsi->server);
-	}
-	nfs->nfsi->server = new_server;
-	if (nfs->nfsi->export != NULL) {
-		free(nfs->nfsi->export);
-	}
-	nfs->nfsi->export  = new_export;
+        
 	data->nfs          = nfs;
 	data->cb           = cb;
 	data->private_data = private_data;
