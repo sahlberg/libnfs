@@ -313,8 +313,8 @@ mount_cb(int status, struct nfs_context *nfs, void *data, void *private_data)
         cb_data_is_finished(cb_data, status);
 }
 
-int
-nfs_mount(struct nfs_context *nfs, const char *server, const char *export)
+static int
+_nfs_mount(struct nfs_context *nfs, const char *server, const char *export)
 {
 	struct sync_cb_data cb_data;
 	struct rpc_context *rpc = nfs_get_rpc_context(nfs);
@@ -349,6 +349,25 @@ nfs_mount(struct nfs_context *nfs, const char *server, const char *export)
 	return cb_data.status;
 }
 
+int
+nfs_mount(struct nfs_context *nfs, const char *server, const char *export)
+{
+        int ret;
+        ret = _nfs_mount(nfs, server, export);
+
+        /*
+         * Mount using default v3 failed, try v4 instead
+         */
+        if (ret && nfs->nfsi->default_version) {
+                free(nfs->nfsi->rootfh.val);
+                nfs->nfsi->rootfh.len = 0;
+                nfs->nfsi->version = NFS_V4;
+                rpc_disconnect(nfs->rpc, "disconnect to try different dialect");
+                ret = _nfs_mount(nfs, server, export);
+        }
+
+        return ret;
+}
 
 /*
  * unregister the mount

@@ -367,6 +367,9 @@ struct nfs_context_internal {
        uint16_t	mask;
        int auto_traverse_mounts;
        struct nested_mounts *nested_mounts;
+       int default_version; /* if 0 it means no default version and only use the
+                             * selected version.
+                             */
        int version;
        int nfsport;
        int mountport;
@@ -650,6 +653,9 @@ int nfs4_write_async(struct nfs_context *nfs, struct nfsfh *nfsfh,
                      void *private_data);
 
 int rpc_write_to_socket(struct rpc_context *rpc);
+int _nfs_mount_async(struct nfs_context *nfs, const char *server,
+                     const char *exportname, nfs_cb cb,
+                     void *private_data);
         
 #ifdef __cplusplus
 }

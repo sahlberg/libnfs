@@ -521,6 +521,7 @@ nfs_init_context(void)
 	nfs->nfsi->dircache_enabled = 1;
 	/* Default is never give up, never surrender */
 	nfs->nfsi->auto_reconnect = -1;
+	nfs->nfsi->default_version = NFS_V3;
 	nfs->nfsi->version = NFS_V3;
 	nfs->nfsi->readdir_dircount = 8192;
 	nfs->nfsi->readdir_maxcount = 8192;
@@ -995,7 +996,7 @@ nfs_free_nfsfh(struct nfsfh *nfsfh)
  * Async call for mounting an nfs share and geting the root filehandle
  */
 int
-nfs_mount_async(struct nfs_context *nfs, const char *server,
+_nfs_mount_async(struct nfs_context *nfs, const char *server,
                 const char *export, nfs_cb cb, void *private_data)
 {
 	switch (nfs->nfsi->version) {
@@ -1008,6 +1009,13 @@ nfs_mount_async(struct nfs_context *nfs, const char *server,
                               __FUNCTION__, nfs->nfsi->version);
                 return -1;
         }
+}
+int
+nfs_mount_async(struct nfs_context *nfs, const char *server,
+                const char *export, nfs_cb cb, void *private_data)
+{
+        return _nfs_mount_async(nfs, server,
+                                export, cb, private_data);
 }
 
 /*
@@ -1986,6 +1994,7 @@ nfs_set_version(struct nfs_context *nfs, int version) {
 	case NFS_V3:
 	case NFS_V4:
 		nfs->nfsi->version = version;
+		nfs->nfsi->default_version = 0;
 		break;
 	default:
 		nfs_set_error(nfs, "NFS version %d is not supported", version);
