@@ -1,5 +1,5 @@
-AC_PREREQ(2.50)
-AC_INIT([libnfs], [5.0.3], [ronniesahlberg@gmail.com])
+AC_PREREQ([2.71])
+AC_INIT([libnfs],[5.0.3],[ronniesahlberg@gmail.com])
 AC_CONFIG_HEADERS([config.h])
 AM_INIT_AUTOMAKE([-Wall foreign subdir-objects])
 AC_CANONICAL_HOST
@@ -11,7 +11,7 @@ AM_PROG_AR
 SAVE_CFLAGS="x${CFLAGS}"
 
 AC_PROG_CC
-AC_PROG_LIBTOOL
+LT_INIT
 
 AM_PROG_CC_C_O
 PKG_PROG_PKG_CONFIG
@@ -27,8 +27,7 @@ AC_SYS_LARGEFILE
 #option: utils
 MAYBE_UTILS="utils"
 AC_ARG_ENABLE([utils],
-              [AC_HELP_STRING([--enable-utils],
-                              [Build util programs])],
+              [AS_HELP_STRING([--enable-utils],[Build util programs])],
 	      [if test $enableval = no ; then
 	    	    MAYBE_UTILS=""
 	       fi])
@@ -36,8 +35,7 @@ AC_SUBST(MAYBE_UTILS)
 
 #option: examples
 AC_ARG_ENABLE([examples],
-              [AC_HELP_STRING([--enable-examples],
-                              [Build example programs])],
+              [AS_HELP_STRING([--enable-examples],[Build example programs])],
 	      [ENABLE_EXAMPLES=$enableval],
 	      [ENABLE_EXAMPLES="no"])
 
@@ -62,7 +60,7 @@ if test x$ENABLE_EXAMPLES = xyes; then
 AC_MSG_CHECKING(whether libpopt is available)
 ac_save_LIBS="$LIBS"
 LIBS="$LIBS -lpopt"
-AC_TRY_LINK([#include <popt.h>], [
+AC_LINK_IFELSE([AC_LANG_PROGRAM([[#include <popt.h>]], [[
 /*
  * Just see if we can compile/link with popt
  */
@@ -72,7 +70,7 @@ AC_TRY_LINK([#include <popt.h>], [
 		POPT_TABLEEND
 	};
 	poptGetContext(_argv[0], _argc, _argv, popt_options, POPT_CONTEXT_KEEP_FIRST);
-], ac_cv_have_popt=yes, ac_cv_have_popt=no)
+]])],[ac_cv_have_popt=yes],[ac_cv_have_popt=no])
 LIBS="$ac_save_LIBS"
 if test "$ac_cv_have_popt" = yes ; then
   AC_MSG_RESULT(yes)
@@ -88,17 +86,14 @@ AC_SUBST(MAYBE_EXAMPLES)
 
 #option: examples
 AC_ARG_ENABLE([pthread],
-              [AC_HELP_STRING([--enable-pthread],
-                              [Build with pthread multithreading support])],
+              [AS_HELP_STRING([--enable-pthread],[Build with pthread multithreading support])],
 	      [ENABLE_PTHREAD=$enableval],
 	      [ENABLE_PTHREAD="no"])
 if test x$ENABLE_PTHREAD = xyes; then
 # check for lpthread
 AC_CACHE_CHECK([for pthread support],libnfs_cv_HAVE_PTHREAD,[
-AC_TRY_COMPILE([
-#include <pthread.h>],
-[pthread_t thread1, thread2;],
-libnfs_cv_HAVE_PTHREAD=yes,libnfs_cv_HAVE_PTHREAD=no)])
+AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
+#include <pthread.h>]], [[pthread_t thread1, thread2;]])],[libnfs_cv_HAVE_PTHREAD=yes],[libnfs_cv_HAVE_PTHREAD=no])])
 if test x"$libnfs_cv_HAVE_PTHREAD" = x"yes"; then
     AC_DEFINE(HAVE_PTHREAD,1,[Whether we have pthread support])
     AC_DEFINE(HAVE_MULTITHREADING,1,[Whether we have multithreading support])
@@ -107,9 +102,9 @@ fi
 AM_CONDITIONAL([HAVE_PTHREAD], [test x$libnfs_cv_HAVE_PTHREAD = xyes])
 
 AC_MSG_CHECKING(whether SO_BINDTODEVICE is available)
-AC_TRY_COMPILE([#include <net/if.h>], [
+AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[#include <net/if.h>]], [[
         int i = SO_BINDTODEVICE;
-], ac_cv_have_so_bindtodevice=yes, ac_cv_have_so_bindtodevice=no)
+]])],[ac_cv_have_so_bindtodevice=yes],[ac_cv_have_so_bindtodevice=no])
 if test "$ac_cv_have_so_bindtodevice" = yes ; then
   AC_MSG_RESULT(yes)
   AC_DEFINE(HAVE_SO_BINDTODEVICE, 1, [Whether our sockets support SO_BINDTODEVICE])
@@ -120,12 +115,12 @@ else
 fi
 
 AC_MSG_CHECKING(whether getpwnam() is available)
-AC_TRY_COMPILE([
+AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
 	#include <sys/types.h>
 	#include <pwd.h>
-], [
+]], [[
         struct passwd *pwd = getpwnam("nobody");
-], ac_cv_have_getpwnam=yes, ac_cv_have_getpwnam=no)
+]])],[ac_cv_have_getpwnam=yes],[ac_cv_have_getpwnam=no])
 if test "$ac_cv_have_getpwnam" = yes ; then
   AC_MSG_RESULT(yes)
   AC_DEFINE(HAVE_GETPWNAM, 1, [Whether we have getpwnam()])
@@ -140,7 +135,7 @@ AC_SUBST([MAYBE_LIBKRB5])
 AC_ARG_ENABLE([werror], [AS_HELP_STRING([--disable-werror],
               [Disables building with -Werror by default])])
 
-if test "$ac_cv_prog_gcc" = yes; then
+if test "$ac_cv_c_compiler_gnu" = yes; then
    WARN_CFLAGS="-Wall -Wshadow -Wno-write-strings -Wstrict-prototypes -Wpointer-arith -Wcast-align -Wno-strict-aliasing"
    if test "x$enable_werror" != "xno"; then
        WARN_CFLAGS="$WARN_CFLAGS -Werror"
@@ -254,9 +249,9 @@ AC_CHECK_MEMBER([struct sockaddr_storage.ss_family],
 
 # check for clock_gettime(CLOCK_MONOTONIC_COARSE)
 AC_MSG_CHECKING(if clock_gettime(CLOCK_MONOTONIC_COARSE) is available)
-AC_TRY_COMPILE([#include <time.h>], [
+AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[#include <time.h>]], [[
         int i = clock_gettime(CLOCK_MONOTONIC_COARSE, NULL);
-], ac_cv_have_clock_gettime=yes, ac_cv_have_clock_gettime=no)
+]])],[ac_cv_have_clock_gettime=yes],[ac_cv_have_clock_gettime=no])
 if test "$ac_cv_have_clock_gettime" = yes ; then
   AC_MSG_RESULT(yes)
   AC_DEFINE(HAVE_CLOCK_GETTIME, 1, [Whether we have clock_gettime])
@@ -268,12 +263,10 @@ fi
 
 # check for tevent + talloc
 AC_CACHE_CHECK([for talloc and tevent support],libnfs_cv_HAVE_TALLOC_TEVENT,[
-AC_TRY_COMPILE([
+AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
 #include <talloc.h>
-#include <tevent.h>],
-[struct tevent_context *ctx = tevent_context_init(NULL);
- int major = talloc_version_major();],
-libiscsi_cv_HAVE_TALLOC_TEVENT=yes,libiscsi_cv_HAVE_TALLOC_TEVENT=no)])
+#include <tevent.h>]], [[struct tevent_context *ctx = tevent_context_init(NULL);
+ int major = talloc_version_major();]])],[libiscsi_cv_HAVE_TALLOC_TEVENT=yes],[libiscsi_cv_HAVE_TALLOC_TEVENT=no])])
 if test x"$libiscsi_cv_HAVE_TALLOC_TEVENT" = x"yes"; then
     AC_DEFINE(HAVE_TALLOC_TEVENT,1,[Whether we have talloc nad tevent support])
 fi
@@ -305,4 +298,5 @@ AC_CONFIG_FILES([Makefile]
                 [utils/Makefile]
                )
 
-AC_OUTPUT([libnfs.pc])
+AC_CONFIG_FILES([libnfs.pc])
+AC_OUTPUT
