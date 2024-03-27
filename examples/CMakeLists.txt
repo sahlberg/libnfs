@@ -11,6 +11,7 @@ set(EXAMPLES nfsclient-async
             nfsclient-listservers
             nfs-io
             nfs-ln
+            nfs-writefile
             portmap-client)
 
 if(HAVE_TALLOC_TEVENT)
@@ -20,7 +21,6 @@ endif()
 
 if(EVENT_LIBARY)
   list(APPEND EXAMPLES nfs4-cat
-                       nfs-writefile
                        portmap-server)
   list(APPEND EXTRA_LIBRARIES ${EVENT_LIBARY})
 endif()

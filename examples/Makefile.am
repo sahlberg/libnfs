@@ -6,7 +6,7 @@ endif
 
 if HAVE_PTHREAD
 LIBS += -lpthread
-noinst_PROGRAMS += nfs-pthreads-example nfs-pthreads-fstat
+noinst_PROGRAMS += nfs-pthreads-example nfs-pthreads-fstat nfs-pthreads-writefile
 endif
 
 AM_CPPFLAGS = \
@@ -36,3 +36,4 @@ portmap_client_LDADD = $(COMMON_LIBS)
 portmap_server_LDADD = $(COMMON_LIBS) -levent
 nfs_pthreads_example_LDADD = $(COMMON_LIBS)
 nfs_pthreads_fstat_LDADD = $(COMMON_LIBS)
+nfs_pthreads_writefile_LDADD = $(COMMON_LIBS)
