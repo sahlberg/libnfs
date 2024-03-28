@@ -57,6 +57,7 @@ struct addrinfo **res)
   } 
 
   *res = malloc(sizeof(struct addrinfo));
+  memset(*res, 0, sizeof(struct addrinfo));
 
   (*res)->ai_family = AF_INET;
   (*res)->ai_addrlen = sizeof(struct sockaddr_in);
