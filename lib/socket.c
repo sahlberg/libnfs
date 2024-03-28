@@ -430,7 +430,6 @@ static void rpc_finished_pdu(struct rpc_context *rpc)
 static int
 rpc_read_from_socket(struct rpc_context *rpc)
 {
-	static uint32_t pdu_size = 0;
 	static char *buf = NULL;
 	ssize_t count;
         int pos;
@@ -485,14 +484,14 @@ rpc_read_from_socket(struct rpc_context *rpc)
                                  * And if this is a cleint context read the next 4 bytes
                                  * i.e. the XID on a client
                                  */
-                                pdu_size = 8;
+                                rpc->pdu_size = 8;
                                 buf = (char *)&rpc->rm_xid[0];
                                 rpc->pdu = NULL;
                                 break;
                         case READ_PAYLOAD:
                                 /* we already read 4 bytes into the buffer */
                                 rpc->inpos = 4;
-                                pdu_size = rpc->rm_xid[0];
+                                rpc->pdu_size = rpc->rm_xid[0];
                                 buf = rpc->inbuf + rpc->inpos;
 
                                 /*
@@ -506,29 +505,29 @@ rpc_read_from_socket(struct rpc_context *rpc)
                                  * restart unmarshalling from scratch.
                                  */
                                 /* We do not have rpc->pdu for server context */
-                                if (rpc->pdu && rpc->pdu->in.buf && pdu_size > 1024) {
-                                        pdu_size = 1024;
+                                if (rpc->pdu && rpc->pdu->in.buf && rpc->pdu_size > 1024) {
+                                        rpc->pdu_size = 1024;
                                 }
                                 break;
                         case READ_UNKNOWN:
                         case READ_FRAGMENT:
                                 /* we already read 4 bytes into the buffer */
                                 rpc->inpos = 4;
-                                pdu_size = rpc->rm_xid[0];
+                                rpc->pdu_size = rpc->rm_xid[0];
                                 buf = rpc->inbuf + rpc->inpos;
                                 break;
                         case READ_IOVEC:
                                 buf = &rpc->pdu->in.buf[rpc->pdu->inpos];
-                                pdu_size = rpc->pdu->read_count;
+                                rpc->pdu_size = rpc->pdu->read_count;
                                 break;
                         case READ_PADDING:
-                                pdu_size = rpc->rm_xid[0];
+                                rpc->pdu_size = rpc->rm_xid[0];
                                 buf = rpc->inbuf;
                                 break;
                         }
                 }
 
-                count = pdu_size - rpc->inpos;
+                count = rpc->pdu_size - rpc->inpos;
 		count = recv(rpc->fd, buf, count, MSG_DONTWAIT);
 		if (count < 0) {
 			if (errno == EINTR || errno == EAGAIN) {
@@ -545,7 +544,7 @@ rpc_read_from_socket(struct rpc_context *rpc)
 		rpc->inpos += count;
                 buf += count;
                 
-                if (rpc->inpos == pdu_size) {
+                if (rpc->inpos == rpc->pdu_size) {
                         switch (rpc->state) {
                         case READ_RM:
                                 /* We have just read the record marker */
@@ -596,14 +595,14 @@ rpc_read_from_socket(struct rpc_context *rpc)
                                 continue;
                         case READ_PAYLOAD:
                                 if (rpc->fragments) {
-                                        buf = rpc_reassemble_pdu(rpc, &pdu_size);
+                                        buf = rpc_reassemble_pdu(rpc, &rpc->pdu_size);
                                         if (buf == NULL) {
                                                 return -1;
                                         }
                                 } else {
                                         buf = rpc->inbuf;
                                 }
-                                if (rpc_process_pdu(rpc, buf, pdu_size) != 0) {
+                                if (rpc_process_pdu(rpc, buf, rpc->pdu_size) != 0) {
                                         rpc_set_error(rpc, "Invalid/garbage pdu"
                                                       " received from server. "
                                                       "Closing socket");
@@ -642,9 +641,9 @@ rpc_read_from_socket(struct rpc_context *rpc)
                                 rpc_finished_pdu(rpc);
                                 break;
                         case READ_IOVEC:
-                                rpc->pdu->inpos += pdu_size;
-                                rpc->pdu->read_count -= pdu_size;
-                                rpc->rm_xid[0] -= pdu_size;
+                                rpc->pdu->inpos += rpc->pdu_size;
+                                rpc->pdu->read_count -= rpc->pdu_size;
+                                rpc->rm_xid[0] -= rpc->pdu_size;
                                 if (!rpc->rm_xid[0]) {
                                         rpc_finished_pdu(rpc);
                                         break;

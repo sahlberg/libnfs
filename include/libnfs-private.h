@@ -174,6 +174,7 @@ struct rpc_context {
 	char *inbuf;
         enum input_state state;
         uint32_t rm_xid[2]; /* array holding the record marker and the next 4 bytes */
+	uint32_t pdu_size;  /* used in rpc_read_from_socket() */
         struct rpc_pdu *pdu;
 
 	/* special fields for UDP, which can sometimes be BROADCASTed */
