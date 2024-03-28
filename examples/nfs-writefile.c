@@ -115,6 +115,8 @@ nfs_write_cb(int status, struct nfs_context *nfs, void *data,
 	struct write_data *wdata = private_data;
 	struct write_file_context *ctx = wdata->ctx;
 
+	free(wdata);
+
 	if (status < 0) {
 		printf("write call failed with \"%s\"\n", (char *)data);
 		ctx->status = -1;
