@@ -4225,7 +4225,17 @@ nfs3_pwrite_mcb(struct rpc_context *rpc, int status, void *command_data,
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
+#ifdef HAVE_MULTITHREADING
+        if (nfs->rpc->multithreading_enabled) {
+                nfs_mt_mutex_lock(&nfs->rpc->rpc_mutex);
+        }
+#endif
 	data->num_calls--;
+#ifdef HAVE_MULTITHREADING
+        if (nfs->rpc->multithreading_enabled) {
+                nfs_mt_mutex_unlock(&nfs->rpc->rpc_mutex);
+        }
+#endif
 
 	/* Flag the failure but do not invoke callback until we have
 	 * received all responses.
@@ -4263,13 +4273,33 @@ nfs3_pwrite_mcb(struct rpc_context *rpc, int status, void *command_data,
                                                              mdata->offset,
                                                              mdata->count,
                                                              &data->usrbuf[mdata->offset - data->offset]);
+#ifdef HAVE_MULTITHREADING
+                                        if (nfs->rpc->multithreading_enabled) {
+                                                nfs_mt_mutex_lock(&nfs->rpc->rpc_mutex);
+                                        }
+#endif
 					data->num_calls++;
+#ifdef HAVE_MULTITHREADING
+                                        if (nfs->rpc->multithreading_enabled) {
+                                                nfs_mt_mutex_unlock(&nfs->rpc->rpc_mutex);
+                                        }
+#endif
 					if (rpc_nfs3_write_task(nfs->rpc,
                                                                 nfs3_pwrite_mcb,
                                                                 &args, mdata)) {
 						return;
 					} else {
+#ifdef HAVE_MULTITHREADING
+                                        if (nfs->rpc->multithreading_enabled) {
+                                                nfs_mt_mutex_lock(&nfs->rpc->rpc_mutex);
+                                        }
+#endif
 						data->num_calls--;
+#ifdef HAVE_MULTITHREADING
+                                        if (nfs->rpc->multithreading_enabled) {
+                                                nfs_mt_mutex_unlock(&nfs->rpc->rpc_mutex);
+                                        }
+#endif
 						nfs_set_error(nfs, "RPC error: Failed to send WRITE call for %s", data->path);
 						data->oom = 1;
 					}
@@ -4379,10 +4409,30 @@ nfs3_pwrite_async_internal(struct nfs_context *nfs, struct nfsfh *nfsfh,
 		nfs3_fill_WRITE3args(&args, nfsfh, offset, writecount,
                                      &buf[offset - data->offset]);
 
+#ifdef HAVE_MULTITHREADING
+                if (nfs->rpc->multithreading_enabled) {
+                        nfs_mt_mutex_lock(&nfs->rpc->rpc_mutex);
+                }
+#endif
 		data->num_calls++;
+#ifdef HAVE_MULTITHREADING
+                if (nfs->rpc->multithreading_enabled) {
+                        nfs_mt_mutex_unlock(&nfs->rpc->rpc_mutex);
+                }
+#endif
 		if (rpc_nfs3_write_task(nfs->rpc, nfs3_pwrite_mcb,
                                         &args, mdata) == NULL) {
+#ifdef HAVE_MULTITHREADING
+                        if (nfs->rpc->multithreading_enabled) {
+                                nfs_mt_mutex_lock(&nfs->rpc->rpc_mutex);
+                        }
+#endif
 			data->num_calls--;
+#ifdef HAVE_MULTITHREADING
+                        if (nfs->rpc->multithreading_enabled) {
+                                nfs_mt_mutex_unlock(&nfs->rpc->rpc_mutex);
+                        }
+#endif
 			nfs_set_error(nfs, "RPC error: Failed to send WRITE "
                                       "call for %s", data->path);
 			free(mdata);
