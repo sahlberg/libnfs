@@ -68,8 +68,8 @@ void usage(void)
 
 struct write_data {
 	struct nfs_context *nfs;
-	char *src_file;
-	char *nfs_file;
+	int fd;
+	struct nfsfh *nfsfh;
 	uint64_t offset;
 	ssize_t len;
 };
@@ -80,9 +80,7 @@ struct write_data {
 static void *nfs_write_thread(void *arg)
 {
 	struct write_data *wd = arg;
-	struct nfsfh *nfsfh = NULL;
 	char *buf;
-	int fd;
 	ssize_t count;
 
 	buf = malloc(65536);
@@ -90,40 +88,27 @@ static void *nfs_write_thread(void *arg)
 		fprintf(stderr, "Failed to allocate buffer\n");
 		exit(1);
 	}
-	fd = open(wd->src_file, O_RDONLY);
-	if (fd < 0) {
-		fprintf(stderr, "Failed to open source file %s\n", wd->src_file);
-		exit(1);
-	}
-	if (nfs_open(wd->nfs, wd->nfs_file, O_WRONLY|O_CREAT, &nfsfh) < 0) {
-		fprintf(stderr, "Failed to open nfs file %s. %s\n",
-			wd->nfs_file,
-			nfs_get_error(wd->nfs));
-		exit(1);
-	}
 	while (wd->len) {
 		count = 65536;
 		if (count > wd->len) {
 			count = wd->len;
 		}
-		count = pread(fd, buf, count, wd->offset);
+		count = pread(wd->fd, buf, count, wd->offset);
 		if (count < 0) {
 			fprintf(stderr, "Failed reading from file\n");
 			exit(1);
 		}
 		if (count == 0) {
-			nfs_close(wd->nfs, nfsfh);
 			free(buf);
 			return NULL;
 		}
-		if (nfs_pwrite(wd->nfs, nfsfh, buf, count, wd->offset) < 0) {
+		if (nfs_pwrite(wd->nfs, wd->nfsfh, buf, count, wd->offset) < 0) {
 			fprintf(stderr, "Failed to write to nfs file. %s\n", nfs_get_error(wd->nfs));
 			exit(1);
 		}
 		wd->offset += count;
 		wd->len -= count;
 	}
-	nfs_close(wd->nfs, nfsfh);
 	free(buf);
 	return NULL;
 }
@@ -131,11 +116,13 @@ static void *nfs_write_thread(void *arg)
 int main(int argc, char *argv[])
 {
 	int i, num_threads;
+	int fd = -1;
 	struct nfs_context *nfs[NUM_CONTEXTS] = {NULL,};
 	struct nfs_url *url = NULL;
 	struct stat st;
         pthread_t *write_threads;
         struct write_data *wd;
+	struct nfsfh *nfsfh = NULL;
 
 #ifdef WIN32
 	if (WSAStartup(MAKEWORD(2,2), &wsaData) != 0) {
@@ -150,6 +137,12 @@ int main(int argc, char *argv[])
 
 	if (argc != 3) {
 		usage();
+	}
+
+	fd = open(argv[1], O_RDONLY);
+	if (fd < 0) {
+		fprintf(stderr, "Failed to open source file %s\n", argv[1]);
+		exit(1);
 	}
 
 	/*
@@ -185,6 +178,21 @@ int main(int argc, char *argv[])
 		}
 
 		/*
+		 * We just need to open the file once and can then just
+		 * use the handle from all the other contexts too.
+		 * This is good because creat()/O_CREAT|O_TRUNC is not
+		 * an atomic operation in NFS.
+		 */
+		if (i == 0) {
+			if (nfs_open(nfs[0], url->file, O_WRONLY|O_CREAT|O_TRUNC, &nfsfh) < 0) {
+				fprintf(stderr, "Failed to open nfs file %s. %s\n",
+					url->file,
+					nfs_get_error(wd->nfs));
+				exit(1);
+			}
+		}
+		  
+		/*
 		 * Before we can use multithreading we must initialize and
 		 * start the service thread.
 		 */
@@ -195,7 +203,7 @@ int main(int argc, char *argv[])
 		printf("Service thread #%d is active. Ready to do I/O\n", i);
 	}
 
-	if (stat(argv[1], &st) < 0) {
+	if (fstat(fd, &st) < 0) {
 		fprintf(stderr, "failed to stat(%s)\n", argv[1]);
 		exit(10);
 	}
@@ -217,8 +225,8 @@ int main(int argc, char *argv[])
         }
         for (i = 0; i < num_threads; i++) {
                 wd[i].nfs = nfs[i % NUM_CONTEXTS];
-		wd[i].src_file = argv[1];
-                wd[i].nfs_file = url->file;
+		wd[i].fd = fd;
+                wd[i].nfsfh = nfsfh;
 		wd[i].offset = i * CHUNK_SIZE;
 		wd[i].len = CHUNK_SIZE;
                 if (pthread_create(&write_threads[i], NULL,
@@ -234,7 +242,13 @@ int main(int argc, char *argv[])
         for (i = 0; i < num_threads; i++) {
                 pthread_join(write_threads[i], NULL);
         }
-        
+
+	/*
+	 * Closing the files
+	 */
+	nfs_close(nfs[0], nfsfh);
+	close(fd);
+
         printf("closing service threads\n");
 	for (i = 0; i < NUM_CONTEXTS; i++) {
 		nfs_mt_service_thread_stop(nfs[i]);
