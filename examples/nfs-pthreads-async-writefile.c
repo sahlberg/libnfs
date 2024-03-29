@@ -45,6 +45,7 @@ WSADATA wsaData;
 #endif
 
 #include <errno.h>
+#include <stdatomic.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
@@ -78,7 +79,7 @@ struct write_data {
 };
 
 struct write_cb_data {
-	int calls_in_flight;
+	atomic_int calls_in_flight;
 	int status;
 };
 
@@ -91,8 +92,7 @@ void write_async_cb(int status, struct nfs_context *nfs,
 		fprintf(stderr, "pwrite failed with \"%s\"\n", (char *)data);
 		status = -EIO;
 	}
-	/* atomic, no need for mutex */
-	write_cb_data->calls_in_flight--;
+	atomic_fetch_sub_explicit(&write_cb_data->calls_in_flight, 1, memory_order_relaxed);
 }
 
 /*
@@ -112,8 +112,7 @@ static void *nfs_write_thread(void *arg)
 		if (count > wd->len) {
 			count = wd->len;
 		}
-		/* atomic, no need for mutex */
-		write_cb_data.calls_in_flight++;
+		atomic_fetch_add_explicit(&write_cb_data.calls_in_flight, 1, memory_order_relaxed);
 		if (nfs_pwrite_async(wd->nfs, wd->nfsfh,
 				     wd->ptr + wd->offset,
 				     count, wd->offset,
