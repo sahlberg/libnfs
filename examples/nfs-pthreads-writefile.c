@@ -113,6 +113,7 @@ static void *nfs_write_thread(void *arg)
 		}
 		if (count == 0) {
 			nfs_close(wd->nfs, nfsfh);
+			free(buf);
 			return NULL;
 		}
 		if (nfs_pwrite(wd->nfs, nfsfh, buf, count, wd->offset) < 0) {
@@ -123,6 +124,7 @@ static void *nfs_write_thread(void *arg)
 		wd->len -= count;
 	}
 	nfs_close(wd->nfs, nfsfh);
+	free(buf);
 	return NULL;
 }
 
@@ -241,5 +243,7 @@ int main(int argc, char *argv[])
 	if (url) {
 		nfs_destroy_url(url);
 	}
+	free(wd);
+	free(write_threads);
 	return 0;
 }
