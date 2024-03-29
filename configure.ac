@@ -171,6 +171,10 @@ AC_CHECK_HEADERS([sys/sysmacros.h])
 dnl Check for poll.h
 AC_CHECK_HEADERS([poll.h])
 
+# check for stdatomic.h
+dnl Check for stdatomic.h
+AC_CHECK_HEADERS([stdatomic.h])
+
 # check for unistd.h
 dnl Check for unistd.h
 AC_CHECK_HEADERS([unistd.h])

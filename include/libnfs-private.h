@@ -47,6 +47,37 @@
 #define IFNAMSIZ 16
 #endif
 
+#ifdef HAVE_MULTITHREADING
+#ifdef HAVE_STDATOMIC_H
+#include <stdatomic.h>
+#define ATOMIC_INC(rpc, x) \
+        atomic_fetch_add_explicit(&x, 1, memory_order_relaxed)
+#define ATOMIC_DEC(rpc, x) \
+        atomic_fetch_sub_explicit(&x, 1, memory_order_relaxed)
+#else /* HAVE_STDATOMIC_H */
+#define ATOMIC_INC(rpc, x)                              \
+        if (rpc->multithreading_enabled) {              \
+                nfs_mt_mutex_lock(&rpc->rpc_mutex);     \
+        }                                               \
+	x++;                                            \
+        if (rpc->multithreading_enabled) {              \
+                nfs_mt_mutex_unlock(&rpc->rpc_mutex);   \
+        }
+#define ATOMIC_DEC(rpc, x)                              \
+        if (rpc->multithreading_enabled) {              \
+                nfs_mt_mutex_lock(&rpc->rpc_mutex);     \
+        }                                               \
+	x--;                                            \
+        if (rpc->multithreading_enabled) {              \
+                nfs_mt_mutex_unlock(&rpc->rpc_mutex);   \
+        }
+#endif /* HAVE_STDATOMIC_H */
+#else /* HAVE_MULTITHREADING */
+/* no multithreading support, no need to protect the increment */
+#define ATOMIC_INC(rpc, x) x++
+#define ATOMIC_DEC(rpc, x) x--
+#endif /* HAVE_MULTITHREADING */
+
 #include "libnfs-multithreading.h"
 #include "libnfs-zdr.h"
 #include "../nfs/libnfs-raw-nfs.h"
@@ -435,7 +466,11 @@ struct nfs_cb_data {
        int error;
        int cancel;
        int oom;
+#ifdef HAVE_STDATOMIC_H
+       atomic_int num_calls;
+#else
        int num_calls;
+#endif
        size_t count, org_count;
        uint64_t offset, max_offset, org_offset;
        char *buffer;
