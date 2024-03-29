@@ -277,7 +277,6 @@ int main(int argc, char *argv[])
 finished:
 #ifdef HAVE_MULTITHREADING
 	if (mt_started) {
-		printf("closing service thread\n");
 		nfs_mt_service_thread_stop(nfs);
 	}
 #endif
