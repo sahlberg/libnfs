@@ -106,6 +106,7 @@ static void *nfs_write_thread(void *arg)
 	struct timespec ts;
 	
 	write_cb_data.status = 0;
+	write_cb_data.calls_in_flight = 0;
 	while (wd->len) {
 		count = 65536;
 		if (count > wd->len) {

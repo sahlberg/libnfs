@@ -475,7 +475,7 @@ rpc_read_from_socket(struct rpc_context *rpc)
 		return 0;
 	}
 
-	do {
+        while (1){
                 if (rpc->inpos == 0) {
                         switch (rpc->state) {
                         case READ_RM:
@@ -530,6 +530,10 @@ rpc_read_from_socket(struct rpc_context *rpc)
                 count = rpc->pdu_size - rpc->inpos;
 		count = recv(rpc->fd, rpc->buf, count, MSG_DONTWAIT);
 		if (count < 0) {
+                        /*
+                         * No more data to read so we can break out of
+                         * the loop and return.
+                         */
 			if (errno == EINTR || errno == EAGAIN) {
 				break;
 			}
@@ -657,7 +661,7 @@ rpc_read_from_socket(struct rpc_context *rpc)
                                 break;
                         }
                 }
-	} while (rpc->is_nonblocking && rpc->waitpdu_len > 0);
+	}
 
 	return 0;
 }
