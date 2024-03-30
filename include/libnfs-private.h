@@ -57,19 +57,19 @@
 #else /* HAVE_STDATOMIC_H */
 #define ATOMIC_INC(rpc, x)                              \
         if (rpc->multithreading_enabled) {              \
-                nfs_mt_mutex_lock(&rpc->rpc_mutex);     \
+                nfs_mt_mutex_lock(&rpc->atomic_int_mutex);     \
         }                                               \
 	x++;                                            \
         if (rpc->multithreading_enabled) {              \
-                nfs_mt_mutex_unlock(&rpc->rpc_mutex);   \
+                nfs_mt_mutex_unlock(&rpc->atomic_int_mutex);   \
         }
 #define ATOMIC_DEC(rpc, x)                              \
         if (rpc->multithreading_enabled) {              \
-                nfs_mt_mutex_lock(&rpc->rpc_mutex);     \
+                nfs_mt_mutex_lock(&rpc->atomic_int_mutex);     \
         }                                               \
 	x--;                                            \
         if (rpc->multithreading_enabled) {              \
-                nfs_mt_mutex_unlock(&rpc->rpc_mutex);   \
+                nfs_mt_mutex_unlock(&rpc->atomic_int_mutex);   \
         }
 #endif /* HAVE_STDATOMIC_H */
 #else /* HAVE_MULTITHREADING */
@@ -198,6 +198,7 @@ struct rpc_context {
 #ifdef HAVE_MULTITHREADING
         int multithreading_enabled;
         libnfs_mutex_t rpc_mutex;
+        libnfs_mutex_t atomic_int_mutex;
 #endif /* HAVE_MULTITHREADING */
 
 	uint32_t inpos;
