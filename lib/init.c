@@ -131,7 +131,9 @@ struct rpc_context *rpc_init_context(void)
 
 #ifdef HAVE_MULTITHREADING
 	nfs_mt_mutex_init(&rpc->rpc_mutex);
+#ifdef HAVE_STDATOMIC_H
 	nfs_mt_mutex_init(&rpc->atomic_int_mutex);
+#endif
 #endif /* HAVE_MULTITHREADING */
 
  	rpc->auth = authunix_create_default();
@@ -185,7 +187,9 @@ struct rpc_context *rpc_init_server_context(int s)
 
 #ifdef HAVE_MULTITHREADING
         nfs_mt_mutex_init(&rpc->rpc_mutex);
+#ifdef HAVE_STDATOMIC_H
 	nfs_mt_mutex_init(&rpc->atomic_int_mutex);
+#endif
 #endif /* HAVE_MULTITHREADING */
 	return rpc;
 }
@@ -449,7 +453,9 @@ void rpc_destroy_context(struct rpc_context *rpc)
 	rpc->magic = 0;
 #ifdef HAVE_MULTITHREADING
         nfs_mt_mutex_destroy(&rpc->rpc_mutex);
+#ifdef HAVE_STDATOMIC_H
         nfs_mt_mutex_destroy(&rpc->atomic_int_mutex);
+#endif
 #endif /* HAVE_MULTITHREADING */
 #ifdef HAVE_LIBKRB5
         if (rpc->auth_data) {

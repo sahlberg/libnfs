@@ -198,7 +198,9 @@ struct rpc_context {
 #ifdef HAVE_MULTITHREADING
         int multithreading_enabled;
         libnfs_mutex_t rpc_mutex;
+#ifdef HAVE_STDATOMIC_H
         libnfs_mutex_t atomic_int_mutex;
+#endif /* HAVE_STDATOMIC_H */
 #endif /* HAVE_MULTITHREADING */
 
 	uint32_t inpos;
