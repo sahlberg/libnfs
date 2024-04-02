@@ -361,7 +361,7 @@ struct rpc_pdu *rpc_nfs3_write_task(struct rpc_context *rpc, rpc_cb cb,
         /* We may need to pad this to 4 byte boundary */
         if (args->data.data_len & 0x03) {
                 if (rpc_add_iovector(rpc, &pdu->out, (char *)&zero_padding,
-                                     4 - args->data.data_len & 0x03,
+                                     4 - (args->data.data_len & 0x03),
                                      NULL) < 0) {
                         rpc_free_pdu(rpc, pdu);
                         return NULL;
