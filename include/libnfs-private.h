@@ -469,7 +469,7 @@ struct nfs_cb_data {
        int error;
        int cancel;
        int oom;
-#ifdef HAVE_STDATOMIC_H
+#if defined(HAVE_MULTITHREADING) && defined(HAVE_STDATOMIC_H)
        atomic_int num_calls;
 #else
        int num_calls;
