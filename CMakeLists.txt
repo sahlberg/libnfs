@@ -49,7 +49,7 @@ if(WIN32 AND BUILD_SHARED_LIBS)
   add_definitions(-Dlibnfs_EXPORTS)
 endif()
 
-if(CMAKE_SYSTEM_NAME STREQUAL Windows)
+if(CMAKE_SYSTEM_NAME STREQUAL Windows OR CMAKE_SYSTEM_NAME STREQUAL WindowsStore)
   add_definitions("-D_U_=" -D_CRT_SECURE_NO_WARNINGS -D_CRT_NONSTDC_NO_DEPRECATE)
   list(APPEND SYSTEM_LIBRARIES ws2_32)
   add_subdirectory(win32)
