@@ -521,6 +521,10 @@ rpc_read_from_socket(struct rpc_context *rpc)
                                 rpc->pdu_size = rpc->pdu->read_count;
                                 break;
                         case READ_PADDING:
+                                /* rm_xid[0] is clamped to be the remaining
+                                 * amount of data after we have processed
+                                 * all payload and all iovecs
+                                 */
                                 rpc->pdu_size = rpc->rm_xid[0];
                                 rpc->buf = rpc->inbuf;
                                 break;
@@ -528,6 +532,16 @@ rpc_read_from_socket(struct rpc_context *rpc)
                 }
 
                 count = rpc->pdu_size - rpc->inpos;
+                /*
+                 * When reading padding, clamp this so we do not overwrite
+                 * rpc->inbuf/rpc->inbuf_size which we use as the garbage buffer
+                 */
+                if (rpc->state == READ_PADDING) {
+                        rpc->buf = rpc->inbuf;
+                        if (count > rpc->inbuf_size) {
+                                count = rpc->inbuf_size;
+                        }
+                }
 		count = recv(rpc->fd, rpc->buf, count, MSG_DONTWAIT);
 		if (count < 0) {
                         /*
