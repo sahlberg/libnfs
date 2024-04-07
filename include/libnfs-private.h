@@ -275,7 +275,10 @@ struct rpc_pdu {
         uint32_t read_count;
         size_t inpos;
         struct rpc_iovec in;
-
+        uint32_t requested_read_count; /* The amount requested by the
+                                        * application.
+                                        * Used to clamp long reads.
+                                        */
 	rpc_cb cb;
 	void *private_data;
 

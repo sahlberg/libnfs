@@ -2784,6 +2784,7 @@ nfs4_pread_async_internal(struct nfs_context *nfs, struct nfsfh *nfsfh,
         nfs_argop4 op[2];
         struct nfs4_cb_data *data;
         int i;
+        struct rpc_pdu *pdu;
 
         data = calloc(1, sizeof(*data));
         if (data == NULL) {
@@ -2810,12 +2811,14 @@ nfs4_pread_async_internal(struct nfs_context *nfs, struct nfsfh *nfsfh,
         args.argarray.argarray_len = i;
         args.argarray.argarray_val = op;
 
-        if (rpc_nfs4_read_task(nfs->rpc, nfs4_pread_cb, buf, count, &args,
-                               data) == NULL) {
+        pdu = rpc_nfs4_read_task(nfs->rpc, nfs4_pread_cb, buf, count, &args,
+                                 data);
+        if (pdu == NULL) {
                 free_nfs4_cb_data(data);
                 return -1;
         }
 
+        pdu->requested_read_count = count;
         return 0;
 }
 
