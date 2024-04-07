@@ -635,6 +635,9 @@ rpc_read_from_socket(struct rpc_context *rpc)
                                                 return -1;
                                         pos = zdr_getpos(&rpc->pdu->zdr);
                                         count = rpc->inpos - pos;
+                                        if (rpc->pdu->read_count > rpc->pdu->requested_read_count) {
+                                                rpc->pdu->read_count = rpc->pdu->requested_read_count;
+                                        }
                                         if (count > rpc->pdu->read_count) {
                                                 count = rpc->pdu->read_count;
                                         }

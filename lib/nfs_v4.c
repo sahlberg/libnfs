@@ -2752,7 +2752,7 @@ nfs4_pread_cb(struct rpc_context *rpc, int status, void *command_data,
         COMPOUND4res *res = command_data;
         READ4resok *rres = NULL;
         struct nfsfh *nfsfh;
-        int i;
+        int i, count;
 
         assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
@@ -2771,7 +2771,11 @@ nfs4_pread_cb(struct rpc_context *rpc, int status, void *command_data,
                 nfsfh->offset = data->rw_data.offset + rres->data.data_len;
         }
 
-        data->cb(rres->data.data_len, nfs, NULL, data->private_data);
+        count = rres->data.data_len;
+        if (count > rpc->pdu->requested_read_count) {
+                count = rpc->pdu->requested_read_count;
+        }
+        data->cb(count, nfs, NULL, data->private_data);
         free_nfs4_cb_data(data);
 }
 

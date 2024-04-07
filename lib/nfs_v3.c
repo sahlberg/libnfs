@@ -4479,6 +4479,9 @@ nfs3_pread_cb(struct rpc_context *rpc, int status, void *command_data,
         if (data->update_pos) {
                 data->nfsfh->offset = data->offset + count;
         }
+        if (count > rpc->pdu->requested_read_count) {
+                count = rpc->pdu->requested_read_count;
+        }
 	data->cb(count, nfs, NULL, data->private_data);
 	free_nfs_cb_data(data);
 	return;
