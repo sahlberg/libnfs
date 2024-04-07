@@ -628,6 +628,8 @@ rpc_read_from_socket(struct rpc_context *rpc)
                                 }
                                 /* We do not have rpc->pdu for server context */
                                 if (rpc->pdu && rpc->pdu->free_zdr) {
+                                        int tmp_count;
+
                                         /* We have zero-copy read */
                                         if (!zdr_uint32_t(&rpc->pdu->zdr, &rpc->pdu->read_count))
                                                 return -1;
@@ -640,10 +642,14 @@ rpc_read_from_socket(struct rpc_context *rpc)
                                                 /* we got a short read */
                                                 rpc->pdu->in.len = rpc->pdu->read_count;
                                         }
+                                        tmp_count = count;
                                         if (rpc->pdu->in.len <= count) {
-                                                memcpy(rpc->pdu->in.buf, &rpc->inbuf[pos], rpc->pdu->in.len);
+                                                tmp_count = count;
+                                        }
+                                        memcpy(rpc->pdu->in.buf, &rpc->inbuf[pos], tmp_count);
+                                        if (rpc->pdu->in.len <= count) {
+                                                // handle padding?
                                         } else {
-                                                memcpy(rpc->pdu->in.buf, &rpc->inbuf[pos], count);
                                                 rpc->pdu->inpos = count;
                                                 rpc->pdu->read_count -= count;
                                                 rpc->state = READ_IOVEC;
