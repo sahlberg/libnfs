@@ -647,7 +647,7 @@ rpc_read_from_socket(struct rpc_context *rpc)
                                         }
                                         tmp_count = count;
                                         if (rpc->pdu->in.len <= count) {
-                                                tmp_count = count;
+                                                tmp_count = rpc->pdu->in.len;
                                         }
                                         memcpy(rpc->pdu->in.buf, &rpc->inbuf[pos], tmp_count);
                                         if (rpc->pdu->in.len <= count) {
