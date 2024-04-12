@@ -23,16 +23,16 @@
 #include "config.h"  /* HAVE_SOCKADDR_STORAGE ? */
 #endif
 
+#if !defined(WIN32) && !defined(PS2_EE)
+#include <sys/socket.h>  /* struct sockaddr_storage */
+#endif
+
 #ifdef HAVE_NET_IF_H
 #include <net/if.h>
 #endif
 
 #ifdef HAVE_LIBKRB5
 #include "lib/krb5-wrapper.h"
-#endif
-
-#if !defined(WIN32) && !defined(PS2_EE)
-#include <sys/socket.h>  /* struct sockaddr_storage */
 #endif
 
 #if defined(WIN32) && !defined(IFNAMSIZ)
