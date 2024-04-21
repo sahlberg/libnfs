@@ -218,7 +218,7 @@ int main(int argc, char *argv[])
 			if (nfs_open(nfs[0], url->file, O_WRONLY|O_CREAT|O_TRUNC, &nfsfh) < 0) {
 				fprintf(stderr, "Failed to open nfs file %s. %s\n",
 					url->file,
-					nfs_get_error(wd->nfs));
+					nfs_get_error(nfs[0]));
 				exit(1);
 			}
 		}
