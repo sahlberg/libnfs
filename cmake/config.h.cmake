@@ -108,6 +108,9 @@
 /* Define to 1 if you have the <utime.h> header file. */
 #cmakedefine HAVE_UTIME_H
 
+/* Define to 1 if you have the <signal.h> header file. */
+#cmakedefine HAVE_SIGNAL_H
+
 /* Define to 1 if you have the <sys/utsname.h> header file. */
 #cmakedefine HAVE_SYS_UTSNAME_H
 

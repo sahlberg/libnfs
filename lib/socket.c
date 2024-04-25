@@ -1023,6 +1023,7 @@ rpc_connect_sockaddr_async(struct rpc_context *rpc)
 	if (rpc->old_fd) {
 #if !defined(WIN32) && !defined(PS3_PPU) && !defined(PS2_EE)
 		if (dup2(rpc->fd, rpc->old_fd) == -1) {
+			rpc_set_error(rpc, "dup2() failed: %s", strerror(errno));
 			return -1;
 		}
 		close(rpc->fd);

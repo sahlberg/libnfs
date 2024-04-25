@@ -32,6 +32,7 @@ check_include_file("sys/uio.h" HAVE_SYS_UIO_H)
 check_include_file("sys/vfs.h" HAVE_SYS_VFS_H)
 check_include_file("unistd.h" HAVE_UNISTD_H)
 check_include_file("utime.h" HAVE_UTIME_H)
+check_include_file("signal.h" HAVE_SIGNAL_H)
 check_include_file("sys/utsname.h" HAVE_SYS_UTSNAME_H)
 
 include(CheckStructHasMember)

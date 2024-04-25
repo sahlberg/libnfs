@@ -62,11 +62,16 @@
 #include <sys/time.h>
 #endif
 
+#ifdef HAVE_SIGNAL_H
+#include <signal.h>
+#endif
+
 #include <errno.h>
 #include <stdarg.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+
 #include "slist.h"
 #include "libnfs.h"
 #include "libnfs-raw.h"
@@ -551,6 +556,7 @@ nfs_init_context(void)
         nfs->nfsi = nfsi;
 	nfs->rpc = rpc_init_context();
 	if (nfs->rpc == NULL) {
+		free(nfs->nfsi);
 		free(nfs);
 		return NULL;
 	}
@@ -587,6 +593,17 @@ nfs_init_context(void)
         nfs_mt_mutex_init(&nfs->nfsi->nfs4_open_call_mutex);
 #endif /* HAVE_MULTITHREADING */
 
+#ifdef HAVE_SIGNAL_H
+	/*
+	 * Ignore SIGPIPE when writing to sockets where peer decides to close
+	 * the door on us, rather write()/dup2() should fail with EPIPE which
+	 * we can gracefully handle.
+	 */
+	if (signal(SIGPIPE, SIG_IGN) != 0) {
+		nfs_destroy_context(nfs);
+		return NULL;
+	}
+#endif
 	return nfs;
 }
 
