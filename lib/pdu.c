@@ -156,6 +156,18 @@ struct rpc_pdu *rpc_allocate_pdu2(struct rpc_context *rpc, int program, int vers
         uint32_t val;
 #endif
 
+#ifdef HAVE_TLS
+	/*
+	 * Caller overloads procedure to convey they want to send AUTH_TLS instead of
+	 * AUTH_NONE for the NULL RPC.
+	 */
+	const bool_t send_auth_tls = !!(procedure & 0x80000000U);
+	procedure = (procedure & 0x7FFFFFFFU);
+
+	/* AUTH_TLS can only be sent for NFS NULL RPC */
+	assert(!send_auth_tls || (program == NFS_PROGRAM && procedure == 0));
+#endif /* HAVE_TLS */
+
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
 	/* Since we already know how much buffer we need for the decoding
@@ -201,8 +213,31 @@ struct rpc_pdu *rpc_allocate_pdu2(struct rpc_context *rpc, int program, int vers
 	msg.body.cbody.prog    = program;
 	msg.body.cbody.vers    = version;
 	msg.body.cbody.proc    = procedure;
-	msg.body.cbody.cred    = rpc->auth->ah_cred;
+
+	/* For NULL RPC RFC recommends to use NULL authentication */
+	if (procedure == 0) {
+		msg.body.cbody.cred.oa_flavor    = AUTH_NONE;
+		msg.body.cbody.cred.oa_length    = 0;
+		msg.body.cbody.cred.oa_base      = NULL;
+	} else {
+		msg.body.cbody.cred    = rpc->auth->ah_cred;
+	}
+
 	msg.body.cbody.verf    = rpc->auth->ah_verf;
+
+#ifdef HAVE_TLS
+	/* Should not be already set */
+	assert(pdu->expect_starttls == FALSE);
+
+	if (send_auth_tls) {
+		msg.body.cbody.cred.oa_flavor    = AUTH_TLS;
+		msg.body.cbody.cred.oa_length    = 0;
+		msg.body.cbody.cred.oa_base      = NULL;
+
+		pdu->expect_starttls 		 = TRUE;
+        }
+#endif /* HAVE_TLS */
+
 #ifdef HAVE_LIBKRB5
 #ifdef HAVE_MULTITHREADING
         if (rpc->multithreading_enabled) {
@@ -262,7 +297,7 @@ struct rpc_pdu *rpc_allocate_pdu2(struct rpc_context *rpc, int program, int vers
 			      rpc_get_error(rpc));
                 goto failed;
 	}
-        
+
 #ifdef HAVE_LIBKRB5
         switch (rpc->sec) {
         case RPC_SEC_UNDEFINED:
@@ -368,7 +403,7 @@ int rpc_queue_pdu(struct rpc_context *rpc, struct rpc_pdu *pdu)
                         return -1;
                 }
                 zdr_setpos(&pdu->zdr, pos);
-                        
+
                 /* checksum */
                 message_buffer.length = zdr_getpos(&pdu->zdr) - pdu->start_of_payload - 4;
                 message_buffer.value = zdr_getptr(&pdu->zdr) + pdu->start_of_payload + 4;
@@ -465,9 +500,35 @@ int rpc_queue_pdu(struct rpc_context *rpc, struct rpc_pdu *pdu)
         recordmarker = htonl(size | 0x80000000);
 	memcpy(pdu->out.iov[0].buf, &recordmarker, 4);
 
-	/* for udp we dont queue, we just send it straight away */
-	if (rpc->is_udp != 0) {
+	/*
+	 * For udp we dont queue, we just send it straight away.
+	 *
+	 * Another case where we send straight away is the AUTH_TLS NULL RPC.
+	 * This is particularly important for the reconnect case where we want to
+	 * ensure TLS handshake completes successfully before we can send any of
+	 * the queued RPCs waiting. If we do not send here this AUTH_TLS NULL
+	 * RPC will need to be queued before all other waiting RPCs and even then
+	 * we need to be careful that we don't send any of those RPCs till the
+	 * TLS handshake is completed and the connection is secure.
+	 * Sending inline here makes the handling simpler in rpc_service().
+	 */
+	if (rpc->is_udp != 0
+#ifdef HAVE_TLS
+	    || pdu->expect_starttls
+#endif
+	) {
 		unsigned int hash;
+
+#ifdef HAVE_TLS
+		if (pdu->expect_starttls) {
+			/* Currently we don't support RPC-with-TLS over UDP */
+			assert(!rpc->is_udp);
+			assert(!rpc->is_broadcast);
+
+			RPC_LOG(rpc, 2, "Sending AUTH_TLS NULL RPC (%d bytes)",
+					pdu->out.total_size);
+		}
+#endif
 
                 if (rpc->is_broadcast) {
                         if (sendto(rpc->fd, pdu->zdr.buf, size, MSG_DONTWAIT,
@@ -480,12 +541,15 @@ int rpc_queue_pdu(struct rpc_context *rpc, struct rpc_pdu *pdu)
                 } else {
                         struct iovec iov[RPC_MAX_VECTORS];
                         int niov = pdu->out.niov;
+                        /* No record marker for UDP */
+                        struct iovec *iovp = (rpc->is_udp ? &iov[1] : &iov[0]);
+                        const int iovn = (rpc->is_udp ? niov - 1 : niov);
 
                         for (i = 0; i < niov; i++) {
                                 iov[i].iov_base = pdu->out.iov[i].buf;
                                 iov[i].iov_len = pdu->out.iov[i].len;
                         }
-                        if (writev(rpc->fd, &iov[1], niov - 1) < 0) {
+                        if (writev(rpc->fd, iovp, iovn) < 0) {
                                 rpc_set_error(rpc, "Sendto failed with errno %s", strerror(errno));
                                 rpc_free_pdu(rpc, pdu);
                                 return -1;
@@ -523,7 +587,7 @@ int rpc_queue_pdu(struct rpc_context *rpc, struct rpc_pdu *pdu)
         if (rpc->outqueue.head == pdu) {
                 rpc_write_to_socket(rpc);
         }
-        
+
 	return 0;
 }
 
@@ -571,6 +635,36 @@ static int rpc_process_reply(struct rpc_context *rpc, ZDR *zdr)
                         rpc->pdu->free_pdu = 1;
                         break;
                 }
+
+#ifdef HAVE_TLS
+		/*
+		 * If we are expecting STARTTLS that means we have sent AUTH_TLS
+		 * NULL RPC which means user has selected xprtsec=[tls,mtls], in
+		 * which case the server MUST support TLS else we must terminate
+		 * the RPC session.
+		 */
+		if (pdu->expect_starttls) {
+			const char *const starttls_str = "STARTTLS";
+			const int starttls_len = 8;
+
+			if (msg.body.rbody.reply.areply.verf.oa_flavor != AUTH_NONE) {
+				RPC_LOG(rpc, 1, "Server sent bad verifier flavor (%d) in response "
+					"to AUTH_TLS NULL RPC",
+					msg.body.rbody.reply.areply.verf.oa_flavor);
+				pdu->cb(rpc, RPC_STATUS_ERROR,
+					"Server sent bad verifier flavor", pdu->private_data);
+				break;
+			} else if (msg.body.rbody.reply.areply.verf.oa_length != starttls_len ||
+				   memcmp(msg.body.rbody.reply.areply.verf.oa_base,
+					  starttls_str, starttls_len)) {
+				RPC_LOG(rpc, 1, "Server does not support TLS");
+				pdu->cb(rpc, RPC_STATUS_ERROR,
+					"Server does not support TLS", pdu->private_data);
+				break;
+			}
+		}
+#endif /* HAVE_TLS */
+
 #ifdef HAVE_LIBKRB5
                 if (msg.body.rbody.reply.areply.verf.oa_flavor == AUTH_GSS) {
                         uint32_t maj, min;

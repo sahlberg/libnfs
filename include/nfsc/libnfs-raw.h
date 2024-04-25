@@ -56,7 +56,7 @@ EXTERN void rpc_destroy_context(struct rpc_context *rpc);
  * before you connect to the remote service.
  */
 EXTERN int rpc_set_hash_size(struct rpc_context *rpc, int hashes);
-        
+
 EXTERN void rpc_set_auth(struct rpc_context *rpc, struct AUTH *auth);
 
 /*
@@ -83,7 +83,7 @@ EXTERN void rpc_set_auth(struct rpc_context *rpc, struct AUTH *auth);
  * Thus, if using rpc timeouts, you will need to ensure that rpc_service()
  * is invoked on a regular basis so that the timeout processing can take place.
  * The easiest way to do this is to call rpc_service() once every 100ms from
- * your event system and passing revents as 0. 
+ * your event system and passing revents as 0.
  */
 EXTERN int rpc_get_fd(struct rpc_context *rpc);
 EXTERN int rpc_which_events(struct rpc_context *rpc);
@@ -318,7 +318,7 @@ EXTERN int rpc_disconnect(struct rpc_context *rpc, const char *error);
  */
 struct rpc_pdu;
 int rpc_cancel_pdu(struct rpc_context *rpc, struct rpc_pdu *pdu);
-        
+
 /*
  * PORTMAP v2 FUNCTIONS
  */
@@ -2315,7 +2315,7 @@ rpc_nsm1_unmonall_task(struct rpc_context *rpc, rpc_cb cb,
 EXTERN struct rpc_pdu *
 rpc_nsm1_simucrash_task(struct rpc_context *rpc, rpc_cb cb,
                          void *private_data);
-        
+
 /*
  * Call NSM/NOTIFY
  *
@@ -2464,7 +2464,7 @@ rpc_nfs4_write_task(struct rpc_context *rpc, rpc_cb cb,
                      const void *buf, size_t count,
                      struct COMPOUND4args *args,
                      void *private_data);
-        
+
 /*
  * Call <generic>/NULL
  * Function returns
@@ -2484,6 +2484,32 @@ rpc_nfs4_write_task(struct rpc_context *rpc, rpc_cb cb,
 EXTERN struct rpc_pdu *
 rpc_null_task(struct rpc_context *rpc, int program, int version,
                rpc_cb cb, void *private_data);
+
+#ifdef HAVE_TLS
+/*
+ * Call <generic>/NULL RPC with AUTH_TLS in order to probe RPC-with-TLS
+ * support from the server, and if server supports RPC-with-TLS, initiate a TLS
+ * handshake. Callback will be called after TLS handshake completes (success or
+ * failure) and not just after we get a response for this NULL RPC.
+ * Function returns
+ * pdu  : The command was queued successfully. The callback will be invoked once
+ *        the command completes.
+ * NULL : An error occured when trying to queue the command.
+ *        The callback will not be invoked.
+ *
+ * When the callback is invoked, status indicates the result:
+ * RPC_STATUS_SUCCESS : We got a successful response from the server.
+ *                      data is NULL.
+ * RPC_STATUS_ERROR   : The command failed with an error, either server doesn't
+ *                      support TLS or the TLS handshake failed.
+ *                      data is the error string.
+ * RPC_STATUS_CANCEL  : The command was cancelled.
+ *                      data is NULL.
+ */
+EXTERN struct rpc_pdu *
+rpc_null_task_authtls(struct rpc_context *rpc, int nfs_version, rpc_cb cb,
+		      void *private_data);
+#endif
 
 #ifdef __cplusplus
 }

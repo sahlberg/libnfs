@@ -169,6 +169,19 @@ nfs_set_security(struct nfs_context *nfs, enum rpc_sec sec)
 #endif
 }
 
+#ifdef HAVE_TLS
+void
+nfs_set_xprtsecurity(struct nfs_context *nfs, enum rpc_xprtsec xprtsec)
+{
+	/* Ensure only permissible values are being set */
+	assert(xprtsec == RPC_XPRTSEC_NONE ||
+	       xprtsec == RPC_XPRTSEC_TLS ||
+	       xprtsec == RPC_XPRTSEC_MTLS);
+
+	nfs->rpc->wanted_xprtsec = xprtsec;
+}
+#endif /* HAVE_TLS */
+
 int
 nfs_get_fd(struct nfs_context *nfs)
 {
@@ -207,7 +220,7 @@ nfs_get_error(struct nfs_context *nfs)
                         }
                 }
         }
-#endif        
+#endif
 	return nfs->error_string ? nfs->error_string : "";
 };
 
@@ -259,6 +272,19 @@ nfs_set_context_args(struct nfs_context *nfs, const char *arg, const char *val)
 		} else {
 			nfs_set_readdir_max_buffer_size(nfs, atoi(val), atoi(val));
 		}
+#ifdef HAVE_TLS
+	} else if (nfs->rpc && !strcmp(arg, "xprtsec")) {
+		if (!strcmp(val, "none")) {
+			nfs_set_xprtsecurity(nfs, RPC_XPRTSEC_NONE);
+		} else if (!strcmp(val, "tls")) {
+			nfs_set_xprtsecurity(nfs, RPC_XPRTSEC_TLS);
+		} else  if (!strcmp(val, "mtls")) {
+			nfs_set_xprtsecurity(nfs, RPC_XPRTSEC_MTLS);
+		} else {
+			nfs_set_error(nfs, "Unknown/unsupported xprtsec type : %s", val);
+			return -1;
+		}
+#endif /* HAVE_TLS */
 #ifdef HAVE_LIBKRB5
 	} else if (nfs->rpc && !strcmp(arg, "sec")) {
                 /*
@@ -346,7 +372,7 @@ nfs_parse_url(struct nfs_context *nfs, const char *url, int dir, int incomplete)
                 strcpy(strp + 1, strp + 3);
                 strp++;
         }
-       
+
 	if (urls->server[0] == '/' || urls->server[0] == '\0' ||
 		urls->server[0] == '?') {
 		if (incomplete) {
@@ -433,7 +459,8 @@ flags:
 		if (strp2) {
 			*strp2 = 0;
 			strp2++;
-			nfs_set_context_args(nfs, strp, strp2);
+			if (nfs_set_context_args(nfs, strp, strp2) != 0)
+				return NULL;
 		}
 	}
 
@@ -447,6 +474,21 @@ flags:
 		free(urls->server);
 		urls->server = NULL;
 	}
+
+#ifdef HAVE_TLS
+	/*
+	 * Call this in the end after all options are processed, as it uses
+	 * rpc->debug.
+	 */
+	if (nfs->rpc->wanted_xprtsec != RPC_XPRTSEC_NONE) {
+		/* tls_global_init() MUST succeed for us to use TLS security */
+		if (tls_global_init(nfs->rpc) != 0) {
+			nfs_set_error(nfs, "tls_global_init() failed!");
+			nfs_destroy_url(urls);
+			return NULL;
+		}
+	}
+#endif
 
 	return urls;
 }
@@ -498,7 +540,7 @@ nfs_init_context(void)
 		return NULL;
 	}
 	memset(nfsi, 0, sizeof(struct nfs_context_internal));
-        
+
 	nfs = malloc(sizeof(struct nfs_context));
 	if (nfs == NULL) {
                 free(nfsi);
@@ -544,6 +586,7 @@ nfs_init_context(void)
         nfs_mt_mutex_init(&nfs->nfsi->nfs4_open_counter_mutex);
         nfs_mt_mutex_init(&nfs->nfsi->nfs4_open_call_mutex);
 #endif /* HAVE_MULTITHREADING */
+
 	return nfs;
 }
 
@@ -576,7 +619,7 @@ nfs_destroy_context(struct nfs_context *nfs)
 
         free(nfs->error_string);
         nfs->error_string = NULL;
-        
+
         free(nfs->nfsi->server);
         free(nfs->nfsi->export);
         free(nfs->nfsi->cwd);
@@ -629,7 +672,7 @@ rpc_null_task_gss(struct rpc_context *rpc, int program, int version,
                   rpc_cb cb, void *private_data)
 {
 	struct rpc_pdu *pdu;
-        
+
 	pdu = rpc_allocate_pdu(rpc, program, version, 0, cb, private_data,
                                (zdrproc_t)zdr_rpc_gss_init_res, sizeof(struct rpc_gss_init_res));
 	if (pdu == NULL) {
@@ -667,11 +710,72 @@ rpc_connect_program_6_cb(struct rpc_context *rpc, int status,
 		free_rpc_cb_data(data);
 		return;
 	}
-        
+
 	data->cb(rpc, status, NULL, data->private_data);
 	free_rpc_cb_data(data);
 }
 #endif /* HAVE_LIBKRB5 */
+
+#ifdef HAVE_TLS
+void free_tls_cb_data(struct tls_cb_data *data)
+{
+	free(data);
+}
+
+/*
+ * Callback function called when we get a response for an AUTH_TLS NULL RPC
+ * that we sent to the server.
+ * On a successful response confirming server support for TLS, this will
+ * initiate an async TLS handshake process.
+ */
+static void
+rpc_connect_program_4_1_cb(struct rpc_context *rpc, int status,
+			   void *command_data, void *private_data)
+{
+	struct tls_cb_data *data = private_data;
+
+	assert(rpc->magic == RPC_CONTEXT_MAGIC);
+
+	RPC_LOG(rpc, 2, "Got AUTH_TLS response, status=%d", status);
+
+	if (status != RPC_STATUS_SUCCESS) {
+		data->cb(rpc, status, command_data, data->private_data);
+		free_tls_cb_data(data);
+		return;
+	}
+
+	/*
+	 * Ok, server supports RPC-with-TLS, start handshake.
+	 */
+	rpc->tls_context.data = *data;
+	free_tls_cb_data(data);
+	data = &rpc->tls_context.data;
+
+	rpc->tls_context.state = do_tls_handshake(rpc);
+
+	switch (rpc->tls_context.state) {
+		case TLS_HANDSHAKE_IN_PROGRESS:
+			/*
+			 * We will continue this asynchronously in rpc_service(), as we
+			 * hear from the peer.
+			 */
+			return;
+		case TLS_HANDSHAKE_COMPLETED:
+			RPC_LOG(rpc, 2, "do_tls_handshake: TLS handshake completed "
+					"synchronously on fd %d", rpc->fd);
+			data->cb(rpc, RPC_STATUS_SUCCESS, NULL, data->private_data);
+			break;
+		case TLS_HANDSHAKE_FAILED:
+			RPC_LOG(rpc, 2, "do_tls_handshake: Failed to start TLS handshake, or "
+					"TLS handshake failed synchronously on fd %d", rpc->fd);
+			data->cb(rpc, RPC_STATUS_ERROR, rpc_get_error(rpc), data->private_data);
+			break;
+		default:
+			/* Should not return any other status */
+			assert(0);
+	}
+}
+#endif /* HAVE_TLS */
 
 static void
 rpc_connect_program_5_cb(struct rpc_context *rpc, int status,
@@ -750,6 +854,27 @@ rpc_connect_program_4_cb(struct rpc_context *rpc, int status,
 		return;
 	}
 
+#ifdef HAVE_TLS
+	/*
+	 * Connected to RPC endpoint, for NFS connections see if we need to secure them.
+	 * If yes, we query the server TLS support by sending a NULL RPC with auth flavor
+	 * AUTH_TLS and if server supports RPC-with-TLS we initiate the TLS handshake.
+	 */
+	rpc->use_tls = (data->program == NFS_PROGRAM) &&
+				(rpc->wanted_xprtsec == RPC_XPRTSEC_TLS ||
+				 rpc->wanted_xprtsec == RPC_XPRTSEC_MTLS);
+	if (rpc->use_tls) {
+		/* We should not use TLS for anything other than NFS */
+		assert(data->program == NFS_PROGRAM);
+
+		if (rpc_null_task_authtls(rpc, data->version,
+					  rpc_connect_program_5_cb, data) == NULL) {
+			data->cb(rpc, RPC_STATUS_ERROR, command_data, data->private_data);
+			free_rpc_cb_data(data);
+			return;
+		}
+	} else
+#endif
         if (rpc_null_task(rpc, data->program, data->version,
                           rpc_connect_program_5_cb, data) == NULL) {
                 data->cb(rpc, RPC_STATUS_ERROR, command_data, data->private_data);
@@ -1993,6 +2118,9 @@ nfs_set_version(struct nfs_context *nfs, int version) {
 	switch (version) {
 	case NFS_V3:
 	case NFS_V4:
+#ifdef HAVE_TLS
+		nfs->rpc->nfs_version = version;
+#endif
 		nfs->nfsi->version = version;
 		nfs->nfsi->default_version = 0;
 		break;
@@ -2238,3 +2366,59 @@ rpc_null_task(struct rpc_context *rpc, int program, int version, rpc_cb cb,
 
 	return pdu;
 }
+
+#ifdef HAVE_TLS
+/*
+ * Call this in place of rpc_null_task() if user wants TLS security for the RPC
+ * connection. Since we only ever send AUTH_TLS NULL RPC for NFS_PROGRAM it does
+ * not need the program parameter.
+ * Callback 'cb' is called not after we get the reply for this AUTH_TLS NULL RPC,
+ * but after the TLS handshake completes (success or failure).
+ */
+struct rpc_pdu *
+rpc_null_task_authtls(struct rpc_context *rpc, int nfs_version, rpc_cb cb,
+		      void *private_data)
+{
+	struct rpc_pdu *pdu;
+	struct tls_cb_data *data;
+
+	/* Must be called only for secure connections to NFS_PROGRAM version 3 or 4 */
+	assert(rpc->use_tls);
+	assert(nfs_version == NFS_V3 || nfs_version == NFS_V4);
+
+	data = calloc(1, sizeof(*data));
+	if (data == NULL) {
+		rpc_set_error(rpc, "Out of memory. Failed to allocate tls_cb_data "
+			      "for AUTH_TLS NULL call");
+		return NULL;
+	}
+	data->cb 	   = cb;
+	data->private_data = private_data;
+
+	/*
+	 * Set MSbit in procedure number to convey use of AUTH_TLS
+	 * This should not interfere with valid procedure numbers as they are all
+	 * small numbers.
+	 */
+	pdu = rpc_allocate_pdu(rpc, NFS_PROGRAM, nfs_version, (0 | (1U << 31)),
+			       rpc_connect_program_4_1_cb, data,
+			       (zdrproc_t)zdr_void, 0);
+	if (pdu == NULL) {
+		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu "
+			      "for AUTH_TLS NULL call");
+		free_tls_cb_data(data);
+		return NULL;
+	}
+
+	rpc->tls_context.state = TLS_HANDSHAKE_WAITING_FOR_STARTTLS;
+
+	if (rpc_queue_pdu(rpc, pdu) != 0) {
+		rpc_set_error(rpc, "Out of memory. Failed to queue pdu "
+				"for AUTH_TLS NULL call");
+		free_tls_cb_data(data);
+		return NULL;
+	}
+
+	return pdu;
+}
+#endif /* HAVE_TLS */

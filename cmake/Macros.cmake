@@ -11,6 +11,7 @@ function(core_add_library name)
   set(CMAKE_POSITION_INDEPENDENT_CODE ON)
   add_library(${name} OBJECT ${SOURCES} ${HEADERS})
   target_include_directories(${name} PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>)
+  target_include_directories(${name} PRIVATE ${INCLUDEDIRS})
   set(CORE_LIBRARIES "${name};${CORE_LIBRARIES}" CACHE INTERNAL "")
 
   # no need to install core libs if we build shared library
