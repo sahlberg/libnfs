@@ -910,6 +910,7 @@ static int rpc_process_call(struct rpc_context *rpc, ZDR *zdr)
                 if (endpoint->procs[i].proc == call.body.cbody.proc) {
                         if (endpoint->procs[i].decode_buf_size) {
                                 call.body.cbody.args = zdr_malloc(zdr, endpoint->procs[i].decode_buf_size);
+                                memset(call.body.cbody.args, 0, endpoint->procs[i].decode_buf_size);
                         }
                         if (!endpoint->procs[i].decode_fn(zdr, call.body.cbody.args)) {
                                 rpc_set_error(rpc, "Failed to unmarshall "
