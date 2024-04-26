@@ -51,7 +51,7 @@ echo -n "test chmod(0755) on dir ... "
 success
 
 echo -n "Stat the dir ... "
-./prog_stat "${TESTURL}/?version={VERS}" "." testdir > "${TESTDIR}/output" || failure
+./prog_stat "${TESTURL}/?version=${VERS}" "." testdir > "${TESTDIR}/output" || failure
 success
 
 echo -n "Verifying the mode is 0755 on dir ... "
