@@ -2417,7 +2417,7 @@ rpc_null_task_authtls(struct rpc_context *rpc, int nfs_version, rpc_cb cb,
 	 * This should not interfere with valid procedure numbers as they are all
 	 * small numbers.
 	 */
-	pdu = rpc_allocate_pdu(rpc, NFS_PROGRAM, nfs_version, (0 | (1U << 31)),
+	pdu = rpc_allocate_pdu(rpc, NFS_PROGRAM, nfs_version, (0 | 0x80000000U),
 			       rpc_connect_program_4_1_cb, data,
 			       (zdrproc_t)zdr_void, 0);
 	if (pdu == NULL) {
