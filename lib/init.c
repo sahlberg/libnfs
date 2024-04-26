@@ -52,6 +52,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <assert.h>
+#include <fcntl.h>
 #include <time.h>
 #include "slist.h"
 #include "libnfs-zdr.h"
@@ -181,6 +182,18 @@ struct rpc_context *rpc_init_context(void)
 	return rpc;
 }
 
+static int
+is_nonblocking(int s)
+{
+#if defined(WIN32)
+    return 0;
+#else
+	int v;
+	v = fcntl(s, F_GETFL, 0);
+	return (v & O_NONBLOCK) != 0;
+#endif
+}
+
 struct rpc_context *rpc_init_server_context(int s)
 {
 	struct rpc_context *rpc;
@@ -196,6 +209,9 @@ struct rpc_context *rpc_init_server_context(int s)
 	rpc->is_server_context = 1;
 	rpc->fd = s;
 	rpc->is_connected = 1;
+
+	rpc->is_nonblocking = is_nonblocking(s);
+
         rpc->is_udp = rpc_is_udp_socket(rpc);
 	rpc_reset_queue(&rpc->outqueue);
 
@@ -244,7 +260,7 @@ struct rpc_context *rpc_init_udp_context(void)
 	if (rpc != NULL) {
 		rpc->is_udp = 1;
 	}
-	
+
 	return rpc;
 }
 
