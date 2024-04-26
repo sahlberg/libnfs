@@ -82,7 +82,7 @@ jobs:
       - run: brew install cmake
       - run: mkdir build
       - run: cmake -B build
-      - run: make --directory build install
+      - run: make --directory build
 
   build-windows:
     name: Windows build
@@ -112,7 +112,7 @@ jobs:
             cd $GITHUB_WORKSPACE
             mkdir build
             cmake -B build
-            make --directory build install
+            make --directory build
 
   build-ps2-ee:
     name: PS2 EE build
