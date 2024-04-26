@@ -594,6 +594,7 @@ nfs_init_context(void)
 #endif /* HAVE_MULTITHREADING */
 
 #ifdef HAVE_SIGNAL_H
+#if !defined(WIN32)
 	/*
 	 * Ignore SIGPIPE when writing to sockets where peer decides to close
 	 * the door on us, rather write()/dup2() should fail with EPIPE which
@@ -603,7 +604,8 @@ nfs_init_context(void)
 		nfs_destroy_context(nfs);
 		return NULL;
 	}
-#endif
+#endif /* WIN32 */
+#endif /* HAVE_SIGNAL_H */
 	return nfs;
 }
 
