@@ -108,6 +108,10 @@ typedef uint32_t (*zdrproc_t) (ZDR *, void *,...);
 #define AUTH_UNIX 1
 #define AUTH_GSS  6
 
+#ifdef HAVE_TLS
+#define AUTH_TLS  7
+#endif
+
 struct opaque_cred {
 	uint32_t oa_flavor;
 	caddr_t  oa_base;

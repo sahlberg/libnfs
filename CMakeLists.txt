@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.2)
+cmake_minimum_required(VERSION 3.16)
 
 project(libnfs
         LANGUAGES C
@@ -32,7 +32,7 @@ if(IOS)
         add_definitions(-DHAVE_LIBKRB5)
     endif()
 endif()
-    
+
 include(cmake/ConfigureChecks.cmake)
 
 include_directories(${CMAKE_CURRENT_BINARY_DIR}
@@ -49,7 +49,38 @@ if(WIN32 AND BUILD_SHARED_LIBS)
   add_definitions(-Dlibnfs_EXPORTS)
 endif()
 
-if(CMAKE_SYSTEM_NAME STREQUAL Windows OR CMAKE_SYSTEM_NAME STREQUAL WindowsStore)
+if(CMAKE_SYSTEM_NAME STREQUAL Linux)
+  add_definitions("-D_U_=__attribute__((unused))")
+  #
+  # Currently RPC-with-TLS support is only available on Linux since it depends on kTLS support
+  # on Linux.
+  #
+  # TODO: BSD also has kTLS support, but that will need separate validation.
+  #
+  find_package(GnuTLS "3.4.6")
+  if(GNUTLS_FOUND)
+    #
+    # Make sure the two most important header files are present before we enable TLS support,
+    # to avoid running into issues later during build. GnuTLS package found but gnutls/gnutls.h
+    # not found is a serious issue while if linux/tls.h is not found it would likely mean that
+    # user is using a kernel not supporting kTLS so we simply don't turn on TLS support.
+    #
+    check_include_file("gnutls/gnutls.h" HAVE_GNUTLS_H)
+    if(NOT HAVE_GNUTLS_H EQUAL "1")
+      message(FATAL_ERROR "GnuTLS found but gnutls/gnutls.h not found, GNUTLS_INCLUDE_DIR is ${GNUTLS_INCLUDE_DIR}")
+    endif()
+
+    check_include_file("linux/tls.h" HAVE_LINUX_TLS_H)
+    if(NOT HAVE_LINUX_TLS_H EQUAL "1")
+      message(STATUS "GnuTLS found but linux/tls.h not found, likely a kernel w/o kTLS support, can't enable TLS support")
+    else()
+      message(STATUS "Using ${GNUTLS_LIBRARIES}")
+      add_definitions(-DHAVE_TLS)
+      list(APPEND SYSTEM_LIBRARIES ${GNUTLS_LIBRARIES})
+      add_subdirectory(tls)
+    endif()
+  endif()
+elseif(CMAKE_SYSTEM_NAME STREQUAL Windows OR CMAKE_SYSTEM_NAME STREQUAL WindowsStore)
   add_definitions("-D_U_=" -D_CRT_SECURE_NO_WARNINGS -D_CRT_NONSTDC_NO_DEPRECATE)
   list(APPEND SYSTEM_LIBRARIES ws2_32)
   add_subdirectory(win32)

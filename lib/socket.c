@@ -551,11 +551,17 @@ rpc_read_from_socket(struct rpc_context *rpc)
 			if (errno == EINTR || errno == EAGAIN) {
 				break;
 			}
-			rpc_set_error(rpc, "Read from socket failed, errno:%d. "
-                                      "Closing socket.", errno);
+			rpc_set_error(rpc, "Read from socket(%d) failed, errno:%d (%s). "
+                                      "Closing socket.", rpc->fd, errno, strerror(errno));
+			RPC_LOG(rpc, 2, "Read from socket(%d) failed, errno:%d (%s). "
+				"Closing socket.", rpc->fd, errno, strerror(errno));
 			return -1;
 		}
 		if (count == 0) {
+			rpc_set_error(rpc, "Remote side closed connection for socket fd %d",
+				      rpc->fd);
+			RPC_LOG(rpc, 2, "Remote side closed connection for socket fd %d",
+				rpc->fd);
 			/* remote side has closed the socket. Reconnect. */
 			return -1;
 		}
@@ -841,15 +847,93 @@ rpc_service(struct rpc_context *rpc, int revents)
 		return 0;
 	}
 
+#ifdef HAVE_TLS
+	/*
+	 * We perform TLS handshake in a nonblocking fashion, i.e., we don't
+	 * block on recv() and send(), so if we get a POLLIN or POLLOUT event
+	 * during TLS handshake we must advance the TLS handshake process by
+	 * calling do_tls_handshake() again. do_tls_handshake() will return
+	 * TLS_HANDSHAKE_IN_PROGRESS if it needs to wait for network IO, o/w
+	 * it'll complete the handshake process.
+	 * Note that do_tls_handshake() can correctly handle multiple calls and
+	 * it can advance the handshake process till it either completes successfully
+	 * or fails.
+	 */
+	if (rpc->tls_context.state == TLS_HANDSHAKE_IN_PROGRESS &&
+			(revents & (POLLOUT | POLLIN))) {
+		struct tls_cb_data *data = &rpc->tls_context.data;
+
+		/* Should be only doing this for secure transport */
+		assert(rpc->use_tls);
+
+		rpc->tls_context.state = do_tls_handshake(rpc);
+
+		switch (rpc->tls_context.state) {
+			case TLS_HANDSHAKE_IN_PROGRESS:
+				RPC_LOG(rpc, 2, "do_tls_handshake() returned "
+						"TLS_HANDSHAKE_IN_PROGRESS on fd %d",
+					rpc->fd);
+				break;
+			case TLS_HANDSHAKE_COMPLETED:
+				RPC_LOG(rpc, 2, "do_tls_handshake() returned "
+						"TLS_HANDSHAKE_COMPLETED on fd %d",
+					rpc->fd);
+				data->cb(rpc, RPC_STATUS_SUCCESS, NULL, data->private_data);
+				break;
+			case TLS_HANDSHAKE_FAILED:
+				RPC_LOG(rpc, 1, "do_tls_handshake() returned "
+						"TLS_HANDSHAKE_FAILED on fd %d",
+					rpc->fd);
+				data->cb(rpc, RPC_STATUS_ERROR, "TLS_HANDSHAKE_FAILED",
+					 data->private_data);
+				break;
+			default:
+				/* Should not return any other status */
+				assert(0);
+		}
+
+		return 0;
+	}
+#endif /* HAVE_TLS */
+
 	if (revents & POLLIN) {
 		if (rpc_read_from_socket(rpc) != 0) {
                         if (rpc->is_server_context) {
                                 return -1;
                         } else {
+#ifdef HAVE_TLS
+				/*
+				 * TODO: read from ktls sockets will fail with EIO
+				 *       if TLS records of type other than data
+				 *       (e.g., alert or handshake) are received.
+				 *       We will need to issue a recvmsg() call
+				 *       with enough cmsg space to fetch the
+				 *       record type and data correctly.
+				 *       We can then log that here to help the
+				 *       user. In any case the only valid course
+				 *       of action is to terminate the connection
+				 *       and reconnect so that we can correctly
+				 *       re-auth.
+				 */
+#endif /* HAVE_TLS */
                                 return rpc_reconnect_requeue(rpc);
                         }
 		}
 	}
+
+#ifdef HAVE_TLS
+	/*
+	 * For secure NFS connections we should never write to the socket w/o
+	 * properly completing the TLS handshake. Note that we do allow reads
+	 * from the socket as we would want to read response to the AUTH_TLS
+	 * NULL RPC.
+	 */
+	if (rpc->use_tls && (rpc->tls_context.state != TLS_HANDSHAKE_COMPLETED)) {
+                RPC_LOG(rpc, 2, "TLS handshake state %d on fd %d, skipping socket write!",
+			rpc->tls_context.state, rpc->fd);
+                return 0;
+        }
+#endif
 
 	if (revents & POLLOUT && rpc_has_queue(&rpc->outqueue)) {
 		if (rpc_write_to_socket(rpc) != 0) {
@@ -939,6 +1023,7 @@ rpc_connect_sockaddr_async(struct rpc_context *rpc)
 	if (rpc->old_fd) {
 #if !defined(WIN32) && !defined(PS3_PPU) && !defined(PS2_EE)
 		if (dup2(rpc->fd, rpc->old_fd) == -1) {
+			rpc_set_error(rpc, "dup2() failed: %s", strerror(errno));
 			return -1;
 		}
 		close(rpc->fd);
@@ -1146,8 +1231,47 @@ rpc_disconnect(struct rpc_context *rpc, const char *error)
 	return 0;
 }
 
+#ifdef HAVE_TLS
+/*
+ * During TCP reconnection (either server or client closes connection) for secure
+ * transport we need to perform the TLS handshake. This is the callback function
+ * called when a TLS handshake performed during reconnection completes.
+ */
 static void
-reconnect_cb(struct rpc_context *rpc, int status, void *data _U_,
+reconnect_cb_tls(struct rpc_context *rpc, int status,
+		 void *command_data, void *private_data)
+{
+	assert(rpc->magic == RPC_CONTEXT_MAGIC);
+
+	/* Must be called only for TLS transport */
+	assert(rpc->use_tls);
+
+	/* Must be called only after TLS handshake completes/fails */
+	assert(rpc->tls_context.state == TLS_HANDSHAKE_COMPLETED ||
+	       rpc->tls_context.state == TLS_HANDSHAKE_FAILED);
+
+	/*
+	 * If handshake failed, restart the entire TCP connection not just the handshake.
+	 * This will create a new connection and perform the handshake.
+	 */
+	if (rpc->tls_context.state == TLS_HANDSHAKE_FAILED) {
+		RPC_LOG(rpc, 1, "reconnect_cb_tls: TLS handshake failed, restarting connection!");
+
+		if (rpc->fd != -1) {
+			close(rpc->fd);
+			rpc->fd  = -1;
+		}
+		rpc->is_connected = 0;
+		rpc_reconnect_requeue(rpc);
+		return;
+	}
+
+	RPC_LOG(rpc, 2, "reconnect_cb_tls: TLS handshake completed successfully!");
+}
+#endif
+
+static void
+reconnect_cb(struct rpc_context *rpc, int status, void *data,
              void *private_data)
 {
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
@@ -1161,6 +1285,34 @@ reconnect_cb(struct rpc_context *rpc, int status, void *data _U_,
 	rpc->is_connected = 1;
 	rpc->connect_cb   = NULL;
 	rpc->old_fd = 0;
+
+#ifdef HAVE_TLS
+	/*
+	 * For secure NFS connections, we need to setup TLS session now.
+	 */
+	RPC_LOG(rpc, 2, "reconnect_cb called with status %d", status);
+	if (rpc->use_tls) {
+		if (rpc_null_task_authtls(rpc, rpc->nfs_version,
+					  reconnect_cb_tls, NULL) == NULL) {
+			RPC_LOG(rpc, 1, "reconnect_cb: rpc_null_task_authtls() failed, "
+				"restarting connection!");
+			/*
+			 * Force reconnect so that we can time the retries using
+			 * the existing rpc->num_retries. Forcing reconnect also
+			 * has the advantage that it sets up a fresh TCP connection
+			 * in case the older connection had some issues preventing
+			 * successful TLS handshake.
+			 */
+			if (rpc->fd != -1) {
+				close(rpc->fd);
+				rpc->fd  = -1;
+			}
+			rpc->is_connected = 0;
+			rpc_reconnect_requeue(rpc);
+			return;
+		}
+	}
+#endif /* HAVE_TLS */
 }
 
 /* Disconnect but do not error all PDUs, just move pdus in-flight back to the

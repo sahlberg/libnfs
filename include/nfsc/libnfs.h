@@ -149,7 +149,21 @@ enum rpc_sec {
 };
 EXTERN void nfs_set_security(struct nfs_context *nfs, enum rpc_sec sec);
         
-        
+#ifdef HAVE_TLS
+/*
+ * Various transport level security values that map to the mount option
+ * xprtsec=[none,tls,mtls].
+ */
+enum rpc_xprtsec {
+	RPC_XPRTSEC_UNDEFINED = 0,
+	RPC_XPRTSEC_NONE,	/* No transport security */
+	RPC_XPRTSEC_TLS,	/* TLS, with server authentication */
+	RPC_XPRTSEC_MTLS,	/* Mutual TLS, with both server and client authentication */
+};
+
+EXTERN void nfs_set_xprtsecurity(struct nfs_context *nfs, enum rpc_xprtsec xprtsec);
+#endif /* HAVE_TLS */
+
 /*
  * Used if you need to bind to a specific interface.
  * Only available on platforms that support SO_BINDTODEVICE.
@@ -227,6 +241,13 @@ EXTERN int nfs_set_hash_size(struct nfs_context *nfs, int hashes);
  *                     default is 65534 on Windows and getuid() on unixen.
  * gid=<int>         : GID value to use when talking to the server.
  *                     default is 65534 on Windows and getgid() on unixen.
+ * sec=<krb5|krb5i|krb5p>
+ *                   : Specify the security mode.
+ * xprtsec=<none|tls|mtls>
+ *                   : Specify the transport security mode.
+ *                     none : No TLS security.
+ *                     tls  : TLS with server authentication only.
+ *                     mtls : Mutual TLS, both server and client authentication.
  * auto-traverse-mounts=<0|1>
  *                   : Should libnfs try to traverse across nested mounts
  *                     automatically or not. Default is 1 == enabled.

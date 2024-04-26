@@ -6,6 +6,9 @@
 /* Whether we have clock_gettime */
 #cmakedefine HAVE_CLOCK_GETTIME
 
+/* Whether gnutls exports the function gnutls_transport_is_ktls_enabled() */
+#cmakedefine HAVE_GNUTLS_TRANSPORT_IS_KTLS_ENABLED
+
 /* Define to 1 if you have the <dlfcn.h> header file. */
 #cmakedefine HAVE_DLFCN_H
 
@@ -104,6 +107,12 @@
 
 /* Define to 1 if you have the <utime.h> header file. */
 #cmakedefine HAVE_UTIME_H
+
+/* Define to 1 if you have the <signal.h> header file. */
+#cmakedefine HAVE_SIGNAL_H
+
+/* Define to 1 if you have the <sys/utsname.h> header file. */
+#cmakedefine HAVE_SYS_UTSNAME_H
 
 /* Define to 1 if `major', `minor', and `makedev' are declared in <mkdev.h>.
    */

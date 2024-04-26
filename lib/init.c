@@ -464,6 +464,9 @@ void rpc_destroy_context(struct rpc_context *rpc)
         free(discard_const(rpc->username));
         free(rpc->context);
 #endif /* HAVE_LIBKRB5 */
+#ifdef HAVE_TLS
+	free(rpc->server);
+#endif
 	free(rpc);
 }
 

@@ -32,6 +32,8 @@ check_include_file("sys/uio.h" HAVE_SYS_UIO_H)
 check_include_file("sys/vfs.h" HAVE_SYS_VFS_H)
 check_include_file("unistd.h" HAVE_UNISTD_H)
 check_include_file("utime.h" HAVE_UTIME_H)
+check_include_file("signal.h" HAVE_SIGNAL_H)
+check_include_file("sys/utsname.h" HAVE_SYS_UTSNAME_H)
 
 include(CheckStructHasMember)
 check_struct_has_member("struct sockaddr" sa_len sys/socket.h HAVE_SOCKADDR_LEN)
@@ -70,6 +72,19 @@ check_c_source_compiles("#include <sys/types.h>
                            return 0;
                          }"
                         NO_LFS_REQUIRED)
+
+#
+# Find out if gnutls exports the function gnutls_transport_is_ktls_enabled().
+# This tells whether the gnutls library has kTLS support.
+#
+set(CMAKE_REQUIRED_LIBRARIES gnutls)
+check_c_source_compiles("#include <gnutls/socket.h>
+                         int main()
+                         {
+                                gnutls_session_t session;
+                                gnutls_transport_is_ktls_enabled(session);
+                         }"
+                        HAVE_GNUTLS_TRANSPORT_IS_KTLS_ENABLED)
 
 if(NOT NO_LFS_REQUIRED)
   check_c_source_compiles("#include <sys/types.h>
