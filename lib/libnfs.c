@@ -246,6 +246,21 @@ nfs_set_context_args(struct nfs_context *nfs, const char *arg, const char *val)
 		rpc_set_uid(nfs_get_rpc_context(nfs), atoi(val));
 	} else if (!strcmp(arg, "gid")) {
 		rpc_set_gid(nfs_get_rpc_context(nfs), atoi(val));
+	} else if (!strcmp(arg, "timeo")) {
+		/* val is in deci-seconds */
+		const int timeout_msecs = atoi(val) * 100;
+		if (timeout_msecs < (10 * 1000)) {
+			nfs_set_error(nfs, "timeo cannot be less than 100: %s", val);
+			return -1;
+		}
+		nfs_set_timeout(nfs, timeout_msecs);
+	} else if (!strcmp(arg, "retrans")) {
+		const int retrans = atoi(val);
+		if (retrans < 0) {
+			nfs_set_error(nfs, "retrans cannot be less than 0: %s", val);
+			return -1;
+		}
+		nfs_set_retrans(nfs, retrans);
 	} else if (!strcmp(arg, "debug")) {
 		rpc_set_debug(nfs_get_rpc_context(nfs), atoi(val));
 	} else if (!strcmp(arg, "auto-traverse-mounts")) {
@@ -567,8 +582,22 @@ nfs_init_context(void)
 	nfs->nfsi->mask = 022;
 	nfs->nfsi->auto_traverse_mounts = 1;
 	nfs->nfsi->dircache_enabled = 1;
-	/* Default is never give up, never surrender */
+
+	/*
+	 * Default resiliency parameters are chosen with safe values that
+	 * emulate "hard" mount, which means on any error (RPC or TCP) keep
+	 * retrying indefinitely.
+	 *
+	 * TCP reconnect is indefinitely tried, RPC requests time out after
+	 * 60 secs and we retry an RPC request 2 times before declaring it as
+	 * "major timeout" and running the major timeout recovery workflow,
+	 * after which the whole RPC retransmit cycle restarts and this continues
+	 * indefinitely.
+	 */
 	nfs->nfsi->auto_reconnect = -1;
+	nfs->nfsi->timeout = 60*1000;
+	nfs->nfsi->retrans = 2;
+
 	nfs->nfsi->default_version = NFS_V3;
 	nfs->nfsi->version = NFS_V3;
 	nfs->nfsi->readdir_dircount = 8192;
@@ -2129,7 +2158,23 @@ nfs_set_dircache(struct nfs_context *nfs, int enabled) {
 
 void
 nfs_set_autoreconnect(struct nfs_context *nfs, int num_retries) {
+	/*
+	 * Save the user provided value in nfs_context_internal.
+	 * This will later be set in rpc_context using rpc_set_resiliency()
+	 * once the mount process completes.
+	 */
 	nfs->nfsi->auto_reconnect = num_retries;
+}
+
+void
+nfs_set_retrans(struct nfs_context *nfs, int retrans) {
+	/*
+	 * Save the user provided value in nfs_context_internal.
+	 * This will later be set in rpc_context using rpc_set_resiliency()
+	 * once the mount process completes.
+	 */
+	assert(retrans >= 0);
+	nfs->nfsi->retrans = retrans;
 }
 
 int
@@ -2349,9 +2394,19 @@ nfs_get_poll_timeout(struct nfs_context *nfs)
 * Sets timeout for nfs apis
 */
 void
-nfs_set_timeout(struct nfs_context *nfs,int timeout)
+nfs_set_timeout(struct nfs_context *nfs, int timeout_msecs)
 {
-	rpc_set_timeout(nfs->rpc,timeout);
+	/*
+	 * Save the timeout in nfs_context_internal and also set it in
+	 * rpc_context. Contrast this with nfs_set_retrans() which only saves
+	 * the user provided value in nfs_context_internal but does not set it
+	 * in rpc_context. Note that it's ok (and needed) to set timeout in the
+	 * rpc_context as timeout is used by all RPC requests while retrans adds
+	 * resiliency to RPC transport and is used only after the mount completes.
+	 */
+	nfs->nfsi->timeout = timeout_msecs;
+
+	rpc_set_timeout(nfs->rpc, timeout_msecs);
 }
 
 /*

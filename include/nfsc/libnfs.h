@@ -336,6 +336,7 @@ EXTERN void nfs_set_debug(struct nfs_context *nfs, int level);
 EXTERN void nfs_set_auto_traverse_mounts(struct nfs_context *nfs, int enabled);
 EXTERN void nfs_set_dircache(struct nfs_context *nfs, int enabled);
 EXTERN void nfs_set_autoreconnect(struct nfs_context *nfs, int num_retries);
+EXTERN void nfs_set_retrans(struct nfs_context *nfs, int retrans);
 EXTERN void nfs_set_nfsport(struct nfs_context *nfs, int port);
 EXTERN void nfs_set_mountport(struct nfs_context *nfs, int port);
 EXTERN void nfs_set_readdir_max_buffer_size(struct nfs_context *nfs, uint32_t dircount, uint32_t maxcount);
@@ -1996,6 +1997,9 @@ EXTERN int nfs_get_poll_timeout(struct nfs_context *nfs);
  * int milliseconds : timeout to be applied in milliseconds (-1 no timeout)
  *                    timeouts must currently be set in whole seconds,
  *                    i.e. units of 1000
+ *
+ * Note: Prefer the mount option timeo=<int> to set the timeout over directly
+ *       calling nfs_set_timeout().
  */
 EXTERN void nfs_set_timeout(struct nfs_context *nfs, int milliseconds);
 

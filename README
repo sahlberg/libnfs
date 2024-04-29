@@ -79,6 +79,25 @@ Arguments supported by libnfs are :
                      default it 65534 on Windows and getgid() on unixen.
  debug=<int>       : Debug level used by libnfs. Default is 0 which is quiet.
                      Higher values increase verbosity.
+ timeo=<int>       : The time in deciseconds (tenths of a second) libnfs client
+                     will wait for a response before it retries an RPC request.
+                     Default value of 'timeo' is 600, i.e., 60 seconds.
+                     Values less than 100, i.e., 10 seconds, are not allowed.
+ retrans=<int>     : After 'retrans' failed retries libnfs will generate a
+                     "server not responding" message and then attempt further
+                     recovery action. If no successful RPC response has been
+                     received over the connection for the last 'timeo' period,
+                     then the connection would be terminated and all queued RPCs
+                     will be retried over the new connection. If other RPC
+                     responses are being received then it means connection is
+                     fine and this is likely a problem with this specific RPC,
+                     in that case it'll simply keep retrying the RPC for ever at
+                     'timeo' interval. This mimics the 'hard' mount behaviour of
+                     NFS clients.
+                     If 'retrans' is 0, then RPC is not retried on timeout but
+                     instead failed with RPC_STATUS_TIMEOUT. This will roughly
+                     mimic the 'soft' mount behaviour of NFS clients.
+                     Default value of 'retrans' is 2.
  sec=<krb5|krb5i|krb5p>
                    : Specify the security mode.
  xprtsec=<none|tls|mtls>
