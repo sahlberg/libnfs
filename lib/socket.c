@@ -188,6 +188,7 @@ set_tcp_sockopt(int sockfd, int optname, int value)
 static int
 set_keepalive(int sockfd)
 {
+#ifdef SO_KEEPALIVE
 	const int enable_keepalive = 1;
 
 	if (setsockopt(sockfd, SOL_SOCKET, SO_KEEPALIVE,
@@ -195,6 +196,7 @@ set_keepalive(int sockfd)
 		LOG("setsockopt(SO_KEEPALIVE) failed: %s", strerror(errno));
 		return -1;
 	}
+#endif
 
 	/*
 	 * Following code uses Linux specific socket options to change keepalive
