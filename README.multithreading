@@ -12,11 +12,6 @@ or, for cmake
 
 $ cmake -DENABLE_MULTITHREADING=yes ..
 
-It is not supported to mix the eventdriven ASYNC interface with multithreading
-thus once multithreading is enabled from the application you can not use
-the async interface any more and must only use the multithread safe
-SYNC API.
-
 The process to use multithreading from your application is:
 1,  nfs_init_context()     to create an NFS context. This context defaults to
                            not (yet) be multithreading aware.
@@ -42,11 +37,7 @@ Then call nfs_mt_service_thread_stop(nfs) to terminate the service thread and
 disable the multithreading support.
 
 
-See examples/nfs-pthreads-example.c for an example utility that
-mounts a share, enables multithreading and then creates a  number of worker
-threads that share the same nfs context.
-(In the example the threads just runs a busy loop calling nfs_stat64().)
-
+See examples/nfs-pthreads-*.c for examples on how to use multithreading.
 
 Porting
 -------
