@@ -629,7 +629,7 @@ nfs_init_context(void)
 	 * the door on us, rather write()/dup2() should fail with EPIPE which
 	 * we can gracefully handle.
 	 */
-	if (signal(SIGPIPE, SIG_IGN) != 0) {
+	if (signal(SIGPIPE, SIG_IGN) == SIG_ERR) {
 		nfs_destroy_context(nfs);
 		return NULL;
 	}

@@ -1,20 +1,20 @@
-/* 
+/*
    Copyright (C) by Ronnie Sahlberg <ronniesahlberg@gmail.com> 2024
-   
+
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
    the Free Software Foundation; either version 3 of the License, or
    (at your option) any later version.
-   
+
    This program is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
    GNU General Public License for more details.
-   
+
    You should have received a copy of the GNU General Public License
    along with this program; if not, see <http://www.gnu.org/licenses/>.
 */
-    
+
 #define _FILE_OFFSET_BITS 64
 #define _GNU_SOURCE
 
@@ -35,7 +35,7 @@ WSADATA wsaData;
 #include <sys/stat.h>
 #include <string.h>
 #endif
- 
+
 #ifdef HAVE_POLL_H
 #include <poll.h>
 #endif
@@ -56,8 +56,23 @@ WSADATA wsaData;
 #include "libnfs-raw.h"
 #include "libnfs-raw-mount.h"
 
+/*
+ * Number of RPC transports to the server.
+ * We will have these many connections to the NFS server carrying RPC
+ * requests.
+ */
 #define NUM_CONTEXTS 4
-#define CHUNK_SIZE (10*1024*1024)
+
+/*
+ * Number of threads parallely writing file data.
+ * Usually one thread per context should be sufficient, but here we use more
+ * threads to demonstrate that multiple threads can very well write to the same
+ * context.
+ *
+ * Note: Don't set very high number of threads else it'll negatively impact
+ *       performance.
+ */
+#define NUM_THREADS  8
 
 void usage(void)
 {
@@ -75,7 +90,7 @@ struct write_data {
 };
 
 /*
- * Thread that is created to write an up to CHUNK_SIZE prt of the file.
+ * Thread that is created to write an up to chunk_size part of the file.
  */
 static void *nfs_write_thread(void *arg)
 {
@@ -115,8 +130,9 @@ static void *nfs_write_thread(void *arg)
 
 int main(int argc, char *argv[])
 {
-	int i, num_threads;
+	int i;
 	int fd = -1;
+	uint64_t chunk_size;
 	struct nfs_context *nfs[NUM_CONTEXTS] = {NULL,};
 	struct nfs_url *url = NULL;
 	struct stat st;
@@ -187,11 +203,11 @@ int main(int argc, char *argv[])
 			if (nfs_open(nfs[0], url->file, O_WRONLY|O_CREAT|O_TRUNC, &nfsfh) < 0) {
 				fprintf(stderr, "Failed to open nfs file %s. %s\n",
 					url->file,
-					nfs_get_error(wd->nfs));
+					nfs_get_error(nfs[0]));
 				exit(1);
 			}
 		}
-		  
+
 		/*
 		 * Before we can use multithreading we must initialize and
 		 * start the service thread.
@@ -210,25 +226,30 @@ int main(int argc, char *argv[])
 
 	/*
 	 * Create threads to write the file. Each thread will write a
-	 * CHUNK_SIZE portion of the file.
+	 * chunk_size portion of the file.
 	 */
-	printf("Size of file:%s is %d bytes\n", argv[1], st.st_size);
-	num_threads = (st.st_size + CHUNK_SIZE - 1) / CHUNK_SIZE;
-	printf("Need %d threads to write %d bytes each\n", num_threads, CHUNK_SIZE);
-        if ((write_threads = malloc(sizeof(pthread_t) * num_threads)) == NULL) {
+	printf("Size of file:%s is %ld bytes\n", argv[1], st.st_size);
+	chunk_size = (st.st_size + NUM_THREADS - 1) / NUM_THREADS;
+
+	printf("Using %d threads writing %lu bytes each\n", NUM_THREADS, chunk_size);
+	if ((write_threads = malloc(sizeof(pthread_t) * NUM_THREADS)) == NULL) {
 		fprintf(stderr, "Failed to allocated stat_thread\n");
                 exit(10);
         }
-        if ((wd = malloc(sizeof(struct write_data) * num_threads)) == NULL) {
+	if ((wd = malloc(sizeof(struct write_data) * NUM_THREADS)) == NULL) {
 		fprintf(stderr, "Failed to allocated write_data\n");
                 exit(10);
         }
-        for (i = 0; i < num_threads; i++) {
+        for (i = 0; i < NUM_THREADS; i++) {
                 wd[i].nfs = nfs[i % NUM_CONTEXTS];
 		wd[i].fd = fd;
                 wd[i].nfsfh = nfsfh;
-		wd[i].offset = i * CHUNK_SIZE;
-		wd[i].len = CHUNK_SIZE;
+		wd[i].offset = i * chunk_size;
+		wd[i].len = st.st_size - wd[i].offset;
+		if (wd[i].len > chunk_size) {
+			wd[i].len = chunk_size;
+		}
+
                 if (pthread_create(&write_threads[i], NULL,
                                    &nfs_write_thread, &wd[i])) {
                         printf("Failed to create stat thread %d\n", i);
@@ -239,7 +260,7 @@ int main(int argc, char *argv[])
 	/*
 	 * Wait for all threads to complete
 	 */
-        for (i = 0; i < num_threads; i++) {
+        for (i = 0; i < NUM_THREADS; i++) {
                 pthread_join(write_threads[i], NULL);
         }
 

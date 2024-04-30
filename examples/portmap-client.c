@@ -462,6 +462,14 @@ int main(int argc _U_, char *argv[] _U_)
 			set3addr  = argv[++i];
 			set3owner = argv[++i];
 			command_found++;
+		} else if (!strcmp(argv[i], "unset3")) {
+			unset3 = 1;
+			unset3prog = atoi(argv[++i]);
+			unset3vers = atoi(argv[++i]);
+			unset3netid = argv[++i];
+			unset3addr  = argv[++i];
+			unset3owner = argv[++i];
+			command_found++;
 		} else if (!strcmp(argv[i], "null3")) {
 			null3 = 1;
 			command_found++;

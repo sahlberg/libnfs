@@ -8,6 +8,10 @@ configured using --enable-pthread
 
 $ ./configure --prefix=/usr --enable-examples --enable-pthread
 
+or, for cmake
+
+$ cmake -DENABLE_MULTITHREADING=yes ..
+
 It is not supported to mix the eventdriven ASYNC interface with multithreading
 thus once multithreading is enabled from the application you can not use
 the async interface any more and must only use the multithread safe

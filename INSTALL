@@ -12,5 +12,8 @@ To build with support debugging that enable example and test cases.
       -DENABLE_TESTS=yes \
       -DCMAKE_BUILD_TYPE=Debug \
       -DCMAKE_VERBOSE_MAKEFILE=yes ..
+
+To build with multithreading support add -DENABLE_MULTITHREADING=yes
+
 - make 
 - make test

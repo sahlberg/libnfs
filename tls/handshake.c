@@ -124,6 +124,15 @@ int tls_global_init(struct rpc_context *rpc)
 	if (tls_global_init_done)
 		return 0;
 
+	/*
+	 * XXX See if we need a separate log level for gnutls, but for now
+	 *     let's use the libnfs debug level which is still pretty usable
+	 *     as it allows us to control the loglevel using debug= option.
+	 *
+	 *     This can be overridden using env variable "GNUTLS_DEBUG_LEVEL".
+	 */
+	tls_log_level = rpc->debug;
+
 	/* Based on various gnutls functions we call this is the min version */
 	if (gnutls_check_version("3.4.6") == NULL) {
 		TLS_LOG(1, "tls_global_init: GnuTLS 3.4.6 or later is required");
@@ -135,14 +144,6 @@ int tls_global_init(struct rpc_context *rpc)
 		return -1;
 	}
 
-	/*
-	 * XXX See if we need a separate log level for gnutls, but for now
-	 *     let's use the libnfs debug level which is still pretty usable
-	 *     as it allows us to control the loglevel using debug= option.
-	 *
-	 *     This can be overridden using env variable "GNUTLS_DEBUG_LEVEL".
-	 */
-	tls_log_level = rpc->debug;
 	gnutls_global_set_log_level(tls_log_level);
 	gnutls_global_set_audit_log_function(libnfs_gnutls_audit_func);
 

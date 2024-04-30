@@ -18,9 +18,14 @@ option(ENABLE_TESTS "Build and run test programs" OFF)
 option(ENABLE_DOCUMENTATION "Build Documentation" OFF)
 option(ENABLE_UTILS "Build util programs" OFF)
 option(ENABLE_EXAMPLES "Build example programs" OFF)
+option(ENABLE_MULTITHREADING "Enable multithreading support" OFF)
 
 if(ENABLE_TESTS)
   set(ENABLE_UTILS ON CACHE BOOL "Building utils required by tests" FORCE)
+endif()
+
+if(ENABLE_MULTITHREADING)
+  add_definitions(-DHAVE_MULTITHREADING)
 endif()
 
 include(cmake/Macros.cmake)
