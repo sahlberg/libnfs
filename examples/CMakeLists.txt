@@ -14,6 +14,12 @@ set(EXAMPLES nfsclient-async
             nfs-writefile
             portmap-client)
 
+if (ENABLE_MULTITHREADING)
+  list(APPEND EXAMPLES nfs-pthreads-writefile
+	  		nfs-pthreads-async-writefile)
+  list(APPEND EXTRA_LIBRARIES pthread)
+endif()
+
 if(HAVE_TALLOC_TEVENT)
   list(APPEND EXAMPLES nfs4-cat-talloc)
   list(APPEND EXTRA_LIBRARIES ${TALLOC_EVENT_LIBRARY} ${TALLOC_LIBRARY})

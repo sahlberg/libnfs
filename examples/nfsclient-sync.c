@@ -74,15 +74,11 @@ void print_usage(void)
 int main(int argc, char *argv[])
 {
 	struct nfs_context *nfs = NULL;
-	int i, ret, res;
-	uint64_t offset;
+	int ret;
 	struct client client;
 	struct nfs_stat_64 st;
-	struct nfsfh  *nfsfh;
 	struct nfsdir *nfsdir;
 	struct nfsdirent *nfsdirent;
-	struct statvfs svfs;
-	exports export, tmp;
 	const char *url = NULL;
 	char *server = NULL, *path = NULL, *strp;
 

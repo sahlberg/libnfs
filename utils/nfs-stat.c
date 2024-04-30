@@ -237,16 +237,10 @@ char *get_access_bits(int mode)
 	return access_bits;
 }
 
-#define BUFSIZE 1024*1024
-static char buf[BUFSIZE];
-
 int main(int argc, char *argv[])
 {
-	int ret;
 	struct file_context *nf;
 	struct nfs_stat_64 st;
-	uint64_t off;
-	int64_t count;
 	
 #ifdef WIN32
 	if (WSAStartup(MAKEWORD(2,2), &wsaData) != 0) {

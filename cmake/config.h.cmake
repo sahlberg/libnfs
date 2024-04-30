@@ -9,6 +9,9 @@
 /* Whether gnutls exports the function gnutls_transport_is_ktls_enabled() */
 #cmakedefine HAVE_GNUTLS_TRANSPORT_IS_KTLS_ENABLED
 
+/* Whether pthread library is present */
+#cmakedefine HAVE_PTHREAD
+
 /* Define to 1 if you have the <dlfcn.h> header file. */
 #cmakedefine HAVE_DLFCN_H
 
@@ -56,6 +59,9 @@
 
 /* Define to 1 if you have the <stdlib.h> header file. */
 #cmakedefine HAVE_STDLIB_H
+
+/* Define to 1 if you have the <stdatomic.h> header file. */
+#cmakedefine HAVE_STDATOMIC_H
 
 /* Define to 1 if you have the <strings.h> header file. */
 #cmakedefine HAVE_STRINGS_H

@@ -19,6 +19,7 @@ endif()
 check_include_file("poll.h" HAVE_POLL_H)
 check_include_file("stdint.h" HAVE_STDINT_H)
 check_include_file("stdlib.h" HAVE_STDLIB_H)
+check_include_file("stdatomic.h" HAVE_STDATOMIC_H)
 check_include_file("strings.h" HAVE_STRINGS_H)
 check_include_file("string.h" HAVE_STRING_H)
 check_include_file("sys/filio.h" HAVE_SYS_FILIO_H)
@@ -85,6 +86,21 @@ check_c_source_compiles("#include <gnutls/socket.h>
                                 gnutls_transport_is_ktls_enabled(session);
                          }"
                         HAVE_GNUTLS_TRANSPORT_IS_KTLS_ENABLED)
+
+#
+# Test for pthread availability.
+#
+set(CMAKE_REQUIRED_LIBRARIES pthread)
+check_c_source_compiles("#include <pthread.h>
+                         int main()
+                         {
+                                pthread_t thread;
+                                if (pthread_create(&thread, NULL, NULL, NULL) != 0) {
+                                        return -1;
+                                }
+                                return 0;
+                         }"
+                        HAVE_PTHREAD)
 
 if(NOT NO_LFS_REQUIRED)
   check_c_source_compiles("#include <sys/types.h>

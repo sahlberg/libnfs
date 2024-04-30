@@ -147,7 +147,6 @@ static char buf[BUFSIZE];
 
 int main(int argc, char *argv[])
 {
-	int ret;
 	struct file_context *nf;
 	struct nfs_stat_64 st;
 	uint64_t off;
