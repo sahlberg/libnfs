@@ -214,11 +214,20 @@ struct rpc_pdu *rpc_allocate_pdu2(struct rpc_context *rpc, int program, int vers
 	msg.body.cbody.vers    = version;
 	msg.body.cbody.proc    = procedure;
 
+	pdu->do_not_retry      = (program != NFS_PROGRAM);
+
 	/* For NULL RPC RFC recommends to use NULL authentication */
 	if (procedure == 0) {
 		msg.body.cbody.cred.oa_flavor    = AUTH_NONE;
 		msg.body.cbody.cred.oa_length    = 0;
 		msg.body.cbody.cred.oa_base      = NULL;
+		/*
+		 * NULL RPC is like a ping which is sent right after connection
+		 * establishment. The transport is still not used for sending
+		 * other RPCs. It's best not to retry NULL RPC and let the caller
+		 * truthfully know about the transport status.
+		 */
+		pdu->do_not_retry                = TRUE;
 	} else {
 		msg.body.cbody.cred    = rpc->auth->ah_cred;
 	}
@@ -374,6 +383,52 @@ void rpc_set_next_xid(struct rpc_context *rpc, uint32_t xid)
 #endif /* HAVE_MULTITHREADING */
 }
 
+void pdu_set_timeout(struct rpc_context *rpc, struct rpc_pdu *pdu, uint64_t now_msecs)
+{
+	if (rpc->timeout <= 0) {
+		/* RPC request never times out */
+		pdu->timeout = 0;
+		return;
+	}
+
+	/* If user hasn't passed the current time, get it now */
+	if (now_msecs == 0) {
+		now_msecs = rpc_current_time();
+	}
+
+	/*
+	 * If pdu->timeout is 0 it means either this is the first time we are
+	 * setting the timeout for this RPC request or it has already timed out.
+	 * In both these cases we reset pdu->timeout to rpc->timeout from now.
+	 * If pdu->timeout is not 0 it means that the RPC has not yet timed out
+	 * and hence we leave it unchanged.
+	 */
+	if (pdu->timeout == 0) {
+		pdu->timeout = now_msecs + rpc->timeout;
+#ifndef HAVE_CLOCK_GETTIME
+		/* If we do not have GETTIME we fallback to time() which
+		 * has 1s granularity for its timestamps.
+		 * We thus need to bump the timeout by 1000ms
+		 * so that the PDU will timeout within 1.0 - 2.0 seconds.
+		 * Otherwise setting a 1s timeout would trigger within
+		 * 0.001 - 1.0s.
+		 */
+		pdu->timeout += 1000;
+#endif
+	}
+
+	if (pdu->major_timeout == 0) {
+		pdu->major_timeout = now_msecs + (rpc->timeout * rpc->retrans);
+#ifndef HAVE_CLOCK_GETTIME
+		pdu->major_timeout += 1000;
+#endif
+		/* Never less than pdu->timeout */
+		if (pdu->major_timeout < pdu->timeout) {
+			pdu->major_timeout = pdu->timeout;
+		}
+	}
+}
+
 int rpc_queue_pdu(struct rpc_context *rpc, struct rpc_pdu *pdu)
 {
 	int i, size = 0, pos;
@@ -454,21 +509,12 @@ int rpc_queue_pdu(struct rpc_context *rpc, struct rpc_pdu *pdu)
 #endif /* HAVE_LIBKRB5 */
 
         pos = zdr_getpos(&pdu->zdr);
-	if (rpc->timeout > 0) {
-		pdu->timeout = rpc_current_time() + rpc->timeout;
-#ifndef HAVE_CLOCK_GETTIME
-		/* If we do not have GETTIME we fallback to time() which
-		 * has 1s granularity for its timestamps.
-		 * We thus need to bump the timeout by 1000ms
-		 * so that the PDU will timeout within 1.0 - 2.0 seconds.
-		 * Otherwise setting a 1s timeout would trigger within
-		 * 0.001 - 1.0s.
-		 */
-		pdu->timeout += 1000;
-#endif
-	} else {
-		pdu->timeout = 0;
-	}
+
+        /*
+         * Now that the RPC is about to be queued, set absolute timeout values
+         * for it.
+         */
+        pdu_set_timeout(rpc, pdu, 0);
 
         for (i = 1; i < pdu->out.niov; i++) {
                 size += pdu->out.iov[i].len;
@@ -631,6 +677,13 @@ static int rpc_process_reply(struct rpc_context *rpc, ZDR *zdr)
 	}
 	switch (msg.body.rbody.reply.areply.stat) {
 	case SUCCESS:
+		/* Last RPC response time for tracking RPC transport health */
+		rpc->last_successful_rpc_response = rpc_current_time();
+		if (pdu->snr_logged) {
+			RPC_LOG(rpc, 1, "[pdu %p] Server %s OK",
+				pdu, rpc->server);
+		}
+
                 if (pdu->in.buf) {
                         rpc->pdu->free_pdu = 1;
                         break;

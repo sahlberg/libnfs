@@ -1494,6 +1494,23 @@ nfs4_mount_4_cb(struct rpc_context *rpc, int status, void *command_data,
                gfhresok->object.nfs_fh4_val,
                nfs->nfsi->rootfh.len);
 
+	/*
+	 * Now the entire mount process (including the NFS FSINFO and GETATTR)
+	 * has completed. Any RPC failure till now would have caused the mount
+	 * process to fail. Note that it's desirable for the mount process to
+	 * fail upfront if it encounters any errors (TCP or RPC), rather than
+	 * keep trying indefinitely causing the mount process to "hang", but
+	 * from now on the RPC transport will be used to carry NFS RPCs issued
+	 * by the application which may not be equipped to handle TCP connection
+	 * failure and RPC timeouts, so we set the resiliency parameters of the
+	 * rpc_context as selected by the user using the mount options. The
+	 * default resiliency parameters emulate the common "hard" mount and
+	 * we are resilient to any TCP or RPC connectivity issues.
+         */
+	rpc_set_resiliency(rpc,
+			   nfs->nfsi->auto_reconnect,
+			   nfs->nfsi->timeout,
+			   nfs->nfsi->retrans);
 
         data->cb(0, nfs, NULL, data->private_data);
         free_nfs4_cb_data(data);
@@ -1625,10 +1642,8 @@ nfs4_mount_async(struct nfs_context *nfs, const char *server,
         free(nfs->nfsi->server);
         nfs->nfsi->server = new_server;
 
-#ifdef HAVE_TLS
 	free(nfs->rpc->server);
 	nfs->rpc->server = strdup(nfs->nfsi->server);
-#endif
 
         new_export = strdup(export);
 	if (new_export == NULL) {

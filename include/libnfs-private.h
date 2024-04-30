@@ -255,6 +255,18 @@ struct rpc_context {
 	int auto_reconnect;
 	int num_retries;
 
+	/*
+	 * NFS server name or IP address. It has the following uses:
+	 * - Used for certificate verification, in case of xprtsec=[tls,mtls]
+	 *   mount option.
+	 *   Note: In this case it must be a DNS name and not an IP address.
+	 * - For logging along with the "server not responding" message.
+	 *
+	 * Since at RPC layer we don't have access to struct nfs_context, we instead
+	 * save a copy here from nfs_get_server().
+	 */
+	char *server;
+
 	/* fragment reassembly */
 	struct rpc_fragment *fragments;
 
@@ -263,8 +275,44 @@ struct rpc_context {
 	int uid;
 	int gid;
 	int debug;
-        uint64_t last_timeout_scan;
+	uint64_t last_timeout_scan;
+
+	/*
+	 * Absolute time in milliseconds when the last successful RPC response
+	 * was received over this RPC transport/connection. We use it to see if
+	 * some RPC transport could be stuck and if yes we terminate and reconnect
+	 * as recovery action.
+	 * Note that this is to check activity at the RPC level and not at the
+	 * TCP level, latter is checked by using TCP keepalives.
+	 */
+	uint64_t last_successful_rpc_response;
+
+        /*
+         * RPC timeout in milliseconds. This is set from the timeo=<int> mount
+         * option. This is also called the "minor timeout", in contrast to the
+         * "major timeout" that happens after retrans*timeout milliseconds.
+         * It cannot have a value less than 10000, i.e., 10 seconds.
+         */
 	int timeout;
+
+	/*
+	 * Number of times an RPC request is retried before taking further
+	 * recovery action. This is set from the retrans=<int> mount option.
+	 * If 'retrans' is 0 then RPC requests are not retried and they fail
+	 * (with RPC_STATUS_TIMEOUT) after 'timeout' milliseconds. This roughly
+	 * mimics the "soft" mount option of NFS clients. Note that it's almost
+	 * never a good idea for NFS clients to let RPC requests fail, so 'retrans'
+	 * must not be set to 0.
+	 * If 'retrans' is non-zero then that's the number of times an RPC
+	 * request is retried before declaring a "major timeout", which prompts
+	 * more stricter recovery actions, f.e., reconnection.
+	 *
+	 * Note: This is set to non-zero only after successful mount as we want
+	 *       a resilient RPC transport only after mount.
+	 *       Ref rpc_set_resiliency().
+	 */
+	int retrans;
+
 	char ifname[IFNAMSIZ];
 	int poll_timeout;
 
@@ -292,13 +340,6 @@ struct rpc_context {
 
 	/* NFS version to use when sending the AUTH_TLS NULL RPC */
 	int nfs_version;
-
-	/*
-	 * Server name to be used for certificate verification.
-	 * Since at RPC layer we don't have access to struct nfs_context, we instead
-	 * save a copy here from nfs_get_server().
-	 */
-	char *server;
 
 	/* Context used for performing TLS handshake with the server */
 	struct tls_context tls_context;
@@ -359,7 +400,60 @@ struct rpc_pdu {
 #define PDU_DISCARD_AFTER_SENDING 0x00000001
         uint32_t flags;
 
+	/*
+	 * If TRUE, this RPC would not be retried. If no response is received
+	 * it'll fail with RPC_STATUS_TIMEOUT after 'timeout' msecs.
+	 * 'major_timeout' and 'snr_logged' fields are ignored for an RPC which
+	 * has do_not_retry set.
+	 * Non-NFS RPCs are not retried as they are mostly sent before or during
+	 * the mount process and it's desirable to fail them so that the mount
+	 * program can fail with appropriate error to the user who is waiting for
+	 * the mount to complete.
+	 *
+	 * Note that there are two ways to ensure that RPCs are not retried:
+	 * 1. Set rpc->retrans to 0.
+	 * 2. Set pd->do_not_retry to TRUE.
+	 *
+	 * Since we set rpc->retrans to non-zero value only after successful
+	 * mount completion all RPCs sent during the mount process are not
+	 * retried. For any other PDU if we don't want it to be retried we need
+	 * to set pdu->do_not_retry to TRUE. One such example is the AUTH_TLS
+	 * NULL RPC sent on reconnect which needs to be sent inline and hence
+	 * cannot be safely retried.
+	 */
+	bool_t do_not_retry;
+
+	/*
+	 * Absolute (minor) timeout in milliseconds for this RPC request.
+	 * This is set to current time in milliseconds (when the RPC is
+	 * queued) plus rpc->timeout.
+	 * If we do not get a response for an RPC request till timeout
+	 * milliseconds we retry the RPC request and reset pdu->timeout to
+	 * the next rpc->timeout milliseconds.
+	 */
 	uint64_t timeout;
+
+	/*
+	 * Absolute major timeout in milliseconds for this RPC request.
+	 * A major timeout happens after every rpc->retrans retries, i.e.,
+	 * after rpc->retrans*rpc->timeout milliseconds.
+	 * If we do not get a response for an RPC request till 'major_timeout'
+	 * milliseconds we log the "server not responding" message and take
+	 * further recovery action like reconnecting to the server and retrying
+	 * the RPC over the new connection. 'major_timeout' is also reset to
+	 * the next rpc->retrans*rpc->timeout milliseconds.
+	 */
+	uint64_t major_timeout;
+
+	/*
+	 * Have we logged the "server not responding" message for this RPC.
+	 * Note that for any RPC the "server not responding" message is logged
+	 * just once, when the first major_timeout occurs. After a major timeout
+	 * if we get the response to the RPC request we log the "server OK"
+	 * message.
+	 */
+	bool_t snr_logged;
+
 #ifdef HAVE_LIBKRB5
         uint32_t gss_seqno;
         char creds[64];
@@ -379,6 +473,7 @@ void rpc_return_to_queue(struct rpc_queue *q, struct rpc_pdu *pdu);
 unsigned int rpc_hash_xid(struct rpc_context *rpc, uint32_t xid);
 struct rpc_pdu *rpc_allocate_pdu(struct rpc_context *rpc, int program, int version, int procedure, rpc_cb cb, void *private_data, zdrproc_t zdr_decode_fn, int zdr_bufsize);
 struct rpc_pdu *rpc_allocate_pdu2(struct rpc_context *rpc, int program, int version, int procedure, rpc_cb cb, void *private_data, zdrproc_t zdr_decode_fn, int zdr_bufsize, size_t alloc_hint);
+void pdu_set_timeout(struct rpc_context *rpc, struct rpc_pdu *pdu, uint64_t now_msecs);
 
 void rpc_free_pdu(struct rpc_context *rpc, struct rpc_pdu *pdu);
 int rpc_queue_pdu(struct rpc_context *rpc, struct rpc_pdu *pdu);
@@ -400,12 +495,25 @@ void nfs_set_error(struct nfs_context *nfs, char *error_string, ...)
 
 #if defined(PS2_EE)
 #define RPC_LOG(rpc, level, format, ...) ;
+#define LOG(rpc, level, format, ...) ;
 #else
 #define RPC_LOG(rpc, level, format, ...) \
 	do { \
 		if (level <= rpc->debug) { \
 			fprintf(stderr, "libnfs:%d rpc %p " format "\n", level, rpc, ## __VA_ARGS__); \
 		} \
+	} while (0)
+/*
+ * Use LOG() for logging from code where there is no rpc_context.
+ * It only provides simple unconditional logging since we don't have any debug
+ * level to compare against.
+ *
+ * Note: Use it sparingly only for critical logs which cannot be conveyed to the
+ *       user through any better means.
+ */
+#define LOG(format, ...) \
+	do { \
+		fprintf(stderr, "libnfs: " format "\n", ## __VA_ARGS__); \
 	} while (0)
 #endif
 
@@ -418,7 +526,10 @@ int rpc_set_udp_destination(struct rpc_context *rpc, char *addr, int port, int i
 struct rpc_context *rpc_init_udp_context(void);
 struct sockaddr *rpc_get_recv_sockaddr(struct rpc_context *rpc);
 
-void rpc_set_autoreconnect(struct rpc_context *rpc, int num_retries);
+void rpc_set_resiliency(struct rpc_context *rpc,
+			int num_tcp_reconnect,
+			int timeout,
+			int retrans);
 
 void rpc_set_interface(struct rpc_context *rpc, const char *ifname);
 
@@ -474,7 +585,15 @@ struct nfs_context_internal {
        struct nfs_fh rootfh;
        size_t readmax;
        size_t writemax;
+       
+       /*
+	* Resilency parameters, taken from mount parameters and saved here.
+	* Later these are pushed to the RPC layer by rpc_set_resiliency().
+	*/
        int auto_reconnect;
+       int timeout;
+       int retrans;
+
        int dircache_enabled;
        struct nfsdir *dircache;
        uint16_t	mask;

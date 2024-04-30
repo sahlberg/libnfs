@@ -1,16 +1,16 @@
-/* 
+/*
    Copyright (C) by Ronnie Sahlberg <ronniesahlberg@gmail.com> 2024
-   
+
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
    the Free Software Foundation; either version 3 of the License, or
    (at your option) any later version.
-   
+
    This program is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
    GNU General Public License for more details.
-   
+
    You should have received a copy of the GNU General Public License
    along with this program; if not, see <http://www.gnu.org/licenses/>.
 */
@@ -35,7 +35,7 @@ WSADATA wsaData;
 #include <sys/stat.h>
 #include <string.h>
 #endif
- 
+
 #ifdef HAVE_POLL_H
 #include <poll.h>
 #endif
@@ -63,7 +63,7 @@ struct write_file_context {
 		     *  1: finished successfully
 		     * -1: finished with error.
 		     */
-  
+
 	int fd;
 	off_t offset;
 	int eof;
@@ -182,7 +182,7 @@ send_more_writes(struct write_file_context *ctx)
 			ctx->status = -1;
 			return;
 		}
-		
+
 		ctx->offset += ret;
 		/* Bump the number of commands we have in flight */
 		ctx->num_in_flight++;
@@ -235,7 +235,8 @@ nfs_mount_cb(int status, struct nfs_context *nfs, void *data,
 int main(int argc, char *argv[])
 {
 	struct write_file_context *ctx = NULL;
-	
+	int ret;
+
 #ifdef WIN32
 	if (WSAStartup(MAKEWORD(2,2), &wsaData) != 0) {
 		printf("Failed to start Winsock2\n");
@@ -276,10 +277,11 @@ int main(int argc, char *argv[])
 	 * even if we dial the concurrency really high.
 	 */
 	nfs_set_hash_size(ctx->nfs, MAX_CONCURRENCY / 100 + 10);
-	
+
 	ctx->url = nfs_parse_url_full(ctx->nfs, argv[2]);
 	if (ctx->url == NULL) {
-		printf("failed to parse url: %s\n", argv[2]);
+		printf("failed to parse url: %s: %s\n",
+			argv[2], nfs_get_error(ctx->nfs));
 		free_write_file_context(ctx);
 		exit(10);
 	}
@@ -290,7 +292,7 @@ int main(int argc, char *argv[])
 		free_write_file_context(ctx);
 		exit(10);
 	}
-	  
+
 
 	/*
 	 * We now have a context and we have queued up a chain of async
@@ -311,7 +313,7 @@ int main(int argc, char *argv[])
 		pfds[0].fd = nfs_get_fd(ctx->nfs);
 		pfds[0].events = nfs_which_events(ctx->nfs);
 
-		if (poll(&pfds[0], 1, -1) < 0) {
+		if (poll(&pfds[0], 1, nfs_get_poll_timeout(ctx->nfs)) < 0) {
 			printf("Poll failed");
 			break;
 		}
@@ -328,7 +330,9 @@ int main(int argc, char *argv[])
 	if (ctx->status < 0) {
 		printf("Failed\n");
 	}
-	
+
+	ret = (ctx->status > 0) ? 0 : -1;
+
 	free_write_file_context(ctx);
-	return 0;
+	return ret;
 }

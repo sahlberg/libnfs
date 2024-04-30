@@ -449,7 +449,7 @@ int main(int argc _U_, char *argv[] _U_)
 		pfd.fd = rpc_get_fd(rpc);
 		pfd.events = rpc_which_events(rpc);
 
-		if (poll(&pfd, 1, -1) < 0) {
+		if (poll(&pfd, 1, rpc_get_poll_timeout(rpc)) < 0) {
 			printf("Poll failed");
 			exit(10);
 		}
