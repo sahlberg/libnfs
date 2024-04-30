@@ -131,7 +131,7 @@ struct rpc_context *rpc_init_context(void)
 
 #ifdef HAVE_MULTITHREADING
 	nfs_mt_mutex_init(&rpc->rpc_mutex);
-#ifdef HAVE_STDATOMIC_H
+#ifndef HAVE_STDATOMIC_H
 	nfs_mt_mutex_init(&rpc->atomic_int_mutex);
 #endif
 #endif /* HAVE_MULTITHREADING */
@@ -201,7 +201,7 @@ struct rpc_context *rpc_init_server_context(int s)
 
 #ifdef HAVE_MULTITHREADING
         nfs_mt_mutex_init(&rpc->rpc_mutex);
-#ifdef HAVE_STDATOMIC_H
+#ifndef HAVE_STDATOMIC_H
 	nfs_mt_mutex_init(&rpc->atomic_int_mutex);
 #endif
 #endif /* HAVE_MULTITHREADING */
@@ -467,7 +467,7 @@ void rpc_destroy_context(struct rpc_context *rpc)
 	rpc->magic = 0;
 #ifdef HAVE_MULTITHREADING
         nfs_mt_mutex_destroy(&rpc->rpc_mutex);
-#ifdef HAVE_STDATOMIC_H
+#ifndef HAVE_STDATOMIC_H
         nfs_mt_mutex_destroy(&rpc->atomic_int_mutex);
 #endif
 #endif /* HAVE_MULTITHREADING */
