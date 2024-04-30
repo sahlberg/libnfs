@@ -131,7 +131,7 @@ static int ktls_set_##CIPHER##_info(gnutls_session_t session) 		\
 						    : TLS_1_3_VERSION), \
 		.info.cipher_type       = TLS_CIPHER_##CIPHER, 		\
 	}; 								\
-	unsigned char seq_number[8]; 					\
+	unsigned char seq_number[12]; 					\
 	gnutls_datum_t cipher_key; 					\
 	gnutls_datum_t mac_key; 					\
 	gnutls_datum_t iv;						\
