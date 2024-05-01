@@ -296,29 +296,39 @@ void rpc_set_auxiliary_gids(struct rpc_context *rpc, uint32_t len, uint32_t* gid
 void rpc_set_error(struct rpc_context *rpc, const char *error_string, ...)
 {
         va_list ap;
-	char *old_error_string;
 
 #ifdef HAVE_MULTITHREADING
         if (rpc->multithreading_enabled) {
                 nfs_mt_mutex_lock(&rpc->rpc_mutex);
         }
 #endif /* HAVE_MULTITHREADING */
-        old_error_string = rpc->error_string;
+
         va_start(ap, error_string);
+	free(rpc->error_string);
 	rpc->error_string = malloc(1024);
 	vsnprintf(rpc->error_string, 1024, error_string, ap);
         va_end(ap);
 
 	RPC_LOG(rpc, 1, "error: %s", rpc->error_string);
 
-	if (old_error_string != NULL) {
-		free(old_error_string);
-	}
 #ifdef HAVE_MULTITHREADING
         if (rpc->multithreading_enabled) {
                 nfs_mt_mutex_unlock(&rpc->rpc_mutex);
         }
 #endif /* HAVE_MULTITHREADING */
+}
+
+void rpc_set_error_nolock(struct rpc_context *rpc, const char *error_string, ...)
+{
+	va_list ap;
+
+	va_start(ap, error_string);
+	free(rpc->error_string);
+	rpc->error_string = malloc(1024);
+	vsnprintf(rpc->error_string, 1024, error_string, ap);
+	va_end(ap);
+
+	RPC_LOG(rpc, 1, "error: %s", rpc->error_string);
 }
 
 char *rpc_get_error(struct rpc_context *rpc)

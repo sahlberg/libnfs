@@ -47,6 +47,7 @@
 #include <sys/time.h>
 #endif
 
+#include <string.h>
 #include "libnfs.h"
 #include "libnfs-raw.h"
 #include "libnfs-private.h"
@@ -120,26 +121,79 @@ void nfs_mt_service_thread_stop(struct nfs_context *nfs)
         pthread_join(nfs->nfsi->service_thread, NULL);
 }
         
+/*
+ * If this is enabled we check for the following locking violations, at the
+ * (slight) cost of performance:
+ * - Thread holding the lock again tries to lock.
+ * - Thread not holding the lock tries to unlock.
+ *
+ * This is very useful for catching any coding errors.
+ * The performance hit is not very significant so you can leave it enabled,
+ * but if you really care then once the code has been vetted, this can be
+ * undef'ed to get the perf back.
+ */
+#define DEBUG_PTHREAD_LOCKING_VIOLATIONS
+
 int nfs_mt_mutex_init(libnfs_mutex_t *mutex)
 {
-        pthread_mutex_init(mutex, NULL);
-        return 0;
+	int ret;
+#ifdef DEBUG_PTHREAD_LOCKING_VIOLATIONS
+	pthread_mutexattr_t attr;
+
+	ret = pthread_mutexattr_init(&attr);
+	if (ret != 0) {
+		LOG("pthread_mutexattr_init() failed: %d (%s)", ret, strerror(ret));
+		assert(0);
+		return ret;
+	}
+
+	ret = pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_ERRORCHECK);
+	if (ret != 0) {
+		LOG("pthread_mutexattr_settype() failed: %d (%s)", ret, strerror(ret));
+		assert(0);
+		return ret;
+	}
+
+	ret = pthread_mutex_init(mutex, &attr);
+	if (ret != 0) {
+		LOG("pthread_mutex_init() failed: %d (%s)", ret, strerror(ret));
+		assert(0);
+		return ret;
+	}
+#else
+	ret = pthread_mutex_init(mutex, NULL);
+	assert(ret == 0);
+#endif
+	return ret;
 }
 
 int nfs_mt_mutex_destroy(libnfs_mutex_t *mutex)
 {
-        pthread_mutex_destroy(mutex);
-        return 0;
+	return pthread_mutex_destroy(mutex);
 }
 
 int nfs_mt_mutex_lock(libnfs_mutex_t *mutex)
 {
-        return pthread_mutex_lock(mutex);
+	const int ret = pthread_mutex_lock(mutex);
+
+	if (ret != 0) {
+		LOG("pthread_mutex_lock() failed: %d (%s)", ret, strerror(ret));
+		assert(0);
+	}
+
+	return ret;
 }
 
 int nfs_mt_mutex_unlock(libnfs_mutex_t *mutex)
 {
-        return pthread_mutex_unlock(mutex);
+	const int ret = pthread_mutex_unlock(mutex);
+
+	if (ret != 0) {
+		LOG("pthread_mutex_unlock() failed: %d (%s)", ret, strerror(ret));
+		assert(0);
+	}
+
+	return ret;
 }
 
 #if defined(__APPLE__) && defined(HAVE_DISPATCH_DISPATCH_H)

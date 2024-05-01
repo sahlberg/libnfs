@@ -2220,7 +2220,6 @@ void
 nfs_set_error(struct nfs_context *nfs, char *error_string, ...)
 {
         va_list ap;
-	char *str = NULL;
 
 #ifdef HAVE_MULTITHREADING
         /* All thread contexts share the same rpc_context so
@@ -2230,19 +2229,30 @@ nfs_set_error(struct nfs_context *nfs, char *error_string, ...)
                 nfs_mt_mutex_lock(&nfs->rpc->rpc_mutex);
         }
 #endif /* HAVE_MULTITHREADING */
+
         va_start(ap, error_string);
-	str = malloc(1024);
-	vsnprintf(str, 1024, error_string, ap);
-	if (nfs->error_string != NULL) {
-		free(nfs->error_string);
-	}
-	nfs->error_string = str;
-	va_end(ap);
+	free(nfs->error_string);
+	nfs->error_string = malloc(1024);
+	vsnprintf(nfs->error_string, 1024, error_string, ap);
+        va_end(ap);
+
 #ifdef HAVE_MULTITHREADING
         if (nfs->rpc->multithreading_enabled) {
                 nfs_mt_mutex_unlock(&nfs->rpc->rpc_mutex);
         }
 #endif /* HAVE_MULTITHREADING */
+}
+
+void
+nfs_set_error_nolock(struct nfs_context *nfs, char *error_string, ...)
+{
+        va_list ap;
+
+        va_start(ap, error_string);
+        free(nfs->error_string);
+        nfs->error_string = malloc(1024);
+        vsnprintf(nfs->error_string, 1024, error_string, ap);
+        va_end(ap);
 }
 
 struct mount_cb_data {
