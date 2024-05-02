@@ -52,6 +52,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <assert.h>
+#include <fcntl.h>
 #include <time.h>
 #include "slist.h"
 #include "libnfs-zdr.h"
@@ -181,6 +182,18 @@ struct rpc_context *rpc_init_context(void)
 	return rpc;
 }
 
+static int
+is_nonblocking(int s)
+{
+#if defined(WIN32)
+    return 0;
+#else
+	int v;
+	v = fcntl(s, F_GETFL, 0);
+	return (v & O_NONBLOCK) != 0;
+#endif
+}
+
 struct rpc_context *rpc_init_server_context(int s)
 {
 	struct rpc_context *rpc;
@@ -196,6 +209,9 @@ struct rpc_context *rpc_init_server_context(int s)
 	rpc->is_server_context = 1;
 	rpc->fd = s;
 	rpc->is_connected = 1;
+
+	rpc->is_nonblocking = is_nonblocking(s);
+
         rpc->is_udp = rpc_is_udp_socket(rpc);
 	rpc_reset_queue(&rpc->outqueue);
 
@@ -244,7 +260,7 @@ struct rpc_context *rpc_init_udp_context(void)
 	if (rpc != NULL) {
 		rpc->is_udp = 1;
 	}
-	
+
 	return rpc;
 }
 
@@ -296,7 +312,7 @@ void rpc_set_auxiliary_gids(struct rpc_context *rpc, uint32_t len, uint32_t* gid
 void rpc_set_error(struct rpc_context *rpc, const char *error_string, ...)
 {
         va_list ap;
-	char *old_error_string;
+	char *old_error_string = NULL;
 
 #ifdef HAVE_MULTITHREADING
         if (rpc->multithreading_enabled) {
@@ -306,16 +322,16 @@ void rpc_set_error(struct rpc_context *rpc, const char *error_string, ...)
 	old_error_string = rpc->error_string;
         va_start(ap, error_string);
 	rpc->error_string = malloc(1024);
+        if (rpc->error_string == NULL) {
+                free(old_error_string);
+                return;
+        }
 	vsnprintf(rpc->error_string, 1024, error_string, ap);
         va_end(ap);
 
 	RPC_LOG(rpc, 1, "error: %s", rpc->error_string);
 
-	/*
-	 * Free old_error_string after vsnprintf() above to support calls like
-	 * rpc_set_error(rpc, "Failed to perform xxx: %s", rpc_get_error(rpc));
-	 */
-	free(old_error_string);
+        free(old_error_string);
 #ifdef HAVE_MULTITHREADING
         if (rpc->multithreading_enabled) {
                 nfs_mt_mutex_unlock(&rpc->rpc_mutex);

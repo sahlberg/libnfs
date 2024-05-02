@@ -78,6 +78,12 @@ WSADATA wsaData;
  */
 #define NUM_THREADS  8
 
+/*
+ * Max how many writes can be outstanding at any tine.
+ * This will be divided by NUM_THREADS to decide per-thread outstanding.
+ */
+#define MAX_CONCURRENCY 1024
+
 void usage(void)
 {
 	fprintf(stderr, "Usage: nfs-pthreads-writefile <src> <dst>\n");
@@ -91,6 +97,7 @@ struct write_data {
 	struct nfsfh *nfsfh;
 	uint64_t offset;
 	ssize_t len;
+	int max_outstanding;
 };
 
 struct write_cb_data {
@@ -123,7 +130,8 @@ static void *nfs_write_thread(void *arg)
 	write_cb_data.status = 0;
 	write_cb_data.calls_in_flight = 0;
 	while (wd->len) {
-		count = 65536;
+		/* 1MB write RPC is fair size */
+		count = 1048576;
 		if (count > wd->len) {
 			count = wd->len;
 		}
@@ -137,6 +145,13 @@ static void *nfs_write_thread(void *arg)
 		}
 		wd->offset += count;
 		wd->len -= count;
+
+		/* Wait a bit if we have max_outstanding IOs in flight */
+		while(write_cb_data.calls_in_flight >= wd->max_outstanding) {
+			ts.tv_sec = 0;
+			ts.tv_nsec = 1000000;
+			nanosleep(&ts, NULL);
+		}
 	}
 	while(write_cb_data.calls_in_flight) {
 		ts.tv_sec = 0;
@@ -275,6 +290,7 @@ int main(int argc, char *argv[])
 		if (wd[i].len > chunk_size) {
 			wd[i].len = chunk_size;
 		}
+		wd[i].max_outstanding = MAX_CONCURRENCY / NUM_THREADS;
 
                 if (pthread_create(&write_threads[i], NULL,
                                    &nfs_write_thread, &wd[i])) {
