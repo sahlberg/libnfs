@@ -312,7 +312,7 @@ void rpc_set_auxiliary_gids(struct rpc_context *rpc, uint32_t len, uint32_t* gid
 void rpc_set_error(struct rpc_context *rpc, const char *error_string, ...)
 {
         va_list ap;
-	char *old_error_string = NULL;
+	char *old_error_string;
 
 #ifdef HAVE_MULTITHREADING
         if (rpc->multithreading_enabled) {
@@ -322,14 +322,11 @@ void rpc_set_error(struct rpc_context *rpc, const char *error_string, ...)
 	old_error_string = rpc->error_string;
         va_start(ap, error_string);
 	rpc->error_string = malloc(1024);
-        if (rpc->error_string == NULL) {
-                free(old_error_string);
-                return;
-        }
-	vsnprintf(rpc->error_string, 1024, error_string, ap);
+        if (rpc->error_string != NULL) {
+		vsnprintf(rpc->error_string, 1024, error_string, ap);
+		RPC_LOG(rpc, 1, "error: %s", rpc->error_string);
+	}
         va_end(ap);
-
-	RPC_LOG(rpc, 1, "error: %s", rpc->error_string);
 
         free(old_error_string);
 #ifdef HAVE_MULTITHREADING
@@ -346,10 +343,11 @@ void rpc_set_error_locked(struct rpc_context *rpc, const char *error_string, ...
 
 	va_start(ap, error_string);
 	rpc->error_string = malloc(1024);
-	vsnprintf(rpc->error_string, 1024, error_string, ap);
+        if (rpc->error_string != NULL) {
+		vsnprintf(rpc->error_string, 1024, error_string, ap);
+		RPC_LOG(rpc, 1, "error: %s", rpc->error_string);
+	}
 	va_end(ap);
-
-	RPC_LOG(rpc, 1, "error: %s", rpc->error_string);
 
 	free(old_error_string);
 }

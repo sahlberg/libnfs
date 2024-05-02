@@ -2233,8 +2233,10 @@ nfs_set_error(struct nfs_context *nfs, char *error_string, ...)
 	old_error_string = nfs->error_string;
         va_start(ap, error_string);
 	nfs->error_string = malloc(1024);
-	vsnprintf(nfs->error_string, 1024, error_string, ap);
-        va_end(ap);
+	if (nfs->error_string != NULL) {
+		vsnprintf(nfs->error_string, 1024, error_string, ap);
+	}
+	va_end(ap);
 
 	/*
 	 * Free old_error_string after vsnprintf() above to support calls like
@@ -2256,7 +2258,9 @@ nfs_set_error_locked(struct nfs_context *nfs, char *error_string, ...)
 
         va_start(ap, error_string);
         nfs->error_string = malloc(1024);
-        vsnprintf(nfs->error_string, 1024, error_string, ap);
+	if (nfs->error_string != NULL) {
+		vsnprintf(nfs->error_string, 1024, error_string, ap);
+	}
         va_end(ap);
 
 	free(old_error_string);
