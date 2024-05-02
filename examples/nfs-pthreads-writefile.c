@@ -98,13 +98,14 @@ static void *nfs_write_thread(void *arg)
 	char *buf;
 	ssize_t count;
 
-	buf = malloc(65536);
+	/* 1MB write RPC is fair size */
+	buf = malloc(1048576);
 	if (buf == NULL) {
 		fprintf(stderr, "Failed to allocate buffer\n");
 		exit(1);
 	}
 	while (wd->len) {
-		count = 65536;
+		count = 1048576;
 		if (count > wd->len) {
 			count = wd->len;
 		}
