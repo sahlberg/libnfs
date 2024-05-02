@@ -365,7 +365,7 @@ rpc_write_to_socket(struct rpc_context *rpc)
                                  goto finished;
 
                         }
-                        rpc_set_error_nolock(rpc, "Error when writing to "
+                        rpc_set_error_locked(rpc, "Error when writing to "
 					     "socket :%d %s", errno,
 					     rpc_get_error(rpc));
                         ret = -1;
@@ -840,7 +840,7 @@ rpc_timeout_scan(struct rpc_context *rpc)
 			if (!rpc->outqueue.head) {
 				rpc->outqueue.tail = NULL; //done
 			}
-			rpc_set_error_nolock(rpc, "command timed out");
+			rpc_set_error_locked(rpc, "command timed out");
 			pdu->cb(rpc, RPC_STATUS_TIMEOUT,
 				NULL, pdu->private_data);
 			rpc_free_pdu(rpc, pdu);
@@ -900,7 +900,7 @@ rpc_timeout_scan(struct rpc_context *rpc)
 			} else {
 				// qqq move to a temporary queue and process after
 				// we drop the mutex
-				rpc_set_error_nolock(rpc, "command timed out");
+				rpc_set_error_locked(rpc, "command timed out");
 				pdu->cb(rpc, RPC_STATUS_TIMEOUT,
 					NULL, pdu->private_data);
 				rpc_free_pdu(rpc, pdu);

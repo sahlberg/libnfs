@@ -496,7 +496,7 @@ void rpc_set_error(struct rpc_context *rpc, const char *error_string, ...)
  * functions that hold rpc->rpc_mutex. The following nolock version must be
  * used by callers who hold the rpc->rpc_mutex.
  */
-void rpc_set_error_nolock(struct rpc_context *rpc, const char *error_string, ...)
+void rpc_set_error_locked(struct rpc_context *rpc, const char *error_string, ...)
 #ifdef __GNUC__
  __attribute__((format(printf, 2, 3)))
 #endif
@@ -508,7 +508,7 @@ void nfs_set_error(struct nfs_context *nfs, char *error_string, ...)
 #endif
 ;
 
-void nfs_set_error_nolock(struct nfs_context *nfs, char *error_string, ...)
+void nfs_set_error_locked(struct nfs_context *nfs, char *error_string, ...)
 #ifdef __GNUC__
  __attribute__((format(printf, 2, 3)))
 #endif
