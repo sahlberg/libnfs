@@ -68,6 +68,8 @@
 #define discard_const(ptr) ((void *)((intptr_t)(ptr)))
 #endif
 
+static const char *oom = "out of memory";
+
 uint64_t rpc_current_time(void)
 {
 #ifdef HAVE_CLOCK_GETTIME
@@ -313,7 +315,7 @@ void rpc_set_error(struct rpc_context *rpc, const char *error_string, ...)
 {
         va_list ap;
 	char *old_error_string = NULL;
-
+        
 #ifdef HAVE_MULTITHREADING
         if (rpc->multithreading_enabled) {
                 nfs_mt_mutex_lock(&rpc->rpc_mutex);
@@ -324,6 +326,7 @@ void rpc_set_error(struct rpc_context *rpc, const char *error_string, ...)
 	rpc->error_string = malloc(1024);
         if (rpc->error_string == NULL) {
                 free(old_error_string);
+                rpc->error_string = discard_const(oom);
                 return;
         }
 	vsnprintf(rpc->error_string, 1024, error_string, ap);
@@ -331,7 +334,9 @@ void rpc_set_error(struct rpc_context *rpc, const char *error_string, ...)
 
 	RPC_LOG(rpc, 1, "error: %s", rpc->error_string);
 
-        free(old_error_string);
+        if (old_error_string && old_error_string != oom) {
+                free(old_error_string);
+        }
 #ifdef HAVE_MULTITHREADING
         if (rpc->multithreading_enabled) {
                 nfs_mt_mutex_unlock(&rpc->rpc_mutex);
@@ -346,12 +351,19 @@ void rpc_set_error_locked(struct rpc_context *rpc, const char *error_string, ...
 
 	va_start(ap, error_string);
 	rpc->error_string = malloc(1024);
+        if (rpc->error_string == NULL) {
+                free(old_error_string);
+                rpc->error_string = discard_const(oom);
+                return;
+        }
 	vsnprintf(rpc->error_string, 1024, error_string, ap);
 	va_end(ap);
 
 	RPC_LOG(rpc, 1, "error: %s", rpc->error_string);
 
-	free(old_error_string);
+        if (old_error_string && old_error_string != oom) {
+                free(old_error_string);
+        }
 }
 
 char *rpc_get_error(struct rpc_context *rpc)
