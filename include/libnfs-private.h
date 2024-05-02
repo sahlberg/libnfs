@@ -481,13 +481,34 @@ int rpc_process_pdu(struct rpc_context *rpc, char *buf, int size);
 struct rpc_pdu *rpc_find_pdu(struct rpc_context *rpc, uint32_t xid);
 void rpc_error_all_pdus(struct rpc_context *rpc, const char *error);
 
+/*
+ * XXX This holds rpc->rpc_mutex, so if the caller is already holding
+ *     rpc->rpc_mutex, use the nolock version below.
+ */
 void rpc_set_error(struct rpc_context *rpc, const char *error_string, ...)
 #ifdef __GNUC__
  __attribute__((format(printf, 2, 3)))
 #endif
 ;
 
+/*
+ * rpc_set_error() is a common error path function which is called from many
+ * functions that hold rpc->rpc_mutex. The following nolock version must be
+ * used by callers who hold the rpc->rpc_mutex.
+ */
+void rpc_set_error_locked(struct rpc_context *rpc, const char *error_string, ...)
+#ifdef __GNUC__
+ __attribute__((format(printf, 2, 3)))
+#endif
+;
+
 void nfs_set_error(struct nfs_context *nfs, char *error_string, ...)
+#ifdef __GNUC__
+ __attribute__((format(printf, 2, 3)))
+#endif
+;
+
+void nfs_set_error_locked(struct nfs_context *nfs, char *error_string, ...)
 #ifdef __GNUC__
  __attribute__((format(printf, 2, 3)))
 #endif

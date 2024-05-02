@@ -319,7 +319,7 @@ void rpc_set_error(struct rpc_context *rpc, const char *error_string, ...)
                 nfs_mt_mutex_lock(&rpc->rpc_mutex);
         }
 #endif /* HAVE_MULTITHREADING */
-        old_error_string = rpc->error_string;
+	old_error_string = rpc->error_string;
         va_start(ap, error_string);
 	rpc->error_string = malloc(1024);
         if (rpc->error_string == NULL) {
@@ -337,6 +337,21 @@ void rpc_set_error(struct rpc_context *rpc, const char *error_string, ...)
                 nfs_mt_mutex_unlock(&rpc->rpc_mutex);
         }
 #endif /* HAVE_MULTITHREADING */
+}
+
+void rpc_set_error_locked(struct rpc_context *rpc, const char *error_string, ...)
+{
+	va_list ap;
+	char *old_error_string = rpc->error_string;
+
+	va_start(ap, error_string);
+	rpc->error_string = malloc(1024);
+	vsnprintf(rpc->error_string, 1024, error_string, ap);
+	va_end(ap);
+
+	RPC_LOG(rpc, 1, "error: %s", rpc->error_string);
+
+	free(old_error_string);
 }
 
 char *rpc_get_error(struct rpc_context *rpc)

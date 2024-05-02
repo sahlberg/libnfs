@@ -2220,7 +2220,7 @@ void
 nfs_set_error(struct nfs_context *nfs, char *error_string, ...)
 {
         va_list ap;
-	char *str = NULL;
+	char *old_error_string;
 
 #ifdef HAVE_MULTITHREADING
         /* All thread contexts share the same rpc_context so
@@ -2230,19 +2230,36 @@ nfs_set_error(struct nfs_context *nfs, char *error_string, ...)
                 nfs_mt_mutex_lock(&nfs->rpc->rpc_mutex);
         }
 #endif /* HAVE_MULTITHREADING */
+	old_error_string = nfs->error_string;
         va_start(ap, error_string);
-	str = malloc(1024);
-	vsnprintf(str, 1024, error_string, ap);
-	if (nfs->error_string != NULL) {
-		free(nfs->error_string);
-	}
-	nfs->error_string = str;
-	va_end(ap);
+	nfs->error_string = malloc(1024);
+	vsnprintf(nfs->error_string, 1024, error_string, ap);
+        va_end(ap);
+
+	/*
+	 * Free old_error_string after vsnprintf() above to support calls like
+	 * nfs_set_error(nfs, "Failed to perform xxx: %s", nfs_get_error(nfs));
+	 */
+	free(old_error_string);
 #ifdef HAVE_MULTITHREADING
         if (nfs->rpc->multithreading_enabled) {
                 nfs_mt_mutex_unlock(&nfs->rpc->rpc_mutex);
         }
 #endif /* HAVE_MULTITHREADING */
+}
+
+void
+nfs_set_error_locked(struct nfs_context *nfs, char *error_string, ...)
+{
+        va_list ap;
+	char *old_error_string = nfs->error_string;
+
+        va_start(ap, error_string);
+        nfs->error_string = malloc(1024);
+        vsnprintf(nfs->error_string, 1024, error_string, ap);
+        va_end(ap);
+
+	free(old_error_string);
 }
 
 struct mount_cb_data {
