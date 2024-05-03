@@ -327,13 +327,14 @@ void rpc_set_error(struct rpc_context *rpc, const char *error_string, ...)
         if (rpc->error_string == NULL) {
                 free(old_error_string);
                 rpc->error_string = discard_const(oom);
-                return;
+                goto finished;
         }
 	vsnprintf(rpc->error_string, 1024, error_string, ap);
         va_end(ap);
 
 	RPC_LOG(rpc, 1, "error: %s", rpc->error_string);
 
+ finished:
         if (old_error_string && old_error_string != oom) {
                 free(old_error_string);
         }
@@ -499,7 +500,7 @@ void rpc_destroy_context(struct rpc_context *rpc)
  		close(rpc->fd);
 	}
 
-	if (rpc->error_string != NULL) {
+	if (rpc->error_string && rpc->error_string != oom) {
 		free(rpc->error_string);
 		rpc->error_string = NULL;
 	}

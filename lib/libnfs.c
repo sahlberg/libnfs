@@ -83,6 +83,12 @@
 #include "krb5-wrapper.h"
 #endif
 
+#ifndef discard_const
+#define discard_const(ptr) ((void *)((intptr_t)(ptr)))
+#endif
+
+static const char *oom = "out of memory";
+
 void
 nfs_free_nfsdir(struct nfsdir *nfsdir)
 {
@@ -2233,14 +2239,22 @@ nfs_set_error(struct nfs_context *nfs, char *error_string, ...)
 	old_error_string = nfs->error_string;
         va_start(ap, error_string);
 	nfs->error_string = malloc(1024);
+        if (nfs->error_string == NULL) {
+                free(old_error_string);
+                nfs->error_string = discard_const(oom);
+                goto finished;
+        }
 	vsnprintf(nfs->error_string, 1024, error_string, ap);
         va_end(ap);
 
+ finished:
 	/*
 	 * Free old_error_string after vsnprintf() above to support calls like
 	 * nfs_set_error(nfs, "Failed to perform xxx: %s", nfs_get_error(nfs));
 	 */
-	free(old_error_string);
+        if (old_error_string && old_error_string != oom) {
+                free(old_error_string);
+        }
 #ifdef HAVE_MULTITHREADING
         if (nfs->rpc->multithreading_enabled) {
                 nfs_mt_mutex_unlock(&nfs->rpc->rpc_mutex);
@@ -2256,10 +2270,17 @@ nfs_set_error_locked(struct nfs_context *nfs, char *error_string, ...)
 
         va_start(ap, error_string);
         nfs->error_string = malloc(1024);
+        if (nfs->error_string == NULL) {
+                free(old_error_string);
+                nfs->error_string = discard_const(oom);
+                return;
+        }
         vsnprintf(nfs->error_string, 1024, error_string, ap);
         va_end(ap);
 
-	free(old_error_string);
+        if (old_error_string && old_error_string != oom) {
+                free(old_error_string);
+        }
 }
 
 struct mount_cb_data {
