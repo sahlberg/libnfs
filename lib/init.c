@@ -325,7 +325,6 @@ void rpc_set_error(struct rpc_context *rpc, const char *error_string, ...)
         va_start(ap, error_string);
 	rpc->error_string = malloc(1024);
         if (rpc->error_string == NULL) {
-                free(old_error_string);
                 rpc->error_string = discard_const(oom);
                 goto finished;
         }

@@ -2242,7 +2242,6 @@ nfs_set_error(struct nfs_context *nfs, char *error_string, ...)
         va_start(ap, error_string);
 	nfs->error_string = malloc(1024);
         if (nfs->error_string == NULL) {
-                free(old_error_string);
                 nfs->error_string = discard_const(oom);
                 goto finished;
         }
