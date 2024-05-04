@@ -671,8 +671,10 @@ nfs_destroy_context(struct nfs_context *nfs)
 	rpc_destroy_context(nfs->rpc);
 	nfs->rpc = NULL;
 
-        free(nfs->error_string);
-        nfs->error_string = NULL;
+	if (nfs->error_string && nfs->error_string != oom) {
+		free(nfs->error_string);
+		nfs->error_string = NULL;
+	}
 
         free(nfs->nfsi->server);
         free(nfs->nfsi->export);
