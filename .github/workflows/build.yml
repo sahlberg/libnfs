@@ -14,7 +14,6 @@ jobs:
           sudo apt-get install -y --no-install-recommends \
             nfs-kernel-server nfs-common \
             valgrind
-      - run: mkdir build
       - run: cmake -D ENABLE_TESTS=yes -B build
       - run: make --directory build
       - run: sudo make --directory build install
@@ -73,7 +72,7 @@ jobs:
       - name: Get the qemu container
         run: docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
       - name: ${{ matrix.platform }}
-        run: docker run --rm --interactive --mount type=bind,source=$(pwd),target=/host ${{ matrix.platform }}/alpine sh -c "apk add cmake make gcc libc-dev git; cp -r /host from-host; cd from-host; mkdir build; cmake -B build; make --directory build install"
+        run: docker run --rm --interactive --mount type=bind,source=$(pwd),target=/host ${{ matrix.platform }}/alpine sh -c "apk add cmake make gcc libc-dev git; cp -r /host from-host; cd from-host; cmake -B build; make --directory build install"
 
   macOS:
     runs-on: macos-latest
@@ -81,7 +80,6 @@ jobs:
     steps:
       - uses: actions/checkout@main
       - run: brew install cmake
-      - run: mkdir build
       - run: cmake -B build
       - run: make --directory build
 
@@ -111,7 +109,6 @@ jobs:
       - shell: C:\cygwin\bin\bash.exe --login --norc -eo pipefail -o igncr '{0}'
         run: |
             cd $GITHUB_WORKSPACE
-            mkdir build
             cmake -B build
             make --directory build
 
