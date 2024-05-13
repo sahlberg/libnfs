@@ -11,7 +11,7 @@ jobs:
       - uses: actions/checkout@main
       - run: |
           sudo apt-get update
-          sudo apt-get install -y \
+          sudo apt-get install -y --no-install-recommends \
             cmake \
             nfs-kernel-server nfs-common \
             valgrind
