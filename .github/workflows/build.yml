@@ -9,10 +9,11 @@ jobs:
 
     steps:
       - uses: actions/checkout@main
-      - run: sudo apt install -y cmake
-      - run: sudo apt install -y nfs-kernel-server
-      - run: sudo apt install -y nfs-common
-      - run: sudo apt install -y valgrind
+      - run: |
+          sudo apt install -y \
+            cmake \
+            nfs-kernel-server nfs-common \
+            valgrind
       - run: mkdir build
       - run: cmake -D ENABLE_TESTS=yes -B build
       - run: make --directory build
