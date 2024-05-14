@@ -9,14 +9,15 @@ jobs:
 
     steps:
       - uses: actions/checkout@main
-      - run: sudo apt install -y cmake
-      - run: sudo apt install -y nfs-kernel-server
-      - run: sudo apt install -y nfs-common
-      - run: sudo apt install -y valgrind
-      - run: mkdir build
-      - run: cmake -D ENABLE_TESTS=yes -B build
-      - run: make --directory build
-      - run: sudo make --directory build install
+      - run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            ninja-build \
+            nfs-kernel-server nfs-common \
+            valgrind
+      - run: cmake -D ENABLE_TESTS=yes -B build -G Ninja
+      - run: ninja --verbose -C build
+      - run: sudo ninja --verbose -C build install
       - run: sudo bash -c "cd build/tests;./test_0100_ls_basic.sh"
       - run: sudo bash -c "cd build/tests;./test_0102_ls_discover_shares.sh"
       - run: sudo bash -c "cd build/tests;./test_0200_stat.sh"
@@ -72,7 +73,7 @@ jobs:
       - name: Get the qemu container
         run: docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
       - name: ${{ matrix.platform }}
-        run: docker run --rm --interactive --mount type=bind,source=$(pwd),target=/host ${{ matrix.platform }}/alpine sh -c "apk add cmake make gcc libc-dev git; cp -r /host from-host; cd from-host; mkdir build; cmake -B build; make --directory build install"
+        run: docker run --rm --interactive --mount type=bind,source=$(pwd),target=/host ${{ matrix.platform }}/alpine sh -c "apk add cmake samurai gcc libc-dev git && cp -r /host from-host && cd from-host && cmake -B build -G Ninja && ninja --verbose -C build install"
 
   macOS:
     runs-on: macos-latest
@@ -80,7 +81,6 @@ jobs:
     steps:
       - uses: actions/checkout@main
       - run: brew install cmake
-      - run: mkdir build
       - run: cmake -B build
       - run: make --directory build
 
@@ -105,14 +105,13 @@ jobs:
       - name: Set up Cygwin
         uses: cygwin/cygwin-install-action@master
         with:
-            packages: make gcc-g++ bash cmake
+            packages: ninja gcc-g++ bash cmake
       - uses: actions/checkout@main
       - shell: C:\cygwin\bin\bash.exe --login --norc -eo pipefail -o igncr '{0}'
         run: |
             cd $GITHUB_WORKSPACE
-            mkdir build
-            cmake -B build
-            make --directory build
+            cmake -B build -G Ninja
+            ninja --verbose -C build
 
   build-ps2-ee:
     name: PS2 EE build
