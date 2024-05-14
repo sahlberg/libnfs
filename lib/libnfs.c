@@ -647,6 +647,7 @@ nfs_init_context(void)
 void
 nfs4_set_client_name(struct nfs_context *nfs, const char *client_name)
 {
+        free(nfs->nfsi->client_name);
         nfs->nfsi->client_name = strdup(client_name);
 }
 
