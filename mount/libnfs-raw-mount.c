@@ -38,7 +38,7 @@ either expressed or implied, of the FreeBSD Project.
 uint32_t
 zdr_fhandle3 (ZDR *zdrs, fhandle3 *objp)
 {
-	 if (!zdr_bytes (zdrs, (char **)&objp->fhandle3_val, (u_int *) &objp->fhandle3_len, FHSIZE3))
+	 if (!zdr_bytes (zdrs, (char **)&objp->fhandle3_val, (uint32_t *) &objp->fhandle3_len, FHSIZE3))
 		 return FALSE;
 	return TRUE;
 }

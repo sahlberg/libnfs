@@ -47,7 +47,7 @@ extern "C" {
 #define FHSIZE3 64
 
 typedef struct {
-	u_int fhandle3_len;
+	uint32_t fhandle3_len;
 	char *fhandle3_val;
 } fhandle3;
 
