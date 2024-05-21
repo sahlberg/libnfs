@@ -36,7 +36,9 @@ typedef unsigned long int fsfilcnt_t;
 #define getservbyport(a,b) NULL
 #define major(a) 0
 #define minor(a) 0
+#ifndef O_NOFOLLOW
 #define O_NOFOLLOW 0
+#endif /* O_NOFOLLOW */
 
 struct statvfs {
         unsigned long int f_bsize;
