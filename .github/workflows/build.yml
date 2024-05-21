@@ -124,7 +124,7 @@ jobs:
         apk add build-base git zip gawk python3 py3-pip bash
 
     - name: git checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@main
 
     - name: make -f Makefile.PS2_EE
       run: |

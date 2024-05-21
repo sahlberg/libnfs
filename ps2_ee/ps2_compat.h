@@ -34,6 +34,8 @@
 typedef unsigned long int fsfilcnt_t;
 
 #define getservbyport(a,b) NULL
+#define getaddrinfo  nfs_getaddrinfo
+#define freeaddrinfo nfs_freeaddrinfo
 #define major(a) 0
 #define minor(a) 0
 #ifndef O_NOFOLLOW
@@ -86,6 +88,10 @@ ssize_t readv(int fd, const struct iovec *iov, int iovcnt);
 int getnameinfo(const struct sockaddr *addr, socklen_t addrlen,
                 char *host, socklen_t hostlen,
                 char *serv, socklen_t servlen, int flags);
+int nfs_getaddrinfo(const char *node, const char*service,
+                const struct addrinfo *hints,
+                struct addrinfo **res);
+void nfs_freeaddrinfo(struct addrinfo *res);
 
 long long int be64toh(long long int x);
 
