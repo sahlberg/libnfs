@@ -271,6 +271,11 @@ int rpc_set_username(struct rpc_context *rpc, const char *username)
 #ifdef HAVE_LIBKRB5
         free(discard_const(rpc->username));
         rpc->username = strdup(username);
+	if (rpc->username == NULL) {
+		rpc_set_error(rpc,
+			      "Out of memory: Failed to allocate username");
+		return -1;
+	}
 #endif
         return 0;
 }

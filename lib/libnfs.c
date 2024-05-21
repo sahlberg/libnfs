@@ -485,16 +485,28 @@ flags:
 		if (strp2) {
 			*strp2 = 0;
 			strp2++;
-			if (nfs_set_context_args(nfs, strp, strp2) != 0)
+			if (nfs_set_context_args(nfs, strp, strp2) != 0) {
+                                nfs_destroy_url(urls);
 				return NULL;
+                        }
 		}
 	}
 
         strp =strchr(urls->server, '@');
         if (strp && nfs->rpc) {
                 *strp++ = '\0';
-                rpc_set_username(nfs->rpc, urls->server);
+                if (rpc_set_username(nfs->rpc, urls->server) != 0) {
+                        nfs_destroy_url(urls);
+                        return NULL;
+                }
                 urls->server = strdup(strp);
+		if (urls->server == NULL) {
+			nfs_destroy_url(urls);
+			rpc_set_error(nfs->rpc,
+				      "Out of memory: Failed to allocate "
+				      "server name");
+			return NULL;
+		}
         }
 	if (urls->server && strlen(urls->server) <= 1) {
 		free(urls->server);
