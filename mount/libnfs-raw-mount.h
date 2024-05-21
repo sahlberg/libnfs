@@ -98,7 +98,7 @@ typedef struct exportnode exportnode;
 struct mountres3_ok {
 	fhandle3 fhandle;
 	struct {
-		u_int auth_flavors_len;
+		uint32_t auth_flavors_len;
 		int *auth_flavors_val;
 	} auth_flavors;
 };

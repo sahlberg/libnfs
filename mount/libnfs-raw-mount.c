@@ -130,7 +130,7 @@ zdr_mountres3_ok (ZDR *zdrs, mountres3_ok *objp)
 {
 	 if (!zdr_fhandle3 (zdrs, &objp->fhandle))
 		 return FALSE;
-	 if (!zdr_array (zdrs, (char **)&objp->auth_flavors.auth_flavors_val, (u_int *) &objp->auth_flavors.auth_flavors_len, ~0,
+	 if (!zdr_array (zdrs, (char **)&objp->auth_flavors.auth_flavors_val, (uint32_t *) &objp->auth_flavors.auth_flavors_len, ~0,
 		sizeof (int), (zdrproc_t) zdr_int))
 		 return FALSE;
 	return TRUE;
