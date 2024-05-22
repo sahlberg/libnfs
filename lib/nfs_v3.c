@@ -1394,13 +1394,12 @@ nfs3_link_async(struct nfs_context *nfs, const char *oldpath,
 	char *ptr;
 	struct nfs_link_data *link_data;
 
-	link_data = malloc(sizeof(struct nfs_link_data));
+	link_data = calloc(1, sizeof(struct nfs_link_data));
 	if (link_data == NULL) {
 		nfs_set_error(nfs, "Out of memory, failed to allocate "
                               "buffer for link data");
 		return -1;
 	}
-	memset(link_data, 0, sizeof(struct nfs_link_data));
 
 	link_data->oldpath = strdup(oldpath);
 	if (link_data->oldpath == NULL) {
@@ -1570,13 +1569,12 @@ nfs3_rename_async(struct nfs_context *nfs, const char *oldpath,
 	char *ptr;
 	struct nfs_rename_data *rename_data;
 
-	rename_data = malloc(sizeof(struct nfs_rename_data));
+	rename_data = calloc(1, sizeof(struct nfs_rename_data));
 	if (rename_data == NULL) {
 		nfs_set_error(nfs, "Out of memory, failed to allocate "
                               "buffer for rename data");
 		return -1;
 	}
-	memset(rename_data, 0, sizeof(struct nfs_rename_data));
 
 	rename_data->oldobject = strdup(oldpath);
 	if (rename_data->oldobject == NULL) {
@@ -1723,13 +1721,12 @@ nfs3_symlink_async(struct nfs_context *nfs, const char *target,
 	char *ptr;
 	struct nfs_symlink_data *symlink_data;
 
-	symlink_data = malloc(sizeof(struct nfs_symlink_data));
+	symlink_data = calloc(1, sizeof(struct nfs_symlink_data));
 	if (symlink_data == NULL) {
 		nfs_set_error(nfs, "Out of memory, failed to allocate "
                               "buffer for symlink data");
 		return -1;
 	}
-	memset(symlink_data, 0, sizeof(struct nfs_symlink_data));
 
 	symlink_data->target = strdup(target);
 	if (symlink_data->target == NULL) {
@@ -2189,14 +2186,13 @@ nfs3_fchown_async(struct nfs_context *nfs, struct nfsfh *nfsfh, int uid,
 	chown_data->uid = uid;
 	chown_data->gid = gid;
 
-	data = malloc(sizeof(struct nfs_cb_data));
+	data = calloc(1, sizeof(struct nfs_cb_data));
 	if (data == NULL) {
 		nfs_set_error(nfs, "out of memory. failed to allocate "
                               "memory for fchown data");
 		free(chown_data);
 		return -1;
 	}
-	memset(data, 0, sizeof(struct nfs_cb_data));
 	data->nfs           = nfs;
 	data->cb            = cb;
 	data->private_data  = private_data;
@@ -2293,13 +2289,12 @@ nfs3_fchmod_async(struct nfs_context *nfs, struct nfsfh *nfsfh, int mode,
 {
 	struct nfs_cb_data *data;
 
-	data = malloc(sizeof(struct nfs_cb_data));
+	data = calloc(1, sizeof(struct nfs_cb_data));
 	if (data == NULL) {
 		nfs_set_error(nfs, "out of memory. failed to allocate "
                               "memory for fchmod data");
 		return -1;
 	}
-	memset(data, 0, sizeof(struct nfs_cb_data));
 	data->nfs          = nfs;
 	data->cb           = cb;
 	data->private_data = private_data;
@@ -2568,13 +2563,12 @@ nfs3_lseek_async(struct nfs_context *nfs, struct nfsfh *nfsfh, int64_t offset,
 		return 0;
 	}
 
-	data = malloc(sizeof(struct nfs_cb_data));
+	data = calloc(1, sizeof(struct nfs_cb_data));
 	if (data == NULL) {
 		nfs_set_error(nfs, "Out Of Memory: Failed to malloc nfs "
 			      "cb data");
 		return -1;
 	}
-	memset(data, 0, sizeof(struct nfs_cb_data));
 
 	data->nfs          = nfs;
 	data->nfsfh        = nfsfh;
@@ -2789,7 +2783,7 @@ nfs3_opendir_2_cb(struct rpc_context *rpc, int status, void *command_data,
 
 	entry =res->READDIR3res_u.resok.reply.entries;
 	while (entry != NULL) {
-		nfsdirent = malloc(sizeof(struct nfsdirent));
+		nfsdirent = calloc(1, sizeof(struct nfsdirent));
 		if (nfsdirent == NULL) {
 			data->cb(-ENOMEM, nfs, "Failed to allocate dirent",
                                  data->private_data);
@@ -2798,7 +2792,6 @@ nfs3_opendir_2_cb(struct rpc_context *rpc, int status, void *command_data,
 			free_nfs_cb_data(data);
 			return;
 		}
-		memset(nfsdirent, 0, sizeof(struct nfsdirent));
 		nfsdirent->name = strdup(entry->name);
 		if (nfsdirent->name == NULL) {
 			data->cb(-ENOMEM, nfs, "Failed to allocate "
@@ -2920,7 +2913,7 @@ nfs3_opendir_cb(struct rpc_context *rpc, int status, void *command_data,
 
                 memset(&attr, 0, sizeof(attr));
 
-		nfsdirent = malloc(sizeof(struct nfsdirent));
+		nfsdirent = calloc(1, sizeof(struct nfsdirent));
 		if (nfsdirent == NULL) {
 			data->cb(-ENOMEM, nfs, "Failed to allocate dirent",
                                  data->private_data);
@@ -2929,7 +2922,6 @@ nfs3_opendir_cb(struct rpc_context *rpc, int status, void *command_data,
 			free_nfs_cb_data(data);
 			return;
 		}
-		memset(nfsdirent, 0, sizeof(struct nfsdirent));
 		nfsdirent->name = strdup(entry->name);
 		if (nfsdirent->name == NULL) {
 			data->cb(-ENOMEM, nfs, "Failed to allocate "
@@ -3112,12 +3104,11 @@ nfs3_opendir_async(struct nfs_context *nfs, const char *path, nfs_cb cb,
 {
 	struct nfsdir *nfsdir;
 
-	nfsdir = malloc(sizeof(struct nfsdir));
+	nfsdir = calloc(1, sizeof(struct nfsdir));
 	if (nfsdir == NULL) {
 		nfs_set_error(nfs, "failed to allocate buffer for nfsdir");
 		return -1;
 	}
-	memset(nfsdir, 0, sizeof(struct nfsdir));
 
 	if (nfs3_lookuppath_async(nfs, path, 0, cb, private_data,
                                   nfs3_opendir_continue_internal,
@@ -3676,13 +3667,12 @@ nfs3_ftruncate_async(struct nfs_context *nfs, struct nfsfh *nfsfh,
 	struct nfs_cb_data *data;
 	SETATTR3args args;
 
-	data = malloc(sizeof(struct nfs_cb_data));
+	data = calloc(1, sizeof(struct nfs_cb_data));
 	if (data == NULL) {
 		nfs_set_error(nfs, "out of memory: failed to allocate "
                               "nfs_cb_data structure");
 		return -1;
 	}
-	memset(data, 0, sizeof(struct nfs_cb_data));
 	data->nfs          = nfs;
 	data->cb           = cb;
 	data->private_data = private_data;
@@ -3742,13 +3732,12 @@ nfs3_fsync_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_cb cb,
 	struct nfs_cb_data *data;
 	struct COMMIT3args args;
 
-	data = malloc(sizeof(struct nfs_cb_data));
+	data = calloc(1, sizeof(struct nfs_cb_data));
 	if (data == NULL) {
 		nfs_set_error(nfs, "out of memory: failed to allocate "
                               "nfs_cb_data structure");
 		return -1;
 	}
-	memset(data, 0, sizeof(struct nfs_cb_data));
 	data->nfs          = nfs;
 	data->cb           = cb;
 	data->private_data = private_data;
@@ -3835,13 +3824,12 @@ nfs3_getacl_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_cb cb,
 	struct nfs_cb_data *data;
         GETACL3args args;
 
-	data = malloc(sizeof(struct nfs_cb_data));
+	data = calloc(1, sizeof(struct nfs_cb_data));
 	if (data == NULL) {
 		nfs_set_error(nfs, "out of memory: failed to allocate "
                               "nfs_cb_data structure");
 		return -1;
 	}
-	memset(data, 0, sizeof(struct nfs_cb_data));
 	data->nfs          = nfs;
 	data->cb           = cb;
 	data->private_data = private_data;
@@ -3946,13 +3934,12 @@ nfs3_fstat_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_cb cb,
 	struct nfs_cb_data *data;
 	struct GETATTR3args args;
 
-	data = malloc(sizeof(struct nfs_cb_data));
+	data = calloc(1, sizeof(struct nfs_cb_data));
 	if (data == NULL) {
 		nfs_set_error(nfs, "out of memory: failed to allocate "
                               "nfs_cb_data structure");
 		return -1;
 	}
-	memset(data, 0, sizeof(struct nfs_cb_data));
 	data->nfs          = nfs;
 	data->cb           = cb;
 	data->private_data = private_data;
@@ -4085,13 +4072,12 @@ nfs3_fstat64_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_cb cb,
 	struct nfs_cb_data *data;
 	struct GETATTR3args args;
 
-	data = malloc(sizeof(struct nfs_cb_data));
+	data = calloc(1, sizeof(struct nfs_cb_data));
 	if (data == NULL) {
 		nfs_set_error(nfs, "out of memory: failed to allocate "
                               "nfs_cb_data structure");
 		return -1;
 	}
-	memset(data, 0, sizeof(struct nfs_cb_data));
 	data->nfs          = nfs;
 	data->cb           = cb;
 	data->private_data = private_data;
@@ -4165,13 +4151,12 @@ nfs3_close_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_cb cb,
                 return 0;
         }
 
-        data = malloc(sizeof(struct nfs_cb_data));
+        data = calloc(1, sizeof(struct nfs_cb_data));
         if (data == NULL) {
                 nfs_set_error(nfs, "out of memory: failed to allocate "
                               "nfs_cb_data structure");
                 return -1;
         }
-        memset(data, 0, sizeof(struct nfs_cb_data));
 
         data->nfsfh = nfsfh;
         data->cb = cb;
@@ -4344,13 +4329,12 @@ nfs3_pwrite_async_internal(struct nfs_context *nfs, struct nfsfh *nfsfh,
         }
         
         nfsfh->is_dirty = 1;
-	data = malloc(sizeof(struct nfs_cb_data));
+	data = calloc(1, sizeof(struct nfs_cb_data));
 	if (data == NULL) {
 		nfs_set_error(nfs, "out of memory: failed to allocate "
                               "nfs_cb_data structure");
 		return -1;
 	}
-	memset(data, 0, sizeof(struct nfs_cb_data));
 	data->nfs          = nfs;
 	data->cb           = cb;
 	data->private_data = private_data;
@@ -4377,7 +4361,7 @@ nfs3_pwrite_async_internal(struct nfs_context *nfs, struct nfsfh *nfsfh,
 		  writecount = nfs_get_writemax(nfs);
 		}
 
-		mdata = malloc(sizeof(struct nfs_mcb_data));
+		mdata = calloc(1, sizeof(struct nfs_mcb_data));
 		if (mdata == NULL) {
 			nfs_set_error(nfs, "out of memory: failed to allocate "
                                       "nfs_mcb_data structure");
@@ -4388,7 +4372,6 @@ nfs3_pwrite_async_internal(struct nfs_context *nfs, struct nfsfh *nfsfh,
 			data->oom = 1;
 			break;
 		}
-		memset(mdata, 0, sizeof(struct nfs_mcb_data));
 		mdata->data   = data;
 		mdata->offset = offset;
 		mdata->count  = writecount;
@@ -4426,12 +4409,11 @@ nfs3_write_async(struct nfs_context *nfs, struct nfsfh *nfsfh,
 		struct GETATTR3args args;
 		struct nfs_cb_data *data;
 
-		data = malloc(sizeof(struct nfs_cb_data));
+		data = calloc(1, sizeof(struct nfs_cb_data));
 		if (data == NULL) {
 			nfs_set_error(nfs, "Out of memory.");
 			return -1;
 		}
-		memset(data, 0, sizeof(struct nfs_cb_data));
 		data->nfs           = nfs;
 		data->cb            = cb;
 		data->private_data  = private_data;
@@ -4617,7 +4599,7 @@ nfs3_open_trunc_cb(struct rpc_context *rpc, int status, void *command_data,
 		return;
 	}
 
-	nfsfh = malloc(sizeof(struct nfsfh));
+	nfsfh = calloc(1, sizeof(struct nfsfh));
 	if (nfsfh == NULL) {
 		nfs_set_error(nfs, "NFS: Failed to allocate nfsfh "
                               "structure");
@@ -4626,7 +4608,6 @@ nfs3_open_trunc_cb(struct rpc_context *rpc, int status, void *command_data,
 		free_nfs_cb_data(data);
 		return;
 	}
-	memset(nfsfh, 0, sizeof(struct nfsfh));
 
 	if (data->continue_int & O_SYNC) {
 		nfsfh->is_sync = 1;
@@ -4719,14 +4700,13 @@ nfs3_open_cb(struct rpc_context *rpc, int status, void *command_data,
 		return;
 	}
 
-	nfsfh = malloc(sizeof(struct nfsfh));
+	nfsfh = calloc(1, sizeof(struct nfsfh));
 	if (nfsfh == NULL) {
 		nfs_set_error(nfs, "NFS: Failed to allocate nfsfh structure");
 		data->cb(-ENOMEM, nfs, nfs_get_error(nfs), data->private_data);
 		free_nfs_cb_data(data);
 		return;
 	}
-	memset(nfsfh, 0, sizeof(struct nfsfh));
 
 	if (data->continue_int & O_SYNC) {
 		nfsfh->is_sync = 1;
@@ -4845,7 +4825,7 @@ nfs3_create_1_cb(struct rpc_context *rpc, int status, void *command_data,
 		return;
 	}
 
-	nfsfh = malloc(sizeof(struct nfsfh));
+	nfsfh = calloc(1, sizeof(struct nfsfh));
 	if (nfsfh == NULL) {
 		nfs_set_error(nfs, "NFS: Failed to allocate nfsfh structure");
 		data->cb(-ENOMEM, nfs, nfs_get_error(nfs),
@@ -4853,7 +4833,6 @@ nfs3_create_1_cb(struct rpc_context *rpc, int status, void *command_data,
 		free_nfs_cb_data(data);
 		return;
 	}
-	memset(nfsfh, 0, sizeof(struct nfsfh));
 
 	if (cb_data->flags & O_SYNC) {
 		nfsfh->is_sync = 1;

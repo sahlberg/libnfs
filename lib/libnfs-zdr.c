@@ -661,13 +661,11 @@ struct AUTH *libnfs_authunix_create(const char *host, uint32_t uid, uint32_t gid
 	int idx;
 
 	size = 4 + 4 + ((strlen(host) + 3) & ~3) + 4 + 4 + 4 + len * 4;
-	auth = malloc(sizeof(struct AUTH));
-	memset(auth, 0x00, sizeof(struct AUTH));
+	auth = calloc(1, sizeof(struct AUTH));
 	auth->ah_cred.oa_flavor = AUTH_UNIX;
 	auth->ah_cred.oa_length = size;
-	auth->ah_cred.oa_base = malloc(size);
+	auth->ah_cred.oa_base = calloc(1, size);
 
-	memset(auth->ah_cred.oa_base, 0x00, size);
 	buf = (uint32_t *)(void *)auth->ah_cred.oa_base;
 	idx = 0;
 	buf[idx++] = htonl((uint32_t)rpc_current_time());

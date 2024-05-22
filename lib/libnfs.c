@@ -361,13 +361,12 @@ nfs_parse_url(struct nfs_context *nfs, const char *url, int dir, int incomplete)
 		return NULL;
 	}
 
-	urls = malloc(sizeof(struct nfs_url));
+	urls = calloc(1, sizeof(struct nfs_url));
 	if (urls == NULL) {
 		nfs_set_error(nfs, "Out of memory");
 		return NULL;
 	}
 
-	memset(urls, 0x00, sizeof(struct nfs_url));
 	urls->server = strdup(url + 6);
 	if (urls->server == NULL) {
 		nfs_destroy_url(urls);
@@ -573,18 +572,16 @@ nfs_init_context(void)
         verifier4 verifier;
         char client_name[MAX_CLIENT_NAME];
 
-	nfsi = malloc(sizeof(struct nfs_context_internal));
+	nfsi = calloc(1, sizeof(struct nfs_context_internal));
 	if (nfsi == NULL) {
 		return NULL;
 	}
-	memset(nfsi, 0, sizeof(struct nfs_context_internal));
 
-	nfs = malloc(sizeof(struct nfs_context));
+	nfs = calloc(1, sizeof(struct nfs_context));
 	if (nfs == NULL) {
                 free(nfsi);
 		return NULL;
 	}
-	memset(nfs, 0, sizeof(struct nfs_context));
 
         nfs->nfsi = nfsi;
 	nfs->rpc = rpc_init_context();
@@ -1109,11 +1106,10 @@ rpc_connect_port_async(struct rpc_context *rpc, const char *server,
 {
 	struct rpc_cb_data *data;
 
-	data = malloc(sizeof(struct rpc_cb_data));
+	data = calloc(1, sizeof(struct rpc_cb_data));
 	if (data == NULL) {
 		return -1;
 	}
-	memset(data, 0, sizeof(struct rpc_cb_data));
 	data->server       = strdup(server);
 	data->program      = program;
 	data->version      = version;
@@ -1137,11 +1133,10 @@ rpc_connect_program_async(struct rpc_context *rpc, const char *server,
 {
 	struct rpc_cb_data *data;
 
-	data = malloc(sizeof(struct rpc_cb_data));
+	data = calloc(1, sizeof(struct rpc_cb_data));
 	if (data == NULL) {
 		return -1;
 	}
-	memset(data, 0, sizeof(struct rpc_cb_data));
 	data->server       = strdup(server);
 	data->program      = program;
 	data->version      = version;
@@ -2367,11 +2362,10 @@ mount_getexports_async(struct rpc_context *rpc, const char *server, rpc_cb cb,
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
-	data = malloc(sizeof(struct mount_cb_data));
+	data = calloc(1, sizeof(struct mount_cb_data));
 	if (data == NULL) {
 		return -1;
 	}
-	memset(data, 0, sizeof(struct mount_cb_data));
 	data->cb           = cb;
 	data->private_data = private_data;
 	data->server       = strdup(server);

@@ -2310,8 +2310,7 @@ mount_getexports_cb(struct rpc_context *mount_context, int status, void *data,
 	while (export != NULL) {
 		exports new_export;
 
-		new_export = malloc(sizeof(*new_export));
-		memset(new_export, 0, sizeof(*new_export));
+		new_export = calloc(1, sizeof(*new_export));
 		new_export->ex_dir  = strdup(export->ex_dir);
 		new_export->ex_next = cb_data->return_data;
 
@@ -2683,8 +2682,7 @@ nfs_find_local_servers(void)
 
 		free(ifc.ifc_buf);
 		ifc.ifc_len = size;
-		ifc.ifc_buf = malloc(size);
-		memset(ifc.ifc_buf, 0, size);
+		ifc.ifc_buf = calloc(1, size);
 #ifndef PS3_PPU
 		if (ioctl(rpc_get_fd(rpc), SIOCGIFCONF, (caddr_t)&ifc) < 0) {
 			rpc_destroy_context(rpc);
