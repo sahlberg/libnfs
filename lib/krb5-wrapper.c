@@ -168,6 +168,7 @@ krb5_auth_init(struct rpc_context *rpc,
         auth_data->wanted_sec = wanted_sec;
 
         if (asprintf(&auth_data->g_server, "nfs@%s", server) < 0) {
+                krb5_free_auth_data(auth_data);
                 rpc_set_error(rpc, "Failed to allocate server string");
                 return NULL;
         }
@@ -179,6 +180,7 @@ krb5_auth_init(struct rpc_context *rpc,
                               &auth_data->target_name);
 
         if (maj != GSS_S_COMPLETE) {
+                krb5_free_auth_data(auth_data);
                 krb5_set_gss_error(rpc, "gss_import_name", maj, min);
                 return NULL;
         }
@@ -191,6 +193,7 @@ krb5_auth_init(struct rpc_context *rpc,
                               &auth_data->user_name);
 
         if (maj != GSS_S_COMPLETE) {
+                krb5_free_auth_data(auth_data);
                 krb5_set_gss_error(rpc, "gss_import_name", maj, min);
                 return NULL;
         }
@@ -217,6 +220,7 @@ krb5_auth_init(struct rpc_context *rpc,
                                &auth_data->cred, NULL, NULL);
 
         if (maj != GSS_S_COMPLETE) {
+                krb5_free_auth_data(auth_data);
                 krb5_set_gss_error(rpc, "gss_acquire_cred", maj, min);
                 return NULL;
         }
@@ -237,6 +241,7 @@ krb5_auth_init(struct rpc_context *rpc,
 
                 maj = gss_set_neg_mechs(&min, auth_data->cred, &wantMech);
                 if (GSS_ERROR(maj)) {
+                        krb5_free_auth_data(auth_data);
                         krb5_set_gss_error(rpc, "gss_set_neg_mechs", maj, min);
                         return NULL;
                 }
