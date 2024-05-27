@@ -117,11 +117,10 @@ struct rpc_context *rpc_init_context(void)
 	struct rpc_context *rpc;
 	static uint32_t salt = 0;
 
-	rpc = malloc(sizeof(struct rpc_context));
+	rpc = calloc(1, sizeof(struct rpc_context));
 	if (rpc == NULL) {
 		return NULL;
 	}
-	memset(rpc, 0, sizeof(struct rpc_context));
 
 	if (rpc_set_hash_size(rpc, DEFAULT_HASHES)) {
                 free(rpc);
@@ -200,11 +199,10 @@ struct rpc_context *rpc_init_server_context(int s)
 {
 	struct rpc_context *rpc;
 
-	rpc = malloc(sizeof(struct rpc_context));
+	rpc = calloc(1, sizeof(struct rpc_context));
 	if (rpc == NULL) {
 		return NULL;
 	}
-	memset(rpc, 0, sizeof(struct rpc_context));
 
 	rpc->magic = RPC_CONTEXT_MAGIC;
 
