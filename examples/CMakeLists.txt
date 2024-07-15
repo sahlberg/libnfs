@@ -16,7 +16,8 @@ set(EXAMPLES nfsclient-async
 
 if (ENABLE_MULTITHREADING)
   list(APPEND EXAMPLES nfs-pthreads-writefile
-	  		nfs-pthreads-async-writefile)
+                       nfs-pthreads-async-writefile
+                       nfs-pthreads-async-readfile)
   list(APPEND EXTRA_LIBRARIES pthread)
 endif()
 
