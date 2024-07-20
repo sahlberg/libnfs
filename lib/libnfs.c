@@ -289,6 +289,10 @@ nfs_set_context_args(struct nfs_context *nfs, const char *arg, const char *val)
 		nfs_set_nfsport(nfs, atoi(val));
 	} else if (!strcmp(arg, "mountport")) {
 		nfs_set_mountport(nfs, atoi(val));
+	} else if (!strcmp(arg, "rsize")) {
+		nfs_set_readmax(nfs, atoi(val));
+	} else if (!strcmp(arg, "wsize")) {
+		nfs_set_writemax(nfs, atoi(val));
 	} else if (!strcmp(arg, "readdir-buffer")) {
 		char *strp = strchr(val, ',');
 		if (strp) {
@@ -615,6 +619,8 @@ nfs_init_context(void)
 
 	nfs->nfsi->default_version = NFS_V3;
 	nfs->nfsi->version = NFS_V3;
+	nfs->nfsi->readmax = NFS_DEF_XFER_SIZE;
+	nfs->nfsi->writemax = NFS_DEF_XFER_SIZE;
 	nfs->nfsi->readdir_dircount = 8192;
 	nfs->nfsi->readdir_maxcount = 8192;
 
@@ -2120,7 +2126,13 @@ nfs_get_readmax(struct nfs_context *nfs)
 void
 nfs_set_readmax(struct nfs_context *nfs, size_t readmax)
 {
-	nfs->nfsi->readmax = readmax;
+        size_t readmax_adjusted = readmax;
+
+        readmax_adjusted = MIN(readmax_adjusted, NFS_MAX_XFER_SIZE);
+        readmax_adjusted = MAX(readmax_adjusted, NFS_MIN_XFER_SIZE);
+        readmax_adjusted = (readmax_adjusted / 4096) * 4096;
+
+        nfs->nfsi->readmax = readmax_adjusted;
 }
 
 /*
@@ -2134,7 +2146,13 @@ nfs_get_writemax(struct nfs_context *nfs)
 void
 nfs_set_writemax(struct nfs_context *nfs, size_t writemax)
 {
-	nfs->nfsi->writemax = writemax;
+        size_t writemax_adjusted = writemax;
+
+        writemax_adjusted = MIN(writemax_adjusted, NFS_MAX_XFER_SIZE);
+        writemax_adjusted = MAX(writemax_adjusted, NFS_MIN_XFER_SIZE);
+        writemax_adjusted = (writemax_adjusted / 4096) * 4096;
+
+        nfs->nfsi->writemax = writemax_adjusted;
 }
 
 void
@@ -2226,10 +2244,29 @@ nfs_set_mountport(struct nfs_context *nfs, int port) {
 	nfs->nfsi->mountport = port;
 }
 
+size_t
+nfs_get_readdir_maxcount(struct nfs_context *nfs)
+{
+        return nfs->nfsi->readdir_maxcount;
+}
+
 void
-nfs_set_readdir_max_buffer_size(struct nfs_context *nfs, uint32_t dircount, uint32_t maxcount) {
-	nfs->nfsi->readdir_dircount = dircount;
-	nfs->nfsi->readdir_maxcount = maxcount;
+nfs_set_readdir_max_buffer_size(struct nfs_context *nfs,
+                                uint32_t dircount,
+                                uint32_t maxcount) {
+        size_t dircount_adjusted = dircount;
+        size_t maxcount_adjusted = maxcount;
+
+        dircount_adjusted = MIN(dircount_adjusted, NFS_MAX_XFER_SIZE);
+        dircount_adjusted = MAX(dircount_adjusted, NFS_MIN_XFER_SIZE);
+        dircount_adjusted = (dircount_adjusted / 4096) * 4096;
+
+        maxcount_adjusted = MIN(maxcount_adjusted, NFS_MAX_XFER_SIZE);
+        maxcount_adjusted = MAX(maxcount_adjusted, NFS_MIN_XFER_SIZE);
+        maxcount_adjusted = (maxcount_adjusted / 4096) * 4096;
+
+        nfs->nfsi->readdir_dircount = dircount_adjusted;
+        nfs->nfsi->readdir_maxcount = maxcount_adjusted;
 }
 
 void
