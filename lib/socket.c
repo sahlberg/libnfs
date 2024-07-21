@@ -644,7 +644,11 @@ rpc_read_from_socket(struct rpc_context *rpc)
                                         rpc_set_error(rpc, "Invalid recordmarker size");
                                         return -1;
                                 }
-                                adjust_inbuf(rpc, rpc->rm_xid[0]);
+
+                                if (adjust_inbuf(rpc, rpc->rm_xid[0]) != 0) {
+                                        return -1;
+                                }
+
                                 /* Copy the next 4 bytes into inbuf */
                                 memcpy(rpc->inbuf, &rpc->rm_xid[1], 4);
                                 /* but set inpos to 0, we will update it above

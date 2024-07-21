@@ -127,12 +127,36 @@ Arguments supported by libnfs are :
  mountport=<port>  : Use this port for the MOUNT protocol instead of
                      using portmapper. This argument is ignored for NFSv4
                      as it does not use the MOUNT protocol.
+ rsize=<int>       : This is the maximum number of bytes libnfs client will
+                     ask in a single READ request. The actual value is the
+                     minimum of this and the 'rtmax' value shared by the
+                     server in the FSINFO response. The largest rsize value
+                     supported is 4,194,304 bytes, i.e., 4MiB. The smallest
+                     rsize value supported is 8192 bytes, i.e., 8KiB. The
+                     provided value must be a multiple of 4096, else it's
+                     rounded down to the nearest 4096 bytes.
+                     Default value used when rsize option is not specified,
+                     is 1,048,576 bytes, i.e., 1MiB.
+ wsize=<int>       : This is the maximum number of bytes libnfs client will
+                     send in a single WRITE request. The actual value is the
+                     minimum of this and the 'wtmax' value shared by the
+                     server in the FSINFO response. The largest wsize value
+                     supported is 4,194,304 bytes, i.e., 4MiB. The smallest
+                     wsize value supported is 8192 bytes, i.e., 8KiB. The
+                     provided value must be a multiple of 4096, else it's
+                     rounded down to the nearest 4096 bytes.
+                     Default value used when wsize option is not specified,
+                     is 1,048,576 bytes, i.e., 1MiB.
  readdir-buffer=<count> | readdir-buffer=<dircount>,<maxcount>
                    : Set the buffer size for READDIRPLUS, where dircount is
                      the maximum amount of bytes the server should use to
                      retrieve the entry names and maxcount is the maximum
                      size of the response buffer (including attributes).
                      If only one <count> is given it will be used for both.
+                     The provided value(s) must be multiple of 4096, else
+                     they are rounded down to the nearest 4096 bytes.
+                     The actual value is the minimum of this and the 'dtpref'
+                     value shared by the server in the FSINFO response.
                      Default is 8192 for both.
 
 Auto_traverse_mounts

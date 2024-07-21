@@ -339,6 +339,7 @@ EXTERN void nfs_set_autoreconnect(struct nfs_context *nfs, int num_retries);
 EXTERN void nfs_set_retrans(struct nfs_context *nfs, int retrans);
 EXTERN void nfs_set_nfsport(struct nfs_context *nfs, int port);
 EXTERN void nfs_set_mountport(struct nfs_context *nfs, int port);
+EXTERN size_t nfs_get_readdir_maxcount(struct nfs_context *nfs);
 EXTERN void nfs_set_readdir_max_buffer_size(struct nfs_context *nfs, uint32_t dircount, uint32_t maxcount);
 
 /*

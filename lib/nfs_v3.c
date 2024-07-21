@@ -692,6 +692,7 @@ nfs3_mount_6_cb(struct rpc_context *rpc, int status, void *command_data,
 	struct nfs_context *nfs = data->nfs;
 	FSINFO3res *res = command_data;
 	struct GETATTR3args args;
+	size_t readmax, writemax, dircount, maxcount;
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
@@ -710,30 +711,43 @@ nfs3_mount_6_cb(struct rpc_context *rpc, int status, void *command_data,
 		return;
         }
 
-	nfs->nfsi->readmax = res->FSINFO3res_u.resok.rtmax;
-	nfs->nfsi->writemax = res->FSINFO3res_u.resok.wtmax;
+	readmax = MIN(nfs->nfsi->readmax, res->FSINFO3res_u.resok.rtmax);
+	writemax = MIN(nfs->nfsi->writemax, res->FSINFO3res_u.resok.wtmax);
 
 	/* The server supports sizes up to rtmax and wtmax, so it is legal
 	 * to use smaller transfers sizes.
 	 */
-	if (nfs->nfsi->readmax > NFS_MAX_XFER_SIZE)
-		nfs->nfsi->readmax = NFS_MAX_XFER_SIZE;
-	else if (nfs->nfsi->readmax < NFSMAXDATA2) {
+	if (nfs->nfsi->readmax < NFSMAXDATA2) {
 		nfs_set_error(nfs, "server max rsize of %d",
                               (int)nfs->nfsi->readmax);
 		data->cb(-EINVAL, nfs, nfs_get_error(nfs), data->private_data);
 		free_nfs_cb_data(data);
 		return;
+	} else {
+		nfs_set_readmax(nfs, readmax);
 	}
 
-	if (nfs->nfsi->writemax > NFS_MAX_XFER_SIZE)
-		nfs->nfsi->writemax = NFS_MAX_XFER_SIZE;
-	else if (nfs->nfsi->writemax < NFSMAXDATA2) {
+	if (nfs->nfsi->writemax < NFSMAXDATA2) {
 		nfs_set_error(nfs, "server max wsize of %d",
                               (int)nfs->nfsi->writemax);
 		data->cb(-EINVAL, nfs, nfs_get_error(nfs), data->private_data);
 		free_nfs_cb_data(data);
 		return;
+	} else {
+		nfs_set_writemax(nfs, writemax);
+	}
+
+	dircount = MIN(nfs->nfsi->readdir_dircount, res->FSINFO3res_u.resok.dtpref);
+	maxcount = MIN(nfs->nfsi->readdir_maxcount, res->FSINFO3res_u.resok.dtpref);
+
+	if (nfs->nfsi->readdir_dircount < NFSMAXDATA2) {
+		nfs_set_error(nfs, "server dtpref of %d",
+                              (int)nfs->nfsi->readdir_dircount);
+		data->cb(-EINVAL, nfs, nfs_get_error(nfs), data->private_data);
+		free_nfs_cb_data(data);
+		return;
+	} else {
+		nfs_set_readdir_max_buffer_size(nfs, dircount, maxcount);
 	}
 
 	memset(&args, 0, sizeof(GETATTR3args));
