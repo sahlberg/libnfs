@@ -35,6 +35,55 @@ struct rpc_data {
        char *data;
 };
 
+/*
+ * Stats maintained per RPC transport.
+ * User can query these using get_rpc_stats().
+ *
+ * TODO: These are currently updated only for the client.
+ */
+struct rpc_stats {
+        /*
+         * RPC requests sent out.
+         * Retransmitted requests are counted multiple times in this.
+         */
+        uint64_t num_req_sent;
+
+        /*
+         * RPC responses received.
+         * (num_req_sent - num_resp_rcvd) could be one of the following:
+         * - requests in flight, whose responses are awaited.
+         * - requests timed out, whose responses were never received.
+         *   If retransmits are enabled, we would have retransmited these.
+         */
+        uint64_t num_resp_rcvd;
+
+        /*
+         * RPC requests which didn't get a response for timeo period.
+         * See mount option 'timeo'.
+         */
+        uint64_t num_timedout;
+
+        /*
+         * RPC requests which didn't get a response even after retrans
+         * retries. These are counted in num_timedout as well.
+         * See mount option 'retrans'.
+         */
+        uint64_t num_major_timedout;
+
+        /*
+         * RPC requests retransmited due to reconnect or timeout.
+         */
+        uint64_t num_retransmitted;
+
+        /*
+         * Number of times we had to reconnect, for one of the following
+         * reasons:
+         * - Peer closed connection.
+         * - Major timeout was observed.
+         */
+        uint64_t num_reconnects;
+};
+
 struct rpc_context;
 EXTERN struct rpc_context *rpc_init_context(void);
 EXTERN void rpc_destroy_context(struct rpc_context *rpc);
@@ -184,6 +233,11 @@ EXTERN int rpc_send_reply(struct rpc_context *rpc, struct rpc_msg *call,
  * When an operation failed, this function can extract a detailed error string.
  */
 EXTERN char *rpc_get_error(struct rpc_context *rpc);
+
+/*
+ * Return the current snapshot of stats for this transport.
+ */
+EXTERN void rpc_get_stats(struct rpc_context *rpc, struct rpc_stats *stats);
 
 /* Utility function to get an RPC context from a NFS context. Useful for doing
  * low level NFSACL calls on a NFS context.

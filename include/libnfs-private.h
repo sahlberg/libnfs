@@ -205,6 +205,8 @@ struct tls_context {
 };
 #endif /* HAVE_TLS */
 
+#define INC_STATS(rpc, stat) ++((rpc)->stats.stat)
+
 struct gss_ctx_id_struct;
 struct rpc_context {
 	uint32_t magic;
@@ -360,6 +362,9 @@ struct rpc_context {
         /* Is a server context ? */
         int is_server_context;
         struct rpc_endpoint *endpoints;
+
+        /* Per-transport RPC stats */
+        struct rpc_stats stats;
 };
 
 struct rpc_pdu {

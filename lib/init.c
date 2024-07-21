@@ -376,6 +376,27 @@ char *rpc_get_error(struct rpc_context *rpc)
 	return rpc->error_string ? rpc->error_string : "";
 }
 
+void rpc_get_stats(struct rpc_context *rpc, struct rpc_stats *stats)
+{
+	assert(rpc->magic == RPC_CONTEXT_MAGIC);
+
+#ifdef HAVE_MULTITHREADING
+        if (rpc->multithreading_enabled) {
+                nfs_mt_mutex_lock(&rpc->rpc_mutex);
+        }
+#endif /* HAVE_MULTITHREADING */
+
+        *stats = rpc->stats;
+
+#ifdef HAVE_MULTITHREADING
+        if (rpc->multithreading_enabled) {
+                nfs_mt_mutex_unlock(&rpc->rpc_mutex);
+        }
+#endif /* HAVE_MULTITHREADING */
+
+        return;
+}
+
 static void rpc_purge_all_pdus(struct rpc_context *rpc, int status, const char *error)
 {
 	struct rpc_queue outqueue;
