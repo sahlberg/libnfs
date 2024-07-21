@@ -39,6 +39,8 @@ struct rpc_data {
  * Stats maintained per RPC transport.
  * User can query these using get_rpc_stats().
  *
+ * Note: If you add more counters, make sure they are updated atomically.
+ *
  * TODO: These are currently updated only for the client.
  */
 struct rpc_stats {

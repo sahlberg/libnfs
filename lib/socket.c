@@ -386,7 +386,7 @@ rpc_write_to_socket(struct rpc_context *rpc)
                                 if (pdu->next == NULL)
                                         rpc->outqueue.tail = NULL;
 
-                                // RPC sent, original or retransmit.
+                                /* RPC sent, original or retransmit */
                                 INC_STATS(rpc, num_req_sent);
 
                                 if (pdu->flags & PDU_DISCARD_AFTER_SENDING) {
@@ -812,7 +812,7 @@ rpc_timeout_scan(struct rpc_context *rpc)
 			continue;
 		}
 
-		// Timed out w/o being sent.
+		/* Timed out w/o being sent */
 		INC_STATS(rpc, num_timedout);
 
 		/*
@@ -825,7 +825,7 @@ rpc_timeout_scan(struct rpc_context *rpc)
 			pdu->timeout = 0;
 
 			if (t >= pdu->major_timeout) {
-				// Timed out w/o being sent.
+				/* Timed out w/o being sent */
 				INC_STATS(rpc, num_major_timedout);
 
 				/* Ask pdu_set_timeout() to set pdu->major_timeout */
@@ -870,7 +870,7 @@ rpc_timeout_scan(struct rpc_context *rpc)
 				continue;
 			}
 
-			// Timed out waiting for response.
+			/* Timed out waiting for response */
 			INC_STATS(rpc, num_timedout);
 
 			LIBNFS_LIST_REMOVE(&q->head, pdu);
@@ -889,7 +889,7 @@ rpc_timeout_scan(struct rpc_context *rpc)
 				pdu->timeout = 0;
 
 				if (t >= pdu->major_timeout) {
-					// Timed out waiting for response.
+					/* Timed out waiting for response */
 					INC_STATS(rpc, num_major_timedout);
 
 					/* Ask pdu_set_timeout() to set pdu->major_timeout */
@@ -911,7 +911,7 @@ rpc_timeout_scan(struct rpc_context *rpc)
 				/* queue it back to outqueue for retransmit */
 				rpc_return_to_queue(&rpc->outqueue, pdu);
 
-				// Retransmit on timeout.
+				/* Retransmit on timeout */
 				INC_STATS(rpc, num_retransmitted);
 
 				/* we have to re-send the whole pdu again */
@@ -1566,7 +1566,7 @@ rpc_reconnect_requeue(struct rpc_context *rpc)
 		for (pdu = q->head; pdu; pdu = next) {
 			next = pdu->next;
 			rpc_return_to_queue(&rpc->outqueue, pdu);
-			// Retransmit on reconnect.
+			/* Retransmit on reconnect */
 			INC_STATS(rpc, num_retransmitted);
 			/* we have to re-send the whole pdu again */
 			pdu->out.num_done = 0;
