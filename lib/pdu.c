@@ -644,6 +644,9 @@ static int rpc_process_reply(struct rpc_context *rpc, ZDR *zdr)
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
+	/* Client got a response for its request */
+	INC_STATS(rpc, num_resp_rcvd);
+
 	memset(&msg, 0, sizeof(struct rpc_msg));
 	msg.body.rbody.reply.areply.verf = _null_auth;
 	if (pdu->zdr_decode_bufsize > 0) {
