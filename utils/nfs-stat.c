@@ -50,6 +50,7 @@ WSADATA wsaData;
 #include <inttypes.h>
 #include <sys/types.h>
 #include <fcntl.h>
+#include <time.h>
 #include "libnfs.h"
 #include "libnfs-raw.h"
 #include "libnfs-raw-mount.h"
