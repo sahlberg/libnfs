@@ -28,8 +28,7 @@
 #endif
 
 #include <stdint.h>
-#if defined(__ANDROID__) || defined(AROS) || defined(__PPU__) \
- || ( defined(__APPLE__) && defined(__MACH__) ) || defined(__FreeBSD__) || defined(__OpenBSD__)
+#if !defined(_WIN32)
 #include <sys/time.h>
 #else
 #include <time.h>
