@@ -2424,7 +2424,7 @@ nfs_umask(struct nfs_context *nfs, uint16_t mask) {
 void
 nfs_set_poll_timeout(struct nfs_context *nfs, int poll_timeout)
 {
-	rpc_set_timeout(nfs->rpc,poll_timeout);
+	rpc_set_poll_timeout(nfs->rpc, poll_timeout);
 }
 
 /*
