@@ -274,7 +274,7 @@ int main(int argc, char *argv[])
          * Now create the local file and truncate it to the same size as the
          * nfs file.
          */
-        fd = open(argv[2], O_RDWR|O_CREAT|O_TRUNC);
+        fd = open(argv[2], O_RDWR|O_CREAT|O_TRUNC, 0644);
         if (fd < 0) {
                 fprintf(stderr, "Failed to open dest file %s\n", argv[2]);
                 exit(1);
