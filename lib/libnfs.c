@@ -2428,6 +2428,15 @@ nfs_get_rpc_context(struct nfs_context *nfs)
 	return nfs->rpc;
 }
 
+/*
+ * Get the NFS server address we are currently connected to.
+ */
+const struct sockaddr_storage *
+nfs_get_server_address(struct nfs_context *nfs)
+{
+	return &nfs->rpc->s;
+}
+
 const char *
 nfs_get_server(struct nfs_context *nfs) {
 	return nfs->nfsi->server;
