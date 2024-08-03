@@ -304,6 +304,11 @@ EXTERN void nfs_destroy_url(struct nfs_url *url);
 struct nfsfh;
 
 /*
+ * Get the NFS server address we are currently connected to.
+ */
+EXTERN const struct sockaddr_storage *nfs_get_server_address(struct nfs_context *nfs);
+
+/*
  * Get the maximum supported READ size by the server
  */
 EXTERN size_t nfs_get_readmax(struct nfs_context *nfs);
