@@ -147,7 +147,7 @@ static struct rpc_pdu *rpc_allocate_reply_pdu(struct rpc_context *rpc,
 	return pdu;
 }
 
-struct rpc_pdu *rpc_allocate_pdu2(struct rpc_context *rpc, int program, int version, int procedure, rpc_cb cb, void *private_data, zdrproc_t zdr_decode_fn, int zdr_decode_bufsize, size_t alloc_hint)
+struct rpc_pdu *rpc_allocate_pdu3(struct rpc_context *rpc, int program, int version, int procedure, rpc_cb cb, void *private_data, zdrproc_t zdr_decode_fn, int zdr_decode_bufsize, size_t alloc_hint, int iovcnt_hint)
 {
 	struct rpc_pdu *pdu;
 	struct rpc_msg msg;
@@ -197,6 +197,14 @@ struct rpc_pdu *rpc_allocate_pdu2(struct rpc_context *rpc, int program, int vers
 	pdu->private_data       = private_data;
 	pdu->zdr_decode_fn      = zdr_decode_fn;
 	pdu->zdr_decode_bufsize = zdr_decode_bufsize;
+
+	if (iovcnt_hint > RPC_FAST_VECTORS) {
+                pdu->out.iov = (struct rpc_iovec *) calloc(iovcnt_hint, sizeof(struct rpc_iovec));
+                pdu->out.iov_capacity = iovcnt_hint;
+	} else {
+                pdu->out.iov = pdu->out.fast_iov;
+                pdu->out.iov_capacity = RPC_FAST_VECTORS;
+	}
 
 	pdu->outdata.data = ((char *)pdu + pdu_size);
 
@@ -345,6 +353,11 @@ struct rpc_pdu *rpc_allocate_pdu2(struct rpc_context *rpc, int program, int vers
 struct rpc_pdu *rpc_allocate_pdu(struct rpc_context *rpc, int program, int version, int procedure, rpc_cb cb, void *private_data, zdrproc_t zdr_decode_fn, int zdr_decode_bufsize)
 {
 	return rpc_allocate_pdu2(rpc, program, version, procedure, cb, private_data, zdr_decode_fn, zdr_decode_bufsize, 0);
+}
+
+struct rpc_pdu *rpc_allocate_pdu2(struct rpc_context *rpc, int program, int version, int procedure, rpc_cb cb, void *private_data, zdrproc_t zdr_decode_fn, int zdr_decode_bufsize, size_t alloc_hint)
+{
+	return rpc_allocate_pdu3(rpc, program, version, procedure, cb, private_data, zdr_decode_fn, zdr_decode_bufsize, alloc_hint, 0);
 }
 
 void rpc_free_pdu(struct rpc_context *rpc, struct rpc_pdu *pdu)
@@ -585,7 +598,7 @@ int rpc_queue_pdu(struct rpc_context *rpc, struct rpc_pdu *pdu)
                                 return -1;
                         }
                 } else {
-                        struct iovec iov[RPC_MAX_VECTORS];
+                        struct iovec iov[RPC_FAST_VECTORS];
                         int niov = pdu->out.niov;
                         /* No record marker for UDP */
                         struct iovec *iovp = (rpc->is_udp ? &iov[1] : &iov[0]);

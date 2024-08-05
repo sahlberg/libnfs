@@ -612,18 +612,29 @@ void rpc_free_iovector(struct rpc_context *rpc, struct rpc_io_vectors *v)
 {
         int i;
 
+        assert(v->niov <= v->iov_capacity);
+
         for (i = 0; i < v->niov; i++) {
                 if (v->iov[i].free) {
                         v->iov[i].free(v->iov[i].buf);
                 }
         }
         v->niov = 0;
+
+        if (v->iov != v->fast_iov) {
+                assert(v->iov_capacity > RPC_FAST_VECTORS &&
+                       v->iov_capacity <= RPC_MAX_VECTORS);
+                free(v->iov);
+                v->iov = v->fast_iov;
+        } else {
+                assert(v->iov_capacity == RPC_FAST_VECTORS);
+        }
 }
 
 int rpc_add_iovector(struct rpc_context *rpc, struct rpc_io_vectors *v,
                       char *buf, int len, void (*free)(void *))
 {
-        if (v->niov >= RPC_MAX_VECTORS) {
+        if (v->niov >= v->iov_capacity) {
                 rpc_set_error(rpc, "Too many io vectors");
                 return -1;
         }

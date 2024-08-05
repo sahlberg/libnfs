@@ -154,7 +154,14 @@ struct rpc_endpoint {
         int num_procs;
 };
 
-#define RPC_MAX_VECTORS  8 /* Same as UIO_FASTIOV used by the Linux kernel */
+#define RPC_FAST_VECTORS 8 /* Same as UIO_FASTIOV used by the Linux kernel */
+
+/*
+ * Maximum io vectors allowed by rpc_io_vectors.
+ * This must not be greater than the POSIX UIO_MAXIOV value as we use writev()
+ * to write the io vectors over the socket.
+ */
+#define RPC_MAX_VECTORS  1024
 
 struct rpc_iovec {
         char *buf;
@@ -165,8 +172,12 @@ struct rpc_iovec {
 struct rpc_io_vectors {
         size_t num_done;
         int total_size;
+        /* iov[] has space for these many rpc_iovec */
+        int iov_capacity;
+        /* These many are currently filled */
         int niov;
-        struct rpc_iovec iov[RPC_MAX_VECTORS];
+        struct rpc_iovec *iov;
+        struct rpc_iovec fast_iov[RPC_FAST_VECTORS];
 };
 
 enum input_state {
@@ -480,6 +491,7 @@ void rpc_return_to_queue(struct rpc_queue *q, struct rpc_pdu *pdu);
 unsigned int rpc_hash_xid(struct rpc_context *rpc, uint32_t xid);
 struct rpc_pdu *rpc_allocate_pdu(struct rpc_context *rpc, int program, int version, int procedure, rpc_cb cb, void *private_data, zdrproc_t zdr_decode_fn, int zdr_bufsize);
 struct rpc_pdu *rpc_allocate_pdu2(struct rpc_context *rpc, int program, int version, int procedure, rpc_cb cb, void *private_data, zdrproc_t zdr_decode_fn, int zdr_bufsize, size_t alloc_hint);
+struct rpc_pdu *rpc_allocate_pdu3(struct rpc_context *rpc, int program, int version, int procedure, rpc_cb cb, void *private_data, zdrproc_t zdr_decode_fn, int zdr_bufsize, size_t alloc_hint, int iovcnt_hint);
 void pdu_set_timeout(struct rpc_context *rpc, struct rpc_pdu *pdu, uint64_t now_msecs);
 
 void rpc_free_pdu(struct rpc_context *rpc, struct rpc_pdu *pdu);

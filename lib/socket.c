@@ -296,8 +296,10 @@ rpc_which_events(struct rpc_context *rpc)
 int
 rpc_write_to_socket(struct rpc_context *rpc)
 {
-	struct rpc_pdu *pdu;
-	struct iovec iov[RPC_MAX_VECTORS];
+	struct rpc_pdu *pdu = rpc->outqueue.head;
+	struct iovec fast_iov[RPC_FAST_VECTORS];
+	struct iovec *iov = fast_iov;
+        int iovcnt = RPC_FAST_VECTORS;
         int ret = 0;
         
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
@@ -322,6 +324,13 @@ rpc_write_to_socket(struct rpc_context *rpc)
                 char *last_buf = NULL;
                 ssize_t count;
 
+                if (pdu->out.niov > iovcnt && iovcnt != RPC_MAX_VECTORS) {
+                        assert(iov == fast_iov);
+                        iov = (struct iovec *) calloc(RPC_MAX_VECTORS,
+                                                      sizeof(struct iovec));
+                        iovcnt = RPC_MAX_VECTORS;
+                }
+
                 do {
                         size_t num_done = pdu->out.num_done;
                         int pdu_niov = pdu->out.niov;
@@ -343,7 +352,7 @@ rpc_write_to_socket(struct rpc_context *rpc)
                                         iov[niov].iov_base = buf;
                                         iov[niov].iov_len = len;
                                         niov++;
-                                        if (niov >= RPC_MAX_VECTORS)
+                                        if (niov >= iovcnt)
                                                 break;
                                         last_buf = (buf + len);
                                 } else {
@@ -356,7 +365,7 @@ rpc_write_to_socket(struct rpc_context *rpc)
                         pdu = pdu->next;
                 } while ((rpc->max_waitpdu_len == 0 ||
                           rpc->max_waitpdu_len > (rpc->waitpdu_len + num_pdus)) &&
-                         pdu != NULL && niov < RPC_MAX_VECTORS);
+                         pdu != NULL && niov < iovcnt);
 
                 count = writev(rpc->fd, iov, niov);
                 if (count == -1) {
@@ -411,6 +420,11 @@ rpc_write_to_socket(struct rpc_context *rpc)
                 nfs_mt_mutex_unlock(&rpc->rpc_mutex);
         }
 #endif /* HAVE_MULTITHREADING */
+
+        if (iov != fast_iov) {
+                free(iov);
+        }
+
 	return ret;
 }
 

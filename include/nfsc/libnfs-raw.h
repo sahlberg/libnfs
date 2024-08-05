@@ -24,6 +24,7 @@
 #define _LIBNFS_RAW_H_
 
 #include <stdint.h>
+#include <sys/uio.h>
 #include <nfsc/libnfs-zdr.h>
 
 #ifdef __cplusplus
@@ -1142,6 +1143,19 @@ struct WRITE3args;
 EXTERN struct rpc_pdu *
 rpc_nfs3_write_task(struct rpc_context *rpc, rpc_cb cb,
                      struct WRITE3args *args,
+                     void *private_data);
+
+/*
+ * Same as rpc_nfs3_write_task() but can be used to send WRITE data from
+ * an iovec. Useful for callers who do not have the WRITE data in a single
+ * contiguous buffer but instead the WRITE data needs to be gathered from
+ * multiple non-contiguous buffers.
+ */
+EXTERN struct rpc_pdu *
+rpc_nfs3_writev_task(struct rpc_context *rpc, rpc_cb cb,
+                     struct WRITE3args *args,
+                     const struct iovec *iov,
+                     int iovcnt,
                      void *private_data);
 
 /*

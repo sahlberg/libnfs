@@ -314,15 +314,32 @@ zdr_WRITE3args_zerocopy(ZDR *zdrs, WRITE3args *objp)
 	return TRUE;
 }
 
-struct rpc_pdu *rpc_nfs3_write_task(struct rpc_context *rpc, rpc_cb cb,
-                                    struct WRITE3args *args,
-                                    void *private_data)
+struct rpc_pdu *rpc_nfs3_writev_task(struct rpc_context *rpc, rpc_cb cb,
+                                     struct WRITE3args *args,
+                                     const struct iovec *iov,
+                                     int iovcnt,
+                                     void *private_data)
 {
 	struct rpc_pdu *pdu;
         int start;
         static uint32_t zero_padding;
+        uint32_t data_len;
 
-	pdu = rpc_allocate_pdu2(rpc, NFS_PROGRAM, NFS_V3, NFS3_WRITE, cb, private_data, (zdrproc_t)zdr_WRITE3res, sizeof(WRITE3res), 0);
+        /*
+         * If caller has a single contiguous buffer they can convey it
+         * using args.data, and if they have an io vector they can convey
+         * thatusing iov.
+         */
+        if (iovcnt && !iov) {
+		rpc_set_error(rpc, "Invalid arguments: iovcnt non-zero but iov is NULL");
+		return NULL;
+        } else if (iovcnt && args->data.data_len) {
+                /* Warn bad callers */
+		rpc_set_error(rpc, "Invalid arguments: args->data.data_len not 0 when iovcnt is non-zero");
+		return NULL;
+        }
+
+	pdu = rpc_allocate_pdu3(rpc, NFS_PROGRAM, NFS_V3, NFS3_WRITE, cb, private_data, (zdrproc_t)zdr_WRITE3res, sizeof(WRITE3res), 0, iovcnt);
 	if (pdu == NULL) {
 		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu for NFS3/WRITE call");
 		return NULL;
@@ -343,9 +360,19 @@ struct rpc_pdu *rpc_nfs3_write_task(struct rpc_context *rpc, rpc_cb cb,
 		return NULL;
         }
 
+        if (iov) {
+                int i;
+                data_len = 0;
+                for (i = 0; i < iovcnt; i++) {
+                        data_len += iov[i].iov_len;
+                }
+        } else {
+                data_len = args->data.data_len;
+        }
+
         /* Add an iovector for the length of the byte/array blob */
         start = zdr_getpos(&pdu->zdr);
-        zdr_u_int(&pdu->zdr, &args->data.data_len);
+        zdr_u_int(&pdu->zdr, &data_len);
         if (rpc_add_iovector(rpc, &pdu->out, &pdu->outdata.data[start + 4],
                              4, NULL) < 0) {
 		rpc_free_pdu(rpc, pdu);
@@ -353,17 +380,28 @@ struct rpc_pdu *rpc_nfs3_write_task(struct rpc_context *rpc, rpc_cb cb,
         }
 
         /* Add an iovector for the data itself */
-        if (rpc_add_iovector(rpc, &pdu->out, args->data.data_val,
-                             args->data.data_len, NULL) < 0) {
-		rpc_free_pdu(rpc, pdu);
-		return NULL;
+        if (!iov) {
+                if (rpc_add_iovector(rpc, &pdu->out, args->data.data_val,
+                                     args->data.data_len, NULL) < 0) {
+                        rpc_free_pdu(rpc, pdu);
+                        return NULL;
+                }
+        } else {
+                int i;
+                for (i = 0; i < iovcnt; i++) {
+                        if (rpc_add_iovector(rpc, &pdu->out,
+                                             iov[i].iov_base,
+                                             iov[i].iov_len, NULL) < 0) {
+                                rpc_free_pdu(rpc, pdu);
+                                return NULL;
+                        }
+                }
         }
 
         /* We may need to pad this to 4 byte boundary */
-        if (args->data.data_len & 0x03) {
+        if (data_len & 0x03) {
                 if (rpc_add_iovector(rpc, &pdu->out, (char *)&zero_padding,
-                                     4 - (args->data.data_len & 0x03),
-                                     NULL) < 0) {
+                                     4 - (data_len & 0x03), NULL) < 0) {
                         rpc_free_pdu(rpc, pdu);
                         return NULL;
                 }
@@ -375,6 +413,13 @@ struct rpc_pdu *rpc_nfs3_write_task(struct rpc_context *rpc, rpc_cb cb,
 	}
 
 	return pdu;
+}
+
+struct rpc_pdu *rpc_nfs3_write_task(struct rpc_context *rpc, rpc_cb cb,
+                                    struct WRITE3args *args,
+                                    void *private_data)
+{
+        return rpc_nfs3_writev_task(rpc, cb, args, NULL, 0, private_data);
 }
 
 struct rpc_pdu *rpc_nfs3_commit_task(struct rpc_context *rpc, rpc_cb cb,
