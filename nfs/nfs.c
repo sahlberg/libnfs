@@ -328,14 +328,21 @@ struct rpc_pdu *rpc_nfs3_writev_task(struct rpc_context *rpc, rpc_cb cb,
         /*
          * If caller has a single contiguous buffer they can convey it
          * using args.data, and if they have an io vector they can convey
-         * thatusing iov.
+         * that using iov.
          */
-        if (iovcnt && !iov) {
-		rpc_set_error(rpc, "Invalid arguments: iovcnt non-zero but iov is NULL");
+        if ((iovcnt == 0) != (iov == NULL)) {
+		rpc_set_error(rpc, "Invalid arguments: iov and iovcnt must both be specified together");
 		return NULL;
-        } else if (iovcnt && args->data.data_len) {
+        }
+
+        if (iovcnt && args->data.data_len) {
                 /* Warn bad callers */
 		rpc_set_error(rpc, "Invalid arguments: args->data.data_len not 0 when iovcnt is non-zero");
+		return NULL;
+        }
+
+        if (iov && rpc->is_udp) {
+		rpc_set_error(rpc, "Invalid arguments: Vectored write not supported for UDP transport");
 		return NULL;
         }
 
@@ -360,6 +367,7 @@ struct rpc_pdu *rpc_nfs3_writev_task(struct rpc_context *rpc, rpc_cb cb,
 		return NULL;
         }
 
+        /* Calculate data length to encode in the RPC request */
         if (iov) {
                 int i;
                 data_len = 0;

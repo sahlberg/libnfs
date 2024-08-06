@@ -157,7 +157,7 @@ struct rpc_endpoint {
 #define RPC_FAST_VECTORS 8 /* Same as UIO_FASTIOV used by the Linux kernel */
 
 /*
- * Maximum io vectors allowed by rpc_io_vectors.
+ * Maximum io vectors supported by rpc_io_vectors.
  * This must not be greater than the POSIX UIO_MAXIOV value as we use writev()
  * to write the io vectors over the socket.
  */

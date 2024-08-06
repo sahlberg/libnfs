@@ -296,7 +296,7 @@ rpc_which_events(struct rpc_context *rpc)
 int
 rpc_write_to_socket(struct rpc_context *rpc)
 {
-	struct rpc_pdu *pdu = rpc->outqueue.head;
+	struct rpc_pdu *pdu;
 	struct iovec fast_iov[RPC_FAST_VECTORS];
 	struct iovec *iov = fast_iov;
         int iovcnt = RPC_FAST_VECTORS;
