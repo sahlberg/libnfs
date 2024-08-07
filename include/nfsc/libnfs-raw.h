@@ -23,6 +23,26 @@
 #ifndef _LIBNFS_RAW_H_
 #define _LIBNFS_RAW_H_
 
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+
+#ifdef AROS
+#include "aros_compat.h"
+#endif
+
+#ifdef PS2_EE
+#include "ps2_compat.h"
+#endif
+
+#ifdef PS3_PPU
+#include "ps3_compat.h"
+#endif
+
+#ifdef WIN32
+#include <win32/win32_compat.h>
+#endif
+
 #include <stdint.h>
 
 #if defined(HAVE_SYS_UIO_H) || (defined(__APPLE__) && defined(__MACH__))
