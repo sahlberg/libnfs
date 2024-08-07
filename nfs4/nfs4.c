@@ -334,9 +334,6 @@ struct rpc_pdu *rpc_nfs4_writev_task(struct rpc_context *rpc, rpc_cb cb,
         static uint32_t zero_padding;
         int i;
 
-        /*
-         * XXX Need to support 0-byte writes.
-         */
         if (iovcnt == 0 || iov == NULL) {
 		rpc_set_error(rpc, "Invalid arguments: iov and iovcnt must be specified");
 		return NULL;
