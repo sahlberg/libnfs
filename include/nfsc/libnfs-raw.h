@@ -24,7 +24,11 @@
 #define _LIBNFS_RAW_H_
 
 #include <stdint.h>
+
+#if defined(HAVE_SYS_UIO_H) || (defined(__APPLE__) && defined(__MACH__))
 #include <sys/uio.h>
+#endif
+
 #include <nfsc/libnfs-zdr.h>
 
 #ifdef __cplusplus
