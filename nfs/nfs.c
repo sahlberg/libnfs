@@ -29,6 +29,7 @@
 #include <stdio.h>
 #include <errno.h>
 #include <string.h>
+#include <stdlib.h>
 #include "libnfs-zdr.h"
 #include "libnfs.h"
 #include "libnfs-raw.h"
@@ -265,11 +266,29 @@ zdr_READ3res_zero_copy (ZDR *zdrs, READ3res *objp)
 }
 
 struct rpc_pdu *
-rpc_nfs3_read_task(struct rpc_context *rpc, rpc_cb cb,
-                   void *buf, size_t count,
-                   struct READ3args *args, void *private_data)
+rpc_nfs3_readv_task(struct rpc_context *rpc, rpc_cb cb,
+                    const struct iovec *iov, int iovcnt,
+                    struct READ3args *args, void *private_data)
 {
 	struct rpc_pdu *pdu;
+	int i;
+
+        /*
+         * Do we really need to support 0-byte reads?
+         * Caller can always no-op it.
+         */
+        if (iovcnt == 0 || iov == NULL) {
+		rpc_set_error(rpc, "Invalid arguments: iov and iovcnt must be specified");
+		return NULL;
+        }
+
+        /*
+         * Don't accept more iovecs than what readv() can handle.
+         */
+        if (iovcnt > RPC_MAX_VECTORS) {
+		rpc_set_error(rpc, "Invalid arguments: iovcnt must be <= %d", RPC_MAX_VECTORS);
+		return NULL;
+        }
 
 	pdu = rpc_allocate_pdu(rpc, NFS_PROGRAM, NFS_V3, NFS3_READ, cb, private_data, (zdrproc_t)zdr_READ3res_zero_copy, sizeof(READ3res));
 	if (pdu == NULL) {
@@ -282,9 +301,20 @@ rpc_nfs3_read_task(struct rpc_context *rpc, rpc_cb cb,
 		return NULL;
 	}
 
-        pdu->in.buf = buf;
-        pdu->in.len = count;
-        pdu->requested_read_count = count;
+	pdu->in.base = (struct iovec *) malloc(sizeof(struct iovec) * iovcnt);
+	if (!pdu->in.base) {
+		rpc_set_error(rpc, "error: Failed to allocate memory");
+		rpc_free_pdu(rpc, pdu);
+		return NULL;
+	}
+
+        pdu->in.iov = pdu->in.base;
+	pdu->in.iovcnt = iovcnt;
+
+        for (i = 0; i < iovcnt; i++) {
+                pdu->in.iov[i] = iov[i];
+                pdu->in.total_size += iov[i].iov_len;
+        }
 
 	if (rpc_queue_pdu(rpc, pdu) != 0) {
 		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for NFS3/READ call");
@@ -292,6 +322,16 @@ rpc_nfs3_read_task(struct rpc_context *rpc, rpc_cb cb,
 	}
 
 	return pdu;
+}
+
+struct rpc_pdu *
+rpc_nfs3_read_task(struct rpc_context *rpc, rpc_cb cb,
+                   void *buf, size_t count,
+                   struct READ3args *args, void *private_data)
+{
+	struct iovec iov = {buf, count};
+
+	return rpc_nfs3_readv_task(rpc, cb, &iov, 1, args, private_data);
 }
 
 /*

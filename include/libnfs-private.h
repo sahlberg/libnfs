@@ -169,15 +169,56 @@ struct rpc_iovec {
         void (*free)(void *);
 };
 
+/**
+ * Vectored buffer for holding zero-copy user data to be sent over the socket.
+ */
 struct rpc_io_vectors {
+        /* How many bytes from iov[] already written out over the network */
         size_t num_done;
-        int total_size;
-        /* iov[] has space for these many rpc_iovec */
+        /* Cumulative size of all rpc_iovecs in iov[] */
+        size_t total_size;
+        /* iov[] has space for these many rpc_iovecs */
         int iov_capacity;
         /* These many are currently filled */
         int niov;
+        /*
+         * For small vectors this will point to fast_iov, else it'll be
+         * allocated dynamically and must be freed using free().
+         */
         struct rpc_iovec *iov;
+        /* Inline vector, for saving allocation in the common case */
         struct rpc_iovec fast_iov[RPC_FAST_VECTORS];
+};
+
+/**
+ * Vectored buffer for holding zero-copy user data to be read over the socket.
+ */
+struct rpc_iovec_cursor {
+        /*
+         * Fixed base of the allocated iovec array.
+         * Once allocated this doesn't change, and should be used for freeing
+         * the iovec array.
+         */
+        struct iovec *base;
+
+        /*
+         * Current iovec we should be reading into, updated as we finish
+         * reading whole iovecs. iovcnt holds the count of iovecs remaining
+         * to be read into and is decremented as we read whole iovecs. We also
+         * update the iov_base and iov_len as we read data into iov[], so at
+         * any point iov and iovcnt can be passed to readv() to read remaining
+         * data.
+         */
+        struct iovec *iov;
+        int iovcnt;
+
+        /*
+         * Total size of all the iovecs present starting at base.
+         * This remains constant and doesn't change as we read data into iov
+         * and can be used as a quick ref for total read bytes requested by the
+         * caller.
+         */
+        size_t total_size;
 };
 
 enum input_state {
@@ -399,14 +440,23 @@ struct rpc_pdu {
          */
         struct rpc_io_vectors out;
 
-        /* vector for zero-copy READ3 receive */
+        /*
+         * vector for zero-copy READ3 receive.
+         * This is updated as data is read from the socket into the user's
+         * zero-copy buffers directly.
+         * in.total_size is the total bytes requested by the user.
+         */
+        struct rpc_iovec_cursor in;
+
+        /*
+         * How much more data remains to be read into 'in'. It's initialized
+         * with the returned count in READ response and is reduced as we
+         * read data from the socket into the user's zero-copy buffers.
+         * This must never be more than in.total_size as we should never read
+         * more data than requested.
+         */
         uint32_t read_count;
-        size_t inpos;
-        struct rpc_iovec in;
-        uint32_t requested_read_count; /* The amount requested by the
-                                        * application.
-                                        * Used to clamp long reads.
-                                        */
+
 	rpc_cb cb;
 	void *private_data;
 
@@ -761,6 +811,11 @@ struct nfsfh {
 void rpc_free_iovector(struct rpc_context *rpc, struct rpc_io_vectors *v);
 int rpc_add_iovector(struct rpc_context *rpc, struct rpc_io_vectors *v,
                      char *buf, int len, void (*free)(void *));
+void rpc_advance_cursor(struct rpc_context *rpc, struct rpc_iovec_cursor *v,
+                        size_t len);
+void rpc_memcpy_cursor(struct rpc_context *rpc, struct rpc_iovec_cursor *v,
+                       const void *src, size_t len);
+void rpc_free_cursor(struct rpc_context *rpc, struct rpc_iovec_cursor *v);
 const struct nfs_fh *nfs_get_rootfh(struct nfs_context *nfs);
 
 int nfs_normalize_path(struct nfs_context *nfs, char *path);

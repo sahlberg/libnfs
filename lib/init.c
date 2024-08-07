@@ -625,7 +625,6 @@ void rpc_free_iovector(struct rpc_context *rpc, struct rpc_io_vectors *v)
                 assert(v->iov_capacity > RPC_FAST_VECTORS &&
                        v->iov_capacity <= RPC_MAX_VECTORS);
                 free(v->iov);
-                v->iov = v->fast_iov;
         } else {
                 assert(v->iov_capacity == RPC_FAST_VECTORS);
         }
@@ -645,4 +644,59 @@ int rpc_add_iovector(struct rpc_context *rpc, struct rpc_io_vectors *v,
         v->niov++;
 
         return 0;
+}
+
+/*
+ * Advance the cursor by len bytes.
+ * This must be called after reading len bytes into the cursor, so that the
+ * subsequent data can be correctly read into iov[].
+ */
+void rpc_advance_cursor(struct rpc_context *rpc, struct rpc_iovec_cursor *v,
+			size_t len)
+{
+	while (len) {
+		assert(v->iovcnt > 0);
+
+		if (v->iov[0].iov_len > len) {
+			v->iov[0].iov_base += len;
+			v->iov[0].iov_len -= len;
+			break;
+		} else {
+			len -= v->iov[0].iov_len;
+			/* Exhausted this iovec completely */
+			v->iov++;
+			v->iovcnt--;
+		}
+	}
+}
+
+/*
+ * memcpy data into the cursor at the current position and advance the cursor
+ * to be ready for subsequent data.
+ */
+void rpc_memcpy_cursor(struct rpc_context *rpc, struct rpc_iovec_cursor *v,
+		       const void *src, size_t len)
+{
+	while (len) {
+		assert(v->iovcnt > 0);
+
+		if (v->iov[0].iov_len > len) {
+			memcpy(v->iov[0].iov_base, src, len);
+			v->iov[0].iov_base += len;
+			v->iov[0].iov_len -= len;
+			break;
+		} else {
+			memcpy(v->iov[0].iov_base, src, v->iov[0].iov_len);
+			len -= v->iov[0].iov_len;
+			src += v->iov[0].iov_len;
+			/* Exhausted this iovec completely */
+			v->iov++;
+			v->iovcnt--;
+		}
+	}
+}
+
+void rpc_free_cursor(struct rpc_context *rpc, struct rpc_iovec_cursor *v)
+{
+	free(v->base);
 }

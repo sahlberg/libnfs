@@ -29,6 +29,7 @@
 #include <stdio.h>
 #include <errno.h>
 #include <string.h>
+#include <stdlib.h>
 #include "libnfs-zdr.h"
 #include "libnfs.h"
 #include "libnfs-raw.h"
@@ -245,12 +246,30 @@ struct rpc_pdu *rpc_nfs4_compound_task(struct rpc_context *rpc, rpc_cb cb,
         return rpc_nfs4_compound_task2(rpc, cb, args, private_data, 0);
 }
 
-struct rpc_pdu *rpc_nfs4_read_task(struct rpc_context *rpc, rpc_cb cb,
-                                   void *buf, size_t count,
+struct rpc_pdu *rpc_nfs4_readv_task(struct rpc_context *rpc, rpc_cb cb,
+                                   const struct iovec *iov, int iovcnt,
                                    struct COMPOUND4args *args,
                                    void *private_data)
 {
 	struct rpc_pdu *pdu;
+	int i;
+
+        /*
+         * Do we really need to support 0-byte reads?
+         * Caller can always no-op it.
+         */
+        if (iovcnt == 0 || iov == NULL) {
+		rpc_set_error(rpc, "Invalid arguments: iov and iovcnt must be specified");
+		return NULL;
+        }
+
+        /*
+         * Don't accept more iovecs than what readv() can handle.
+         */
+        if (iovcnt > RPC_MAX_VECTORS) {
+		rpc_set_error(rpc, "Invalid arguments: iovcnt must be <= %d", RPC_MAX_VECTORS);
+		return NULL;
+        }
 
 	pdu = rpc_allocate_pdu2(rpc, NFS4_PROGRAM, NFS_V4, NFSPROC4_COMPOUND,
                                cb, private_data, (zdrproc_t)zdr_COMPOUND4res,
@@ -267,8 +286,20 @@ struct rpc_pdu *rpc_nfs4_read_task(struct rpc_context *rpc, rpc_cb cb,
 		return NULL;
 	}
 
-        pdu->in.buf = buf;
-        pdu->in.len = count;
+	pdu->in.base = (struct iovec *) malloc(sizeof(struct iovec) * iovcnt);
+	if (!pdu->in.base) {
+		rpc_set_error(rpc, "error: Failed to allocate memory");
+		rpc_free_pdu(rpc, pdu);
+		return NULL;
+	}
+
+        pdu->in.iov = pdu->in.base;
+	pdu->in.iovcnt = iovcnt;
+
+        for (i = 0; i < iovcnt; i++) {
+                pdu->in.iov[i] = iov[i];
+                pdu->in.total_size += iov[i].iov_len;
+        }
 
 	if (rpc_queue_pdu(rpc, pdu) != 0) {
 		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for "
@@ -279,19 +310,43 @@ struct rpc_pdu *rpc_nfs4_read_task(struct rpc_context *rpc, rpc_cb cb,
 	return pdu;
 }
 
-struct rpc_pdu *rpc_nfs4_write_task(struct rpc_context *rpc, rpc_cb cb,
-                                    const void *buf, size_t count,
-                                    struct COMPOUND4args *args,
-                                    void *private_data)
+struct rpc_pdu *rpc_nfs4_read_task(struct rpc_context *rpc, rpc_cb cb,
+                                   void *buf, size_t count,
+                                   struct COMPOUND4args *args,
+                                   void *private_data)
+{
+	const struct iovec iov = {buf, count};
+
+	return rpc_nfs4_readv_task(rpc, cb, &iov, 1, args, private_data);
+}
+
+struct rpc_pdu *rpc_nfs4_writev_task(struct rpc_context *rpc, rpc_cb cb,
+                                     const struct iovec *iov, int iovcnt,
+                                     struct COMPOUND4args *args,
+                                     void *private_data)
 {
 	struct rpc_pdu *pdu;
         int start;
         uint32_t len;
         static uint32_t zero_padding;
- 
-	pdu = rpc_allocate_pdu2(rpc, NFS4_PROGRAM, NFS_V4, NFSPROC4_COMPOUND,
-                               cb, private_data, (zdrproc_t)zdr_COMPOUND4res,
-                                sizeof(COMPOUND4res), 0);
+        int i;
+
+        /*
+         * XXX Need to support 0-byte writes.
+         */
+        if (iovcnt == 0 || iov == NULL) {
+		rpc_set_error(rpc, "Invalid arguments: iov and iovcnt must be specified");
+		return NULL;
+        }
+
+        if (iovcnt > 1 && rpc->is_udp) {
+		rpc_set_error(rpc, "Invalid arguments: Vectored write not supported for UDP transport");
+		return NULL;
+        }
+
+	pdu = rpc_allocate_pdu3(rpc, NFS4_PROGRAM, NFS_V4, NFSPROC4_COMPOUND,
+                                cb, private_data, (zdrproc_t)zdr_COMPOUND4res,
+                                sizeof(COMPOUND4res), 0, iovcnt);
 	if (pdu == NULL) {
 		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu for "
                               "NFS4/COMPOUND call");
@@ -313,9 +368,14 @@ struct rpc_pdu *rpc_nfs4_write_task(struct rpc_context *rpc, rpc_cb cb,
 		return NULL;
         }
 
+        /* Calculate data length to encode in the RPC request */
+        len = 0;
+        for (i = 0; i < iovcnt; i++) {
+                len += iov[i].iov_len;
+        }
+
         /* Add an iovector for the length of the byte/array blob */
         start = zdr_getpos(&pdu->zdr);
-        len = count;
         zdr_u_int(&pdu->zdr, &len);
         if (rpc_add_iovector(rpc, &pdu->out, &pdu->outdata.data[start + 4],
                              4, NULL) < 0) {
@@ -323,16 +383,20 @@ struct rpc_pdu *rpc_nfs4_write_task(struct rpc_context *rpc, rpc_cb cb,
 		return NULL;
         }
 
-        /* Add an iovector for the data itself */
-        if (rpc_add_iovector(rpc, &pdu->out, (char *)buf, count, NULL) < 0) {
-		rpc_free_pdu(rpc, pdu);
-		return NULL;
+        /* Add iovector(s) for the data itself */
+        for (i = 0; i < iovcnt; i++) {
+                if (rpc_add_iovector(rpc, &pdu->out,
+                                     iov[i].iov_base,
+                                     iov[i].iov_len, NULL) < 0) {
+                        rpc_free_pdu(rpc, pdu);
+                        return NULL;
+                }
         }
 
         /* We may need to pad this to 4 byte boundary */
-        if (count & 0x03) {
+        if (len & 0x03) {
                 if (rpc_add_iovector(rpc, &pdu->out, (char *)&zero_padding,
-                                     4 - (count & 0x03),
+                                     4 - (len & 0x03),
                                      NULL) < 0) {
                         rpc_free_pdu(rpc, pdu);
                         return NULL;
@@ -346,4 +410,19 @@ struct rpc_pdu *rpc_nfs4_write_task(struct rpc_context *rpc, rpc_cb cb,
 	}
 
 	return pdu;
+}
+
+struct rpc_pdu *rpc_nfs4_write_task(struct rpc_context *rpc, rpc_cb cb,
+                                    const void *buf, size_t count,
+                                    struct COMPOUND4args *args,
+                                    void *private_data)
+{
+        /*
+         * We don't have an iovec definition with const iov_base pointer, but
+         * rpc_nfs4_writev_task() won't modify the contents of *buf, so the
+         * following cast is safe.
+         */
+	const struct iovec iov = {(void *) buf, count};
+
+        return rpc_nfs4_writev_task(rpc, cb, &iov, 1, args, private_data);
 }

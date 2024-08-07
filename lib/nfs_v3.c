@@ -4492,9 +4492,17 @@ nfs3_pread_cb(struct rpc_context *rpc, int status, void *command_data,
         if (data->update_pos) {
                 data->nfsfh->offset = data->offset + count;
         }
-        if (count > rpc->pdu->requested_read_count) {
-                count = rpc->pdu->requested_read_count;
+
+        /*
+         * It's unlikely that a sane server will return more data than
+         * requested. Also note that rpc_nfs3_read_task() would have correctly
+         * ensured that it doesn't read more than the requested data, so to
+         * be correct just clamp the returned read count here.
+         */
+        if (count > rpc->pdu->in.total_size) {
+                count = rpc->pdu->in.total_size;
         }
+
 	data->cb(count, nfs, NULL, data->private_data);
 	free_nfs_cb_data(data);
 	return;
@@ -4542,7 +4550,6 @@ nfs3_pread_async_internal(struct nfs_context *nfs, struct nfsfh *nfsfh,
                 return -1;
         }
 
-        pdu->requested_read_count = count;
         return 0;
 }
 
