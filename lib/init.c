@@ -658,7 +658,7 @@ void rpc_advance_cursor(struct rpc_context *rpc, struct rpc_iovec_cursor *v,
 		assert(v->iovcnt > 0);
 
 		if (v->iov[0].iov_len > len) {
-			v->iov[0].iov_base += len;
+			v->iov[0].iov_base = ((uint8_t*) v->iov[0].iov_base) + len;
 			v->iov[0].iov_len -= len;
 			break;
 		} else {
@@ -682,13 +682,13 @@ void rpc_memcpy_cursor(struct rpc_context *rpc, struct rpc_iovec_cursor *v,
 
 		if (v->iov[0].iov_len > len) {
 			memcpy(v->iov[0].iov_base, src, len);
-			v->iov[0].iov_base += len;
+			v->iov[0].iov_base = ((uint8_t*) v->iov[0].iov_base) + len;
 			v->iov[0].iov_len -= len;
 			break;
 		} else {
 			memcpy(v->iov[0].iov_base, src, v->iov[0].iov_len);
 			len -= v->iov[0].iov_len;
-			src += v->iov[0].iov_len;
+			src = ((uint8_t *) src) + v->iov[0].iov_len;
 			/* Exhausted this iovec completely */
 			v->iov++;
 			v->iovcnt--;

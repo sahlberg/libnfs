@@ -315,7 +315,10 @@ struct rpc_pdu *rpc_nfs4_read_task(struct rpc_context *rpc, rpc_cb cb,
                                    struct COMPOUND4args *args,
                                    void *private_data)
 {
-	const struct iovec iov = {buf, count};
+	struct iovec iov;
+
+	iov.iov_base = buf;
+	iov.iov_len = count;
 
 	return rpc_nfs4_readv_task(rpc, cb, &iov, 1, args, private_data);
 }
@@ -422,7 +425,10 @@ struct rpc_pdu *rpc_nfs4_write_task(struct rpc_context *rpc, rpc_cb cb,
          * rpc_nfs4_writev_task() won't modify the contents of *buf, so the
          * following cast is safe.
          */
-	const struct iovec iov = {(void *) buf, count};
+        struct iovec iov;
+
+        iov.iov_base = (void *) buf;
+        iov.iov_len = count;
 
         return rpc_nfs4_writev_task(rpc, cb, &iov, 1, args, private_data);
 }

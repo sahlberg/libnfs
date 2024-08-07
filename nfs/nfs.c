@@ -329,7 +329,10 @@ rpc_nfs3_read_task(struct rpc_context *rpc, rpc_cb cb,
                    void *buf, size_t count,
                    struct READ3args *args, void *private_data)
 {
-	struct iovec iov = {buf, count};
+	struct iovec iov;
+
+	iov.iov_base = buf;
+	iov.iov_len = count;
 
 	return rpc_nfs3_readv_task(rpc, cb, &iov, 1, args, private_data);
 }
