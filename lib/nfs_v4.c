@@ -2799,8 +2799,8 @@ nfs4_pread_cb(struct rpc_context *rpc, int status, void *command_data,
          * ensured that it doesn't read more than the requested data, so to
          * be correct just clamp the returned read count here.
          */
-        if (count > rpc->pdu->in.total_size) {
-                count = rpc->pdu->in.total_size;
+        if (count > rpc->pdu->requested_read_count) {
+                count = rpc->pdu->requested_read_count;
         }
 
         data->cb(count, nfs, NULL, data->private_data);

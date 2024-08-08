@@ -313,8 +313,10 @@ rpc_nfs3_readv_task(struct rpc_context *rpc, rpc_cb cb,
 
         for (i = 0; i < iovcnt; i++) {
                 pdu->in.iov[i] = iov[i];
-                pdu->in.total_size += iov[i].iov_len;
+                pdu->in.remaining_size += iov[i].iov_len;
         }
+
+        pdu->requested_read_count = pdu->in.remaining_size;
 
 	if (rpc_queue_pdu(rpc, pdu) != 0) {
 		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for NFS3/READ call");

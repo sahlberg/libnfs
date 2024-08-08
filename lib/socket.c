@@ -635,7 +635,7 @@ rpc_read_from_socket(struct rpc_context *rpc)
                         count = recv(rpc->fd, rpc->buf, count, MSG_DONTWAIT);
                 } else {
                         assert(rpc->pdu->in.iovcnt > 0);
-                        assert(count <= rpc->pdu->in.total_size);
+                        assert(count <= rpc->pdu->in.remaining_size);
                         count = readv(rpc->fd, rpc->pdu->in.iov, rpc->pdu->in.iovcnt);
                 }
 
@@ -770,8 +770,8 @@ rpc_read_from_socket(struct rpc_context *rpc)
 					 * If the server is buggy and does send more, we discard the extra
 					 * data.
 					 */
-                                        if (rpc->pdu->read_count > rpc->pdu->in.total_size) {
-                                                rpc->pdu->read_count = rpc->pdu->in.total_size;
+                                        if (rpc->pdu->read_count > rpc->pdu->requested_read_count) {
+                                                rpc->pdu->read_count = rpc->pdu->requested_read_count;
                                         }
 
                                         /*
@@ -781,14 +781,20 @@ rpc_read_from_socket(struct rpc_context *rpc)
                                                 count = rpc->pdu->read_count;
                                         }
 
+                                        if (rpc->pdu->in.remaining_size > rpc->pdu->read_count) {
+                                                /* we got a short read */
+                                                rpc_shrink_cursor(rpc, &rpc->pdu->in, rpc->pdu->read_count);
+                                                assert(rpc->pdu->in.remaining_size == rpc->pdu->read_count);
+                                        }
+
                                         /* XXX With the above two clamps, can this still happen ? */
-                                        if (count > rpc->pdu->in.total_size) {
-                                                count = rpc->pdu->in.total_size;
+                                        if (rpc->pdu->in.remaining_size < count) {
+                                                count = rpc->pdu->in.remaining_size;
                                         }
 
                                         rpc_memcpy_cursor(rpc, &rpc->pdu->in, &rpc->inbuf[pos], count);
 
-                                        if (rpc->pdu->in.iovcnt == 0) {
+                                        if (rpc->pdu->in.remaining_size == 0) {
                                                 // handle padding?
                                         } else {
                                                 rpc->pdu->read_count -= count;
