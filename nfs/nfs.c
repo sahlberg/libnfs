@@ -283,6 +283,14 @@ rpc_nfs3_readv_task(struct rpc_context *rpc, rpc_cb cb,
         }
 
         /*
+         * It's disallowed since it's not tested. It may work.
+         */
+        if (iovcnt > 1 && rpc->is_udp) {
+		rpc_set_error(rpc, "Invalid arguments: Vectored read not supported for UDP transport");
+		return NULL;
+        }
+
+        /*
          * Don't accept more iovecs than what readv() can handle.
          */
         if (iovcnt > RPC_MAX_VECTORS) {
