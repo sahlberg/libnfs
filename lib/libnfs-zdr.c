@@ -489,8 +489,10 @@ static bool_t libnfs_accepted_reply(ZDR *zdrs, struct accepted_reply *ar)
 	case SUCCESS:
 #ifdef HAVE_LIBKRB5
                 if (zdrs->x_op ==ZDR_DECODE && ar->reply_data.results.krb5p) {
-                        libnfs_zdr_u_int(zdrs, &len);
-
+                        if (!libnfs_zdr_u_int(zdrs, &len)) {
+                                return FALSE;
+                        }
+                                
                         message_buffer.length = len;
                         message_buffer.value = zdr_getptr(zdrs) + zdr_getpos(zdrs);
                         output_buffer = ar->reply_data.results.output_buffer;
