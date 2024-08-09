@@ -45,7 +45,7 @@ extern "C" {
 
 struct nlm_fh4 {
 	struct {
-		u_int data_len;
+		uint32_t data_len;
 		char *data_val;
 	} data;
 };
@@ -55,7 +55,7 @@ typedef char *nlm4_oh;
 
 struct nlm_cookie {
 	struct {
-		u_int data_len;
+		uint32_t data_len;
 		char *data_val;
 	} data;
 };
@@ -77,7 +77,7 @@ typedef enum nlmstat4 nlmstat4;
 
 struct nlm4_holder {
 	uint32_t exclusive;
-	u_int svid;
+	uint32_t svid;
 	nlm4_oh oh;
 	uint64_t l_offset;
 	uint64_t l_len;
@@ -89,7 +89,7 @@ struct nlm4_lock {
 	char *caller_name;
 	struct nlm_fh4 fh;
 	nlm4_oh oh;
-	u_int svid;
+	uint32_t svid;
 	uint64_t l_offset;
 	uint64_t l_len;
 };
@@ -99,8 +99,8 @@ struct nlm4_share {
 	char *caller_name;
 	struct nlm_fh4 fh;
 	nlm4_oh oh;
-	u_int mode;
-	u_int access;
+	uint32_t mode;
+	uint32_t access;
 };
 typedef struct nlm4_share nlm4_share;
 

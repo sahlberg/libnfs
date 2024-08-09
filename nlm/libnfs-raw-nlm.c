@@ -38,7 +38,7 @@ either expressed or implied, of the FreeBSD Project.
 uint32_t
 zdr_nlm_fh4 (ZDR *zdrs, nlm_fh4 *objp)
 {
-	 if (!zdr_bytes (zdrs, (char **)&objp->data.data_val, (u_int *) &objp->data.data_len, ~0))
+	 if (!zdr_bytes (zdrs, (char **)&objp->data.data_val, &objp->data.data_len, ~0))
 		 return FALSE;
 	return TRUE;
 }
@@ -54,7 +54,7 @@ zdr_nlm4_oh (ZDR *zdrs, nlm4_oh *objp)
 uint32_t
 zdr_nlm_cookie (ZDR *zdrs, nlm_cookie *objp)
 {
-	 if (!zdr_bytes (zdrs, (char **)&objp->data.data_val, (u_int *) &objp->data.data_len, ~0))
+	 if (!zdr_bytes (zdrs, (char **)&objp->data.data_val, &objp->data.data_len, ~0))
 		 return FALSE;
 	return TRUE;
 }

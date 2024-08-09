@@ -41,7 +41,7 @@ zdr_nfsstat4 (ZDR *zdrs, nfsstat4 *objp)
 uint32_t
 zdr_bitmap4 (ZDR *zdrs, bitmap4 *objp)
 {
-	 if (!zdr_array (zdrs, (char **)&objp->bitmap4_val, (u_int *) &objp->bitmap4_len, ~0,
+	 if (!zdr_array (zdrs, (char **)&objp->bitmap4_val, &objp->bitmap4_len, ~0,
 		sizeof (uint32_t), (zdrproc_t) zdr_uint32_t))
 		 return FALSE;
 	return TRUE;
@@ -106,7 +106,7 @@ zdr_slotid4 (ZDR *zdrs, slotid4 *objp)
 uint32_t
 zdr_utf8string (ZDR *zdrs, utf8string *objp)
 {
-	 if (!zdr_bytes (zdrs, (char **)&objp->utf8string_val, (u_int *) &objp->utf8string_len, ~0))
+	 if (!zdr_bytes (zdrs, (char **)&objp->utf8string_val, &objp->utf8string_len, ~0))
 		 return FALSE;
 	return TRUE;
 }
@@ -146,7 +146,7 @@ zdr_component4 (ZDR *zdrs, component4 *objp)
 uint32_t
 zdr_pathname4 (ZDR *zdrs, pathname4 *objp)
 {
-	 if (!zdr_array (zdrs, (char **)&objp->pathname4_val, (u_int *) &objp->pathname4_len, ~0,
+	 if (!zdr_array (zdrs, (char **)&objp->pathname4_val, &objp->pathname4_len, ~0,
 		sizeof (component4), (zdrproc_t) zdr_component4))
 		 return FALSE;
 	return TRUE;
@@ -179,7 +179,7 @@ zdr_linktext4 (ZDR *zdrs, linktext4 *objp)
 uint32_t
 zdr_sec_oid4 (ZDR *zdrs, sec_oid4 *objp)
 {
-	 if (!zdr_bytes (zdrs, (char **)&objp->sec_oid4_val, (u_int *) &objp->sec_oid4_len, ~0))
+	 if (!zdr_bytes (zdrs, (char **)&objp->sec_oid4_val, &objp->sec_oid4_len, ~0))
 		 return FALSE;
 	return TRUE;
 }
@@ -235,8 +235,8 @@ zdr_authsys_parms (ZDR *zdrs, authsys_parms *objp)
 		 return FALSE;
 	 if (!zdr_u_int (zdrs, &objp->gid))
 		 return FALSE;
-	 if (!zdr_array (zdrs, (char **)&objp->gids.gids_val, (u_int *) &objp->gids.gids_len, 16,
-		sizeof (u_int), (zdrproc_t) zdr_u_int))
+	 if (!zdr_array (zdrs, (char **)&objp->gids.gids_val, &objp->gids.gids_len, 16,
+		sizeof (uint32_t), (zdrproc_t) zdr_u_int))
 		 return FALSE;
 	return TRUE;
 }
@@ -262,7 +262,7 @@ zdr_layoutupdate4 (ZDR *zdrs, layoutupdate4 *objp)
 {
 	 if (!zdr_layouttype4 (zdrs, &objp->lou_type))
 		 return FALSE;
-	 if (!zdr_bytes (zdrs, (char **)&objp->lou_body.lou_body_val, (u_int *) &objp->lou_body.lou_body_len, ~0))
+	 if (!zdr_bytes (zdrs, (char **)&objp->lou_body.lou_body_val, &objp->lou_body.lou_body_len, ~0))
 		 return FALSE;
 	return TRUE;
 }
@@ -272,7 +272,7 @@ zdr_device_addr4 (ZDR *zdrs, device_addr4 *objp)
 {
 	 if (!zdr_layouttype4 (zdrs, &objp->da_layout_type))
 		 return FALSE;
-	 if (!zdr_bytes (zdrs, (char **)&objp->da_addr_body.da_addr_body_val, (u_int *) &objp->da_addr_body.da_addr_body_len, ~0))
+	 if (!zdr_bytes (zdrs, (char **)&objp->da_addr_body.da_addr_body_val, &objp->da_addr_body.da_addr_body_len, ~0))
 		 return FALSE;
 	return TRUE;
 }
@@ -308,7 +308,7 @@ zdr_layout_content4 (ZDR *zdrs, layout_content4 *objp)
 {
 	 if (!zdr_layouttype4 (zdrs, &objp->loc_type))
 		 return FALSE;
-	 if (!zdr_bytes (zdrs, (char **)&objp->loc_body.loc_body_val, (u_int *) &objp->loc_body.loc_body_len, ~0))
+	 if (!zdr_bytes (zdrs, (char **)&objp->loc_body.loc_body_val, &objp->loc_body.loc_body_len, ~0))
 		 return FALSE;
 	return TRUE;
 }
@@ -346,7 +346,7 @@ zdr_settime4 (ZDR *zdrs, settime4 *objp)
 uint32_t
 zdr_nfs_fh4 (ZDR *zdrs, nfs_fh4 *objp)
 {
-	 if (!zdr_bytes (zdrs, (char **)&objp->nfs_fh4_val, (u_int *) &objp->nfs_fh4_len, NFS4_FHSIZE))
+	 if (!zdr_bytes (zdrs, (char **)&objp->nfs_fh4_val, &objp->nfs_fh4_len, NFS4_FHSIZE))
 		 return FALSE;
 	return TRUE;
 }
@@ -364,7 +364,7 @@ zdr_fsid4 (ZDR *zdrs, fsid4 *objp)
 uint32_t
 zdr_fs_location4 (ZDR *zdrs, fs_location4 *objp)
 {
-	 if (!zdr_array (zdrs, (char **)&objp->server.server_val, (u_int *) &objp->server.server_len, ~0,
+	 if (!zdr_array (zdrs, (char **)&objp->server.server_val, &objp->server.server_len, ~0,
 		sizeof (utf8str_cis), (zdrproc_t) zdr_utf8str_cis))
 		 return FALSE;
 	 if (!zdr_pathname4 (zdrs, &objp->rootpath))
@@ -377,7 +377,7 @@ zdr_fs_locations4 (ZDR *zdrs, fs_locations4 *objp)
 {
 	 if (!zdr_pathname4 (zdrs, &objp->fs_root))
 		 return FALSE;
-	 if (!zdr_array (zdrs, (char **)&objp->locations.locations_val, (u_int *) &objp->locations.locations_len, ~0,
+	 if (!zdr_array (zdrs, (char **)&objp->locations.locations_val, &objp->locations.locations_len, ~0,
 		sizeof (fs_location4), (zdrproc_t) zdr_fs_location4))
 		 return FALSE;
 	return TRUE;
@@ -530,7 +530,7 @@ zdr_fattr4_rdattr_error (ZDR *zdrs, fattr4_rdattr_error *objp)
 uint32_t
 zdr_fattr4_acl (ZDR *zdrs, fattr4_acl *objp)
 {
-	 if (!zdr_array (zdrs, (char **)&objp->fattr4_acl_val, (u_int *) &objp->fattr4_acl_len, ~0,
+	 if (!zdr_array (zdrs, (char **)&objp->fattr4_acl_val, &objp->fattr4_acl_len, ~0,
 		sizeof (nfsace4), (zdrproc_t) zdr_nfsace4))
 		 return FALSE;
 	return TRUE;
@@ -883,7 +883,7 @@ zdr_fattr4_time_modify_set (ZDR *zdrs, fattr4_time_modify_set *objp)
 uint32_t
 zdr_attrlist4 (ZDR *zdrs, attrlist4 *objp)
 {
-	 if (!zdr_bytes (zdrs, (char **)&objp->attrlist4_val, (u_int *) &objp->attrlist4_len, ~0))
+	 if (!zdr_bytes (zdrs, (char **)&objp->attrlist4_val, &objp->attrlist4_len, ~0))
 		 return FALSE;
 	return TRUE;
 }
@@ -946,7 +946,7 @@ zdr_nfs_client_id4 (ZDR *zdrs, nfs_client_id4 *objp)
 {
 	 if (!zdr_verifier4 (zdrs, objp->verifier))
 		 return FALSE;
-	 if (!zdr_bytes (zdrs, (char **)&objp->id.id_val, (u_int *) &objp->id.id_len, NFS4_OPAQUE_LIMIT))
+	 if (!zdr_bytes (zdrs, (char **)&objp->id.id_val, &objp->id.id_len, NFS4_OPAQUE_LIMIT))
 		 return FALSE;
 	return TRUE;
 }
@@ -956,7 +956,7 @@ zdr_open_owner4 (ZDR *zdrs, open_owner4 *objp)
 {
 	 if (!zdr_clientid4 (zdrs, &objp->clientid))
 		 return FALSE;
-	 if (!zdr_bytes (zdrs, (char **)&objp->owner.owner_val, (u_int *) &objp->owner.owner_len, NFS4_OPAQUE_LIMIT))
+	 if (!zdr_bytes (zdrs, (char **)&objp->owner.owner_val, &objp->owner.owner_len, NFS4_OPAQUE_LIMIT))
 		 return FALSE;
 	return TRUE;
 }
@@ -966,7 +966,7 @@ zdr_lock_owner4 (ZDR *zdrs, lock_owner4 *objp)
 {
 	 if (!zdr_clientid4 (zdrs, &objp->clientid))
 		 return FALSE;
-	 if (!zdr_bytes (zdrs, (char **)&objp->owner.owner_val, (u_int *) &objp->owner.owner_len, NFS4_OPAQUE_LIMIT))
+	 if (!zdr_bytes (zdrs, (char **)&objp->owner.owner_val, &objp->owner.owner_len, NFS4_OPAQUE_LIMIT))
 		 return FALSE;
 	return TRUE;
 }
@@ -984,7 +984,7 @@ zdr_client_owner4 (ZDR *zdrs, client_owner4 *objp)
 {
 	 if (!zdr_verifier4 (zdrs, objp->co_verifier))
 		 return FALSE;
-	 if (!zdr_bytes (zdrs, (char **)&objp->co_ownerid.co_ownerid_val, (u_int *) &objp->co_ownerid.co_ownerid_len, NFS4_OPAQUE_LIMIT))
+	 if (!zdr_bytes (zdrs, (char **)&objp->co_ownerid.co_ownerid_val, &objp->co_ownerid.co_ownerid_len, NFS4_OPAQUE_LIMIT))
 		 return FALSE;
 	return TRUE;
 }
@@ -994,7 +994,7 @@ zdr_server_owner4 (ZDR *zdrs, server_owner4 *objp)
 {
 	 if (!zdr_uint64_t (zdrs, &objp->so_minor_id))
 		 return FALSE;
-	 if (!zdr_bytes (zdrs, (char **)&objp->so_major_id.so_major_id_val, (u_int *) &objp->so_major_id.so_major_id_len, NFS4_OPAQUE_LIMIT))
+	 if (!zdr_bytes (zdrs, (char **)&objp->so_major_id.so_major_id_val, &objp->so_major_id.so_major_id_len, NFS4_OPAQUE_LIMIT))
 		 return FALSE;
 	return TRUE;
 }
@@ -1882,7 +1882,7 @@ zzdr_READ4resok (ZDR *zdrs, READ4resok *objp)
 {
 	 if (!zdr_bool (zdrs, &objp->eof))
 		 return FALSE;
-	 if (!zdr_bytes (zdrs, (char **)&objp->data.data_val, (u_int *) &objp->data.data_len, ~0))
+	 if (!zdr_bytes (zdrs, (char **)&objp->data.data_val, &objp->data.data_len, ~0))
 		 return FALSE;
 	return TRUE;
 }
@@ -2140,7 +2140,7 @@ zdr_secinfo4 (ZDR *zdrs, secinfo4 *objp)
 uint32_t
 zdr_SECINFO4resok (ZDR *zdrs, SECINFO4resok *objp)
 {
-	 if (!zdr_array (zdrs, (char **)&objp->SECINFO4resok_val, (u_int *) &objp->SECINFO4resok_len, ~0,
+	 if (!zdr_array (zdrs, (char **)&objp->SECINFO4resok_val, &objp->SECINFO4resok_len, ~0,
 		sizeof (secinfo4), (zdrproc_t) zdr_secinfo4))
 		 return FALSE;
 	return TRUE;
@@ -2275,7 +2275,7 @@ zzdr_WRITE4args (ZDR *zdrs, WRITE4args *objp)
 		 return FALSE;
 	 if (!zdr_stable_how4 (zdrs, &objp->stable))
 		 return FALSE;
-	 if (!zdr_bytes (zdrs, (char **)&objp->data.data_val, (u_int *) &objp->data.data_len, ~0))
+	 if (!zdr_bytes (zdrs, (char **)&objp->data.data_val, &objp->data.data_len, ~0))
 		 return FALSE;
 	return TRUE;
 }
@@ -2327,7 +2327,7 @@ zdr_RELEASE_LOCKOWNER4res (ZDR *zdrs, RELEASE_LOCKOWNER4res *objp)
 uint32_t
 zdr_gsshandle4_t (ZDR *zdrs, gsshandle4_t *objp)
 {
-	 if (!zdr_bytes (zdrs, (char **)&objp->gsshandle4_t_val, (u_int *) &objp->gsshandle4_t_len, ~0))
+	 if (!zdr_bytes (zdrs, (char **)&objp->gsshandle4_t_val, &objp->gsshandle4_t_len, ~0))
 		 return FALSE;
 	return TRUE;
 }
@@ -2421,10 +2421,10 @@ zdr_ssv_sp_parms4 (ZDR *zdrs, ssv_sp_parms4 *objp)
 {
 	 if (!zdr_state_protect_ops4 (zdrs, &objp->ssp_ops))
 		 return FALSE;
-	 if (!zdr_array (zdrs, (char **)&objp->ssp_hash_algs.ssp_hash_algs_val, (u_int *) &objp->ssp_hash_algs.ssp_hash_algs_len, ~0,
+	 if (!zdr_array (zdrs, (char **)&objp->ssp_hash_algs.ssp_hash_algs_val, &objp->ssp_hash_algs.ssp_hash_algs_len, ~0,
 		sizeof (sec_oid4), (zdrproc_t) zdr_sec_oid4))
 		 return FALSE;
-	 if (!zdr_array (zdrs, (char **)&objp->ssp_encr_algs.ssp_encr_algs_val, (u_int *) &objp->ssp_encr_algs.ssp_encr_algs_len, ~0,
+	 if (!zdr_array (zdrs, (char **)&objp->ssp_encr_algs.ssp_encr_algs_val, &objp->ssp_encr_algs.ssp_encr_algs_len, ~0,
 		sizeof (sec_oid4), (zdrproc_t) zdr_sec_oid4))
 		 return FALSE;
 	 if (!zdr_uint32_t (zdrs, &objp->ssp_window))
@@ -2473,7 +2473,7 @@ zdr_EXCHANGE_ID4args (ZDR *zdrs, EXCHANGE_ID4args *objp)
 		 return FALSE;
 	 if (!zdr_state_protect4_a (zdrs, &objp->eia_state_protect))
 		 return FALSE;
-	 if (!zdr_array (zdrs, (char **)&objp->eia_client_impl_id.eia_client_impl_id_val, (u_int *) &objp->eia_client_impl_id.eia_client_impl_id_len, 1,
+	 if (!zdr_array (zdrs, (char **)&objp->eia_client_impl_id.eia_client_impl_id_val, &objp->eia_client_impl_id.eia_client_impl_id_len, 1,
 		sizeof (nfs_impl_id4), (zdrproc_t) zdr_nfs_impl_id4))
 		 return FALSE;
 	return TRUE;
@@ -2492,7 +2492,7 @@ zdr_ssv_prot_info4 (ZDR *zdrs, ssv_prot_info4 *objp)
 		 return FALSE;
 	 if (!zdr_uint32_t (zdrs, &objp->spi_window))
 		 return FALSE;
-	 if (!zdr_array (zdrs, (char **)&objp->spi_handles.spi_handles_val, (u_int *) &objp->spi_handles.spi_handles_len, ~0,
+	 if (!zdr_array (zdrs, (char **)&objp->spi_handles.spi_handles_val, &objp->spi_handles.spi_handles_len, ~0,
 		sizeof (gsshandle4_t), (zdrproc_t) zdr_gsshandle4_t))
 		 return FALSE;
 	return TRUE;
@@ -2533,9 +2533,9 @@ zdr_EXCHANGE_ID4resok (ZDR *zdrs, EXCHANGE_ID4resok *objp)
 		 return FALSE;
 	 if (!zdr_server_owner4 (zdrs, &objp->eir_server_owner))
 		 return FALSE;
-	 if (!zdr_bytes (zdrs, (char **)&objp->eir_server_scope.eir_server_scope_val, (u_int *) &objp->eir_server_scope.eir_server_scope_len, NFS4_OPAQUE_LIMIT))
+	 if (!zdr_bytes (zdrs, (char **)&objp->eir_server_scope.eir_server_scope_val, &objp->eir_server_scope.eir_server_scope_len, NFS4_OPAQUE_LIMIT))
 		 return FALSE;
-	 if (!zdr_array (zdrs, (char **)&objp->eir_server_impl_id.eir_server_impl_id_val, (u_int *) &objp->eir_server_impl_id.eir_server_impl_id_len, 1,
+	 if (!zdr_array (zdrs, (char **)&objp->eir_server_impl_id.eir_server_impl_id_val, &objp->eir_server_impl_id.eir_server_impl_id_len, 1,
 		sizeof (nfs_impl_id4), (zdrproc_t) zdr_nfs_impl_id4))
 		 return FALSE;
 	return TRUE;
@@ -2572,7 +2572,7 @@ zdr_channel_attrs4 (ZDR *zdrs, channel_attrs4 *objp)
 		 return FALSE;
 	 if (!zdr_count4 (zdrs, &objp->ca_maxrequests))
 		 return FALSE;
-	 if (!zdr_array (zdrs, (char **)&objp->ca_rdma_ird.ca_rdma_ird_val, (u_int *) &objp->ca_rdma_ird.ca_rdma_ird_len, 1,
+	 if (!zdr_array (zdrs, (char **)&objp->ca_rdma_ird.ca_rdma_ird_val, &objp->ca_rdma_ird.ca_rdma_ird_len, 1,
 		sizeof (uint32_t), (zdrproc_t) zdr_uint32_t))
 		 return FALSE;
 	return TRUE;
@@ -2593,7 +2593,7 @@ zdr_CREATE_SESSION4args (ZDR *zdrs, CREATE_SESSION4args *objp)
 		 return FALSE;
 	 if (!zdr_uint32_t (zdrs, &objp->csa_cb_program))
 		 return FALSE;
-	 if (!zdr_array (zdrs, (char **)&objp->csa_sec_parms.csa_sec_parms_val, (u_int *) &objp->csa_sec_parms.csa_sec_parms_len, ~0,
+	 if (!zdr_array (zdrs, (char **)&objp->csa_sec_parms.csa_sec_parms_val, &objp->csa_sec_parms.csa_sec_parms_len, ~0,
 		sizeof (callback_sec_parms4), (zdrproc_t) zdr_callback_sec_parms4))
 		 return FALSE;
 	return TRUE;
@@ -2814,7 +2814,7 @@ zdr_GETDEVICELIST4resok (ZDR *zdrs, GETDEVICELIST4resok *objp)
 		 return FALSE;
 	 if (!zdr_verifier4 (zdrs, objp->gdlr_cookieverf))
 		 return FALSE;
-	 if (!zdr_array (zdrs, (char **)&objp->gdlr_deviceid_list.gdlr_deviceid_list_val, (u_int *) &objp->gdlr_deviceid_list.gdlr_deviceid_list_len, ~0,
+	 if (!zdr_array (zdrs, (char **)&objp->gdlr_deviceid_list.gdlr_deviceid_list_val, &objp->gdlr_deviceid_list.gdlr_deviceid_list_len, ~0,
 		sizeof (deviceid4), (zdrproc_t) zdr_deviceid4))
 		 return FALSE;
 	 if (!zdr_bool (zdrs, &objp->gdlr_eof))
@@ -2965,7 +2965,7 @@ zdr_LAYOUTGET4resok (ZDR *zdrs, LAYOUTGET4resok *objp)
 		 return FALSE;
 	 if (!zdr_stateid4 (zdrs, &objp->logr_stateid))
 		 return FALSE;
-	 if (!zdr_array (zdrs, (char **)&objp->logr_layout.logr_layout_val, (u_int *) &objp->logr_layout.logr_layout_len, ~0,
+	 if (!zdr_array (zdrs, (char **)&objp->logr_layout.logr_layout_val, &objp->logr_layout.logr_layout_len, ~0,
 		sizeof (layout4), (zdrproc_t) zdr_layout4))
 		 return FALSE;
 	return TRUE;
@@ -3008,7 +3008,7 @@ zdr_layoutreturn_file4 (ZDR *zdrs, layoutreturn_file4 *objp)
 		 return FALSE;
 	 if (!zdr_stateid4 (zdrs, &objp->lrf_stateid))
 		 return FALSE;
-	 if (!zdr_bytes (zdrs, (char **)&objp->lrf_body.lrf_body_val, (u_int *) &objp->lrf_body.lrf_body_len, ~0))
+	 if (!zdr_bytes (zdrs, (char **)&objp->lrf_body.lrf_body_val, &objp->lrf_body.lrf_body_len, ~0))
 		 return FALSE;
 	return TRUE;
 }
@@ -3162,9 +3162,9 @@ zdr_ssa_digest_input4 (ZDR *zdrs, ssa_digest_input4 *objp)
 uint32_t
 zdr_SET_SSV4args (ZDR *zdrs, SET_SSV4args *objp)
 {
-	 if (!zdr_bytes (zdrs, (char **)&objp->ssa_ssv.ssa_ssv_val, (u_int *) &objp->ssa_ssv.ssa_ssv_len, ~0))
+	 if (!zdr_bytes (zdrs, (char **)&objp->ssa_ssv.ssa_ssv_val, &objp->ssa_ssv.ssa_ssv_len, ~0))
 		 return FALSE;
-	 if (!zdr_bytes (zdrs, (char **)&objp->ssa_digest.ssa_digest_val, (u_int *) &objp->ssa_digest.ssa_digest_len, ~0))
+	 if (!zdr_bytes (zdrs, (char **)&objp->ssa_digest.ssa_digest_val, &objp->ssa_digest.ssa_digest_len, ~0))
 		 return FALSE;
 	return TRUE;
 }
@@ -3180,7 +3180,7 @@ zdr_ssr_digest_input4 (ZDR *zdrs, ssr_digest_input4 *objp)
 uint32_t
 zdr_SET_SSV4resok (ZDR *zdrs, SET_SSV4resok *objp)
 {
-	 if (!zdr_bytes (zdrs, (char **)&objp->ssr_digest.ssr_digest_val, (u_int *) &objp->ssr_digest.ssr_digest_len, ~0))
+	 if (!zdr_bytes (zdrs, (char **)&objp->ssr_digest.ssr_digest_val, &objp->ssr_digest.ssr_digest_len, ~0))
 		 return FALSE;
 	return TRUE;
 }
@@ -3204,7 +3204,7 @@ zdr_SET_SSV4res (ZDR *zdrs, SET_SSV4res *objp)
 uint32_t
 zdr_TEST_STATEID4args (ZDR *zdrs, TEST_STATEID4args *objp)
 {
-	 if (!zdr_array (zdrs, (char **)&objp->ts_stateids.ts_stateids_val, (u_int *) &objp->ts_stateids.ts_stateids_len, ~0,
+	 if (!zdr_array (zdrs, (char **)&objp->ts_stateids.ts_stateids_val, &objp->ts_stateids.ts_stateids_len, ~0,
 		sizeof (stateid4), (zdrproc_t) zdr_stateid4))
 		 return FALSE;
 	return TRUE;
@@ -3213,7 +3213,7 @@ zdr_TEST_STATEID4args (ZDR *zdrs, TEST_STATEID4args *objp)
 uint32_t
 zdr_TEST_STATEID4resok (ZDR *zdrs, TEST_STATEID4resok *objp)
 {
-	 if (!zdr_array (zdrs, (char **)&objp->tsr_status_codes.tsr_status_codes_val, (u_int *) &objp->tsr_status_codes.tsr_status_codes_len, ~0,
+	 if (!zdr_array (zdrs, (char **)&objp->tsr_status_codes.tsr_status_codes_val, &objp->tsr_status_codes.tsr_status_codes_len, ~0,
 		sizeof (nfsstat4), (zdrproc_t) zdr_nfsstat4))
 		 return FALSE;
 	return TRUE;
@@ -3792,7 +3792,7 @@ zdr_COMPOUND4args (ZDR *zdrs, COMPOUND4args *objp)
 		 return FALSE;
 	 if (!zdr_uint32_t (zdrs, &objp->minorversion))
 		 return FALSE;
-	 if (!zdr_array (zdrs, (char **)&objp->argarray.argarray_val, (u_int *) &objp->argarray.argarray_len, ~0,
+	 if (!zdr_array (zdrs, (char **)&objp->argarray.argarray_val, &objp->argarray.argarray_len, ~0,
 		sizeof (nfs_argop4), (zdrproc_t) zdr_nfs_argop4))
 		 return FALSE;
 	return TRUE;
@@ -3805,7 +3805,7 @@ zdr_COMPOUND4res (ZDR *zdrs, COMPOUND4res *objp)
 		 return FALSE;
 	 if (!zdr_utf8str_cs (zdrs, &objp->tag))
 		 return FALSE;
-	 if (!zdr_array (zdrs, (char **)&objp->resarray.resarray_val, (u_int *) &objp->resarray.resarray_len, ~0,
+	 if (!zdr_array (zdrs, (char **)&objp->resarray.resarray_val, &objp->resarray.resarray_len, ~0,
 		sizeof (nfs_resop4), (zdrproc_t) zdr_nfs_resop4))
 		 return FALSE;
 	return TRUE;
@@ -3936,7 +3936,7 @@ zdr_CB_COMPOUND4args (ZDR *zdrs, CB_COMPOUND4args *objp)
 		 return FALSE;
 	 if (!zdr_uint32_t (zdrs, &objp->callback_ident))
 		 return FALSE;
-	 if (!zdr_array (zdrs, (char **)&objp->argarray.argarray_val, (u_int *) &objp->argarray.argarray_len, ~0,
+	 if (!zdr_array (zdrs, (char **)&objp->argarray.argarray_val, &objp->argarray.argarray_len, ~0,
 		sizeof (nfs_cb_argop4), (zdrproc_t) zdr_nfs_cb_argop4))
 		 return FALSE;
 	return TRUE;
@@ -3949,7 +3949,7 @@ zdr_CB_COMPOUND4res (ZDR *zdrs, CB_COMPOUND4res *objp)
 		 return FALSE;
 	 if (!zdr_utf8str_cs (zdrs, &objp->tag))
 		 return FALSE;
-	 if (!zdr_array (zdrs, (char **)&objp->resarray.resarray_val, (u_int *) &objp->resarray.resarray_len, ~0,
+	 if (!zdr_array (zdrs, (char **)&objp->resarray.resarray_val, &objp->resarray.resarray_len, ~0,
 		sizeof (nfs_cb_resop4), (zdrproc_t) zdr_nfs_cb_resop4))
 		 return FALSE;
 	return TRUE;
@@ -3972,7 +3972,7 @@ zdr_rpc_gss_cred_vers_1_t (ZDR *zdrs, rpc_gss_cred_vers_1_t *objp)
 		 return FALSE;
 	 if (!zdr_rpc_gss_svc_t (zdrs, &objp->service))
 		 return FALSE;
-	 if (!zdr_bytes (zdrs, (char **)&objp->handle.handle_val, (u_int *) &objp->handle.handle_len, ~0))
+	 if (!zdr_bytes (zdrs, (char **)&objp->handle.handle_val, &objp->handle.handle_len, ~0))
 		 return FALSE;
 	return TRUE;
 }
@@ -3996,7 +3996,7 @@ zdr_rpc_gss_cred_t (ZDR *zdrs, rpc_gss_cred_t *objp)
 uint32_t
 zdr_rpc_gss_init_arg (ZDR *zdrs, rpc_gss_init_arg *objp)
 {
-	 if (!zdr_bytes (zdrs, (char **)&objp->gss_token.gss_token_val, (u_int *) &objp->gss_token.gss_token_len, ~0))
+	 if (!zdr_bytes (zdrs, (char **)&objp->gss_token.gss_token_val, &objp->gss_token.gss_token_len, ~0))
 		 return FALSE;
 	return TRUE;
 }
@@ -4007,7 +4007,7 @@ zdr_rpc_gss_init_res (ZDR *zdrs, rpc_gss_init_res *objp)
 	register int32_t *buf;
 
 	if (zdrs->x_op == ZDR_ENCODE) {
-		 if (!zdr_bytes (zdrs, (char **)&objp->handle.handle_val, (u_int *) &objp->handle.handle_len, ~0))
+		 if (!zdr_bytes (zdrs, (char **)&objp->handle.handle_val, &objp->handle.handle_len, ~0))
 			 return FALSE;
 		buf = ZDR_INLINE (zdrs, 3 * BYTES_PER_ZDR_UNIT);
 		if (buf == NULL) {
@@ -4023,11 +4023,11 @@ zdr_rpc_gss_init_res (ZDR *zdrs, rpc_gss_init_res *objp)
 		IZDR_PUT_U_LONG(buf, objp->gss_minor);
 		IZDR_PUT_U_LONG(buf, objp->seq_window);
 		}
-		 if (!zdr_bytes (zdrs, (char **)&objp->gss_token.gss_token_val, (u_int *) &objp->gss_token.gss_token_len, ~0))
+		 if (!zdr_bytes (zdrs, (char **)&objp->gss_token.gss_token_val, &objp->gss_token.gss_token_len, ~0))
 			 return FALSE;
 		return TRUE;
 	} else if (zdrs->x_op == ZDR_DECODE) {
-		 if (!zdr_bytes (zdrs, (char **)&objp->handle.handle_val, (u_int *) &objp->handle.handle_len, ~0))
+		 if (!zdr_bytes (zdrs, (char **)&objp->handle.handle_val, &objp->handle.handle_len, ~0))
 			 return FALSE;
 		buf = ZDR_INLINE (zdrs, 3 * BYTES_PER_ZDR_UNIT);
 		if (buf == NULL) {
@@ -4043,12 +4043,12 @@ zdr_rpc_gss_init_res (ZDR *zdrs, rpc_gss_init_res *objp)
 		objp->gss_minor = IZDR_GET_U_LONG(buf);
 		objp->seq_window = IZDR_GET_U_LONG(buf);
 		}
-		 if (!zdr_bytes (zdrs, (char **)&objp->gss_token.gss_token_val, (u_int *) &objp->gss_token.gss_token_len, ~0))
+		 if (!zdr_bytes (zdrs, (char **)&objp->gss_token.gss_token_val, &objp->gss_token.gss_token_len, ~0))
 			 return FALSE;
 	 return TRUE;
 	}
 
-	 if (!zdr_bytes (zdrs, (char **)&objp->handle.handle_val, (u_int *) &objp->handle.handle_len, ~0))
+	 if (!zdr_bytes (zdrs, (char **)&objp->handle.handle_val, &objp->handle.handle_len, ~0))
 		 return FALSE;
 	 if (!zdr_u_int (zdrs, &objp->gss_major))
 		 return FALSE;
@@ -4056,7 +4056,7 @@ zdr_rpc_gss_init_res (ZDR *zdrs, rpc_gss_init_res *objp)
 		 return FALSE;
 	 if (!zdr_u_int (zdrs, &objp->seq_window))
 		 return FALSE;
-	 if (!zdr_bytes (zdrs, (char **)&objp->gss_token.gss_token_val, (u_int *) &objp->gss_token.gss_token_len, ~0))
+	 if (!zdr_bytes (zdrs, (char **)&objp->gss_token.gss_token_val, &objp->gss_token.gss_token_len, ~0))
 		 return FALSE;
 	return TRUE;
 }
@@ -4064,9 +4064,9 @@ zdr_rpc_gss_init_res (ZDR *zdrs, rpc_gss_init_res *objp)
 uint32_t
 zdr_rpc_gss_integ_data (ZDR *zdrs, rpc_gss_integ_data *objp)
 {
-	 if (!zdr_bytes (zdrs, (char **)&objp->databody_integ.databody_integ_val, (u_int *) &objp->databody_integ.databody_integ_len, ~0))
+	 if (!zdr_bytes (zdrs, (char **)&objp->databody_integ.databody_integ_val, &objp->databody_integ.databody_integ_len, ~0))
 		 return FALSE;
-	 if (!zdr_bytes (zdrs, (char **)&objp->checksum.checksum_val, (u_int *) &objp->checksum.checksum_len, ~0))
+	 if (!zdr_bytes (zdrs, (char **)&objp->checksum.checksum_val, &objp->checksum.checksum_len, ~0))
 		 return FALSE;
 	return TRUE;
 }

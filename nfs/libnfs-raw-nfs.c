@@ -54,7 +54,7 @@ zdr_cookie3 (ZDR *zdrs, cookie3 *objp)
 uint32_t
 zdr_nfs_fh3 (ZDR *zdrs, nfs_fh3 *objp)
 {
-	 if (!zdr_bytes (zdrs, (char **)&objp->data.data_val, (u_int *) &objp->data.data_len, NFS3_FHSIZE))
+	 if (!zdr_bytes (zdrs, (char **)&objp->data.data_val, &objp->data.data_len, NFS3_FHSIZE))
 		 return FALSE;
 	return TRUE;
 }
@@ -278,7 +278,7 @@ zdr_WRITE3args (ZDR *zdrs, WRITE3args *objp)
 		 return FALSE;
 	 if (!zdr_stable_how (zdrs, &objp->stable))
 		 return FALSE;
-	 if (!zdr_bytes (zdrs, (char **)&objp->data.data_val, (u_int *) &objp->data.data_len, ~0))
+	 if (!zdr_bytes (zdrs, (char **)&objp->data.data_val, &objp->data.data_len, ~0))
 		 return FALSE;
 	return TRUE;
 }
@@ -794,7 +794,7 @@ zdr_READ3resok (ZDR *zdrs, READ3resok *objp)
 		 return FALSE;
 	 if (!zdr_bool (zdrs, &objp->eof))
 		 return FALSE;
-	 if (!zdr_bytes (zdrs, (char **)&objp->data.data_val, (u_int *) &objp->data.data_len, ~0))
+	 if (!zdr_bytes (zdrs, (char **)&objp->data.data_val, &objp->data.data_len, ~0))
 		 return FALSE;
 	return TRUE;
 }
@@ -1964,7 +1964,7 @@ zdr_path2 (ZDR *zdrs, path2 *objp)
 uint32_t
 zdr_nfsdata2 (ZDR *zdrs, nfsdata2 *objp)
 {
-	 if (!zdr_bytes (zdrs, (char **)&objp->nfsdata2_val, (u_int *) &objp->nfsdata2_len, NFSMAXDATA2))
+	 if (!zdr_bytes (zdrs, (char **)&objp->nfsdata2_val, &objp->nfsdata2_len, NFSMAXDATA2))
 		 return FALSE;
 	return TRUE;
 }
@@ -2580,12 +2580,12 @@ zdr_GETACL3resok (ZDR *zdrs, GETACL3resok *objp)
 		 return FALSE;
 	 if (!zdr_u_int (zdrs, &objp->ace_count))
 		 return FALSE;
-	 if (!zdr_array (zdrs, (char **)&objp->ace.ace_val, (u_int *) &objp->ace.ace_len, ~0,
+	 if (!zdr_array (zdrs, (char **)&objp->ace.ace_val, &objp->ace.ace_len, ~0,
 		sizeof (nfsacl_ace), (zdrproc_t) zdr_nfsacl_ace))
 		 return FALSE;
 	 if (!zdr_u_int (zdrs, &objp->default_ace_count))
 		 return FALSE;
-	 if (!zdr_array (zdrs, (char **)&objp->default_ace.default_ace_val, (u_int *) &objp->default_ace.default_ace_len, ~0,
+	 if (!zdr_array (zdrs, (char **)&objp->default_ace.default_ace_val, &objp->default_ace.default_ace_len, ~0,
 		sizeof (nfsacl_ace), (zdrproc_t) zdr_nfsacl_ace))
 		 return FALSE;
 	return TRUE;
@@ -2616,12 +2616,12 @@ zdr_SETACL3args (ZDR *zdrs, SETACL3args *objp)
 		 return FALSE;
 	 if (!zdr_u_int (zdrs, &objp->ace_count))
 		 return FALSE;
-	 if (!zdr_array (zdrs, (char **)&objp->ace.ace_val, (u_int *) &objp->ace.ace_len, ~0,
+	 if (!zdr_array (zdrs, (char **)&objp->ace.ace_val, &objp->ace.ace_len, ~0,
 		sizeof (nfsacl_ace), (zdrproc_t) zdr_nfsacl_ace))
 		 return FALSE;
 	 if (!zdr_u_int (zdrs, &objp->default_ace_count))
 		 return FALSE;
-	 if (!zdr_array (zdrs, (char **)&objp->default_ace.default_ace_val, (u_int *) &objp->default_ace.default_ace_len, ~0,
+	 if (!zdr_array (zdrs, (char **)&objp->default_ace.default_ace_val, &objp->default_ace.default_ace_len, ~0,
 		sizeof (nfsacl_ace), (zdrproc_t) zdr_nfsacl_ace))
 		 return FALSE;
 	return TRUE;
