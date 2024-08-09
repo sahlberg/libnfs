@@ -147,7 +147,7 @@ static struct rpc_pdu *rpc_allocate_reply_pdu(struct rpc_context *rpc,
 	return pdu;
 }
 
-struct rpc_pdu *rpc_allocate_pdu2(struct rpc_context *rpc, int program, int version, int procedure, rpc_cb cb, void *private_data, zdrproc_t zdr_decode_fn, int zdr_decode_bufsize, size_t alloc_hint)
+struct rpc_pdu *rpc_allocate_pdu2(struct rpc_context *rpc, int program, int version, int procedure, rpc_cb cb, void *private_data, zdrproc_t zdr_decode_fn, int zdr_decode_bufsize, size_t alloc_hint, int iovcnt_hint)
 {
 	struct rpc_pdu *pdu;
 	struct rpc_msg msg;
@@ -197,6 +197,26 @@ struct rpc_pdu *rpc_allocate_pdu2(struct rpc_context *rpc, int program, int vers
 	pdu->private_data       = private_data;
 	pdu->zdr_decode_fn      = zdr_decode_fn;
 	pdu->zdr_decode_bufsize = zdr_decode_bufsize;
+
+        if (iovcnt_hint > RPC_FAST_VECTORS) {
+                pdu->out.iov = (struct rpc_iovec *) calloc(iovcnt_hint, sizeof(struct rpc_iovec));
+                if (pdu->out.iov == NULL) {
+                    rpc_set_error(rpc, "Out of memory: Failed to allocate out.iov");
+                    goto failed2;
+                }
+                pdu->out.iov_capacity = iovcnt_hint;
+        } else {
+                pdu->out.iov = pdu->out.fast_iov;
+                pdu->out.iov_capacity = RPC_FAST_VECTORS;
+        }
+
+        /*
+         * Rest of the code depends on this, so assert it here.
+         * If the caller uses this pdu for issuing a zero-copy READ,
+         * pdu->in.base will be set to point to the dynamically allocated
+         * iovec array.
+         */
+        assert(pdu->in.base == NULL);
 
 	pdu->outdata.data = ((char *)pdu + pdu_size);
 
@@ -338,13 +358,14 @@ struct rpc_pdu *rpc_allocate_pdu2(struct rpc_context *rpc, int program, int vers
         rpc_set_error(rpc, "zdr_callmsg failed with %s",
                       rpc_get_error(rpc));
         zdr_destroy(&pdu->zdr);
+ failed2:
         free(pdu);
         return NULL;
 }
 
 struct rpc_pdu *rpc_allocate_pdu(struct rpc_context *rpc, int program, int version, int procedure, rpc_cb cb, void *private_data, zdrproc_t zdr_decode_fn, int zdr_decode_bufsize)
 {
-	return rpc_allocate_pdu2(rpc, program, version, procedure, cb, private_data, zdr_decode_fn, zdr_decode_bufsize, 0);
+	return rpc_allocate_pdu2(rpc, program, version, procedure, cb, private_data, zdr_decode_fn, zdr_decode_bufsize, 0, 0);
 }
 
 void rpc_free_pdu(struct rpc_context *rpc, struct rpc_pdu *pdu)
@@ -365,7 +386,8 @@ void rpc_free_pdu(struct rpc_context *rpc, struct rpc_pdu *pdu)
 	zdr_destroy(&pdu->zdr);
 
         rpc_free_iovector(rpc, &pdu->out);
-	free(pdu);
+        rpc_free_cursor(rpc, &pdu->in);
+        free(pdu);
 }
 
 void rpc_set_next_xid(struct rpc_context *rpc, uint32_t xid)
@@ -571,7 +593,7 @@ int rpc_queue_pdu(struct rpc_context *rpc, struct rpc_pdu *pdu)
 			assert(!rpc->is_udp);
 			assert(!rpc->is_broadcast);
 
-			RPC_LOG(rpc, 2, "Sending AUTH_TLS NULL RPC (%d bytes)",
+			RPC_LOG(rpc, 2, "Sending AUTH_TLS NULL RPC (%lu bytes)",
 					pdu->out.total_size);
 		}
 #endif
@@ -585,11 +607,18 @@ int rpc_queue_pdu(struct rpc_context *rpc, struct rpc_pdu *pdu)
                                 return -1;
                         }
                 } else {
-                        struct iovec iov[RPC_MAX_VECTORS];
+                        /*
+                         * For UDP we don't support vectored write and for TLS
+                         * the data will be less, so RPC_FAST_VECTORS should
+                         * be sufficient for both cases.
+                         */
+                        struct iovec iov[RPC_FAST_VECTORS];
                         int niov = pdu->out.niov;
                         /* No record marker for UDP */
                         struct iovec *iovp = (rpc->is_udp ? &iov[1] : &iov[0]);
                         const int iovn = (rpc->is_udp ? niov - 1 : niov);
+
+                        assert(niov <= RPC_FAST_VECTORS);
 
                         for (i = 0; i < niov; i++) {
                                 iov[i].iov_base = pdu->out.iov[i].buf;
@@ -687,7 +716,14 @@ static int rpc_process_reply(struct rpc_context *rpc, ZDR *zdr)
 				pdu, rpc->server);
 		}
 
-                if (pdu->in.buf) {
+                /*
+                 * pdu->in.base will be non-NULL if this pdu is used for
+                 * zero-copy READ. In that case we still need to read the
+                 * data from the socket into the user's zero-copy buffers,
+                 * so don't complete it as yet. Caller will arrange to read
+                 * the data and complete the PDU once completed.
+                 */
+                if (pdu->in.base) {
                         rpc->pdu->free_pdu = 1;
                         break;
                 }
@@ -1008,7 +1044,7 @@ int rpc_process_pdu(struct rpc_context *rpc, char *buf, int size)
                 rpc_set_error(rpc, "rpc_procdess_reply failed");
         }
 
-        if (rpc->fragments == NULL && rpc->pdu && rpc->pdu->in.buf) {
+        if (rpc->fragments == NULL && rpc->pdu && rpc->pdu->in.base) {
                 memcpy(&rpc->pdu->zdr, &zdr, sizeof(zdr));
                 rpc->pdu->free_zdr = 1;
         } else {

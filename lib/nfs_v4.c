@@ -2792,9 +2792,17 @@ nfs4_pread_cb(struct rpc_context *rpc, int status, void *command_data,
         }
 
         count = rres->data.data_len;
+
+        /*
+         * It's unlikely that a sane server will return more data than
+         * requested. Also note that rpc_nfs4_read_task() would have correctly
+         * ensured that it doesn't read more than the requested data, so to
+         * be correct just clamp the returned read count here.
+         */
         if (count > rpc->pdu->requested_read_count) {
                 count = rpc->pdu->requested_read_count;
         }
+
         data->cb(count, nfs, NULL, data->private_data);
         free_nfs4_cb_data(data);
 }
@@ -2842,7 +2850,6 @@ nfs4_pread_async_internal(struct nfs_context *nfs, struct nfsfh *nfsfh,
                 return -1;
         }
 
-        pdu->requested_read_count = count;
         return 0;
 }
 

@@ -154,7 +154,14 @@ struct rpc_endpoint {
         int num_procs;
 };
 
-#define RPC_MAX_VECTORS  8 /* Same as UIO_FASTIOV used by the Linux kernel */
+#define RPC_FAST_VECTORS 8 /* Same as UIO_FASTIOV used by the Linux kernel */
+
+/*
+ * Maximum io vectors supported by rpc_io_vectors.
+ * This must not be greater than the POSIX UIO_MAXIOV value as we use writev()
+ * to write the io vectors over the socket.
+ */
+#define RPC_MAX_VECTORS  1024
 
 struct rpc_iovec {
         char *buf;
@@ -162,11 +169,56 @@ struct rpc_iovec {
         void (*free)(void *);
 };
 
+/**
+ * Vectored buffer for holding zero-copy user data to be sent over the socket.
+ */
 struct rpc_io_vectors {
+        /* How many bytes from iov[] already written out over the network */
         size_t num_done;
-        int total_size;
+        /* Cumulative size of all rpc_iovecs in iov[] */
+        size_t total_size;
+        /* iov[] has space for these many rpc_iovecs */
+        int iov_capacity;
+        /* These many are currently filled */
         int niov;
-        struct rpc_iovec iov[RPC_MAX_VECTORS];
+        /*
+         * For small vectors this will point to fast_iov, else it'll be
+         * allocated dynamically and must be freed using free().
+         */
+        struct rpc_iovec *iov;
+        /* Inline vector, for saving allocation in the common case */
+        struct rpc_iovec fast_iov[RPC_FAST_VECTORS];
+};
+
+/**
+ * Vectored buffer for holding zero-copy user data to be read over the socket.
+ */
+struct rpc_iovec_cursor {
+        /*
+         * Fixed base of the allocated iovec array.
+         * Once allocated this doesn't change, and should be used for freeing
+         * the iovec array.
+         */
+        struct iovec *base;
+
+        /*
+         * Current iovec we should be reading into, updated as we finish
+         * reading whole iovecs. iovcnt holds the count of iovecs remaining
+         * to be read into and is decremented as we read whole iovecs or if
+         * the cursor is shrinked. We also update the iov_base and iov_len as
+         * we read data into iov[], so at any point iov and iovcnt can be
+         * passed to readv() to read remaining data.
+         */
+        struct iovec *iov;
+        int iovcnt;
+
+        /*
+         * Total to-be-read bytes. This is initialized to the total size of
+         * all the individual buffers and later updated as we read data or if
+         * the cursor length is reduced due to short read.
+         * At any point these many new bytes need to be read into this cursor.
+         */
+        size_t remaining_size;
 };
 
 enum input_state {
@@ -388,14 +440,24 @@ struct rpc_pdu {
          */
         struct rpc_io_vectors out;
 
-        /* vector for zero-copy READ3 receive */
+        /*
+         * vector for zero-copy READ3 receive.
+         * This is updated as data is read from the socket into the user's
+         * zero-copy buffers directly.
+         */
+        struct rpc_iovec_cursor in;
+
+        /*
+         * How much more data remains to be read into 'in'. It's initialized
+         * with the returned count in READ response and is reduced as we
+         * read data from the socket into the user's zero-copy buffers.
+         */
         uint32_t read_count;
-        size_t inpos;
-        struct rpc_iovec in;
         uint32_t requested_read_count; /* The amount requested by the
                                         * application.
                                         * Used to clamp long reads.
                                         */
+
 	rpc_cb cb;
 	void *private_data;
 
@@ -479,7 +541,7 @@ void rpc_enqueue(struct rpc_queue *q, struct rpc_pdu *pdu);
 void rpc_return_to_queue(struct rpc_queue *q, struct rpc_pdu *pdu);
 unsigned int rpc_hash_xid(struct rpc_context *rpc, uint32_t xid);
 struct rpc_pdu *rpc_allocate_pdu(struct rpc_context *rpc, int program, int version, int procedure, rpc_cb cb, void *private_data, zdrproc_t zdr_decode_fn, int zdr_bufsize);
-struct rpc_pdu *rpc_allocate_pdu2(struct rpc_context *rpc, int program, int version, int procedure, rpc_cb cb, void *private_data, zdrproc_t zdr_decode_fn, int zdr_bufsize, size_t alloc_hint);
+struct rpc_pdu *rpc_allocate_pdu2(struct rpc_context *rpc, int program, int version, int procedure, rpc_cb cb, void *private_data, zdrproc_t zdr_decode_fn, int zdr_bufsize, size_t alloc_hint, int iovcnt_hint);
 void pdu_set_timeout(struct rpc_context *rpc, struct rpc_pdu *pdu, uint64_t now_msecs);
 
 void rpc_free_pdu(struct rpc_context *rpc, struct rpc_pdu *pdu);
@@ -749,6 +811,13 @@ struct nfsfh {
 void rpc_free_iovector(struct rpc_context *rpc, struct rpc_io_vectors *v);
 int rpc_add_iovector(struct rpc_context *rpc, struct rpc_io_vectors *v,
                      char *buf, int len, void (*free)(void *));
+void rpc_advance_cursor(struct rpc_context *rpc, struct rpc_iovec_cursor *v,
+                        size_t len);
+void rpc_shrink_cursor(struct rpc_context *rpc, struct rpc_iovec_cursor *v,
+                       size_t new_len);
+void rpc_memcpy_cursor(struct rpc_context *rpc, struct rpc_iovec_cursor *v,
+                       const void *src, size_t len);
+void rpc_free_cursor(struct rpc_context *rpc, struct rpc_iovec_cursor *v);
 const struct nfs_fh *nfs_get_rootfh(struct nfs_context *nfs);
 
 int nfs_normalize_path(struct nfs_context *nfs, char *path);
