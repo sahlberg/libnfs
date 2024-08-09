@@ -45,28 +45,28 @@ extern "C" {
 #define PMAP_PORT 111
 
 struct pmap2_mapping {
-	u_int prog;
-	u_int vers;
-	u_int prot;
-	u_int port;
+	uint32_t prog;
+	uint32_t vers;
+	uint32_t prot;
+	uint32_t port;
 };
 typedef struct pmap2_mapping pmap2_mapping;
 
 struct pmap2_call_args {
-	u_int prog;
-	u_int vers;
-	u_int proc;
+	uint32_t prog;
+	uint32_t vers;
+	uint32_t proc;
 	struct {
-		u_int args_len;
+		uint32_t args_len;
 		char *args_val;
 	} args;
 };
 typedef struct pmap2_call_args pmap2_call_args;
 
 struct pmap2_call_result {
-	u_int port;
+	uint32_t port;
 	struct {
-		u_int res_len;
+		uint32_t res_len;
 		char *res_val;
 	} res;
 };
@@ -89,8 +89,8 @@ struct pmap3_string_result {
 typedef struct pmap3_string_result pmap3_string_result;
 
 struct pmap3_mapping {
-	u_int prog;
-	u_int vers;
+	uint32_t prog;
+	uint32_t vers;
 	char *netid;
 	char *addr;
 	char *owner;
@@ -109,29 +109,29 @@ struct pmap3_dump_result {
 typedef struct pmap3_dump_result pmap3_dump_result;
 
 struct pmap3_call_args {
-	u_int prog;
-	u_int vers;
-	u_int proc;
+	uint32_t prog;
+	uint32_t vers;
+	uint32_t proc;
 	struct {
-		u_int args_len;
+		uint32_t args_len;
 		char *args_val;
 	} args;
 };
 typedef struct pmap3_call_args pmap3_call_args;
 
 struct pmap3_call_result {
-	u_int port;
+	uint32_t port;
 	struct {
-		u_int res_len;
+		uint32_t res_len;
 		char *res_val;
 	} res;
 };
 typedef struct pmap3_call_result pmap3_call_result;
 
 struct pmap3_netbuf {
-	u_int maxlen;
+	uint32_t maxlen;
 	struct {
-		u_int buf_len;
+		uint32_t buf_len;
 		char *buf_val;
 	} buf;
 };

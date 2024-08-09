@@ -95,9 +95,6 @@ zdr_pmap2_mapping (ZDR *zdrs, pmap2_mapping *objp)
 uint32_t
 zdr_pmap2_call_args (ZDR *zdrs, pmap2_call_args *objp)
 {
-	
-
-
 	if (zdrs->x_op == ZDR_ENCODE) {
 		int32_t *buf;
 		buf = ZDR_INLINE (zdrs, 3 * BYTES_PER_ZDR_UNIT);
@@ -114,7 +111,7 @@ zdr_pmap2_call_args (ZDR *zdrs, pmap2_call_args *objp)
 		IZDR_PUT_U_LONG(buf, objp->vers);
 		IZDR_PUT_U_LONG(buf, objp->proc);
 		}
-		 if (!zdr_bytes (zdrs, (char **)&objp->args.args_val, (u_int *) &objp->args.args_len, ~0))
+		 if (!zdr_bytes (zdrs, &objp->args.args_val, &objp->args.args_len, ~0))
 			 return FALSE;
 		return TRUE;
 	} else if (zdrs->x_op == ZDR_DECODE) {
@@ -133,7 +130,7 @@ zdr_pmap2_call_args (ZDR *zdrs, pmap2_call_args *objp)
 		objp->vers = IZDR_GET_U_LONG(buf);
 		objp->proc = IZDR_GET_U_LONG(buf);
 		}
-		 if (!zdr_bytes (zdrs, (char **)&objp->args.args_val, (u_int *) &objp->args.args_len, ~0))
+		 if (!zdr_bytes (zdrs, &objp->args.args_val, &objp->args.args_len, ~0))
 			 return FALSE;
 	 return TRUE;
 	}
@@ -144,7 +141,7 @@ zdr_pmap2_call_args (ZDR *zdrs, pmap2_call_args *objp)
 		 return FALSE;
 	 if (!zdr_u_int (zdrs, &objp->proc))
 		 return FALSE;
-	 if (!zdr_bytes (zdrs, (char **)&objp->args.args_val, (u_int *) &objp->args.args_len, ~0))
+	 if (!zdr_bytes (zdrs, &objp->args.args_val, &objp->args.args_len, ~0))
 		 return FALSE;
 	return TRUE;
 }
@@ -156,7 +153,7 @@ zdr_pmap2_call_result (ZDR *zdrs, pmap2_call_result *objp)
 
 	 if (!zdr_u_int (zdrs, &objp->port))
 		 return FALSE;
-	 if (!zdr_bytes (zdrs, (char **)&objp->res.res_val, (u_int *) &objp->res.res_len, ~0))
+	 if (!zdr_bytes (zdrs, &objp->res.res_val, &objp->res.res_len, ~0))
 		 return FALSE;
 	return TRUE;
 }
@@ -255,7 +252,7 @@ zdr_pmap3_call_args (ZDR *zdrs, pmap3_call_args *objp)
 		IZDR_PUT_U_LONG(buf, objp->vers);
 		IZDR_PUT_U_LONG(buf, objp->proc);
 		}
-		 if (!zdr_bytes (zdrs, (char **)&objp->args.args_val, (u_int *) &objp->args.args_len, ~0))
+		 if (!zdr_bytes (zdrs, &objp->args.args_val, &objp->args.args_len, ~0))
 			 return FALSE;
 		return TRUE;
 	} else if (zdrs->x_op == ZDR_DECODE) {
@@ -274,7 +271,7 @@ zdr_pmap3_call_args (ZDR *zdrs, pmap3_call_args *objp)
 		objp->vers = IZDR_GET_U_LONG(buf);
 		objp->proc = IZDR_GET_U_LONG(buf);
 		}
-		 if (!zdr_bytes (zdrs, (char **)&objp->args.args_val, (u_int *) &objp->args.args_len, ~0))
+		 if (!zdr_bytes (zdrs, &objp->args.args_val, &objp->args.args_len, ~0))
 			 return FALSE;
 	 return TRUE;
 	}
@@ -285,7 +282,7 @@ zdr_pmap3_call_args (ZDR *zdrs, pmap3_call_args *objp)
 		 return FALSE;
 	 if (!zdr_u_int (zdrs, &objp->proc))
 		 return FALSE;
-	 if (!zdr_bytes (zdrs, (char **)&objp->args.args_val, (u_int *) &objp->args.args_len, ~0))
+	 if (!zdr_bytes (zdrs, &objp->args.args_val, &objp->args.args_len, ~0))
 		 return FALSE;
 	return TRUE;
 }
@@ -297,7 +294,7 @@ zdr_pmap3_call_result (ZDR *zdrs, pmap3_call_result *objp)
 
 	 if (!zdr_u_int (zdrs, &objp->port))
 		 return FALSE;
-	 if (!zdr_bytes (zdrs, (char **)&objp->res.res_val, (u_int *) &objp->res.res_len, ~0))
+	 if (!zdr_bytes (zdrs, &objp->res.res_val, &objp->res.res_len, ~0))
 		 return FALSE;
 	return TRUE;
 }
@@ -309,7 +306,7 @@ zdr_pmap3_netbuf (ZDR *zdrs, pmap3_netbuf *objp)
 
 	 if (!zdr_u_int (zdrs, &objp->maxlen))
 		 return FALSE;
-	 if (!zdr_bytes (zdrs, (char **)&objp->buf.buf_val, (u_int *) &objp->buf.buf_len, ~0))
+	 if (!zdr_bytes (zdrs, &objp->buf.buf_val, &objp->buf.buf_len, ~0))
 		 return FALSE;
 	return TRUE;
 }
