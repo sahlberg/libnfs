@@ -515,6 +515,7 @@ rpc_read_from_socket(struct rpc_context *rpc)
 {
 	ssize_t count;
         int pos;
+        uint32_t inbuf_size;
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
@@ -688,13 +689,20 @@ rpc_read_from_socket(struct rpc_context *rpc)
                                 }
 
                                 /*
-                                 * XXX adjust_inbuf() will allocate buffer equal to the
-                                 *     received PDU size though we will only use 1024 bytes.
-                                 *     This does not cause any correctness issue but the
-                                 *     extra allocation puts a burden on the allocator and
-                                 *     also the zeroing overhead. Fis this.
+                                 * RPC fragments are directly read into rpc->inbuf, so we
+                                 * need to allocate space equal to the fragment size.
+                                 * For the case of last and only fragment, we perform
+                                 * zero-copy read into the user buffers and only copy
+                                 * 1028 bytes into rpc->inbuf, so allocate only that
+                                 * much.
+                                 * 4 bytes for XID.
+                                 * 1024 bytes for read data.
                                  */
-                                if (adjust_inbuf(rpc, rpc->rm_xid[0]) != 0) {
+                                inbuf_size = rpc->rm_xid[0];
+                                if (rpc->state != READ_FRAGMENT) {
+                                    inbuf_size = 1028;
+                                }
+                                if (adjust_inbuf(rpc, inbuf_size) != 0) {
                                         return -1;
                                 }
 
