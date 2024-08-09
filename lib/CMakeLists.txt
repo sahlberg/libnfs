@@ -13,7 +13,7 @@ set(SOURCES init.c
 # deal with version info in "dll" case
 if(WIN32 AND BUILD_SHARED_LIBS)
   configure_file(../win32/version.rc.template version.rc @ONLY)
-  list(APPEND SOURCES ${CMAKE_CURRENT_BINARY_DIR}/version.rc)
+  list(APPEND SOURCES ${CMAKE_CURRENT_BINARY_DIR}/version.rc libnfs-win32.def)
 endif()
 
 add_library(nfs ${SOURCES})
