@@ -1214,6 +1214,10 @@ rpc_connect_sockaddr_async(struct rpc_context *rpc)
 		return -1;
 	}
 
+#if defined(HAVE_NETINET_TCP_H) && defined(TCP_NODELAY)
+        set_tcp_sockopt(rpc->fd, TCP_NODELAY, 1);
+#endif
+
 	if (rpc->old_fd) {
 #if !defined(WIN32) && !defined(PS3_PPU) && !defined(PS2_EE)
 		if (dup2(rpc->fd, rpc->old_fd) == -1) {
