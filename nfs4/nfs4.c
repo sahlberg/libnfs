@@ -216,7 +216,7 @@ struct rpc_pdu *rpc_nfs4_compound_task2(struct rpc_context *rpc, rpc_cb cb,
 	pdu = rpc_allocate_pdu2(rpc, NFS4_PROGRAM, NFS_V4, NFSPROC4_COMPOUND,
                                cb, private_data, (zdrproc_t)zdr_COMPOUND4res,
                                sizeof(COMPOUND4res),
-                               alloc_hint);
+                               alloc_hint, 0);
 	if (pdu == NULL) {
 		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu for "
                               "NFS4/COMPOUND call");
@@ -281,7 +281,7 @@ struct rpc_pdu *rpc_nfs4_readv_task(struct rpc_context *rpc, rpc_cb cb,
 
 	pdu = rpc_allocate_pdu2(rpc, NFS4_PROGRAM, NFS_V4, NFSPROC4_COMPOUND,
                                cb, private_data, (zdrproc_t)zdr_COMPOUND4res,
-                                sizeof(COMPOUND4res), 0);
+                                sizeof(COMPOUND4res), 0, 0);
 	if (pdu == NULL) {
 		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu for "
                               "NFS4/COMPOUND call");
@@ -354,7 +354,7 @@ struct rpc_pdu *rpc_nfs4_writev_task(struct rpc_context *rpc, rpc_cb cb,
 		return NULL;
         }
 
-	pdu = rpc_allocate_pdu3(rpc, NFS4_PROGRAM, NFS_V4, NFSPROC4_COMPOUND,
+	pdu = rpc_allocate_pdu2(rpc, NFS4_PROGRAM, NFS_V4, NFSPROC4_COMPOUND,
                                 cb, private_data, (zdrproc_t)zdr_COMPOUND4res,
                                 sizeof(COMPOUND4res), 0, iovcnt);
 	if (pdu == NULL) {

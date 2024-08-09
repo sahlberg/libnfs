@@ -407,7 +407,7 @@ struct rpc_pdu *rpc_nfs3_writev_task(struct rpc_context *rpc, rpc_cb cb,
          * - NFS header
          * - Padding (optional)
          */
-	pdu = rpc_allocate_pdu3(rpc, NFS_PROGRAM, NFS_V3, NFS3_WRITE, cb, private_data, (zdrproc_t)zdr_WRITE3res, sizeof(WRITE3res), 0, iovcnt + 4);
+	pdu = rpc_allocate_pdu2(rpc, NFS_PROGRAM, NFS_V3, NFS3_WRITE, cb, private_data, (zdrproc_t)zdr_WRITE3res, sizeof(WRITE3res), 0, iovcnt + 4);
 	if (pdu == NULL) {
 		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu for NFS3/WRITE call");
 		return NULL;
@@ -1032,7 +1032,7 @@ struct rpc_pdu *rpc_nfs2_write_task(struct rpc_context *rpc, rpc_cb cb,
 {
 	struct rpc_pdu *pdu;
 
-	pdu = rpc_allocate_pdu2(rpc, NFS_PROGRAM, NFS_V2, NFS2_WRITE, cb, private_data, (zdrproc_t)zdr_WRITE2res, sizeof(WRITE2res), args->totalcount);
+	pdu = rpc_allocate_pdu2(rpc, NFS_PROGRAM, NFS_V2, NFS2_WRITE, cb, private_data, (zdrproc_t)zdr_WRITE2res, sizeof(WRITE2res), args->totalcount, 0);
 	if (pdu == NULL) {
 		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu for NFS2/WRITE call");
 		return NULL;

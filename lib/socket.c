@@ -331,7 +331,17 @@ rpc_write_to_socket(struct rpc_context *rpc)
                         assert(iov == fast_iov);
                         iov = (struct iovec *) calloc(RPC_MAX_VECTORS,
                                                       sizeof(struct iovec));
-                        iovcnt = RPC_MAX_VECTORS;
+                        /*
+                         * If allocation fails, continue with smaller iov.
+                         * It'll require more writev() calls to send out one
+                         * pdu, but it'll work.
+                         */
+                        if (iov != NULL) {
+                            iovcnt = RPC_MAX_VECTORS;
+                        } else {
+                            iov = fast_iov;
+                            iovcnt = RPC_FAST_VECTORS;
+                        }
                 }
 
                 do {

@@ -147,7 +147,7 @@ static struct rpc_pdu *rpc_allocate_reply_pdu(struct rpc_context *rpc,
 	return pdu;
 }
 
-struct rpc_pdu *rpc_allocate_pdu3(struct rpc_context *rpc, int program, int version, int procedure, rpc_cb cb, void *private_data, zdrproc_t zdr_decode_fn, int zdr_decode_bufsize, size_t alloc_hint, int iovcnt_hint)
+struct rpc_pdu *rpc_allocate_pdu2(struct rpc_context *rpc, int program, int version, int procedure, rpc_cb cb, void *private_data, zdrproc_t zdr_decode_fn, int zdr_decode_bufsize, size_t alloc_hint, int iovcnt_hint)
 {
 	struct rpc_pdu *pdu;
 	struct rpc_msg msg;
@@ -198,13 +198,17 @@ struct rpc_pdu *rpc_allocate_pdu3(struct rpc_context *rpc, int program, int vers
 	pdu->zdr_decode_fn      = zdr_decode_fn;
 	pdu->zdr_decode_bufsize = zdr_decode_bufsize;
 
-	if (iovcnt_hint > RPC_FAST_VECTORS) {
+        if (iovcnt_hint > RPC_FAST_VECTORS) {
                 pdu->out.iov = (struct rpc_iovec *) calloc(iovcnt_hint, sizeof(struct rpc_iovec));
+                if (pdu->out.iov == NULL) {
+                    rpc_set_error(rpc, "Out of memory: Failed to allocate out.iov");
+                    goto failed2;
+                }
                 pdu->out.iov_capacity = iovcnt_hint;
-	} else {
+        } else {
                 pdu->out.iov = pdu->out.fast_iov;
                 pdu->out.iov_capacity = RPC_FAST_VECTORS;
-	}
+        }
 
         /*
          * Rest of the code depends on this, so assert it here.
@@ -354,18 +358,14 @@ struct rpc_pdu *rpc_allocate_pdu3(struct rpc_context *rpc, int program, int vers
         rpc_set_error(rpc, "zdr_callmsg failed with %s",
                       rpc_get_error(rpc));
         zdr_destroy(&pdu->zdr);
+ failed2:
         free(pdu);
         return NULL;
 }
 
 struct rpc_pdu *rpc_allocate_pdu(struct rpc_context *rpc, int program, int version, int procedure, rpc_cb cb, void *private_data, zdrproc_t zdr_decode_fn, int zdr_decode_bufsize)
 {
-	return rpc_allocate_pdu2(rpc, program, version, procedure, cb, private_data, zdr_decode_fn, zdr_decode_bufsize, 0);
-}
-
-struct rpc_pdu *rpc_allocate_pdu2(struct rpc_context *rpc, int program, int version, int procedure, rpc_cb cb, void *private_data, zdrproc_t zdr_decode_fn, int zdr_decode_bufsize, size_t alloc_hint)
-{
-	return rpc_allocate_pdu3(rpc, program, version, procedure, cb, private_data, zdr_decode_fn, zdr_decode_bufsize, alloc_hint, 0);
+	return rpc_allocate_pdu2(rpc, program, version, procedure, cb, private_data, zdr_decode_fn, zdr_decode_bufsize, 0, 0);
 }
 
 void rpc_free_pdu(struct rpc_context *rpc, struct rpc_pdu *pdu)
