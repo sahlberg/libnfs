@@ -602,6 +602,7 @@ rpc_read_from_socket(struct rpc_context *rpc)
                                 if (rpc->pdu && rpc->pdu->in.base && rpc->pdu_size > 1024) {
                                         rpc->pdu_size = 1024;
                                 }
+                                assert(rpc->pdu_size <= rpc->inbuf_size);
                                 break;
                         case READ_UNKNOWN:
                         case READ_FRAGMENT:
@@ -609,6 +610,7 @@ rpc_read_from_socket(struct rpc_context *rpc)
                                 rpc->inpos = 4;
                                 rpc->pdu_size = rpc->rm_xid[0];
                                 rpc->buf = rpc->inbuf + rpc->inpos;
+                                assert(rpc->pdu_size <= rpc->inbuf_size);
                                 break;
                         case READ_IOVEC:
                                 /*
@@ -699,20 +701,55 @@ rpc_read_from_socket(struct rpc_context *rpc)
                                 }
 
                                 /*
-                                 * RPC fragments are directly read into rpc->inbuf, so we
-                                 * need to allocate space equal to the fragment size.
-                                 * For the case of last and only fragment, we perform
-                                 * zero-copy read into the user buffers and only copy
-                                 * 1028 bytes into rpc->inbuf, so allocate only that
-                                 * much.
-                                 * 4 bytes for XID.
-                                 * 1024 bytes for read data.
+                                 * When performing zero-copy read we read just 1024 bytes
+                                 * into rpc->inbuf and read rest of the data directly into
+                                 * user provided buffers, so we just need to allocate
+                                 * inbuf large enough to hold 1024 bytes of data, plus 4
+                                 * bytes for the XID, i.e., 1028 bytes.
+                                 * RPC fragments are directly read into rpc->inbuf, no
+                                 * zero copy, so we need to allocate space equal to the
+                                 * fragment size. For non zero-copy reads also we need to
+                                 * allocate the entire PDU size.
                                  */
                                 inbuf_size = rpc->rm_xid[0];
-                                if (rpc->state != READ_FRAGMENT) {
-                                    inbuf_size = 1028;
+
+                                rpc->rm_xid[1] = ntohl(rpc->rm_xid[1]);
+                                if (!rpc->is_server_context) {
+                                        rpc->pdu = rpc_find_pdu(rpc, rpc->rm_xid[1]);
+
+                                        if (rpc->state != READ_FRAGMENT && rpc->pdu && rpc->pdu->in.base) {
+                                            inbuf_size = 1028;
+                                        }
                                 }
+
                                 if (adjust_inbuf(rpc, inbuf_size) != 0) {
+                                        if (!rpc->is_server_context && rpc->pdu) {
+                                                #ifdef HAVE_MULTITHREADING
+                                                if (rpc->multithreading_enabled) {
+                                                        nfs_mt_mutex_lock(&rpc->rpc_mutex);
+                                                }
+                                                #endif /* HAVE_MULTITHREADING */
+
+                                                /*
+                                                 * queue it back to outqueue for retransmit.
+                                                 * Note that we don't need to queue it back to
+                                                 * waitpdu[] queue as returning failure from
+                                                 * here will force a reconnect, which will anyways
+                                                 * re-queue everything from waitpdu[] to outqueue.
+                                                 */
+                                                rpc_return_to_queue(&rpc->outqueue, rpc->pdu);
+
+                                                #ifdef HAVE_MULTITHREADING
+                                                if (rpc->multithreading_enabled) {
+                                                        nfs_mt_mutex_unlock(&rpc->rpc_mutex);
+                                                }
+                                                #endif /* HAVE_MULTITHREADING */
+                                        }
+
+                                        rpc_set_error(rpc, "adjust_inbuf failed for socket fd %d",
+                                                      rpc->fd);
+                                        RPC_LOG(rpc, 2, "adjust_inbuf failed for socket fd %d",
+                                                rpc->fd);
                                         return -1;
                                 }
 
@@ -723,9 +760,8 @@ rpc_read_from_socket(struct rpc_context *rpc)
                                  * PAYLOAD and FRAGMENT
                                  */
                                 rpc->inpos = 0;   
-                                rpc->rm_xid[1] = ntohl(rpc->rm_xid[1]);
+
                                 if (!rpc->is_server_context) {
-                                        rpc->pdu = rpc_find_pdu(rpc, rpc->rm_xid[1]);
                                         /* Unknown xid, either unsolicited
                                          * or an xid we have cancelled
                                          */
