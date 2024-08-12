@@ -296,11 +296,13 @@ rpc_which_events(struct rpc_context *rpc)
 int
 rpc_write_to_socket(struct rpc_context *rpc)
 {
-	struct rpc_pdu *pdu;
-	struct iovec iov[RPC_MAX_VECTORS];
+        struct rpc_pdu *pdu;
+        struct iovec fast_iov[RPC_FAST_VECTORS];
+        struct iovec *iov = fast_iov;
+        int iovcnt = RPC_FAST_VECTORS;
         int ret = 0;
-        
-	assert(rpc->magic == RPC_CONTEXT_MAGIC);
+
+        assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
 	if (rpc->fd == -1) {
 		rpc_set_error(rpc, "trying to write but not connected");
@@ -321,6 +323,26 @@ rpc_write_to_socket(struct rpc_context *rpc)
                 uint32_t num_pdus = 0;
                 char *last_buf = NULL;
                 ssize_t count;
+
+                assert(pdu->out.niov <= pdu->out.iov_capacity);
+                assert(pdu->out.iov_capacity <= RPC_MAX_VECTORS);
+
+                if (pdu->out.niov > iovcnt && iovcnt != RPC_MAX_VECTORS) {
+                        assert(iov == fast_iov);
+                        iov = (struct iovec *) calloc(RPC_MAX_VECTORS,
+                                                      sizeof(struct iovec));
+                        /*
+                         * If allocation fails, continue with smaller iov.
+                         * It'll require more writev() calls to send out one
+                         * pdu, but it'll work.
+                         */
+                        if (iov != NULL) {
+                            iovcnt = RPC_MAX_VECTORS;
+                        } else {
+                            iov = fast_iov;
+                            iovcnt = RPC_FAST_VECTORS;
+                        }
+                }
 
                 do {
                         size_t num_done = pdu->out.num_done;
@@ -343,7 +365,7 @@ rpc_write_to_socket(struct rpc_context *rpc)
                                         iov[niov].iov_base = buf;
                                         iov[niov].iov_len = len;
                                         niov++;
-                                        if (niov >= RPC_MAX_VECTORS)
+                                        if (niov >= iovcnt)
                                                 break;
                                         last_buf = (buf + len);
                                 } else {
@@ -356,7 +378,7 @@ rpc_write_to_socket(struct rpc_context *rpc)
                         pdu = pdu->next;
                 } while ((rpc->max_waitpdu_len == 0 ||
                           rpc->max_waitpdu_len > (rpc->waitpdu_len + num_pdus)) &&
-                         pdu != NULL && niov < RPC_MAX_VECTORS);
+                         pdu != NULL && niov < iovcnt);
 
                 count = writev(rpc->fd, iov, niov);
                 if (count == -1) {
@@ -411,6 +433,13 @@ rpc_write_to_socket(struct rpc_context *rpc)
                 nfs_mt_mutex_unlock(&rpc->rpc_mutex);
         }
 #endif /* HAVE_MULTITHREADING */
+
+        /* Free iov if dynamically allocated */
+        if (iov != fast_iov) {
+                assert(iovcnt > RPC_FAST_VECTORS);
+                free(iov);
+        }
+
 	return ret;
 }
 
@@ -473,6 +502,9 @@ static char *rpc_reassemble_pdu(struct rpc_context *rpc, uint32_t *pdu_size)
 static void rpc_finished_pdu(struct rpc_context *rpc)
 {
         if (rpc->pdu && rpc->pdu->free_pdu) {
+                /*
+                 * For zero-copy read, this is where we call the user callback.
+                 */
                 rpc->pdu->cb(rpc, RPC_STATUS_SUCCESS, rpc->pdu->zdr_decode_buf, rpc->pdu->private_data);
         }
         if (rpc->pdu && rpc->pdu->free_zdr) {
@@ -493,6 +525,7 @@ rpc_read_from_socket(struct rpc_context *rpc)
 {
 	ssize_t count;
         int pos;
+        uint32_t inbuf_size;
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
@@ -566,9 +599,10 @@ rpc_read_from_socket(struct rpc_context *rpc)
                                  * restart unmarshalling from scratch.
                                  */
                                 /* We do not have rpc->pdu for server context */
-                                if (rpc->pdu && rpc->pdu->in.buf && rpc->pdu_size > 1024) {
+                                if (rpc->pdu && rpc->pdu->in.base && rpc->pdu_size > 1024) {
                                         rpc->pdu_size = 1024;
                                 }
+                                assert(rpc->pdu_size <= rpc->inbuf_size);
                                 break;
                         case READ_UNKNOWN:
                         case READ_FRAGMENT:
@@ -576,9 +610,15 @@ rpc_read_from_socket(struct rpc_context *rpc)
                                 rpc->inpos = 4;
                                 rpc->pdu_size = rpc->rm_xid[0];
                                 rpc->buf = rpc->inbuf + rpc->inpos;
+                                assert(rpc->pdu_size <= rpc->inbuf_size);
                                 break;
                         case READ_IOVEC:
-                                rpc->buf = &rpc->pdu->in.buf[rpc->pdu->inpos];
+                                /*
+                                 * Set rpc->buf to NULL to convey to the following
+                                 * code that data must be read into the vector buffer
+                                 * rpc->pdu->in.iov instead.
+                                 */
+                                rpc->buf = NULL;
                                 rpc->pdu_size = rpc->pdu->read_count;
                                 break;
                         case READ_PADDING:
@@ -603,8 +643,16 @@ rpc_read_from_socket(struct rpc_context *rpc)
                                 count = rpc->inbuf_size;
                         }
                 }
-		count = recv(rpc->fd, rpc->buf, count, MSG_DONTWAIT);
-		if (count < 0) {
+
+                if (rpc->buf) {
+                        count = recv(rpc->fd, rpc->buf, count, MSG_DONTWAIT);
+                } else {
+                        assert(rpc->pdu->in.iovcnt > 0);
+                        assert(count <= rpc->pdu->in.remaining_size);
+                        count = readv(rpc->fd, rpc->pdu->in.iov, rpc->pdu->in.iovcnt);
+                }
+
+                if (count < 0) {
                         /*
                          * No more data to read so we can break out of
                          * the loop and return.
@@ -627,7 +675,12 @@ rpc_read_from_socket(struct rpc_context *rpc)
 			return -1;
 		}
 		rpc->inpos += count;
-                rpc->buf += count;
+
+		if (rpc->buf) {
+			rpc->buf += count;
+                } else {
+                        rpc_advance_cursor(rpc, &rpc->pdu->in, count);
+                }
                 
                 if (rpc->inpos == rpc->pdu_size) {
                         switch (rpc->state) {
@@ -647,7 +700,56 @@ rpc_read_from_socket(struct rpc_context *rpc)
                                         return -1;
                                 }
 
-                                if (adjust_inbuf(rpc, rpc->rm_xid[0]) != 0) {
+                                /*
+                                 * When performing zero-copy read we read just 1024 bytes
+                                 * into rpc->inbuf and read rest of the data directly into
+                                 * user provided buffers, so we just need to allocate
+                                 * inbuf large enough to hold 1024 bytes of data, plus 4
+                                 * bytes for the XID, i.e., 1028 bytes.
+                                 * RPC fragments are directly read into rpc->inbuf, no
+                                 * zero copy, so we need to allocate space equal to the
+                                 * fragment size. For non zero-copy reads also we need to
+                                 * allocate the entire PDU size.
+                                 */
+                                inbuf_size = rpc->rm_xid[0];
+
+                                rpc->rm_xid[1] = ntohl(rpc->rm_xid[1]);
+                                if (!rpc->is_server_context) {
+                                        rpc->pdu = rpc_find_pdu(rpc, rpc->rm_xid[1]);
+
+                                        if (rpc->state != READ_FRAGMENT && rpc->pdu && rpc->pdu->in.base) {
+                                            inbuf_size = 1028;
+                                        }
+                                }
+
+                                if (adjust_inbuf(rpc, inbuf_size) != 0) {
+                                        if (!rpc->is_server_context && rpc->pdu) {
+                                                #ifdef HAVE_MULTITHREADING
+                                                if (rpc->multithreading_enabled) {
+                                                        nfs_mt_mutex_lock(&rpc->rpc_mutex);
+                                                }
+                                                #endif /* HAVE_MULTITHREADING */
+
+                                                /*
+                                                 * queue it back to outqueue for retransmit.
+                                                 * Note that we don't need to queue it back to
+                                                 * waitpdu[] queue as returning failure from
+                                                 * here will force a reconnect, which will anyways
+                                                 * re-queue everything from waitpdu[] to outqueue.
+                                                 */
+                                                rpc_return_to_queue(&rpc->outqueue, rpc->pdu);
+
+                                                #ifdef HAVE_MULTITHREADING
+                                                if (rpc->multithreading_enabled) {
+                                                        nfs_mt_mutex_unlock(&rpc->rpc_mutex);
+                                                }
+                                                #endif /* HAVE_MULTITHREADING */
+                                        }
+
+                                        rpc_set_error(rpc, "adjust_inbuf failed for socket fd %d",
+                                                      rpc->fd);
+                                        RPC_LOG(rpc, 2, "adjust_inbuf failed for socket fd %d",
+                                                rpc->fd);
                                         return -1;
                                 }
 
@@ -658,9 +760,8 @@ rpc_read_from_socket(struct rpc_context *rpc)
                                  * PAYLOAD and FRAGMENT
                                  */
                                 rpc->inpos = 0;   
-                                rpc->rm_xid[1] = ntohl(rpc->rm_xid[1]);
+
                                 if (!rpc->is_server_context) {
-                                        rpc->pdu = rpc_find_pdu(rpc, rpc->rm_xid[1]);
                                         /* Unknown xid, either unsolicited
                                          * or an xid we have cancelled
                                          */
@@ -699,32 +800,57 @@ rpc_read_from_socket(struct rpc_context *rpc)
                                 }
                                 /* We do not have rpc->pdu for server context */
                                 if (rpc->pdu && rpc->pdu->free_zdr) {
-                                        int tmp_count;
-
-                                        /* We have zero-copy read */
+                                        /*
+                                         * We are doing zero-copy read.
+                                         * pdu->read_count is the amount of read data returned by
+                                         * the server in this RPC response.
+                                         */
                                         if (!zdr_uint32_t(&rpc->pdu->zdr, &rpc->pdu->read_count))
                                                 return -1;
+
+					/*
+					 * Now pos is pointing at the start of data, while rpc->inpos
+					 * is the total bytes we have read for this RPC response,
+					 * including the RPC header, so "rpc->inpos - pos" is the
+					 * number of data bytes read. This will be less than 1024,
+					 * since we clamped the read size to 1024 above.
+					 */
                                         pos = zdr_getpos(&rpc->pdu->zdr);
                                         count = rpc->inpos - pos;
+                                        assert(count <= 1024);
+
+					/*
+					 * No sane server will return more read data than we asked for.
+					 * If the server is buggy and does send more, we discard the extra
+					 * data.
+					 */
                                         if (rpc->pdu->read_count > rpc->pdu->requested_read_count) {
                                                 rpc->pdu->read_count = rpc->pdu->requested_read_count;
                                         }
+
+                                        /*
+                                         * Clamp count to the actual data read, minus any padding.
+                                         */
                                         if (count > rpc->pdu->read_count) {
                                                 count = rpc->pdu->read_count;
                                         }
-                                        if (rpc->pdu->in.len > rpc->pdu->read_count) {
+
+                                        if (rpc->pdu->in.remaining_size > rpc->pdu->read_count) {
                                                 /* we got a short read */
-                                                rpc->pdu->in.len = rpc->pdu->read_count;
+                                                rpc_shrink_cursor(rpc, &rpc->pdu->in, rpc->pdu->read_count);
+                                                assert(rpc->pdu->in.remaining_size == rpc->pdu->read_count);
                                         }
-                                        tmp_count = count;
-                                        if (rpc->pdu->in.len <= count) {
-                                                tmp_count = rpc->pdu->in.len;
+
+                                        /* XXX With the above two clamps, can this still happen ? */
+                                        if (rpc->pdu->in.remaining_size < count) {
+                                                count = rpc->pdu->in.remaining_size;
                                         }
-                                        memcpy(rpc->pdu->in.buf, &rpc->inbuf[pos], tmp_count);
-                                        if (rpc->pdu->in.len <= count) {
+
+                                        rpc_memcpy_cursor(rpc, &rpc->pdu->in, &rpc->inbuf[pos], count);
+
+                                        if (rpc->pdu->in.remaining_size == 0) {
                                                 // handle padding?
                                         } else {
-                                                rpc->pdu->inpos = count;
                                                 rpc->pdu->read_count -= count;
                                                 rpc->state = READ_IOVEC;
                                                 rpc->inpos  = 0;
@@ -740,7 +866,6 @@ rpc_read_from_socket(struct rpc_context *rpc)
                                 rpc_finished_pdu(rpc);
                                 break;
                         case READ_IOVEC:
-                                rpc->pdu->inpos += rpc->pdu_size;
                                 rpc->pdu->read_count -= rpc->pdu_size;
                                 rpc->rm_xid[0] -= rpc->pdu_size;
                                 if (!rpc->rm_xid[0]) {

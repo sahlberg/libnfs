@@ -29,6 +29,7 @@
 #include <stdio.h>
 #include <errno.h>
 #include <string.h>
+#include <stdlib.h>
 #include "libnfs-zdr.h"
 #include "libnfs.h"
 #include "libnfs-raw.h"
@@ -265,11 +266,37 @@ zdr_READ3res_zero_copy (ZDR *zdrs, READ3res *objp)
 }
 
 struct rpc_pdu *
-rpc_nfs3_read_task(struct rpc_context *rpc, rpc_cb cb,
-                   void *buf, size_t count,
-                   struct READ3args *args, void *private_data)
+rpc_nfs3_readv_task(struct rpc_context *rpc, rpc_cb cb,
+                    const struct iovec *iov, int iovcnt,
+                    struct READ3args *args, void *private_data)
 {
 	struct rpc_pdu *pdu;
+	int i;
+
+        /*
+         * Do we really need to support 0-byte reads?
+         * Caller can always no-op it.
+         */
+        if (iovcnt == 0 || iov == NULL) {
+		rpc_set_error(rpc, "Invalid arguments: iov and iovcnt must be specified");
+		return NULL;
+        }
+
+        /*
+         * It's disallowed since it's not tested. It may work.
+         */
+        if (iovcnt > 1 && rpc->is_udp) {
+		rpc_set_error(rpc, "Invalid arguments: Vectored read not supported for UDP transport");
+		return NULL;
+        }
+
+        /*
+         * Don't accept more iovecs than what readv() can handle.
+         */
+        if (iovcnt > RPC_MAX_VECTORS) {
+		rpc_set_error(rpc, "Invalid arguments: iovcnt must be <= %d", RPC_MAX_VECTORS);
+		return NULL;
+        }
 
 	pdu = rpc_allocate_pdu(rpc, NFS_PROGRAM, NFS_V3, NFS3_READ, cb, private_data, (zdrproc_t)zdr_READ3res_zero_copy, sizeof(READ3res));
 	if (pdu == NULL) {
@@ -282,9 +309,22 @@ rpc_nfs3_read_task(struct rpc_context *rpc, rpc_cb cb,
 		return NULL;
 	}
 
-        pdu->in.buf = buf;
-        pdu->in.len = count;
-        pdu->requested_read_count = count;
+	pdu->in.base = (struct iovec *) malloc(sizeof(struct iovec) * iovcnt);
+	if (!pdu->in.base) {
+		rpc_set_error(rpc, "error: Failed to allocate memory");
+		rpc_free_pdu(rpc, pdu);
+		return NULL;
+	}
+
+        pdu->in.iov = pdu->in.base;
+	pdu->in.iovcnt = iovcnt;
+
+        for (i = 0; i < iovcnt; i++) {
+                pdu->in.iov[i] = iov[i];
+                pdu->in.remaining_size += iov[i].iov_len;
+        }
+
+        pdu->requested_read_count = pdu->in.remaining_size;
 
 	if (rpc_queue_pdu(rpc, pdu) != 0) {
 		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for NFS3/READ call");
@@ -292,6 +332,19 @@ rpc_nfs3_read_task(struct rpc_context *rpc, rpc_cb cb,
 	}
 
 	return pdu;
+}
+
+struct rpc_pdu *
+rpc_nfs3_read_task(struct rpc_context *rpc, rpc_cb cb,
+                   void *buf, size_t count,
+                   struct READ3args *args, void *private_data)
+{
+	struct iovec iov;
+
+	iov.iov_base = buf;
+	iov.iov_len = count;
+
+	return rpc_nfs3_readv_task(rpc, cb, &iov, 1, args, private_data);
 }
 
 /*
@@ -314,15 +367,47 @@ zdr_WRITE3args_zerocopy(ZDR *zdrs, WRITE3args *objp)
 	return TRUE;
 }
 
-struct rpc_pdu *rpc_nfs3_write_task(struct rpc_context *rpc, rpc_cb cb,
-                                    struct WRITE3args *args,
-                                    void *private_data)
+struct rpc_pdu *rpc_nfs3_writev_task(struct rpc_context *rpc, rpc_cb cb,
+                                     struct WRITE3args *args,
+                                     const struct iovec *iov,
+                                     int iovcnt,
+                                     void *private_data)
 {
 	struct rpc_pdu *pdu;
         int start;
         static uint32_t zero_padding;
+        uint32_t data_len;
 
-	pdu = rpc_allocate_pdu2(rpc, NFS_PROGRAM, NFS_V3, NFS3_WRITE, cb, private_data, (zdrproc_t)zdr_WRITE3res, sizeof(WRITE3res), 0);
+        /*
+         * If caller has a single contiguous buffer they can convey it
+         * using args.data, and if they have an io vector they can convey
+         * that using iov.
+         */
+        if ((iovcnt == 0) != (iov == NULL)) {
+		rpc_set_error(rpc, "Invalid arguments: iov and iovcnt must both be specified together");
+		return NULL;
+        }
+
+        if (iovcnt && args->data.data_len) {
+                /* Warn bad callers */
+		rpc_set_error(rpc, "Invalid arguments: args->data.data_len not 0 when iovcnt is non-zero");
+		return NULL;
+        }
+
+        if (iov && rpc->is_udp) {
+		rpc_set_error(rpc, "Invalid arguments: Vectored write not supported for UDP transport");
+		return NULL;
+        }
+
+        /*
+         * We add 4 to the user provided iovcnt to account for one each for
+         * the following:
+         * - Record marker
+         * - RPC header
+         * - NFS header
+         * - Padding (optional)
+         */
+	pdu = rpc_allocate_pdu2(rpc, NFS_PROGRAM, NFS_V3, NFS3_WRITE, cb, private_data, (zdrproc_t)zdr_WRITE3res, sizeof(WRITE3res), 0, iovcnt + 4);
 	if (pdu == NULL) {
 		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu for NFS3/WRITE call");
 		return NULL;
@@ -343,9 +428,20 @@ struct rpc_pdu *rpc_nfs3_write_task(struct rpc_context *rpc, rpc_cb cb,
 		return NULL;
         }
 
+        /* Calculate data length to encode in the RPC request */
+        if (iov) {
+                int i;
+                data_len = 0;
+                for (i = 0; i < iovcnt; i++) {
+                        data_len += iov[i].iov_len;
+                }
+        } else {
+                data_len = args->data.data_len;
+        }
+
         /* Add an iovector for the length of the byte/array blob */
         start = zdr_getpos(&pdu->zdr);
-        zdr_u_int(&pdu->zdr, &args->data.data_len);
+        zdr_u_int(&pdu->zdr, &data_len);
         if (rpc_add_iovector(rpc, &pdu->out, &pdu->outdata.data[start + 4],
                              4, NULL) < 0) {
 		rpc_free_pdu(rpc, pdu);
@@ -353,17 +449,28 @@ struct rpc_pdu *rpc_nfs3_write_task(struct rpc_context *rpc, rpc_cb cb,
         }
 
         /* Add an iovector for the data itself */
-        if (rpc_add_iovector(rpc, &pdu->out, args->data.data_val,
-                             args->data.data_len, NULL) < 0) {
-		rpc_free_pdu(rpc, pdu);
-		return NULL;
+        if (!iov) {
+                if (rpc_add_iovector(rpc, &pdu->out, args->data.data_val,
+                                     args->data.data_len, NULL) < 0) {
+                        rpc_free_pdu(rpc, pdu);
+                        return NULL;
+                }
+        } else {
+                int i;
+                for (i = 0; i < iovcnt; i++) {
+                        if (rpc_add_iovector(rpc, &pdu->out,
+                                             iov[i].iov_base,
+                                             iov[i].iov_len, NULL) < 0) {
+                                rpc_free_pdu(rpc, pdu);
+                                return NULL;
+                        }
+                }
         }
 
         /* We may need to pad this to 4 byte boundary */
-        if (args->data.data_len & 0x03) {
+        if (data_len & 0x03) {
                 if (rpc_add_iovector(rpc, &pdu->out, (char *)&zero_padding,
-                                     4 - (args->data.data_len & 0x03),
-                                     NULL) < 0) {
+                                     4 - (data_len & 0x03), NULL) < 0) {
                         rpc_free_pdu(rpc, pdu);
                         return NULL;
                 }
@@ -375,6 +482,13 @@ struct rpc_pdu *rpc_nfs3_write_task(struct rpc_context *rpc, rpc_cb cb,
 	}
 
 	return pdu;
+}
+
+struct rpc_pdu *rpc_nfs3_write_task(struct rpc_context *rpc, rpc_cb cb,
+                                    struct WRITE3args *args,
+                                    void *private_data)
+{
+        return rpc_nfs3_writev_task(rpc, cb, args, NULL, 0, private_data);
 }
 
 struct rpc_pdu *rpc_nfs3_commit_task(struct rpc_context *rpc, rpc_cb cb,
@@ -918,7 +1032,7 @@ struct rpc_pdu *rpc_nfs2_write_task(struct rpc_context *rpc, rpc_cb cb,
 {
 	struct rpc_pdu *pdu;
 
-	pdu = rpc_allocate_pdu2(rpc, NFS_PROGRAM, NFS_V2, NFS2_WRITE, cb, private_data, (zdrproc_t)zdr_WRITE2res, sizeof(WRITE2res), args->totalcount);
+	pdu = rpc_allocate_pdu2(rpc, NFS_PROGRAM, NFS_V2, NFS2_WRITE, cb, private_data, (zdrproc_t)zdr_WRITE2res, sizeof(WRITE2res), args->totalcount, 0);
 	if (pdu == NULL) {
 		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu for NFS2/WRITE call");
 		return NULL;

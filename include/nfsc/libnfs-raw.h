@@ -23,7 +23,32 @@
 #ifndef _LIBNFS_RAW_H_
 #define _LIBNFS_RAW_H_
 
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+
+#ifdef AROS
+#include "aros_compat.h"
+#endif
+
+#ifdef PS2_EE
+#include "ps2_compat.h"
+#endif
+
+#ifdef PS3_PPU
+#include "ps3_compat.h"
+#endif
+
+#ifdef WIN32
+#include <win32/win32_compat.h>
+#endif
+
 #include <stdint.h>
+
+#if defined(HAVE_SYS_UIO_H) || (defined(__APPLE__) && defined(__MACH__))
+#include <sys/uio.h>
+#endif
+
 #include <nfsc/libnfs-zdr.h>
 
 #ifdef __cplusplus
@@ -1122,6 +1147,18 @@ rpc_nfs3_read_task(struct rpc_context *rpc, rpc_cb cb,
                     void *private_data);
 
 /*
+ * Same as rpc_nfs3_read_task() but can be used to receive READ data into
+ * an iovec. Useful for callers who do not have a single contiguous read
+ * buffer but instead want the READ data to be gathered into multiple
+ * non-contiguous buffers.
+ */
+EXTERN struct rpc_pdu *
+rpc_nfs3_readv_task(struct rpc_context *rpc, rpc_cb cb,
+                    const struct iovec *iov, int iovcnt,
+                    struct READ3args *args,
+                    void *private_data);
+
+/*
  * Call NFS3/WRITE
  *
  * Function returns
@@ -1142,6 +1179,18 @@ struct WRITE3args;
 EXTERN struct rpc_pdu *
 rpc_nfs3_write_task(struct rpc_context *rpc, rpc_cb cb,
                      struct WRITE3args *args,
+                     void *private_data);
+
+/*
+ * Same as rpc_nfs3_write_task() but can be used to send WRITE data from
+ * an iovec. Useful for callers who do not have the WRITE data in a single
+ * contiguous buffer but instead the WRITE data needs to be gathered from
+ * multiple non-contiguous buffers.
+ */
+EXTERN struct rpc_pdu *
+rpc_nfs3_writev_task(struct rpc_context *rpc, rpc_cb cb,
+                     struct WRITE3args *args,
+                     const struct iovec *iov, int iovcnt,
                      void *private_data);
 
 /*
@@ -2497,6 +2546,18 @@ rpc_nfs4_read_task(struct rpc_context *rpc, rpc_cb cb,
                     void *private_data);
 
 /*
+ * Same as rpc_nfs4_read_task() but can be used to receive READ data into
+ * an iovec. Useful for callers who do not have a single contiguous read
+ * buffer but instead want the READ data to be gathered into multiple
+ * non-contiguous buffers.
+ */
+EXTERN struct rpc_pdu *
+rpc_nfs4_readv_task(struct rpc_context *rpc, rpc_cb cb,
+                    const struct iovec *iov, int iovcnt,
+                    struct COMPOUND4args *args,
+                    void *private_data);
+
+/*
  * Call NFS4/COMPOUND for write operations
  *
  * Function returns
@@ -2519,6 +2580,18 @@ rpc_nfs4_read_task(struct rpc_context *rpc, rpc_cb cb,
 EXTERN struct rpc_pdu *
 rpc_nfs4_write_task(struct rpc_context *rpc, rpc_cb cb,
                      const void *buf, size_t count,
+                     struct COMPOUND4args *args,
+                     void *private_data);
+
+/*
+ * Same as rpc_nfs3_write_task() but can be used to send WRITE data from
+ * an iovec. Useful for callers who do not have the WRITE data in a single
+ * contiguous buffer but instead the WRITE data needs to be gathered from
+ * multiple non-contiguous buffers.
+ */
+EXTERN struct rpc_pdu *
+rpc_nfs4_writev_task(struct rpc_context *rpc, rpc_cb cb,
+                     const struct iovec *iov, int iovcnt,
                      struct COMPOUND4args *args,
                      void *private_data);
 
