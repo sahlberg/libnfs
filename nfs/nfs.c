@@ -274,8 +274,8 @@ rpc_nfs3_readv_task(struct rpc_context *rpc, rpc_cb cb,
 	int i;
 
         /*
-         * Do we really need to support 0-byte reads?
-         * Caller can always no-op it.
+         * TODO: We never use iov for KRB5P so we should prepare this function
+         * to accept iov == NULL
          */
         if (iovcnt == 0 || iov == NULL) {
 		rpc_set_error(rpc, "Invalid arguments: iov and iovcnt must be specified");

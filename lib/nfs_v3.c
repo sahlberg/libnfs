@@ -4493,15 +4493,25 @@ nfs3_pread_cb(struct rpc_context *rpc, int status, void *command_data,
                 data->nfsfh->offset = data->offset + count;
         }
 
-        /*
-         * It's unlikely that a sane server will return more data than
-         * requested. Also note that rpc_nfs3_read_task() would have correctly
-         * ensured that it doesn't read more than the requested data, so to
-         * be correct just clamp the returned read count here.
-         */
         if (count > rpc->pdu->requested_read_count) {
                 count = rpc->pdu->requested_read_count;
         }
+#ifdef HAVE_LIBKRB5
+        if (rpc->sec == RPC_SEC_KRB5P) {
+                if (!zdr_uint32_t(&rpc->pdu->zdr, &rpc->pdu->read_count)) {
+                        data->cb(-1, nfs, NULL, data->private_data);
+                        free_nfs_cb_data(data);
+                        return;
+                }
+                if (count > rpc->pdu->read_count) {
+                        count = rpc->pdu->read_count;
+                }
+                if (count > libnfs_zdr_getsize(&rpc->pdu->zdr) - libnfs_zdr_getpos(&rpc->pdu->zdr)) {
+                        count = libnfs_zdr_getsize(&rpc->pdu->zdr) - libnfs_zdr_getpos(&rpc->pdu->zdr);
+                }
+                memcpy(data->buffer, libnfs_zdr_getptr(&rpc->pdu->zdr) + libnfs_zdr_getpos(&rpc->pdu->zdr), count);
+        }
+#endif /* HAVE_LIBKRB5 */
 
 	data->cb(count, nfs, NULL, data->private_data);
 	free_nfs_cb_data(data);
@@ -4534,6 +4544,8 @@ nfs3_pread_async_internal(struct nfs_context *nfs, struct nfsfh *nfsfh,
 	data->org_offset   = offset;
 	data->org_count    = count;
 	data->update_pos   = update_pos;
+        data->buffer       = buf;
+        data->not_my_buffer = 1;
 
 	assert(data->num_calls == 0);
 

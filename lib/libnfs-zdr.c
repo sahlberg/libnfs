@@ -89,6 +89,11 @@ uint32_t libnfs_zdr_getpos(ZDR *zdrs)
 	return zdrs->pos;
 }
 
+uint32_t libnfs_zdr_getsize(ZDR *zdrs)
+{
+	return zdrs->size;
+}
+
 char *libnfs_zdr_getptr(ZDR *zdrs)
 {
         return zdrs->buf;

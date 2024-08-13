@@ -599,10 +599,15 @@ rpc_read_from_socket(struct rpc_context *rpc)
                                  * restart unmarshalling from scratch.
                                  */
                                 /* We do not have rpc->pdu for server context */
-                                if (rpc->pdu && rpc->pdu->in.base && rpc->pdu_size > 1024) {
-                                        rpc->pdu_size = 1024;
-                                }
-                                assert(rpc->pdu_size <= rpc->inbuf_size);
+#ifdef HAVE_LIBKRB5
+                                /*
+                                 * KRB5P can not use zero-copy reads
+                                 */
+                                if (rpc->sec != RPC_SEC_KRB5P)
+#endif /* HAVE_LIBKRB5 */
+                                        if (rpc->pdu && rpc->pdu->in.base && rpc->pdu_size > 1024) {
+                                                rpc->pdu_size = 1024;
+                                        }
                                 break;
                         case READ_UNKNOWN:
                         case READ_FRAGMENT:
@@ -717,9 +722,12 @@ rpc_read_from_socket(struct rpc_context *rpc)
                                 if (!rpc->is_server_context) {
                                         rpc->pdu = rpc_find_pdu(rpc, rpc->rm_xid[1]);
 
-                                        if (rpc->state != READ_FRAGMENT && rpc->pdu && rpc->pdu->in.base) {
-                                            inbuf_size = 1028;
-                                        }
+#ifdef HAVE_LIBKRB5
+                                        if (rpc->sec != RPC_SEC_KRB5P)
+#endif /* HAVE_LIBKRB5 */
+                                                if (rpc->state != READ_FRAGMENT && rpc->pdu && rpc->pdu->in.base) {
+                                                        inbuf_size = 1028;
+                                                }
                                 }
 
                                 if (adjust_inbuf(rpc, inbuf_size) != 0) {
@@ -798,6 +806,16 @@ rpc_read_from_socket(struct rpc_context *rpc)
                                                       "Closing socket");
                                         return -1;
                                 }
+#ifdef HAVE_LIBKRB5
+                                /*
+                                 * Since we don't do zero-copy reads for
+                                 * KRB5P we are basically finished processing
+                                 * the reply at this point.
+                                 */
+                                if (rpc->sec == RPC_SEC_KRB5P) {
+                                        goto payload_finished;
+                                }
+#endif /* HAVE_LIBKRB5 */
                                 /* We do not have rpc->pdu for server context */
                                 if (rpc->pdu && rpc->pdu->free_zdr) {
                                         /*
@@ -808,22 +826,21 @@ rpc_read_from_socket(struct rpc_context *rpc)
                                         if (!zdr_uint32_t(&rpc->pdu->zdr, &rpc->pdu->read_count))
                                                 return -1;
 
-					/*
-					 * Now pos is pointing at the start of data, while rpc->inpos
-					 * is the total bytes we have read for this RPC response,
-					 * including the RPC header, so "rpc->inpos - pos" is the
-					 * number of data bytes read. This will be less than 1024,
-					 * since we clamped the read size to 1024 above.
-					 */
+                                        /*
+                                         * Now pos is pointing at the start of data, while rpc->inpos
+                                         * is the total bytes we have read for this RPC response,
+                                         * including the RPC header, so "rpc->inpos - pos" is the
+                                         * number of data bytes read. This will be less than 1024,
+                                         * since we clamped the read size to 1024 above.
+                                         */
                                         pos = zdr_getpos(&rpc->pdu->zdr);
                                         count = rpc->inpos - pos;
                                         assert(count <= 1024);
-
-					/*
-					 * No sane server will return more read data than we asked for.
-					 * If the server is buggy and does send more, we discard the extra
-					 * data.
-					 */
+                                        /*
+                                         * No sane server will return more read data than we asked for.
+                                         * If the server is buggy and does send more, we discard the extra
+                                         * data.
+                                         */
                                         if (rpc->pdu->read_count > rpc->pdu->requested_read_count) {
                                                 rpc->pdu->read_count = rpc->pdu->requested_read_count;
                                         }
@@ -834,7 +851,6 @@ rpc_read_from_socket(struct rpc_context *rpc)
                                         if (count > rpc->pdu->read_count) {
                                                 count = rpc->pdu->read_count;
                                         }
-
                                         if (rpc->pdu->in.remaining_size > rpc->pdu->read_count) {
                                                 /* we got a short read */
                                                 rpc_shrink_cursor(rpc, &rpc->pdu->in, rpc->pdu->read_count);
@@ -845,7 +861,6 @@ rpc_read_from_socket(struct rpc_context *rpc)
                                         if (rpc->pdu->in.remaining_size < count) {
                                                 count = rpc->pdu->in.remaining_size;
                                         }
-
                                         rpc_memcpy_cursor(rpc, &rpc->pdu->in, &rpc->inbuf[pos], count);
 
                                         if (rpc->pdu->in.remaining_size == 0) {
@@ -858,6 +873,9 @@ rpc_read_from_socket(struct rpc_context *rpc)
                                                 continue;
                                         }
                                 }
+#ifdef HAVE_LIBKRB5
+                        payload_finished:
+#endif /* HAVE_LIBKRB5 */
                                 if (rpc->fragments) {
                                         free(rpc->buf);
                                         rpc->buf = NULL;

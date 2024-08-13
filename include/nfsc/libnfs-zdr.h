@@ -287,6 +287,9 @@ bool_t libnfs_zdr_setpos(ZDR *zdrs, uint32_t pos);
 #define zdr_getpos libnfs_zdr_getpos
 uint32_t libnfs_zdr_getpos(ZDR *zdrs);
 
+#define zdr_getsize libnfs_zdr_getsize
+uint32_t libnfs_zdr_getsize(ZDR *zdrs);
+
 #define zdr_getptr libnfs_zdr_getptr
 char *libnfs_zdr_getptr(ZDR *zdrs);
         
