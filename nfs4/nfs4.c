@@ -254,10 +254,6 @@ struct rpc_pdu *rpc_nfs4_readv_task(struct rpc_context *rpc, rpc_cb cb,
 	struct rpc_pdu *pdu;
 	int i;
 
-        /*
-         * TODO: We never use iov for KRB5P so we should prepare this function
-         * to accept iov == NULL
-         */
         if (iovcnt == 0 || iov == NULL) {
 		rpc_set_error(rpc, "Invalid arguments: iov and iovcnt must be specified");
 		return NULL;

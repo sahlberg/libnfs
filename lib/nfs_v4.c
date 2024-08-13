@@ -2799,6 +2799,9 @@ nfs4_pread_cb(struct rpc_context *rpc, int status, void *command_data,
 
 #ifdef HAVE_LIBKRB5
         if (rpc->sec == RPC_SEC_KRB5P) {
+                struct iovec *iov;
+                int idx, num, copied;
+
                 if (!zdr_uint32_t(&rpc->pdu->zdr, &rpc->pdu->read_count)) {
                         data->cb(-1, nfs, NULL, data->private_data);
                         free_nfs4_cb_data(data);
@@ -2810,7 +2813,25 @@ nfs4_pread_cb(struct rpc_context *rpc, int status, void *command_data,
                 if (count > libnfs_zdr_getsize(&rpc->pdu->zdr) - libnfs_zdr_getpos(&rpc->pdu->zdr)) {
                         count = libnfs_zdr_getsize(&rpc->pdu->zdr) - libnfs_zdr_getpos(&rpc->pdu->zdr);
                 }
-                memcpy(data->filler.blob1.val, libnfs_zdr_getptr(&rpc->pdu->zdr) + libnfs_zdr_getpos(&rpc->pdu->zdr), count);
+                iov = rpc->pdu->in.iov;
+                idx = rpc->pdu->in.iovcnt;
+                copied = 0;
+                while(count) {
+                        num = count;
+                        if (num > iov->iov_len) {
+                                num = iov->iov_len;
+                        }
+                        memcpy(iov->iov_base, libnfs_zdr_getptr(&rpc->pdu->zdr) + libnfs_zdr_getpos(&rpc->pdu->zdr), num);
+                        libnfs_zdr_setpos(&rpc->pdu->zdr, libnfs_zdr_getpos(&rpc->pdu->zdr) + num);
+                        count -= num;
+                        copied += num;
+                        iov++;
+                        idx--;
+                        if (idx == 0) {
+                                break;
+                        }
+                }
+                count = copied;
         }
 #endif /* HAVE_LIBKRB5 */
 
@@ -2842,8 +2863,6 @@ nfs4_pread_async_internal(struct nfs_context *nfs, struct nfsfh *nfsfh,
 
         data->filler.blob0.val  = nfsfh;
         data->filler.blob0.free = NULL;
-        data->filler.blob1.val  = buf;
-        data->filler.blob1.free = NULL;
         data->rw_data.offset = offset;
         data->rw_data.update_pos = update_pos;
         
