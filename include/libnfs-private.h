@@ -458,6 +458,26 @@ struct rpc_pdu {
                                         * Used to clamp long reads.
                                         */
 
+        /*
+         * Total request bytes sent out for this PDU.
+         * This includes RPC header + NFS header + optional data (for WRITE).
+         * This can be queried using rpc_pdu_get_req_size(pdu) after the
+         * rpc_<protocol>_  API returns the to-be-sent PDU.
+         * This can be used by applications that want to provide mountstats
+         * style "avg bytes sent" telemetry.
+         */
+        uint32_t req_size;
+
+        /*
+         * Total response bytes received for this PDU.
+         * This includes RPC header + NFS header + optional data (for READ).
+         * This can be queried using rpc_pdu_get_resp_size(rpc_get_pdu(rpc))
+         * inside the rpc_<protocol>_  callback.
+         * This can be used by applications that want to provide mountstats
+         * style "avg bytes received" telemetry.
+         */
+        uint32_t resp_size;
+
 	rpc_cb cb;
 	void *private_data;
 

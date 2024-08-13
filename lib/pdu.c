@@ -568,6 +568,9 @@ int rpc_queue_pdu(struct rpc_context *rpc, struct rpc_pdu *pdu)
         recordmarker = htonl(size | 0x80000000);
 	memcpy(pdu->out.iov[0].buf, &recordmarker, 4);
 
+        /* 4 bytes for the recordmarker */
+        pdu->req_size = size + 4;
+
 	/*
 	 * For udp we dont queue, we just send it straight away.
 	 *
@@ -707,6 +710,15 @@ static int rpc_process_reply(struct rpc_context *rpc, ZDR *zdr)
 		pdu->cb(rpc, RPC_STATUS_ERROR, "RPC Packet not accepted by the server", pdu->private_data);
 		return 0;
 	}
+
+        /*
+         * resp_size must be set to at least the size of the decoded headers.
+         * For READ RPCs it'll be more as it'll also include the data received.
+         * For zero-copy reads resp_size will be updated later as we read data
+         * bytes into the user zerop-copy buffer(s).
+         */
+        assert(pdu->resp_size >= zdr->pos);
+
 	switch (msg.body.rbody.reply.areply.stat) {
 	case SUCCESS:
 		/* Last RPC response time for tracking RPC transport health */
@@ -1007,6 +1019,16 @@ struct rpc_pdu *rpc_find_pdu(struct rpc_context *rpc, uint32_t xid)
 #endif /* HAVE_MULTITHREADING */
 
         return pdu;
+}
+
+uint32_t rpc_pdu_get_req_size(struct rpc_pdu *pdu)
+{
+        return pdu->req_size;
+}
+
+uint32_t rpc_pdu_get_resp_size(struct rpc_pdu *pdu)
+{
+        return pdu->resp_size;
 }
 
 int rpc_cancel_pdu(struct rpc_context *rpc, struct rpc_pdu *pdu)

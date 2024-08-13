@@ -376,6 +376,13 @@ char *rpc_get_error(struct rpc_context *rpc)
 	return rpc->error_string ? rpc->error_string : "";
 }
 
+struct rpc_pdu *rpc_get_pdu(struct rpc_context *rpc)
+{
+        assert(rpc->magic == RPC_CONTEXT_MAGIC);
+
+        return rpc->pdu;
+}
+
 void rpc_get_stats(struct rpc_context *rpc, struct rpc_stats *stats)
 {
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
