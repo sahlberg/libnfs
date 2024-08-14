@@ -411,7 +411,7 @@ rpc_write_to_socket(struct rpc_context *rpc)
                                 /* RPC sent, original or retransmit */
                                 INC_STATS(rpc, num_req_sent);
 
-                                if (pdu->flags & PDU_DISCARD_AFTER_SENDING) {
+                                if (pdu->discard_after_sending) {
                                         rpc_free_pdu(rpc, pdu);
                                         ret = 0;
                                         goto finished;

@@ -117,7 +117,7 @@ static struct rpc_pdu *rpc_allocate_reply_pdu(struct rpc_context *rpc,
 		return NULL;
 	}
 	memset(pdu, 0, sizeof(struct rpc_pdu));
-        pdu->flags              = PDU_DISCARD_AFTER_SENDING;
+        pdu->discard_after_sending = 1;
 	pdu->xid                = 0;
 	pdu->cb                 = NULL;
 	pdu->private_data       = NULL;

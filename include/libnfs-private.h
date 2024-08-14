@@ -466,8 +466,7 @@ struct rpc_pdu {
 	caddr_t zdr_decode_buf;
 	uint32_t zdr_decode_bufsize;
 
-#define PDU_DISCARD_AFTER_SENDING 0x00000001
-        uint32_t flags;
+        uint32_t discard_after_sending:1;
 
 	/*
 	 * If TRUE, this RPC would not be retried. If no response is received
