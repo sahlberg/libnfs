@@ -2588,3 +2588,10 @@ rpc_null_task_authtls(struct rpc_context *rpc, int nfs_version, rpc_cb cb,
 	return pdu;
 }
 #endif /* HAVE_TLS */
+
+void rpc_set_stats_cb(struct rpc_context *rpc, rpc_stats_cb cb,
+                      void *private_data)
+{
+        rpc->stats_cb = cb;
+        rpc->stats_private_data = private_data;
+}
