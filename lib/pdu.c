@@ -723,10 +723,13 @@ static int rpc_process_reply(struct rpc_context *rpc, ZDR *zdr)
                  * so don't complete it as yet. Caller will arrange to read
                  * the data and complete the PDU once completed.
                  */
-                if (pdu->in.base) {
-                        rpc->pdu->free_pdu = 1;
-                        break;
-                }
+#ifdef HAVE_LIBKRB5
+                if (rpc->sec != RPC_SEC_KRB5P)
+#endif /* HAVE_LIBKRB5 */
+                        if (pdu->in.base) {
+                                rpc->pdu->free_pdu = 1;
+                                break;
+                        }
 
 #ifdef HAVE_TLS
 		/*
@@ -804,7 +807,34 @@ static int rpc_process_reply(struct rpc_context *rpc, ZDR *zdr)
                                 }
                         }
                 }
-#endif
+                if (pdu->zero_copy_iov && rpc->sec == RPC_SEC_KRB5P) {
+                        struct iovec *iov;
+                        int num_iov, num, count;
+
+                        if (!zdr_uint32_t(&pdu->zdr, &pdu->read_count)) {
+                                pdu->cb(rpc, RPC_STATUS_ERROR, "rpc_process_reply: failed to read onc-rpc array length", pdu->private_data);
+                                break;
+                        }
+                        count = pdu->read_count;
+                        if (count > libnfs_zdr_getsize(&pdu->zdr) - libnfs_zdr_getpos(&pdu->zdr)) {
+                                count = libnfs_zdr_getsize(&pdu->zdr) - libnfs_zdr_getpos(&pdu->zdr);
+                        }
+                        iov = pdu->in.iov;
+                        num_iov = pdu->in.iovcnt;
+                        while(count && num_iov) {
+                                num = count;
+                                if (num > iov->iov_len) {
+                                        num = iov->iov_len;
+                                }
+                                memcpy(iov->iov_base, libnfs_zdr_getptr(&pdu->zdr) + libnfs_zdr_getpos(&pdu->zdr), num);
+                                libnfs_zdr_setpos(&pdu->zdr, libnfs_zdr_getpos(&pdu->zdr) + num);
+                                count -= num;
+                                iov++;
+                                num_iov--;
+                        }
+                }
+#endif /* HAVE_LIBKRB5 */
+
 		pdu->cb(rpc, RPC_STATUS_SUCCESS, pdu->zdr_decode_buf, pdu->private_data);
 		break;
 	case PROG_UNAVAIL:
@@ -1037,6 +1067,7 @@ int rpc_process_pdu(struct rpc_context *rpc, char *buf, int size)
 
                 ret = rpc_process_call(rpc, &zdr);
                 zdr_destroy(&zdr);
+
                 return ret;
         }
 

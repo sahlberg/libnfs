@@ -306,6 +306,7 @@ struct rpc_pdu *rpc_nfs4_readv_task(struct rpc_context *rpc, rpc_cb cb,
         }
 
         pdu->requested_read_count = pdu->in.remaining_size;
+        pdu->zero_copy_iov = 1;
 
 	if (rpc_queue_pdu(rpc, pdu) != 0) {
 		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for "

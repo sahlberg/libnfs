@@ -427,6 +427,7 @@ struct rpc_pdu {
 	uint32_t xid;
 
         ZDR zdr;
+        ZDR zdr_in;
         int free_zdr;
         int free_pdu;
 
@@ -467,6 +468,7 @@ struct rpc_pdu {
 	uint32_t zdr_decode_bufsize;
 
         uint32_t discard_after_sending:1;
+        uint32_t zero_copy_iov:1;
 
 	/*
 	 * If TRUE, this RPC would not be retried. If no response is received
