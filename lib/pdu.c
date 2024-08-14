@@ -150,7 +150,6 @@ static struct rpc_pdu *rpc_allocate_reply_pdu(struct rpc_context *rpc,
 struct rpc_pdu *rpc_allocate_pdu2(struct rpc_context *rpc, int program, int version, int procedure, rpc_cb cb, void *private_data, zdrproc_t zdr_decode_fn, int zdr_decode_bufsize, size_t alloc_hint, int iovcnt_hint)
 {
 	struct rpc_pdu *pdu;
-	struct rpc_msg msg;
 	int pdu_size;
 #ifdef HAVE_LIBKRB5
         uint32_t val;
@@ -225,22 +224,21 @@ struct rpc_pdu *rpc_allocate_pdu2(struct rpc_context *rpc, int program, int vers
 
         zdrmem_create(&pdu->zdr, &pdu->outdata.data[4],
                       ZDR_ENCODEBUF_MINSIZE + alloc_hint, ZDR_ENCODE);
-
-	memset(&msg, 0, sizeof(struct rpc_msg));
-	msg.xid                = pdu->xid;
-        msg.direction          = CALL;
-	msg.body.cbody.rpcvers = RPC_MSG_VERSION;
-	msg.body.cbody.prog    = program;
-	msg.body.cbody.vers    = version;
-	msg.body.cbody.proc    = procedure;
+	memset(&pdu->msg, 0, sizeof(struct rpc_msg));
+	pdu->msg.xid                = pdu->xid;
+        pdu->msg.direction          = CALL;
+	pdu->msg.body.cbody.rpcvers = RPC_MSG_VERSION;
+	pdu->msg.body.cbody.prog    = program;
+	pdu->msg.body.cbody.vers    = version;
+	pdu->msg.body.cbody.proc    = procedure;
 
 	pdu->do_not_retry      = (program != NFS_PROGRAM);
 
 	/* For NULL RPC RFC recommends to use NULL authentication */
 	if (procedure == 0) {
-		msg.body.cbody.cred.oa_flavor    = AUTH_NONE;
-		msg.body.cbody.cred.oa_length    = 0;
-		msg.body.cbody.cred.oa_base      = NULL;
+		pdu->msg.body.cbody.cred.oa_flavor    = AUTH_NONE;
+		pdu->msg.body.cbody.cred.oa_length    = 0;
+		pdu->msg.body.cbody.cred.oa_base      = NULL;
 		/*
 		 * NULL RPC is like a ping which is sent right after connection
 		 * establishment. The transport is still not used for sending
@@ -249,19 +247,19 @@ struct rpc_pdu *rpc_allocate_pdu2(struct rpc_context *rpc, int program, int vers
 		 */
 		pdu->do_not_retry                = TRUE;
 	} else {
-		msg.body.cbody.cred    = rpc->auth->ah_cred;
+		pdu->msg.body.cbody.cred    = rpc->auth->ah_cred;
 	}
 
-	msg.body.cbody.verf    = rpc->auth->ah_verf;
+	pdu->msg.body.cbody.verf    = rpc->auth->ah_verf;
 
 #ifdef HAVE_TLS
 	/* Should not be already set */
 	assert(pdu->expect_starttls == FALSE);
 
 	if (send_auth_tls) {
-		msg.body.cbody.cred.oa_flavor    = AUTH_TLS;
-		msg.body.cbody.cred.oa_length    = 0;
-		msg.body.cbody.cred.oa_base      = NULL;
+		pdu->msg.body.cbody.cred.oa_flavor    = AUTH_TLS;
+		pdu->msg.body.cbody.cred.oa_length    = 0;
+		pdu->msg.body.cbody.cred.oa_base      = NULL;
 
 		pdu->expect_starttls 		 = TRUE;
         }
@@ -303,15 +301,15 @@ struct rpc_pdu *rpc_allocate_pdu2(struct rpc_context *rpc, int program, int vers
                                       rpc_get_error(rpc));
                         goto failed;
                 }
-                msg.body.cbody.cred.oa_flavor = AUTH_GSS;
-                msg.body.cbody.cred.oa_length = tmpzdr.pos;
-                msg.body.cbody.cred.oa_base = pdu->creds;
+                pdu->msg.body.cbody.cred.oa_flavor = AUTH_GSS;
+                pdu->msg.body.cbody.cred.oa_length = tmpzdr.pos;
+                pdu->msg.body.cbody.cred.oa_base = pdu->creds;
                 zdr_destroy(&tmpzdr);
 
                 rpc->gss_seqno++;
                 if (rpc->gss_seqno > 1) {
-                        msg.body.cbody.verf.oa_flavor = AUTH_GSS;
-                        msg.body.cbody.verf.gss_context = rpc->gss_context;
+                        pdu->msg.body.cbody.verf.oa_flavor = AUTH_GSS;
+                        pdu->msg.body.cbody.verf.gss_context = rpc->gss_context;
                 }
         }
 #ifdef HAVE_MULTITHREADING
@@ -321,7 +319,7 @@ struct rpc_pdu *rpc_allocate_pdu2(struct rpc_context *rpc, int program, int vers
 #endif /* HAVE_MULTITHREADING */
 #endif /* HAVE_LIBKRB5 */
 
-	if (zdr_callmsg(rpc, &pdu->zdr, &msg) == 0) {
+	if (zdr_callmsg(rpc, &pdu->zdr, &pdu->msg) == 0) {
 		rpc_set_error(rpc, "zdr_callmsg failed with %s",
 			      rpc_get_error(rpc));
                 goto failed;
@@ -568,6 +566,21 @@ int rpc_queue_pdu(struct rpc_context *rpc, struct rpc_pdu *pdu)
         recordmarker = htonl(size | 0x80000000);
 	memcpy(pdu->out.iov[0].buf, &recordmarker, 4);
 
+        if (rpc->stats_cb) {
+                struct rpc_stats_cb_data data;
+
+                pdu->timestamp = rpc_current_time();
+                data.size = size;
+                data.xid = pdu->msg.xid;
+                data.direction = CALL;
+                data.status = 0;
+                data.prog = pdu->msg.body.cbody.prog;
+                data.vers = pdu->msg.body.cbody.vers;
+                data.proc = pdu->msg.body.cbody.proc;
+                data.response_time = 0;
+                rpc->stats_cb(rpc, &data, rpc->stats_private_data);
+        }
+        
 	/*
 	 * For udp we dont queue, we just send it straight away.
 	 *
@@ -856,6 +869,20 @@ static int rpc_process_reply(struct rpc_context *rpc, ZDR *zdr)
 		pdu->cb(rpc, RPC_STATUS_ERROR, "Unknown rpc response from server", pdu->private_data);
 		break;
 	}
+
+        if (rpc->stats_cb) {
+                struct rpc_stats_cb_data data;
+
+                data.size = rpc->rm_xid[0];
+                data.xid = msg.xid;
+                data.direction = REPLY;
+                data.status = msg.body.rbody.stat;
+                data.prog = pdu->msg.body.cbody.prog;
+                data.vers = pdu->msg.body.cbody.vers;
+                data.proc = pdu->msg.body.cbody.proc;
+                data.response_time = rpc_current_time() - pdu->timestamp;
+                rpc->stats_cb(rpc, &data, rpc->stats_private_data);
+        }
 
 	return 0;
 }

@@ -116,6 +116,31 @@ EXTERN struct rpc_context *rpc_init_context(void);
 EXTERN void rpc_destroy_context(struct rpc_context *rpc);
 
 /*
+ * Stats callback for all ASYNC rpc functions
+ */
+struct rpc_pdu;
+struct rpc_stats_cb_data {
+        uint32_t size;
+        uint32_t xid;
+        uint32_t direction;
+        uint32_t status;         /* only valid in replies */
+        uint32_t prog;
+        uint32_t vers;
+        uint32_t proc;
+        uint64_t response_time;  /* only valid in replies */
+};
+typedef void (*rpc_stats_cb)(struct rpc_context *rpc,
+                             struct rpc_stats_cb_data *data,
+                             void *private_data);
+/*
+ * The callback executes in the context of the event-loop so it is vital
+ * that the callback will never block and will return as fast as possible.
+ */
+EXTERN void rpc_set_stats_cb(struct rpc_context *rpc, rpc_stats_cb cb,
+                             void *private_data);
+
+        
+/*
  * Commands that are in flight are kept on linked lists and keyed by
  * XID so that responses received can be matched with a request.
  * For performance reasons, this would not scale well for applications

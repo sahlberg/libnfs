@@ -188,7 +188,6 @@ typedef void (*rpc_cb)(struct rpc_context *rpc, int status, void *data,
                        void *private_data);
 
 
-
 /*
  * NFS CONTEXT.
  */

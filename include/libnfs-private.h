@@ -419,8 +419,12 @@ struct rpc_context {
 
         /* Per-transport RPC stats */
         struct rpc_stats stats;
-};
 
+        /* Stats callback */
+        rpc_stats_cb stats_cb;
+        void *stats_private_data;
+};
+        
 struct rpc_pdu {
 	struct rpc_pdu *next;
 
@@ -535,6 +539,9 @@ struct rpc_pdu {
 	/* Set by rpc_allocate_pdu2() when we use AUTH_TLS for a NULL RPC request */
 	bool_t expect_starttls;
 #endif
+        /* ONC-RPC header for outgoing PDUs */
+        struct rpc_msg msg;
+        uint64_t timestamp; /* only valid if a stats_cb has been set */
 };
 
 void rpc_reset_queue(struct rpc_queue *q);
