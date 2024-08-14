@@ -1031,6 +1031,15 @@ uint32_t rpc_pdu_get_resp_size(struct rpc_pdu *pdu)
         return pdu->resp_size;
 }
 
+uint64_t rpc_pdu_get_dispatch_usecs(struct rpc_pdu *pdu)
+{
+#ifdef HAVE_CLOCK_GETTIME
+        return pdu->dispatch_usecs;
+#else
+        return 0;
+#endif
+}
+
 int rpc_cancel_pdu(struct rpc_context *rpc, struct rpc_pdu *pdu)
 {
         /*
