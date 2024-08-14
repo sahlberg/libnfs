@@ -518,6 +518,13 @@ static void rpc_finished_pdu(struct rpc_context *rpc)
         }
 }
 
+/*
+ * ZeroCopyReadPreamble. The maximum amount of head data we read for a PDU
+ * assuming that all onc-rpc and protocol layer headers will fit inside this
+ * preamble and that all the remaining data will be READ3/4 payload.
+ */
+#define ZCRP 1024
+
 #define MAX_UDP_SIZE 65536
 #define MAX_FRAGMENT_SIZE 8*1024*1024
 static int
@@ -591,7 +598,7 @@ rpc_read_from_socket(struct rpc_context *rpc)
                                 /*
                                  * If it is a READ pdu, just read part of the data
                                  * to the buffer and read the remainder directly into
-                                 * the application iovec. 1024 is big enough to
+                                 * the application iovec. ZCRP is big enough to
                                  * "guarantee" that we get the whole onc-rpc as well
                                  * as the read3res header into the buffer.
                                  * I don't want to have to deal with reading too
@@ -605,8 +612,8 @@ rpc_read_from_socket(struct rpc_context *rpc)
                                  */
                                 if (rpc->sec != RPC_SEC_KRB5P)
 #endif /* HAVE_LIBKRB5 */
-                                        if (rpc->pdu && rpc->pdu->in.base && rpc->pdu_size > 1024) {
-                                                rpc->pdu_size = 1024;
+                                        if (rpc->pdu && rpc->pdu->in.base && rpc->pdu_size > ZCRP) {
+                                                rpc->pdu_size = ZCRP;
                                         }
                                 break;
                         case READ_UNKNOWN:
@@ -706,11 +713,11 @@ rpc_read_from_socket(struct rpc_context *rpc)
                                 }
 
                                 /*
-                                 * When performing zero-copy read we read just 1024 bytes
+                                 * When performing zero-copy read we read just ZCRP bytes
                                  * into rpc->inbuf and read rest of the data directly into
                                  * user provided buffers, so we just need to allocate
-                                 * inbuf large enough to hold 1024 bytes of data, plus 4
-                                 * bytes for the XID, i.e., 1028 bytes.
+                                 * inbuf large enough to hold ZCRP bytes of data, plus 4
+                                 * bytes for the XID, i.e., ZCRP+4 bytes.
                                  * RPC fragments are directly read into rpc->inbuf, no
                                  * zero copy, so we need to allocate space equal to the
                                  * fragment size. For non zero-copy reads also we need to
@@ -726,7 +733,7 @@ rpc_read_from_socket(struct rpc_context *rpc)
                                         if (rpc->sec != RPC_SEC_KRB5P)
 #endif /* HAVE_LIBKRB5 */
                                                 if (rpc->state != READ_FRAGMENT && rpc->pdu && rpc->pdu->in.base) {
-                                                        inbuf_size = 1028;
+                                                        inbuf_size = ZCRP + 4;
                                                 }
                                 }
 
@@ -830,12 +837,12 @@ rpc_read_from_socket(struct rpc_context *rpc)
                                          * Now pos is pointing at the start of data, while rpc->inpos
                                          * is the total bytes we have read for this RPC response,
                                          * including the RPC header, so "rpc->inpos - pos" is the
-                                         * number of data bytes read. This will be less than 1024,
-                                         * since we clamped the read size to 1024 above.
+                                         * number of data bytes read. This will be less than ZCRP,
+                                         * since we clamped the read size to ZCRP above.
                                          */
                                         pos = zdr_getpos(&rpc->pdu->zdr);
                                         count = rpc->inpos - pos;
-                                        assert(count <= 1024);
+                                        assert(count <= ZCRP);
                                         /*
                                          * No sane server will return more read data than we asked for.
                                          * If the server is buggy and does send more, we discard the extra
