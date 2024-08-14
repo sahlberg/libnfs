@@ -1071,6 +1071,7 @@ int rpc_process_pdu(struct rpc_context *rpc, char *buf, int size)
                 return ret;
         }
 
+#ifdef HAVE_LIBKRB5
         /*
          * For KRB5P and iovectors, i.e. NFS[34]READ we
          * need to use a ZDR that hangs off the PDU so we can
@@ -1083,11 +1084,12 @@ int rpc_process_pdu(struct rpc_context *rpc, char *buf, int size)
                 if (rpc_process_reply(rpc, &rpc->pdu->zdr) != 0) {
                         rpc_set_error(rpc, "rpc_procdess_reply failed (for krb5 read)");
                 }
-        } else {
+        } else
+#endif /* HAVE_LIBKRB5 */
                 if (rpc_process_reply(rpc, &zdr) != 0) {
                         rpc_set_error(rpc, "rpc_procdess_reply failed");
                 }
-        }
+
         if (rpc->fragments == NULL && rpc->pdu && rpc->pdu->in.base) {
                 memcpy(&rpc->pdu->zdr, &zdr, sizeof(zdr));
                 rpc->pdu->free_zdr = 1;
