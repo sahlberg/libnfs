@@ -142,22 +142,16 @@ int nfs_mt_mutex_init(libnfs_mutex_t *mutex)
 
 	ret = pthread_mutexattr_init(&attr);
 	if (ret != 0) {
-		LOG("pthread_mutexattr_init() failed: %d (%s)", ret, strerror(ret));
-		assert(0);
 		return ret;
 	}
 
 	ret = pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_ERRORCHECK);
 	if (ret != 0) {
-		LOG("pthread_mutexattr_settype() failed: %d (%s)", ret, strerror(ret));
-		assert(0);
 		return ret;
 	}
 
 	ret = pthread_mutex_init(mutex, &attr);
 	if (ret != 0) {
-		LOG("pthread_mutex_init() failed: %d (%s)", ret, strerror(ret));
-		assert(0);
 		return ret;
 	}
 #else
@@ -174,26 +168,12 @@ int nfs_mt_mutex_destroy(libnfs_mutex_t *mutex)
 
 int nfs_mt_mutex_lock(libnfs_mutex_t *mutex)
 {
-	const int ret = pthread_mutex_lock(mutex);
-
-	if (ret != 0) {
-		LOG("pthread_mutex_lock() failed: %d (%s)", ret, strerror(ret));
-		assert(0);
-	}
-
-	return ret;
+	return pthread_mutex_lock(mutex);
 }
 
 int nfs_mt_mutex_unlock(libnfs_mutex_t *mutex)
 {
-	const int ret = pthread_mutex_unlock(mutex);
-
-	if (ret != 0) {
-		LOG("pthread_mutex_unlock() failed: %d (%s)", ret, strerror(ret));
-		assert(0);
-	}
-
-	return ret;
+	return pthread_mutex_unlock(mutex);
 }
 
 #if defined(__APPLE__) && defined(HAVE_DISPATCH_DISPATCH_H)

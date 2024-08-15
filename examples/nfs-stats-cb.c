@@ -93,6 +93,12 @@ void stats_cb(struct rpc_context *rpc,
 	   data->size, data->status, data->response_time);
 }
 
+void log_cb(struct rpc_context *rpc,
+	    int level, char *msg, void *private_data)
+{
+	fprintf(stderr, "LOG: level:%d msg:%s\n", level, msg);
+}
+
 static struct file_context *
 open_file(const char *url, int flags)
 {
@@ -122,6 +128,11 @@ open_file(const char *url, int flags)
 		return NULL;
 	}
 
+	rpc_set_stats_cb(nfs_get_rpc_context(file_context->nfs), stats_cb, NULL);
+
+	rpc_set_debug(nfs_get_rpc_context(file_context->nfs), 9);
+	rpc_set_log_cb(nfs_get_rpc_context(file_context->nfs), log_cb, NULL);
+	
 	if (nfs_mount(file_context->nfs, file_context->url->server,
 				file_context->url->path) != 0) {
 		fprintf(stderr, "Failed to mount nfs share : %s\n",
@@ -129,7 +140,6 @@ open_file(const char *url, int flags)
 		free_file_context(file_context);
 		return NULL;
 	}
-	rpc_set_stats_cb(nfs_get_rpc_context(file_context->nfs), stats_cb, NULL);
 
 	if (flags == O_RDONLY) {
 		if (nfs_open(file_context->nfs, file_context->url->file, flags,

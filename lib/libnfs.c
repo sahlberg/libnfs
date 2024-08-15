@@ -2595,3 +2595,11 @@ void rpc_set_stats_cb(struct rpc_context *rpc, rpc_stats_cb cb,
         rpc->stats_cb = cb;
         rpc->stats_private_data = private_data;
 }
+
+void rpc_set_log_cb(struct rpc_context *rpc, rpc_log_cb cb,
+                           void *private_data)
+{
+        rpc->log_cb = cb;
+        rpc->log_private_data = private_data;
+}
+

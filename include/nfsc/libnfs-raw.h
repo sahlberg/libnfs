@@ -116,7 +116,10 @@ EXTERN struct rpc_context *rpc_init_context(void);
 EXTERN void rpc_destroy_context(struct rpc_context *rpc);
 
 /*
- * Stats callback for all ASYNC rpc functions
+ * Stats callback for all ASYNC rpc functions.
+ * When the stats callback is provided it will geterate a callback
+ * every time a PDU is queued for sending as well as when it has received
+ * on the socket.
  */
 struct rpc_pdu;
 struct rpc_stats_cb_data {
@@ -138,6 +141,23 @@ typedef void (*rpc_stats_cb)(struct rpc_context *rpc,
  */
 EXTERN void rpc_set_stats_cb(struct rpc_context *rpc, rpc_stats_cb cb,
                              void *private_data);
+
+/*
+ * Set debug level for logging.
+ */
+void rpc_set_debug(struct rpc_context *rpc, int level);
+/*
+ * Logging is done via a callback.
+ * Log level is set via rpc_set_debug()/nfs_set_debug()
+ */
+typedef void (*rpc_log_cb)(struct rpc_context *rpc,
+                           int level, char *msg, void *private_data);
+/*
+ * The callback executes in the context of the event-loop so it is vital
+ * that the callback will never block and will return as fast as possible.
+ */
+EXTERN void rpc_set_log_cb(struct rpc_context *rpc, rpc_log_cb cb,
+                           void *private_data);
 
         
 /*

@@ -423,6 +423,10 @@ struct rpc_context {
         /* Stats callback */
         rpc_stats_cb stats_cb;
         void *stats_private_data;
+
+        /* Logging callback */
+        rpc_log_cb log_cb;
+        void *log_private_data;
 };
         
 struct rpc_pdu {
@@ -593,25 +597,14 @@ void nfs_set_error_locked(struct nfs_context *nfs, char *error_string, ...)
 
 #if defined(PS2_EE)
 #define RPC_LOG(rpc, level, format, ...) ;
-#define LOG(rpc, level, format, ...) ;
 #else
 #define RPC_LOG(rpc, level, format, ...) \
 	do { \
-		if (level <= rpc->debug) { \
-			fprintf(stderr, "libnfs:%d rpc %p " format "\n", level, rpc, ## __VA_ARGS__); \
+		if (rpc->log_cb && level <= rpc->debug) { \
+			char buf[256];                    \
+			snprintf(buf, 255, "libnfs:%d rpc %p " format, level, rpc, ## __VA_ARGS__); \
+                        rpc->log_cb(rpc, level,  buf, rpc->log_private_data);                 \
 		} \
-	} while (0)
-/*
- * Use LOG() for logging from code where there is no rpc_context.
- * It only provides simple unconditional logging since we don't have any debug
- * level to compare against.
- *
- * Note: Use it sparingly only for critical logs which cannot be conveyed to the
- *       user through any better means.
- */
-#define LOG(format, ...) \
-	do { \
-		fprintf(stderr, "libnfs: " format "\n", ## __VA_ARGS__); \
 	} while (0)
 #endif
 
@@ -632,7 +625,6 @@ void rpc_set_resiliency(struct rpc_context *rpc,
 void rpc_set_interface(struct rpc_context *rpc, const char *ifname);
 
 void rpc_set_tcp_syncnt(struct rpc_context *rpc, int v);
-void rpc_set_debug(struct rpc_context *rpc, int level);
 void rpc_set_poll_timeout(struct rpc_context *rpc, int poll_timeout);
 int rpc_get_poll_timeout(struct rpc_context *rpc);
 void rpc_set_timeout(struct rpc_context *rpc, int timeout);

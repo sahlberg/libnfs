@@ -186,14 +186,14 @@ set_tcp_sockopt(int sockfd, int optname, int value)
 }
 
 static int
-set_keepalive(int sockfd)
+set_keepalive(struct rpc_context *rpc, int sockfd)
 {
 #ifdef SO_KEEPALIVE
 	const int enable_keepalive = 1;
 
 	if (setsockopt(sockfd, SOL_SOCKET, SO_KEEPALIVE,
 		       &enable_keepalive, sizeof(enable_keepalive)) != 0) {
-		LOG("setsockopt(SO_KEEPALIVE) failed: %s", strerror(errno));
+		RPC_LOG(rpc, 2, "setsockopt(SO_KEEPALIVE) failed: %s", strerror(errno));
 		return -1;
 	}
 #endif
@@ -211,7 +211,7 @@ set_keepalive(int sockfd)
 		const int keepidle_secs = 60;
 
 		if (set_tcp_sockopt(sockfd, TCP_KEEPIDLE, keepidle_secs) != 0) {
-			LOG("setsockopt(TCP_KEEPIDLE) failed: %s", strerror(errno));
+			RPC_LOG(rpc, 2, "setsockopt(TCP_KEEPIDLE) failed: %s", strerror(errno));
 			return -1;
 		}
 	}
@@ -223,7 +223,7 @@ set_keepalive(int sockfd)
 		const int keepinterval_secs = 60;
 
 		if (set_tcp_sockopt(sockfd, TCP_KEEPINTVL, keepinterval_secs) != 0) {
-			LOG("setsockopt(TCP_KEEPINTVL) failed: %s", strerror(errno));
+			RPC_LOG(rpc, 2, "setsockopt(TCP_KEEPINTVL) failed: %s", strerror(errno));
 			return -1;
 		}
 	}
@@ -235,7 +235,7 @@ set_keepalive(int sockfd)
 		const int keepcnt = 3;
 
 		if (set_tcp_sockopt(sockfd, TCP_KEEPCNT, keepcnt) != 0) {
-			LOG("setsockopt(TCP_KEEPCNT) failed: %s", strerror(errno));
+			RPC_LOG(rpc, 2, "setsockopt(TCP_KEEPCNT) failed: %s", strerror(errno));
 			return -1;
 		}
 	}
@@ -1474,7 +1474,7 @@ rpc_connect_sockaddr_async(struct rpc_context *rpc)
 	 * Enable keepalive to detect and terminate dead connections when server
 	 * TCP stops responding.
 	 */
-	if (set_keepalive(rpc->fd) != 0) {
+	if (set_keepalive(rpc, rpc->fd) != 0) {
 		rpc_set_error(rpc, "Cannot enable keepalive for fd %d: %s",
                               rpc->fd, strerror(errno));
 		return -1;
