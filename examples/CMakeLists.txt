@@ -12,6 +12,7 @@ set(EXAMPLES nfsclient-async
             nfs-io
             nfs-ln
             nfs-writefile
+	    nfs-nfsstat
 	    nfs-stats-cb
             portmap-client)
 

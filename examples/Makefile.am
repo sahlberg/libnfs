@@ -1,6 +1,7 @@
 noinst_PROGRAMS = nfsclient-async nfsclient-raw nfsclient-sync \
 	nfsclient-bcast nfsclient-listservers nfs-fh nfs-io nfs-ln nfs4-cat \
-	portmap-client portmap-server nfs-writefile nfs-stats-cb
+	portmap-client portmap-server nfs-writefile nfs-stats-cb \
+	nfs-nfsstat
 
 if HAVE_TALLOC_TEVENT
 noinst_PROGRAMS += nfs4-cat-talloc
@@ -42,3 +43,4 @@ nfs_pthreads_fstat_LDADD = $(COMMON_LIBS)
 nfs_pthreads_writefile_LDADD = $(COMMON_LIBS)
 nfs_pthreads_async_writefile_LDADD = $(COMMON_LIBS)
 nfs_stats_cb_LDADD = $(COMMON_LIBS)
+nfs_nfsstat_LDADD = $(COMMON_LIBS)
