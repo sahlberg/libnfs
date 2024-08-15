@@ -683,6 +683,8 @@ static int rpc_process_reply(struct rpc_context *rpc, ZDR *zdr)
 {
 	struct rpc_msg msg;
         struct rpc_pdu *pdu = rpc->pdu;
+        uint32_t status = 0xffffffff;
+        void *data = NULL;
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
@@ -759,15 +761,15 @@ static int rpc_process_reply(struct rpc_context *rpc, ZDR *zdr)
 				RPC_LOG(rpc, 1, "Server sent bad verifier flavor (%d) in response "
 					"to AUTH_TLS NULL RPC",
 					msg.body.rbody.reply.areply.verf.oa_flavor);
-				pdu->cb(rpc, RPC_STATUS_ERROR,
-					"Server sent bad verifier flavor", pdu->private_data);
+                                status = RPC_STATUS_ERROR;
+                                data = "Server sent bad verifier flavor";
 				break;
 			} else if (msg.body.rbody.reply.areply.verf.oa_length != starttls_len ||
 				   memcmp(msg.body.rbody.reply.areply.verf.oa_base,
 					  starttls_str, starttls_len)) {
 				RPC_LOG(rpc, 1, "Server does not support TLS");
-				pdu->cb(rpc, RPC_STATUS_ERROR,
-					"Server does not support TLS", pdu->private_data);
+                                status = RPC_STATUS_ERROR;
+                                data = "Server does not support TLS";
 				break;
 			}
 		}
@@ -789,7 +791,8 @@ static int rpc_process_reply(struct rpc_context *rpc, ZDR *zdr)
                                 free(rpc->context);
                                 rpc->context = malloc(rpc->context_len);
                                 if (rpc->context == NULL) {
-                                        pdu->cb(rpc, RPC_STATUS_ERROR, "Failed to allocate rpc->context", pdu->private_data);
+                                        status = RPC_STATUS_ERROR;
+                                        data = "Failed to allocate rpc->context";
                                         break;
                                 }
                                 memcpy(rpc->context, gir->handle.handle_val, rpc->context_len);
@@ -797,7 +800,9 @@ static int rpc_process_reply(struct rpc_context *rpc, ZDR *zdr)
                                 if (krb5_auth_request(rpc, rpc->auth_data,
                                                       (unsigned char *)gir->gss_token.gss_token_val,
                                                       gir->gss_token.gss_token_len) < 0) {
-                                        pdu->cb(rpc, RPC_STATUS_ERROR, "krb5_auth_request returned error", pdu->private_data);
+                                        status = RPC_STATUS_ERROR;
+
+                                        data = "krb5_auth_request returned error";
                                         break;
                                 }
                         }
@@ -815,7 +820,8 @@ static int rpc_process_reply(struct rpc_context *rpc, ZDR *zdr)
                                                      &token_buffer,
                                                      GSS_C_QOP_DEFAULT);
                                 if (maj) {
-                                        pdu->cb(rpc, RPC_STATUS_ERROR, "gss_verify_mic failed for the verifier", pdu->private_data);
+                                        status = RPC_STATUS_ERROR;
+                                        data = "gss_verify_mic failed for the verifier";
                                         break;
                                 }
                         }
@@ -825,7 +831,8 @@ static int rpc_process_reply(struct rpc_context *rpc, ZDR *zdr)
                         int num_iov, num, count;
 
                         if (!zdr_uint32_t(&pdu->zdr, &pdu->read_count)) {
-                                pdu->cb(rpc, RPC_STATUS_ERROR, "rpc_process_reply: failed to read onc-rpc array length", pdu->private_data);
+                                status = RPC_STATUS_ERROR;
+                                data = "rpc_process_reply: failed to read onc-rpc array length";
                                 break;
                         }
                         count = pdu->read_count;
@@ -848,42 +855,52 @@ static int rpc_process_reply(struct rpc_context *rpc, ZDR *zdr)
                 }
 #endif /* HAVE_LIBKRB5 */
 
-		pdu->cb(rpc, RPC_STATUS_SUCCESS, pdu->zdr_decode_buf, pdu->private_data);
+                status = RPC_STATUS_SUCCESS;
+                data = pdu->zdr_decode_buf;
 		break;
 	case PROG_UNAVAIL:
-		pdu->cb(rpc, RPC_STATUS_ERROR, "Server responded: Program not available", pdu->private_data);
+                status = RPC_STATUS_ERROR;
+                data = "Server responded: Program not available";
 		break;
 	case PROG_MISMATCH:
-		pdu->cb(rpc, RPC_STATUS_ERROR, "Server responded: Program version mismatch", pdu->private_data);
+                status = RPC_STATUS_ERROR;
+                data = "Server responded: Program version mismatch";
 		break;
 	case PROC_UNAVAIL:
-		pdu->cb(rpc, RPC_STATUS_ERROR, "Server responded: Procedure not available", pdu->private_data);
+                status = RPC_STATUS_ERROR;
+                data = "Server responded: Procedure not available";
 		break;
 	case GARBAGE_ARGS:
-		pdu->cb(rpc, RPC_STATUS_ERROR, "Server responded: Garbage arguments", pdu->private_data);
+                status = RPC_STATUS_ERROR;
+                data = "Server responded: Garbage arguments";
 		break;
 	case SYSTEM_ERR:
-		pdu->cb(rpc, RPC_STATUS_ERROR, "Server responded: System Error", pdu->private_data);
+                status = RPC_STATUS_ERROR;
+                data = "Server responded: System Error";
 		break;
 	default:
-		pdu->cb(rpc, RPC_STATUS_ERROR, "Unknown rpc response from server", pdu->private_data);
+                status = RPC_STATUS_ERROR;
+                data = "Unknown rpc response from server";
 		break;
 	}
 
         if (rpc->stats_cb) {
-                struct rpc_stats_cb_data data;
+                struct rpc_stats_cb_data d;
 
-                data.size = rpc->rm_xid[0];
-                data.xid = msg.xid;
-                data.direction = REPLY;
-                data.status = msg.body.rbody.stat;
-                data.prog = pdu->msg.body.cbody.prog;
-                data.vers = pdu->msg.body.cbody.vers;
-                data.proc = pdu->msg.body.cbody.proc;
-                data.response_time = rpc_current_time() - pdu->timestamp;
-                rpc->stats_cb(rpc, &data, rpc->stats_private_data);
+                d.size = rpc->rm_xid[0];
+                d.xid = msg.xid;
+                d.direction = REPLY;
+                d.status = msg.body.rbody.stat;
+                d.prog = pdu->msg.body.cbody.prog;
+                d.vers = pdu->msg.body.cbody.vers;
+                d.proc = pdu->msg.body.cbody.proc;
+                d.response_time = rpc_current_time() - pdu->timestamp;
+                rpc->stats_cb(rpc, &d, rpc->stats_private_data);
         }
 
+        if (status != 0xffffffff) {
+                pdu->cb(rpc, status, data, pdu->private_data);
+        }
 	return 0;
 }
 
