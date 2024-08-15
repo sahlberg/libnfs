@@ -423,7 +423,9 @@ static void rpc_purge_all_pdus(struct rpc_context *rpc, int status, const char *
 	while ((pdu = outqueue.head) != NULL) {
 		outqueue.head = pdu->next;
                 pdu->next = NULL;
-		pdu->cb(rpc, status, (void *) error, pdu->private_data);
+                if (pdu->cb) {
+                        pdu->cb(rpc, status, (void *) error, pdu->private_data);
+                }
 		rpc_free_pdu(rpc, pdu);
 	}
 #ifdef HAVE_MULTITHREADING
@@ -450,7 +452,9 @@ static void rpc_purge_all_pdus(struct rpc_context *rpc, int status, const char *
 		while((pdu = waitqueue.head) != NULL) {
 			waitqueue.head = pdu->next;
 			pdu->next = NULL;
-			pdu->cb(rpc, status, (void *) error, pdu->private_data);
+                        if (pdu->cb) {
+                                pdu->cb(rpc, status, (void *) error, pdu->private_data);
+                        }
 			rpc_free_pdu(rpc, pdu);
 		}
 	}

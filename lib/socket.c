@@ -1003,8 +1003,10 @@ rpc_timeout_scan(struct rpc_context *rpc)
 				rpc->outqueue.tail = NULL; //done
 			}
 			rpc_set_error_locked(rpc, "command timed out");
-			pdu->cb(rpc, RPC_STATUS_TIMEOUT,
-				NULL, pdu->private_data);
+                        if (pdu->cb) {
+                                pdu->cb(rpc, RPC_STATUS_TIMEOUT,
+                                        NULL, pdu->private_data);
+                        }
 			rpc_free_pdu(rpc, pdu);
 		}
 	}
@@ -1074,8 +1076,10 @@ rpc_timeout_scan(struct rpc_context *rpc)
 				// qqq move to a temporary queue and process after
 				// we drop the mutex
 				rpc_set_error_locked(rpc, "command timed out");
-				pdu->cb(rpc, RPC_STATUS_TIMEOUT,
-					NULL, pdu->private_data);
+                                if (pdu->cb) {
+                                        pdu->cb(rpc, RPC_STATUS_TIMEOUT,
+                                                NULL, pdu->private_data);
+                                }
 				rpc_free_pdu(rpc, pdu);
 			}
 		}
