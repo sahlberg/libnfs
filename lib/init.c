@@ -697,6 +697,10 @@ void rpc_advance_cursor(struct rpc_context *rpc, struct rpc_iovec_cursor *v,
 
         /* remaining_size can only be 0 when iovcnt is 0 and v.v. */
 	assert((v->iovcnt == 0) == (v->remaining_size == 0));
+        assert(v->iovcnt <= v->iovcnt_ref);
+        assert(v->iov >= v->base);
+        assert(v->iov <= v->iov_ref);
+        assert(v->iov_ref == (v->base + v->iovcnt_ref));
 }
 
 /*
@@ -728,6 +732,10 @@ void rpc_shrink_cursor(struct rpc_context *rpc, struct rpc_iovec_cursor *v,
 
         /* remaining_size can only be 0 when iovcnt is 0 and v.v. */
 	assert((v->iovcnt == 0) == (v->remaining_size == 0));
+        assert(v->iovcnt <= v->iovcnt_ref);
+        assert(v->iov >= v->base);
+        assert(v->iov <= v->iov_ref);
+        assert(v->iov_ref == (v->base + v->iovcnt_ref));
 }
 
 /*
@@ -759,6 +767,33 @@ void rpc_memcpy_cursor(struct rpc_context *rpc, struct rpc_iovec_cursor *v,
 
         /* remaining_size can only be 0 when iovcnt is 0 and v.v. */
 	assert((v->iovcnt == 0) == (v->remaining_size == 0));
+        assert(v->iovcnt <= v->iovcnt_ref);
+        assert(v->iov >= v->base);
+        assert(v->iov <= v->iov_ref);
+        assert(v->iov_ref == (v->base + v->iovcnt_ref));
+}
+
+void rpc_reset_cursor(struct rpc_context *rpc, struct rpc_iovec_cursor *v)
+{
+        int i;
+
+        if (!v->base) {
+                return;
+        }
+
+        assert(v->iovcnt <= v->iovcnt_ref);
+        assert(v->iov >= v->base);
+        assert(v->iov <= v->iov_ref);
+        assert(v->iov_ref == (v->base + v->iovcnt_ref));
+
+        v->iovcnt = v->iovcnt_ref;
+        v->iov = v->base;
+
+        v->remaining_size = 0;
+        for (i = 0; i < v->iovcnt_ref; i++) {
+                v->iov[i] = v->iov_ref[i];
+                v->remaining_size += v->iov[i].iov_len;
+        }
 }
 
 void rpc_free_cursor(struct rpc_context *rpc, struct rpc_iovec_cursor *v)

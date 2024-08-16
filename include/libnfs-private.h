@@ -219,6 +219,13 @@ struct rpc_iovec_cursor {
          * At any point these many new bytes need to be read into this cursor.
          */
         size_t remaining_size;
+
+        /*
+         * Following ref are used to reset iov[] in case we need to resend
+         * this request, (possibly) after a reconnect.
+         */
+        struct iovec *iov_ref;
+        int iovcnt_ref;
 };
 
 enum input_state {
@@ -854,6 +861,7 @@ void rpc_shrink_cursor(struct rpc_context *rpc, struct rpc_iovec_cursor *v,
 void rpc_memcpy_cursor(struct rpc_context *rpc, struct rpc_iovec_cursor *v,
                        const void *src, size_t len);
 void rpc_free_cursor(struct rpc_context *rpc, struct rpc_iovec_cursor *v);
+void rpc_reset_cursor(struct rpc_context *rpc, struct rpc_iovec_cursor *v);
 const struct nfs_fh *nfs_get_rootfh(struct nfs_context *nfs);
 
 int nfs_normalize_path(struct nfs_context *nfs, char *path);

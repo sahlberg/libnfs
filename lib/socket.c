@@ -405,7 +405,7 @@ rpc_write_to_socket(struct rpc_context *rpc)
                                 pdu->out.num_done = pdu->out.total_size;
 
                                 rpc->outqueue.head = pdu->next;
-                                if (pdu->next == NULL)
+                                if (rpc->outqueue.head == NULL)
                                         rpc->outqueue.tail = NULL;
 
                                 /* RPC sent, original or retransmit */
@@ -520,7 +520,7 @@ static void rpc_finished_pdu(struct rpc_context *rpc)
         }
         rpc->state = READ_RM;
         rpc->inpos  = 0;
-        if (rpc->is_udp == 0 || rpc->is_broadcast == 0) {
+        if (rpc->pdu && (rpc->is_udp == 0 || rpc->is_broadcast == 0)) {
                 rpc_free_pdu(rpc, rpc->pdu);
                 rpc->pdu = NULL;
         }
@@ -770,6 +770,7 @@ rpc_read_from_socket(struct rpc_context *rpc)
                                                  * re-queue everything from waitpdu[] to outqueue.
                                                  */
                                                 rpc_return_to_queue(&rpc->outqueue, rpc->pdu);
+                                                rpc->pdu = NULL;
 
                                                 #ifdef HAVE_MULTITHREADING
                                                 if (rpc->multithreading_enabled) {
@@ -1024,6 +1025,7 @@ rpc_timeout_scan(struct rpc_context *rpc)
 			if (!rpc->outqueue.head) {
 				rpc->outqueue.tail = NULL; //done
 			}
+			pdu->next = NULL;
 			rpc_set_error_locked(rpc, "command timed out");
 			pdu->cb(rpc, RPC_STATUS_TIMEOUT,
 				NULL, pdu->private_data);
@@ -1049,10 +1051,12 @@ rpc_timeout_scan(struct rpc_context *rpc)
 			/* Timed out waiting for response */
 			INC_STATS(rpc, num_timedout);
 
+                        /* TODO: Following LIBNFS_LIST_REMOVE doesn't set q->tail correctly */
 			LIBNFS_LIST_REMOVE(&q->head, pdu);
 			if (!q->head) {
 				q->tail = NULL;
 			}
+			pdu->next = NULL;
 			rpc->waitpdu_len--;
 
 			/*
@@ -1754,6 +1758,23 @@ rpc_reconnect_requeue(struct rpc_context *rpc)
 		rpc_reset_queue(q);
 	}
 	rpc->waitpdu_len = 0;
+
+       /*
+        * If there's any half-read PDU, that needs to be restarted too.
+        */
+        if (rpc->pdu) {
+                rpc_return_to_queue(&rpc->outqueue, rpc->pdu);
+                /* Retransmit on reconnect */
+                INC_STATS(rpc, num_retransmitted);
+                /*
+                 * Reset output and input cursors as we have to re-send the
+                 * whole pdu again.
+                 */
+                rpc->pdu->out.num_done = 0;
+                rpc_reset_cursor(rpc, &rpc->pdu->in);
+                rpc->pdu = NULL;
+        }
+
 #ifdef HAVE_MULTITHREADING
         if (rpc->multithreading_enabled) {
                 nfs_mt_mutex_unlock(&rpc->rpc_mutex);

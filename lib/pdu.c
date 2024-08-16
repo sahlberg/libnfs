@@ -77,10 +77,11 @@ void rpc_reset_queue(struct rpc_queue *q)
  */
 void rpc_enqueue(struct rpc_queue *q, struct rpc_pdu *pdu)
 {
-	if (q->head == NULL)
+	if (q->head == NULL) {
 		q->head = pdu;
-	else
+        } else {
 		q->tail->next = pdu;
+        }
 	q->tail = pdu;
 	pdu->next = NULL;
 }
@@ -1010,6 +1011,10 @@ struct rpc_pdu *rpc_find_pdu(struct rpc_context *rpc, uint32_t xid)
 			rpc->waitpdu_len--;
 		}
                 break;
+        }
+
+        if (pdu) {
+                pdu->next = NULL;
         }
 
 #ifdef HAVE_MULTITHREADING
