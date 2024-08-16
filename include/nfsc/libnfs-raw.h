@@ -109,6 +109,16 @@ struct rpc_stats {
          * - Major timeout was observed.
          */
         uint64_t num_reconnects;
+
+        /*
+         * rpc->outqueue length.
+         */
+        uint32_t outqueue_len;
+
+        /*
+         * rpc->waitpdu_len.
+         */
+        uint32_t waitpdu_len;
 };
 
 struct rpc_context;

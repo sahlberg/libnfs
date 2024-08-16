@@ -658,6 +658,7 @@ int rpc_queue_pdu(struct rpc_context *rpc, struct rpc_pdu *pdu)
         }
 #endif /* HAVE_MULTITHREADING */
         rpc_enqueue(&rpc->outqueue, pdu);
+        rpc->stats.outqueue_len++;
 #ifdef HAVE_MULTITHREADING
         if (rpc->multithreading_enabled) {
                 nfs_mt_mutex_unlock(&rpc->rpc_mutex);

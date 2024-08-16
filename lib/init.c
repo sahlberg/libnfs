@@ -174,6 +174,7 @@ struct rpc_context *rpc_init_context(void)
 	rpc->gid = getgid();
 #endif
 	rpc_reset_queue(&rpc->outqueue);
+	assert(rpc->stats.outqueue_len == 0);
 	/* Default is no limit */
 	rpc->max_waitpdu_len = 0;
 
@@ -409,6 +410,7 @@ void rpc_get_stats(struct rpc_context *rpc, struct rpc_stats *stats)
         }
 #endif /* HAVE_MULTITHREADING */
 
+        rpc->stats.waitpdu_len = rpc->waitpdu_len;
         *stats = rpc->stats;
 
 #ifdef HAVE_MULTITHREADING
@@ -448,7 +450,11 @@ static void rpc_purge_all_pdus(struct rpc_context *rpc, int status, const char *
                 pdu->next = NULL;
 		pdu->cb(rpc, status, (void *) error, pdu->private_data);
 		rpc_free_pdu(rpc, pdu);
+
+                assert(rpc->stats.outqueue_len > 0);
+                rpc->stats.outqueue_len--;
 	}
+        assert(rpc->stats.outqueue_len == 0);
 #ifdef HAVE_MULTITHREADING
         if (rpc->multithreading_enabled) {
                 nfs_mt_mutex_unlock(&rpc->rpc_mutex);

@@ -283,6 +283,7 @@ rpc_which_events(struct rpc_context *rpc)
         }
 #endif /* HAVE_MULTITHREADING */
 	if (rpc_has_queue(&rpc->outqueue)) {
+	        assert(rpc->stats.outqueue_len != 0);
 		events |= POLLOUT;
 	}
 #ifdef HAVE_MULTITHREADING
@@ -324,6 +325,7 @@ rpc_write_to_socket(struct rpc_context *rpc)
                 char *last_buf = NULL;
                 ssize_t count;
 
+                assert(rpc->stats.outqueue_len > 0);
                 assert(pdu->out.niov <= pdu->out.iov_capacity);
                 assert(pdu->out.iov_capacity <= RPC_MAX_VECTORS);
 
@@ -407,6 +409,9 @@ rpc_write_to_socket(struct rpc_context *rpc)
                                 rpc->outqueue.head = pdu->next;
                                 if (rpc->outqueue.head == NULL)
                                         rpc->outqueue.tail = NULL;
+
+                                assert(rpc->stats.outqueue_len > 0);
+                                rpc->stats.outqueue_len--;
 
                                 /* RPC sent, original or retransmit */
                                 INC_STATS(rpc, num_req_sent);
@@ -771,6 +776,7 @@ rpc_read_from_socket(struct rpc_context *rpc)
                                                  */
                                                 rpc_return_to_queue(&rpc->outqueue, rpc->pdu);
                                                 rpc->pdu = NULL;
+                                                rpc->stats.outqueue_len++;
 
                                                 #ifdef HAVE_MULTITHREADING
                                                 if (rpc->multithreading_enabled) {
@@ -1025,6 +1031,8 @@ rpc_timeout_scan(struct rpc_context *rpc)
 			if (!rpc->outqueue.head) {
 				rpc->outqueue.tail = NULL; //done
 			}
+                        assert(rpc->stats.outqueue_len > 0);
+                        rpc->stats.outqueue_len--;
 			pdu->next = NULL;
 			rpc_set_error_locked(rpc, "command timed out");
 			pdu->cb(rpc, RPC_STATUS_TIMEOUT,
@@ -1090,6 +1098,7 @@ rpc_timeout_scan(struct rpc_context *rpc)
 
 				/* queue it back to outqueue for retransmit */
 				rpc_return_to_queue(&rpc->outqueue, pdu);
+                                rpc->stats.outqueue_len++;
 
 				/* Retransmit on timeout */
 				INC_STATS(rpc, num_retransmitted);
@@ -1750,6 +1759,7 @@ rpc_reconnect_requeue(struct rpc_context *rpc)
 		for (pdu = q->head; pdu; pdu = next) {
 			next = pdu->next;
 			rpc_return_to_queue(&rpc->outqueue, pdu);
+                        rpc->stats.outqueue_len++;
 			/* Retransmit on reconnect */
 			INC_STATS(rpc, num_retransmitted);
 			/* we have to re-send the whole pdu again */
@@ -1764,6 +1774,7 @@ rpc_reconnect_requeue(struct rpc_context *rpc)
         */
         if (rpc->pdu) {
                 rpc_return_to_queue(&rpc->outqueue, rpc->pdu);
+                rpc->stats.outqueue_len++;
                 /* Retransmit on reconnect */
                 INC_STATS(rpc, num_retransmitted);
                 /*
@@ -1904,15 +1915,16 @@ rpc_queue_length(struct rpc_context *rpc)
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
-	for(pdu = rpc->outqueue.head; pdu; pdu = pdu->next) {
-		i++;
-	}
-
 #ifdef HAVE_MULTITHREADING
         if (rpc->multithreading_enabled) {
                 nfs_mt_mutex_lock(&rpc->rpc_mutex);
         }
 #endif /* HAVE_MULTITHREADING */
+	for(pdu = rpc->outqueue.head; pdu; pdu = pdu->next) {
+		i++;
+	}
+        assert(rpc->stats.outqueue_len == i);
+
 	i += rpc->waitpdu_len;
 #ifdef HAVE_MULTITHREADING
         if (rpc->multithreading_enabled) {
