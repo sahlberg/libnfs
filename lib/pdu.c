@@ -77,10 +77,16 @@ void rpc_reset_queue(struct rpc_queue *q)
  */
 void rpc_enqueue(struct rpc_queue *q, struct rpc_pdu *pdu)
 {
-	if (q->head == NULL)
+	if (q->head == NULL) {
 		q->head = pdu;
-	else
+        } else {
+                /* Ensure same pdu not being requeued */
+                assert(q->head != pdu);
+                assert(q->tail != pdu);
+                assert(q->tail->next != pdu);
+
 		q->tail->next = pdu;
+        }
 	q->tail = pdu;
 	pdu->next = NULL;
 }
