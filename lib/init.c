@@ -82,6 +82,18 @@ uint64_t rpc_current_time(void)
 #endif
 }
 
+uint64_t rpc_current_time_us(void)
+{
+#ifdef HAVE_CLOCK_GETTIME
+	struct timespec tp;
+
+	clock_gettime(CLOCK_MONOTONIC_COARSE, &tp);
+	return (uint64_t)tp.tv_sec * 1000000 + tp.tv_nsec / 1000;
+#else
+	return (uint64_t)time(NULL) * 1000000;
+#endif
+}
+
 int rpc_set_hash_size(struct rpc_context *rpc, int hashes)
 {
 	uint32_t i;

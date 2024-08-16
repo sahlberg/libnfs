@@ -130,8 +130,9 @@ struct rpc_pdu_stats {
         uint32_t prog;
         uint32_t vers;
         uint32_t proc;
-        uint64_t enqueue_time;   /* ms */
-        uint64_t response_time;  /* ms, only valid in replies */
+        uint64_t enqueue_time;   /* us, when the pdu was enqueued */
+        uint64_t send_time;      /* us, when the pdu was sent */
+        uint64_t response_time;  /* us, only valid in replies */
 };
 typedef void (*rpc_stats_cb)(struct rpc_context *rpc,
                              struct rpc_pdu_stats *data,

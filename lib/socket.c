@@ -420,6 +420,11 @@ rpc_write_to_socket(struct rpc_context *rpc)
                                 hash = rpc_hash_xid(rpc, pdu->xid);
                                 rpc_enqueue(&rpc->waitpdu[hash], pdu);
                                 rpc->waitpdu_len++;
+
+                                pdu->pdu_stats.send_time = rpc_current_time_us();
+                                if (rpc->stats_cb) {
+                                        rpc->stats_cb(rpc, &pdu->pdu_stats, rpc->stats_private_data);
+                                }
                         } else {
                                 pdu->out.num_done += count;
                                 break;

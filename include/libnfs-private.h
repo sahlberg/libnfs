@@ -633,6 +633,7 @@ int rpc_add_fragment(struct rpc_context *rpc, char *data, uint32_t size);
 void rpc_free_all_fragments(struct rpc_context *rpc);
 int rpc_is_udp_socket(struct rpc_context *rpc);
 uint64_t rpc_current_time(void);
+uint64_t rpc_current_time_us(void);
 
 void *zdr_malloc(ZDR *zdrs, uint32_t size);
 

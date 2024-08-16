@@ -86,7 +86,7 @@ free_file_context(struct file_context *file_context)
 void stats_cb(struct rpc_context *rpc,
 	      struct rpc_pdu_stats *data, void *private_data)
 {
-    printf("%s XID:%08x %d/%d/%d Size:%d Status:%d %dms\n",
+    printf("%s XID:%08x %d/%d/%d Size:%d Status:%d %dus\n",
 	   data->direction == CALL ? "CALL" : "REPLY",
 	   data->xid,
 	   data->prog, data->vers, data->proc,

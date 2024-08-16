@@ -149,7 +149,7 @@ void print_final_stats(void)
 	int i;
 	uint64_t avg;
 
-	printf("%-12s %5s %6s %21s %25s\n", "PROCEDURE", "COUNT", "ERRORS", "MAX RESPONSE TIME(ms)", "AVERAGE RESPONSE TIME(ms)");
+	printf("%-12s %5s %6s %21s %25s\n", "PROCEDURE", "COUNT", "ERRORS", "MAX RESPONSE TIME(us)", "AVERAGE RESPONSE TIME(us)");
 	for (i = 0; i < 22; i++) {
 		avg = 0;
 		if (nfs3stats[i].count) {
