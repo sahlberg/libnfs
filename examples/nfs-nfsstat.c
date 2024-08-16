@@ -99,7 +99,7 @@ struct nfsstat {
 struct nfsstat nfs3stats[22];
 
 void stats_cb(struct rpc_context *rpc,
-	      struct rpc_stats_cb_data *data, void *private_data)
+	      struct rpc_pdu_stats *data, void *private_data)
 {
 	if (data->prog != NFS_PROGRAM) {
 		return;

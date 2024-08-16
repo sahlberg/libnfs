@@ -545,7 +545,7 @@ struct rpc_pdu {
 #endif
         /* ONC-RPC header for outgoing PDUs */
         struct rpc_msg msg;
-        uint64_t timestamp; /* only valid if a stats_cb has been set */
+        struct rpc_pdu_stats pdu_stats;
 };
 
 void rpc_reset_queue(struct rpc_queue *q);

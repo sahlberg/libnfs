@@ -2603,3 +2603,7 @@ void rpc_set_log_cb(struct rpc_context *rpc, rpc_log_cb cb,
         rpc->log_private_data = private_data;
 }
 
+struct rpc_pdu_stats *rpc_get_pdu_stats(struct rpc_context *rpc)
+{
+        return &rpc->pdu->pdu_stats;
+}

@@ -122,7 +122,7 @@ EXTERN void rpc_destroy_context(struct rpc_context *rpc);
  * on the socket.
  */
 struct rpc_pdu;
-struct rpc_stats_cb_data {
+struct rpc_pdu_stats {
         uint32_t size;
         uint32_t xid;
         uint32_t direction;
@@ -130,11 +130,18 @@ struct rpc_stats_cb_data {
         uint32_t prog;
         uint32_t vers;
         uint32_t proc;
-        uint64_t response_time;  /* only valid in replies */
+        uint64_t enqueue_time;   /* ms */
+        uint64_t response_time;  /* ms, only valid in replies */
 };
 typedef void (*rpc_stats_cb)(struct rpc_context *rpc,
-                             struct rpc_stats_cb_data *data,
+                             struct rpc_pdu_stats *data,
                              void *private_data);
+/*
+ * Function to query the pdu stats for the current PDU.
+ * Only valid if called from an RPC callback function.
+ */
+struct rpc_pdu_stats *rpc_get_pdu_stats(struct rpc_context *rpc);
+        
 /*
  * The callback executes in the context of the event-loop so it is vital
  * that the callback will never block and will return as fast as possible.

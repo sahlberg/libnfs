@@ -566,19 +566,17 @@ int rpc_queue_pdu(struct rpc_context *rpc, struct rpc_pdu *pdu)
         recordmarker = htonl(size | 0x80000000);
 	memcpy(pdu->out.iov[0].buf, &recordmarker, 4);
 
+        pdu->pdu_stats.enqueue_time = rpc_current_time();
+        pdu->pdu_stats.size = size;
+        pdu->pdu_stats.xid = pdu->msg.xid;
+        pdu->pdu_stats.direction = CALL;
+        pdu->pdu_stats.status = 0;
+        pdu->pdu_stats.prog = pdu->msg.body.cbody.prog;
+        pdu->pdu_stats.vers = pdu->msg.body.cbody.vers;
+        pdu->pdu_stats.proc = pdu->msg.body.cbody.proc;
+        pdu->pdu_stats.response_time = 0;
         if (rpc->stats_cb) {
-                struct rpc_stats_cb_data data;
-
-                pdu->timestamp = rpc_current_time();
-                data.size = size;
-                data.xid = pdu->msg.xid;
-                data.direction = CALL;
-                data.status = 0;
-                data.prog = pdu->msg.body.cbody.prog;
-                data.vers = pdu->msg.body.cbody.vers;
-                data.proc = pdu->msg.body.cbody.proc;
-                data.response_time = 0;
-                rpc->stats_cb(rpc, &data, rpc->stats_private_data);
+                rpc->stats_cb(rpc, &pdu->pdu_stats, rpc->stats_private_data);
         }
         
 	/*
@@ -884,18 +882,12 @@ static int rpc_process_reply(struct rpc_context *rpc, ZDR *zdr)
 		break;
 	}
 
+        pdu->pdu_stats.size = rpc->rm_xid[0];
+        pdu->pdu_stats.direction = REPLY;
+        pdu->pdu_stats.status = msg.body.rbody.stat;
+        pdu->pdu_stats.response_time = rpc_current_time() - pdu->pdu_stats.enqueue_time;
         if (rpc->stats_cb) {
-                struct rpc_stats_cb_data d;
-
-                d.size = rpc->rm_xid[0];
-                d.xid = msg.xid;
-                d.direction = REPLY;
-                d.status = msg.body.rbody.stat;
-                d.prog = pdu->msg.body.cbody.prog;
-                d.vers = pdu->msg.body.cbody.vers;
-                d.proc = pdu->msg.body.cbody.proc;
-                d.response_time = rpc_current_time() - pdu->timestamp;
-                rpc->stats_cb(rpc, &d, rpc->stats_private_data);
+                rpc->stats_cb(rpc, &pdu->pdu_stats, rpc->stats_private_data);
         }
 
         if (status != 0xffffffff) {
