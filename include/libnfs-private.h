@@ -458,6 +458,39 @@ struct rpc_pdu {
                                         * Used to clamp long reads.
                                         */
 
+        /*
+         * Total request bytes sent out for this PDU.
+         * This includes RPC header + NFS header + optional data (for WRITE).
+         * This can be queried using rpc_pdu_get_req_size(pdu) after the
+         * rpc_<protocol>_  API returns the to-be-sent PDU.
+         * This can be used by applications that want to provide mountstats
+         * style "avg bytes sent" telemetry.
+         */
+        uint32_t req_size;
+
+        /*
+         * Total response bytes received for this PDU.
+         * This includes RPC header + NFS header + optional data (for READ).
+         * This can be queried using rpc_pdu_get_resp_size(rpc_get_pdu(rpc))
+         * inside the rpc_<protocol>_  callback.
+         * This can be used by applications that want to provide mountstats
+         * style "avg bytes received" telemetry.
+         */
+        uint32_t resp_size;
+
+#ifdef HAVE_CLOCK_GETTIME
+        /*
+         * Microseconds since epoch when this PDU was completely written to
+         * the socket. Note that due to TCP connection b/w and sndbuf size
+         * limitations this time can be very different from the time the PDU
+         * was queued to rpc->outqueue for sending, using rpc_queue_pdu().
+         * Applications can use this to find the "rtt taken by the server to
+         * execute this RPC" by diff'ing this with the time when the callback
+         * is called.
+         */
+        uint64_t dispatch_usecs;
+#endif
+
 	rpc_cb cb;
 	void *private_data;
 
@@ -633,6 +666,9 @@ int rpc_add_fragment(struct rpc_context *rpc, char *data, uint32_t size);
 void rpc_free_all_fragments(struct rpc_context *rpc);
 int rpc_is_udp_socket(struct rpc_context *rpc);
 uint64_t rpc_current_time(void);
+#ifdef HAVE_CLOCK_GETTIME
+uint64_t rpc_wallclock_time(void);
+#endif
 
 void *zdr_malloc(ZDR *zdrs, uint32_t size);
 

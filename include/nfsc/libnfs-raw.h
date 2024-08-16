@@ -165,6 +165,57 @@ EXTERN int rpc_get_fd(struct rpc_context *rpc);
 EXTERN int rpc_which_events(struct rpc_context *rpc);
 EXTERN int rpc_service(struct rpc_context *rpc, int revents);
 
+/*
+ * Returns the request PDU (rpc->pdu) inside a rpc_cb callback called after
+ * receiving the response from the server for a RPC request sent by us.
+ * User can pass this to rpc_pdu_get_resp_size() to find the total response
+ * size in bytes, which includes the RPC header, the NFS header and data bytes
+ * if any.
+ *
+ * Note: This can be legitimately called *only* inside the callback function
+ *       where we are certain that the response was received, and hence
+ *       rpc->pdu would be valid. Once the callback returns, rpc->pdu would
+ *       be freed by libnfs so don't access the returned pdu outside the
+ *       callback
+ */
+EXTERN struct rpc_pdu *rpc_get_pdu(struct rpc_context *rpc);
+
+/*
+ * Get the size in bytes of the RPC request that libnfs will send out for
+ * this PDU. The size includes the RPC header, the NFS header and any data
+ * bytes sent (only WRITE RPC request will send data bytes).
+ * The PDU passed to it would be the one returned by any of the rpc_<protocol>_
+ * functions.
+ */
+EXTERN uint32_t rpc_pdu_get_req_size(struct rpc_pdu *pdu);
+
+/*
+ * Get the size in bytes of the RPC response that libnfs received for this
+ * request PDU. The size includes the RPC header, the NFS header and any data
+ * bytes received (only READ RPC response will contain data bytes).
+ * The PDU passed to it would be the one returned by rpc_get_pdu() called
+ * inside a callback function.
+ *
+ * Note: This can be legitimately called *only* inside a callback function.
+ *       See rpc_get_pdu() for more details.
+ */
+EXTERN uint32_t rpc_pdu_get_resp_size(struct rpc_pdu *pdu);
+
+/*
+ * Get the wallclock time in microseconds since epoch when this request PDU
+ * was dispatched, i.e., fully sent out of the socket. Applications can use
+ * this to find out the time taken by the server to execute the PDU by finding
+ * the difference between this and the time when the response is received, and
+ * the callback is called.
+ * The PDU passed to it would be the one returned by rpc_get_pdu() called
+ * inside a callback function.
+ *
+ * Note: This can be legitimately called *only* inside a callback function.
+ *       See rpc_get_pdu() for more details.
+ * Note: This only works on systems with clock_gettime() defined, else it
+ *       returns 0.
+ */
+EXTERN uint64_t rpc_pdu_get_dispatch_usecs(struct rpc_pdu *pdu);
 
 /*
  * Returns the number of commands in-flight. Can be used by the application

@@ -70,6 +70,9 @@
 
 static const char *oom = "out of memory";
 
+/*
+ * This returns time in millseconds since system boot.
+ */
 uint64_t rpc_current_time(void)
 {
 #ifdef HAVE_CLOCK_GETTIME
@@ -81,6 +84,19 @@ uint64_t rpc_current_time(void)
 	return (uint64_t)time(NULL) * 1000;
 #endif
 }
+
+#ifdef HAVE_CLOCK_GETTIME
+/*
+ * This returns time in microseconds since epoch.
+ */
+uint64_t rpc_wallclock_time(void)
+{
+	struct timespec tp;
+
+	clock_gettime(CLOCK_REALTIME, &tp);
+	return (uint64_t)tp.tv_sec * 1000000 + tp.tv_nsec / 1000;
+}
+#endif
 
 int rpc_set_hash_size(struct rpc_context *rpc, int hashes)
 {
@@ -374,6 +390,13 @@ char *rpc_get_error(struct rpc_context *rpc)
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
 	return rpc->error_string ? rpc->error_string : "";
+}
+
+struct rpc_pdu *rpc_get_pdu(struct rpc_context *rpc)
+{
+        assert(rpc->magic == RPC_CONTEXT_MAGIC);
+
+        return rpc->pdu;
 }
 
 void rpc_get_stats(struct rpc_context *rpc, struct rpc_stats *stats)

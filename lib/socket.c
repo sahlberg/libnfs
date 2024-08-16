@@ -411,6 +411,14 @@ rpc_write_to_socket(struct rpc_context *rpc)
                                 /* RPC sent, original or retransmit */
                                 INC_STATS(rpc, num_req_sent);
 
+#ifdef HAVE_CLOCK_GETTIME
+                                /*
+                                 * Now this RPC is completely written over the socket.
+                                 * Note current wallclock time as the dispatch time.
+                                 */
+                                pdu->dispatch_usecs = rpc_wallclock_time();
+#endif
+
                                 if (pdu->flags & PDU_DISCARD_AFTER_SENDING) {
                                         rpc_free_pdu(rpc, pdu);
                                         ret = 0;
@@ -559,6 +567,12 @@ rpc_read_from_socket(struct rpc_context *rpc)
 			free(buf);
 			return -1;
 		}
+
+		/*
+		 * For UDP, the entire RPC PDU is received at once.
+		 */
+		rpc->pdu->resp_size = count;
+
 		if (rpc_process_pdu(rpc, buf, count) != 0) {
 			rpc_set_error(rpc, "Invalid/garbage pdu received from "
                                       "server. Ignoring PDU");
@@ -681,6 +695,16 @@ rpc_read_from_socket(struct rpc_context *rpc)
 		}
 		rpc->inpos += count;
 
+                /*
+                 * As we read RPC PDU data, update the response size in
+                 * pdu->resp_size.
+                 * Caller can query this using rpc_pdu_get_resp_size() inside
+                 * the callback.
+                 */
+                if (rpc->pdu) {
+                        rpc->pdu->resp_size += count;
+                }
+
 		if (rpc->buf) {
 			rpc->buf += count;
                 } else {
@@ -777,6 +801,11 @@ rpc_read_from_socket(struct rpc_context *rpc)
                                                 rpc->state = READ_UNKNOWN;
                                                 continue;
                                         }
+
+                                        /*
+                                         * RM + XID.
+                                         */
+                                        rpc->pdu->resp_size = 8;
                                 }
                                 continue;
                         case READ_FRAGMENT:
