@@ -305,7 +305,15 @@ rpc_nfs3_readv_task(struct rpc_context *rpc, rpc_cb cb,
 		return NULL;
 	}
 
-	pdu->in.base = (struct iovec *) malloc(sizeof(struct iovec) * iovcnt);
+        /*
+         * Allocate twice the iovec space, first half will be used for iov[].
+         * This will be updated as data is read into user buffers.
+         * Second half is for iov_ref[]. This is not used in happy path. Only
+         * if we need to resend the request we need it to reset the cursor to
+         * the original iovec.
+         * See rpc_reset_cursor().
+         */
+	pdu->in.base = (struct iovec *) malloc(sizeof(struct iovec) * iovcnt * 2);
 	if (!pdu->in.base) {
 		rpc_set_error(rpc, "error: Failed to allocate memory");
 		rpc_free_pdu(rpc, pdu);
@@ -313,10 +321,11 @@ rpc_nfs3_readv_task(struct rpc_context *rpc, rpc_cb cb,
 	}
 
         pdu->in.iov = pdu->in.base;
-	pdu->in.iovcnt = iovcnt;
+        pdu->in.iov_ref = pdu->in.base + iovcnt;
+	pdu->in.iovcnt = pdu->in.iovcnt_ref = iovcnt;
 
         for (i = 0; i < iovcnt; i++) {
-                pdu->in.iov[i] = iov[i];
+                pdu->in.iov[i] = pdu->in.iov_ref[i] = iov[i];
                 pdu->in.remaining_size += iov[i].iov_len;
         }
 

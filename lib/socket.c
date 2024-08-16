@@ -517,7 +517,7 @@ static void rpc_finished_pdu(struct rpc_context *rpc)
         }
         rpc->state = READ_RM;
         rpc->inpos  = 0;
-        if (rpc->is_udp == 0 || rpc->is_broadcast == 0) {
+        if (rpc->pdu && (rpc->is_udp == 0 || rpc->is_broadcast == 0)) {
                 rpc_free_pdu(rpc, rpc->pdu);
                 rpc->pdu = NULL;
         }
@@ -1741,6 +1741,23 @@ rpc_reconnect_requeue(struct rpc_context *rpc)
 		rpc_reset_queue(q);
 	}
 	rpc->waitpdu_len = 0;
+
+       /*
+        * If there's any half-read PDU, that needs to be restarted too.
+        */
+        if (rpc->pdu) {
+                rpc_return_to_queue(&rpc->outqueue, rpc->pdu);
+                /* Retransmit on reconnect */
+                INC_STATS(rpc, num_retransmitted);
+                /*
+                 * Reset output and input cursors as we have to re-send the
+                 * whole pdu again.
+                 */
+                rpc->pdu->out.num_done = 0;
+                rpc_reset_cursor(rpc, &rpc->pdu->in);
+                rpc->pdu = NULL;
+        }
+
 #ifdef HAVE_MULTITHREADING
         if (rpc->multithreading_enabled) {
                 nfs_mt_mutex_unlock(&rpc->rpc_mutex);
