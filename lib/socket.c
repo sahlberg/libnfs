@@ -405,7 +405,7 @@ rpc_write_to_socket(struct rpc_context *rpc)
                                 pdu->out.num_done = pdu->out.total_size;
 
                                 rpc->outqueue.head = pdu->next;
-                                if (pdu->next == NULL)
+                                if (rpc->outqueue.head == NULL)
                                         rpc->outqueue.tail = NULL;
 
                                 /* RPC sent, original or retransmit */
@@ -770,6 +770,7 @@ rpc_read_from_socket(struct rpc_context *rpc)
                                                  * re-queue everything from waitpdu[] to outqueue.
                                                  */
                                                 rpc_return_to_queue(&rpc->outqueue, rpc->pdu);
+                                                rpc->pdu = NULL;
 
                                                 #ifdef HAVE_MULTITHREADING
                                                 if (rpc->multithreading_enabled) {
@@ -1024,6 +1025,7 @@ rpc_timeout_scan(struct rpc_context *rpc)
 			if (!rpc->outqueue.head) {
 				rpc->outqueue.tail = NULL; //done
 			}
+			pdu->next = NULL;
 			rpc_set_error_locked(rpc, "command timed out");
 			pdu->cb(rpc, RPC_STATUS_TIMEOUT,
 				NULL, pdu->private_data);
@@ -1049,10 +1051,12 @@ rpc_timeout_scan(struct rpc_context *rpc)
 			/* Timed out waiting for response */
 			INC_STATS(rpc, num_timedout);
 
+                        /* TODO: Following LIBNFS_LIST_REMOVE doesn't set q->tail correctly */
 			LIBNFS_LIST_REMOVE(&q->head, pdu);
 			if (!q->head) {
 				q->tail = NULL;
 			}
+			pdu->next = NULL;
 			rpc->waitpdu_len--;
 
 			/*
