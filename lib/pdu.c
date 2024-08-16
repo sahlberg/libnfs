@@ -566,7 +566,7 @@ int rpc_queue_pdu(struct rpc_context *rpc, struct rpc_pdu *pdu)
         recordmarker = htonl(size | 0x80000000);
 	memcpy(pdu->out.iov[0].buf, &recordmarker, 4);
 
-        pdu->pdu_stats.enqueue_time = rpc_current_time_us();
+        pdu->pdu_stats.enqueue_timestamp = rpc_current_time_us();
         pdu->pdu_stats.size = size;
         pdu->pdu_stats.xid = pdu->msg.xid;
         pdu->pdu_stats.direction = CALL;
@@ -882,7 +882,7 @@ static int rpc_process_reply(struct rpc_context *rpc, ZDR *zdr)
         pdu->pdu_stats.size = rpc->rm_xid[0];
         pdu->pdu_stats.direction = REPLY;
         pdu->pdu_stats.status = msg.body.rbody.stat;
-        pdu->pdu_stats.response_time = rpc_current_time_us() - pdu->pdu_stats.send_time;
+        pdu->pdu_stats.response_time = rpc_current_time_us() - pdu->pdu_stats.send_timestamp;
         if (rpc->stats_cb) {
                 rpc->stats_cb(rpc, &pdu->pdu_stats, rpc->stats_private_data);
         }
