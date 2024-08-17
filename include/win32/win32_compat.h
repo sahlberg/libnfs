@@ -153,7 +153,8 @@ int     win32_gettimeofday(struct timeval *tv, struct timezone *tz);
 #define DllExport
 
 #ifdef __MINGW32__
-char* strndup(const char *s, size_t n);
+char* libnfs_strndup(const char *s, size_t n);
+#define strndup libnfs_strndup
 #endif
 
 struct iovec

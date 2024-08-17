@@ -199,7 +199,11 @@ int win32_gettimeofday(struct timeval *tv, struct timezone *tz)
 }
 #endif
 
+#ifdef __MINGW32__
+char* libnfs_strndup(const char* s, size_t n)
+#else
 char* strndup(const char* s, size_t n)
+#endif
 {
   size_t len;
   for(len=0; len<n && s[len]; len++);
