@@ -284,9 +284,26 @@ struct rpc_context {
 	struct AUTH *auth;
 	uint32_t xid;
 
+        /*
+         * Queue of to-be-transmitted PDUs.
+         * Note: The PDU at the head of this queue will be the next one to be
+         *       written to the socket. This can be a half-sent PDU for which
+         *       (out.num_done < out.total_size). This implies that it's never
+         *       safe to add anything to the head of this queue as that might
+         *       cause the next rpc_write_to_socket() to incorrectly pick data
+         *       from this new PDU while the previous one is half written.
+         *       Only rpc_reconnect_requeue() can safely add to the head of
+         *       this queue as it resets the connection and also the read and
+         *       write cursors. Always use rpc_return_to_outqueue() to safely
+         *       return a pdu to outqueue for retransmit.
+         */
 	struct rpc_queue outqueue;
 	struct sockaddr_storage udp_src;
         uint32_t num_hashes;
+
+        /*
+         * Queue of transmitted-and-awaiting-response PDUs.
+         */
 	struct rpc_queue *waitpdu;
 	uint32_t waitpdu_len;
 	uint32_t max_waitpdu_len;
@@ -578,7 +595,8 @@ struct rpc_pdu {
 
 void rpc_reset_queue(struct rpc_queue *q);
 void rpc_enqueue(struct rpc_queue *q, struct rpc_pdu *pdu);
-void rpc_return_to_queue(struct rpc_queue *q, struct rpc_pdu *pdu);
+void rpc_return_to_outqueue(struct rpc_context *rpc, struct rpc_pdu *pdu);
+int rpc_remove_pdu_from_queue(struct rpc_queue *q, struct rpc_pdu *remove_pdu);
 unsigned int rpc_hash_xid(struct rpc_context *rpc, uint32_t xid);
 struct rpc_pdu *rpc_allocate_pdu(struct rpc_context *rpc, int program, int version, int procedure, rpc_cb cb, void *private_data, zdrproc_t zdr_decode_fn, int zdr_bufsize);
 struct rpc_pdu *rpc_allocate_pdu2(struct rpc_context *rpc, int program, int version, int procedure, rpc_cb cb, void *private_data, zdrproc_t zdr_decode_fn, int zdr_bufsize, size_t alloc_hint, int iovcnt_hint);
