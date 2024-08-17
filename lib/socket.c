@@ -969,6 +969,13 @@ rpc_timeout_scan(struct rpc_context *rpc)
                 nfs_mt_mutex_lock(&rpc->rpc_mutex);
         }
 #endif /* HAVE_MULTITHREADING */
+
+        /*
+         * First check requests that have timed out while sitting in outqueue.
+         * These have not been sent to the server so do not indicate any issue
+         * with server or connection, hence we do not take any corrective
+         * action based on these request timeouts.
+         */
 	for (pdu = rpc->outqueue.head; pdu; pdu = next_pdu) {
 		next_pdu = pdu->next;
 
@@ -982,37 +989,32 @@ rpc_timeout_scan(struct rpc_context *rpc)
 		}
 
 		/* Timed out w/o being sent */
-		INC_STATS(rpc, num_timedout);
+		INC_STATS(rpc, num_timedout_in_outqueue);
 
-		/*
-		 * rpc->retrans > 0 implies that user wants us to retransmit
-		 * timed out RPCs. We update the timeout values for this RPC
-		 * and leave it in the outqueue.
-		 */
-		if (!pdu->do_not_retry && rpc->retrans > 0) {
-			/* Ask pdu_set_timeout() to set pdu->timeout */
-			pdu->timeout = 0;
+                /*
+                 * rpc->retrans > 0 implies that user wants us to retransmit
+                 * timed out RPCs. Note that we treat non-zero rpc->retrans
+                 * as hard mount, so we just advance the timeout values for
+                 * this RPC and leave it in the outqueue.
+                 * Since these have not been sent to the server, they don't
+                 * signify any issue with the server or the connection and
+                 * hence major timeout has no special significance for such
+                 * requests.
+                 */
+                if (!pdu->do_not_retry && rpc->retrans > 0) {
+                        /*
+                         * Ask pdu_set_timeout() to advance pdu->timeout and
+                         * pdu->major_timeout. Note that major_timeout has no
+                         * special significance for requests timing out in
+                         * outqueue.
+                         */
+                        pdu->timeout = 0;
+                        pdu->major_timeout = 0;
+                        pdu_set_timeout(rpc, pdu, t);
 
-			if (t >= pdu->major_timeout) {
-				/* Timed out w/o being sent */
-				INC_STATS(rpc, num_major_timedout);
-
-				/* Ask pdu_set_timeout() to set pdu->major_timeout */
-				pdu->major_timeout = 0;
-				if (!pdu->snr_logged) {
-					/* Log only once for an RPC */
-					pdu->snr_logged = TRUE;
-					RPC_LOG(rpc, 1, "[pdu %p] Server %s not "
-						"responding, still trying",
-						pdu, rpc->server);
-				}
-				if (!need_reconnect) {
-					need_reconnect = (last_rpc_msecs > rpc->timeout);
-				}
-			}
-			/* Reset the RPC timeout values as appropriate */
-			pdu_set_timeout(rpc, pdu, t);
-		} else {
+                        RPC_LOG(rpc, 2, "[pdu %p] Request timed out in outqueue, "
+                                "will send when connection allows!", pdu);
+                } else {
 		        rpc_remove_pdu_from_queue(&rpc->outqueue, pdu);
 			rpc_set_error_locked(rpc, "command timed out");
                         if (pdu->cb) {
@@ -1022,6 +1024,14 @@ rpc_timeout_scan(struct rpc_context *rpc)
 			rpc_free_pdu(rpc, pdu);
 		}
 	}
+
+	/*
+	 * Now look for requests in waitpdu. These are requests which have
+	 * been sent to server and we are awaiting response from the server.
+	 * These may indicate an unresponsive server and/or bad connection.
+	 * We log a message on major_timeout and try recovery by dropping
+	 * existing connection and creting a new one.
+	 */
 	for (i = 0; i < rpc->num_hashes; i++) {
 		struct rpc_queue *q;
 
@@ -1033,21 +1043,24 @@ rpc_timeout_scan(struct rpc_context *rpc)
 				/* no timeout for this pdu */
 				continue;
 			}
-			if (t < pdu->timeout) {
+			if (t < pdu->timeout && t < pdu->major_timeout) {
 				/* not expired yet */
 				continue;
 			}
 
 			/* Timed out waiting for response */
-			INC_STATS(rpc, num_timedout);
+                        if (t >= pdu->timeout) {
+                                INC_STATS(rpc, num_timedout);
+                        }
 
                         rpc_remove_pdu_from_queue(q, pdu);
 			rpc->waitpdu_len--;
 
 			/*
-			 * rpc->retrans > 0 implies that user wants us to retransmit
-			 * timed out RPCs. We update the timeout values for this RPC
-			 * and move it to the outqueue.
+			 * rpc->retrans > 0 implies that user wants us to
+			 * retransmit timed out RPCs. We update the timeout
+			 * values for these RPCs and move them to outqueue for
+			 * retransmit.
 			 */
 			if (!pdu->do_not_retry && rpc->retrans > 0) {
 				/* Ask pdu_set_timeout() to set pdu->timeout */
