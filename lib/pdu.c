@@ -547,15 +547,18 @@ void pdu_set_timeout(struct rpc_context *rpc, struct rpc_pdu *pdu, uint64_t now_
 #endif
 	}
 
+        /*
+         * On major timeout we reset both major_timeout and timeout.
+         * Note that timeout can be updated multiple times before a major
+         * timeout, depending on the value of rpc->retrans.
+         */
 	if (pdu->major_timeout == 0) {
 		pdu->major_timeout = now_msecs + (rpc->timeout * rpc->retrans);
+		pdu->timeout = now_msecs + rpc->timeout;
 #ifndef HAVE_CLOCK_GETTIME
 		pdu->major_timeout += 1000;
+		pdu->timeout += 1000;
 #endif
-		/* Never less than pdu->timeout */
-		if (pdu->major_timeout < pdu->timeout) {
-			pdu->major_timeout = pdu->timeout;
-		}
 	}
 }
 
