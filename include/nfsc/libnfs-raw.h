@@ -87,8 +87,18 @@ struct rpc_stats {
         /*
          * RPC requests which didn't get a response for timeo period.
          * See mount option 'timeo'.
+         * These indicate some issue with the server and/or connection.
          */
         uint64_t num_timedout;
+
+        /*
+         * RPC requests that timed out while sitting in outqueue.
+         * Unlike num_timedout, these are requests which were not sent to
+         * server. If this number is high it indicates a slow or unresponsive
+         * server and/or slow connection. Application should slow down issuing
+         * new RPC requests.
+         */
+        uint64_t num_timedout_in_outqueue;
 
         /*
          * RPC requests which didn't get a response even after retrans
