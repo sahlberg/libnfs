@@ -78,8 +78,11 @@ void rpc_reset_queue(struct rpc_queue *q)
 void rpc_enqueue(struct rpc_queue *q, struct rpc_pdu *pdu)
 {
 	if (q->head == NULL) {
+	        assert(q->tail == NULL);
 		q->head = pdu;
         } else {
+                assert(pdu != q->head);
+                assert(pdu != q->tail);
 		q->tail->next = pdu;
         }
 	q->tail = pdu;
@@ -87,14 +90,103 @@ void rpc_enqueue(struct rpc_queue *q, struct rpc_pdu *pdu)
 }
 
 /*
- * Push to the front/head of the queue
+ * Return pdu to outqueue to be retransmitted.
+ * If there are more than one PDUs already in outqueue, this adds it right
+ * after the head, not at the head. The idea is that the PDU at the head
+ * may be half-sent, so it's not safe to replace the head. Also since we
+ * usually want this pdu to be sent immediately we don't want to add it to
+ * the end.
+ * Even when it's safe to add to head (from rpc_reconnect_requeue()), it's ok
+ * to add after head.
  */
-void rpc_return_to_queue(struct rpc_queue *q, struct rpc_pdu *pdu)
+void rpc_return_to_outqueue(struct rpc_context *rpc, struct rpc_pdu *pdu)
 {
-	pdu->next = q->head;
-	q->head = pdu;
-	if (q->tail == NULL)
-		q->tail = pdu;
+        if (rpc->outqueue.head == NULL) {
+                rpc->outqueue.head = rpc->outqueue.tail = pdu;
+                pdu->next = NULL;
+        } else if (rpc->outqueue.head == rpc->outqueue.tail) {
+                rpc->outqueue.head->next = pdu;
+                rpc->outqueue.tail = pdu;
+                pdu->next = NULL;
+        } else {
+                pdu->next = rpc->outqueue.head->next;
+                rpc->outqueue.head->next = pdu;
+        }
+
+        /*
+         * Only already transmitted PDUs are added back to outqueue, so sending
+         * it out will entail a retransmit.
+         */
+        INC_STATS(rpc, num_retransmitted);
+
+        /*
+         * Reset output and input cursors as we have to re-send the whole pdu
+         * again (and read back the response fresh into pdu->in).
+         */
+        pdu->out.num_done = 0;
+        rpc_reset_cursor(rpc, &pdu->in);
+}
+
+/*
+ * Remove pdu from q.
+ * If found it'll remove the pdu and update q->head and q->tail correctly.
+ * Returns 0 if remove_pdu not found in q else returns 1.
+ */
+int rpc_remove_pdu_from_queue(struct rpc_queue *q, struct rpc_pdu *remove_pdu)
+{
+        if (q->head != NULL) {
+                struct rpc_pdu *pdu = q->head;
+
+                assert(q->tail != NULL);
+
+                /*
+                 * remove_pdu is the head pdu.
+                 * Change the head to point to the next pdu.
+                 * If tail is also pointing to remove_pdu, this means it's the
+                 * only PDU and after removing that we will have an empty list.
+                 */
+                if (q->head == remove_pdu) {
+                        q->head = remove_pdu->next;
+                        if (q->tail == remove_pdu) {
+                                assert(remove_pdu->next == NULL);
+                                q->tail = NULL;
+                                assert(q->head == NULL);
+                        } else {
+                                assert(q->head != NULL);
+                        }
+
+                        remove_pdu->next = NULL;
+                        return 1;
+                }
+
+                /*
+                 * remove_pdu is not the head pdu.
+                 * Search for it and if found, remove it, and update tail if
+                 * tail is pointing to remove_pdu.
+                 */
+                while (pdu->next && pdu->next != remove_pdu) {
+                        pdu = pdu->next;
+                }
+
+                if (pdu->next == NULL) {
+                        /* remove_pdu not found in q */
+                        return 0;
+                }
+
+                pdu->next = remove_pdu->next;
+
+                if (q->tail == remove_pdu) {
+                        q->tail = pdu;
+                }
+
+                remove_pdu->next = NULL;
+
+                return 1;
+        } else {
+                assert(q->tail == NULL);
+                /* not found */
+                return 0;
+        }
 }
 
 unsigned int rpc_hash_xid(struct rpc_context *rpc, uint32_t xid)
@@ -662,6 +754,8 @@ int rpc_queue_pdu(struct rpc_context *rpc, struct rpc_pdu *pdu)
                 nfs_mt_mutex_lock(&rpc->rpc_mutex);
         }
 #endif /* HAVE_MULTITHREADING */
+        /* Fresh PDU being queued to outqueue, num_done must be 0 */
+        assert(pdu->out.num_done == 0);
         rpc_enqueue(&rpc->outqueue, pdu);
 #ifdef HAVE_MULTITHREADING
         if (rpc->multithreading_enabled) {

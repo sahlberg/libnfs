@@ -349,6 +349,9 @@ rpc_write_to_socket(struct rpc_context *rpc)
                         int pdu_niov = pdu->out.niov;
                         int i;
 
+                        /* Fully sent PDU should not be sitting in outqueue */
+                        assert(num_done < pdu->out.total_size);
+
                         for (i = 0; i < pdu_niov; i++) {
                                 char *buf = pdu->out.iov[i].buf;
                                 size_t len = pdu->out.iov[i].len;
@@ -379,6 +382,12 @@ rpc_write_to_socket(struct rpc_context *rpc)
                 } while ((rpc->max_waitpdu_len == 0 ||
                           rpc->max_waitpdu_len > (rpc->waitpdu_len + num_pdus)) &&
                          pdu != NULL && niov < iovcnt);
+
+                /*
+                 * We must never be doing 0-byte writes as those can get into
+                 * infinite loop.
+                 */
+                assert(niov > 0);
 
                 count = writev(rpc->fd, iov, niov);
                 if (count == -1) {
@@ -757,7 +766,7 @@ rpc_read_from_socket(struct rpc_context *rpc)
                                                  * here will force a reconnect, which will anyways
                                                  * re-queue everything from waitpdu[] to outqueue.
                                                  */
-                                                rpc_return_to_queue(&rpc->outqueue, rpc->pdu);
+                                                rpc_return_to_outqueue(rpc, rpc->pdu);
                                                 rpc->pdu = NULL;
 
                                                 #ifdef HAVE_MULTITHREADING
@@ -1004,11 +1013,7 @@ rpc_timeout_scan(struct rpc_context *rpc)
 			/* Reset the RPC timeout values as appropriate */
 			pdu_set_timeout(rpc, pdu, t);
 		} else {
-			LIBNFS_LIST_REMOVE(&rpc->outqueue.head, pdu);
-			if (!rpc->outqueue.head) {
-				rpc->outqueue.tail = NULL; //done
-			}
-			pdu->next = NULL;
+		        rpc_remove_pdu_from_queue(&rpc->outqueue, pdu);
 			rpc_set_error_locked(rpc, "command timed out");
                         if (pdu->cb) {
                                 pdu->cb(rpc, RPC_STATUS_TIMEOUT,
@@ -1036,12 +1041,7 @@ rpc_timeout_scan(struct rpc_context *rpc)
 			/* Timed out waiting for response */
 			INC_STATS(rpc, num_timedout);
 
-                        /* TODO: Following LIBNFS_LIST_REMOVE doesn't set q->tail correctly */
-			LIBNFS_LIST_REMOVE(&q->head, pdu);
-			if (!q->head) {
-				q->tail = NULL;
-			}
-			pdu->next = NULL;
+                        rpc_remove_pdu_from_queue(q, pdu);
 			rpc->waitpdu_len--;
 
 			/*
@@ -1074,13 +1074,7 @@ rpc_timeout_scan(struct rpc_context *rpc)
 				pdu_set_timeout(rpc, pdu, t);
 
 				/* queue it back to outqueue for retransmit */
-				rpc_return_to_queue(&rpc->outqueue, pdu);
-
-				/* Retransmit on timeout */
-				INC_STATS(rpc, num_retransmitted);
-
-				/* we have to re-send the whole pdu again */
-				pdu->out.num_done = 0;
+				rpc_return_to_outqueue(rpc, pdu);
 			} else {
 				// qqq move to a temporary queue and process after
 				// we drop the mutex
@@ -1736,11 +1730,7 @@ rpc_reconnect_requeue(struct rpc_context *rpc)
 		struct rpc_queue *q = &rpc->waitpdu[i];
 		for (pdu = q->head; pdu; pdu = next) {
 			next = pdu->next;
-			rpc_return_to_queue(&rpc->outqueue, pdu);
-			/* Retransmit on reconnect */
-			INC_STATS(rpc, num_retransmitted);
-			/* we have to re-send the whole pdu again */
-			pdu->out.num_done = 0;
+			rpc_return_to_outqueue(rpc, pdu);
 		}
 		rpc_reset_queue(q);
 	}
@@ -1750,15 +1740,7 @@ rpc_reconnect_requeue(struct rpc_context *rpc)
         * If there's any half-read PDU, that needs to be restarted too.
         */
         if (rpc->pdu) {
-                rpc_return_to_queue(&rpc->outqueue, rpc->pdu);
-                /* Retransmit on reconnect */
-                INC_STATS(rpc, num_retransmitted);
-                /*
-                 * Reset output and input cursors as we have to re-send the
-                 * whole pdu again.
-                 */
-                rpc->pdu->out.num_done = 0;
-                rpc_reset_cursor(rpc, &rpc->pdu->in);
+                rpc_return_to_outqueue(rpc, rpc->pdu);
                 rpc->pdu = NULL;
         }
 
