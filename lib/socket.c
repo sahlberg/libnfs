@@ -316,6 +316,10 @@ rpc_write_to_socket(struct rpc_context *rpc)
         }
 #endif /* HAVE_MULTITHREADING */
 
+#ifdef ENABLE_PARANOID
+        rpc_paranoid_checks(rpc);
+#endif
+
         /* Write several pdus at once */
         while ((rpc->max_waitpdu_len == 0 ||
                 rpc->max_waitpdu_len > rpc->waitpdu_len) &&
@@ -350,6 +354,11 @@ rpc_write_to_socket(struct rpc_context *rpc)
                         size_t num_done = pdu->out.num_done;
                         int pdu_niov = pdu->out.niov;
                         int i;
+
+#ifdef ENABLE_PARANOID
+                        assert(pdu->in_outqueue == PDU_PRESENT);
+                        assert(pdu->in_waitpdu == PDU_ABSENT);
+#endif
 
                         /* Fully sent PDU should not be sitting in outqueue */
                         assert(num_done < pdu->out.total_size);
@@ -422,6 +431,12 @@ rpc_write_to_socket(struct rpc_context *rpc)
                                 assert(rpc->stats.outqueue_len > 0);
                                 rpc->stats.outqueue_len--;
 
+#ifdef ENABLE_PARANOID
+                                pdu->in_outqueue = PDU_ABSENT;
+                                pdu->removed_from_outqueue_at_line = __LINE__;
+                                pdu->removed_from_outqueue_at_time = rpc_wallclock_time();
+#endif
+
                                 /* RPC sent, original or retransmit */
                                 INC_STATS(rpc, num_req_sent);
 
@@ -442,14 +457,25 @@ rpc_write_to_socket(struct rpc_context *rpc)
                                 hash = rpc_hash_xid(rpc, pdu->xid);
                                 rpc_enqueue(&rpc->waitpdu[hash], pdu);
                                 rpc->waitpdu_len++;
+#ifdef ENABLE_PARANOID
+                                pdu->in_waitpdu = PDU_PRESENT;
+                                pdu->added_to_waitpdu_at_line = __LINE__;
+                                pdu->added_to_waitpdu_at_time = rpc_wallclock_time();
+#endif
+
                         } else {
                                 pdu->out.num_done += count;
+                                assert(pdu->out.num_done < pdu->out.total_size);
                                 break;
                         }
                 }
 	}
 
  finished:
+#ifdef ENABLE_PARANOID
+        rpc_paranoid_checks(rpc);
+#endif
+
 #ifdef HAVE_MULTITHREADING
         if (rpc->multithreading_enabled) {
                 nfs_mt_mutex_unlock(&rpc->rpc_mutex);
@@ -783,6 +809,13 @@ rpc_read_from_socket(struct rpc_context *rpc)
                                                  * here will force a reconnect, which will anyways
                                                  * re-queue everything from waitpdu[] to outqueue.
                                                  */
+#ifdef ENABLE_PARANOID
+                                                assert(rpc->pdu->in_waitpdu == PDU_ABSENT);
+                                                assert(rpc->pdu->in_outqueue == PDU_ABSENT);
+                                                rpc->pdu->in_outqueue = PDU_PRESENT;
+                                                rpc->pdu->added_to_outqueue_at_line = __LINE__;
+                                                rpc->pdu->added_to_outqueue_at_time = rpc_wallclock_time();
+#endif
                                                 rpc_return_to_outqueue(rpc, rpc->pdu);
                                                 rpc->pdu = NULL;
 
@@ -1040,6 +1073,15 @@ rpc_timeout_scan(struct rpc_context *rpc)
 		        rpc_remove_pdu_from_queue(&rpc->outqueue, pdu);
                         assert(rpc->stats.outqueue_len > 0);
                         rpc->stats.outqueue_len--;
+
+#ifdef ENABLE_PARANOID
+                        assert(pdu->in_outqueue == PDU_PRESENT);
+                        assert(pdu->in_waitpdu == PDU_ABSENT);
+                        pdu->in_outqueue = PDU_ABSENT;
+                        pdu->removed_from_outqueue_at_line = __LINE__;
+                        pdu->removed_from_outqueue_at_time = rpc_wallclock_time();
+#endif
+
 			rpc_set_error_locked(rpc, "command timed out");
 			pdu->cb(rpc, RPC_STATUS_TIMEOUT,
 				NULL, pdu->private_data);
@@ -1078,6 +1120,14 @@ rpc_timeout_scan(struct rpc_context *rpc)
                         rpc_remove_pdu_from_queue(q, pdu);
 			rpc->waitpdu_len--;
 
+#ifdef ENABLE_PARANOID
+                        assert(pdu->in_outqueue == PDU_ABSENT);
+                        assert(pdu->in_waitpdu == PDU_PRESENT);
+                        pdu->in_waitpdu = PDU_ABSENT;
+                        pdu->removed_from_waitpdu_at_line = __LINE__;
+                        pdu->removed_from_waitpdu_at_time = rpc_wallclock_time();
+#endif
+
 			/*
 			 * rpc->retrans > 0 implies that user wants us to
 			 * retransmit timed out RPCs. We update the timeout
@@ -1110,6 +1160,15 @@ rpc_timeout_scan(struct rpc_context *rpc)
 
 				/* queue it back to outqueue for retransmit */
 				rpc_return_to_outqueue(rpc, pdu);
+
+#ifdef ENABLE_PARANOID
+                                assert(pdu->in_waitpdu == PDU_ABSENT);
+                                assert(pdu->in_outqueue == PDU_ABSENT);
+                                pdu->in_outqueue = PDU_PRESENT;
+                                pdu->added_to_outqueue_at_line = __LINE__;
+                                pdu->added_to_outqueue_at_time = rpc_wallclock_time();
+#endif
+
 			} else {
 				// qqq move to a temporary queue and process after
 				// we drop the mutex
@@ -1763,7 +1822,18 @@ rpc_reconnect_requeue(struct rpc_context *rpc)
 		struct rpc_queue *q = &rpc->waitpdu[i];
 		for (pdu = q->head; pdu; pdu = next) {
 			next = pdu->next;
-			rpc_return_to_outqueue(rpc, pdu);
+                        rpc_return_to_outqueue(rpc, pdu);
+
+#ifdef ENABLE_PARANOID
+                        assert(pdu->in_waitpdu == PDU_PRESENT);
+                        assert(pdu->in_outqueue == PDU_ABSENT);
+                        pdu->in_waitpdu = PDU_ABSENT;
+                        pdu->in_outqueue = PDU_PRESENT;
+                        pdu->removed_from_waitpdu_at_line = __LINE__;
+                        pdu->removed_from_waitpdu_at_time = rpc_wallclock_time();
+                        pdu->added_to_outqueue_at_line = __LINE__;
+                        pdu->added_to_outqueue_at_time = rpc_wallclock_time();
+#endif
 		}
 		rpc_reset_queue(q);
 	}
@@ -1773,6 +1843,13 @@ rpc_reconnect_requeue(struct rpc_context *rpc)
         * If there's any half-read PDU, that needs to be restarted too.
         */
         if (rpc->pdu) {
+#ifdef ENABLE_PARANOID
+                assert(rpc->pdu->in_waitpdu == PDU_ABSENT);
+                assert(rpc->pdu->in_outqueue == PDU_ABSENT);
+                rpc->pdu->in_outqueue = PDU_PRESENT;
+                rpc->pdu->added_to_outqueue_at_line = __LINE__;
+                rpc->pdu->added_to_outqueue_at_time = rpc_wallclock_time();
+#endif
                 rpc_return_to_outqueue(rpc, rpc->pdu);
                 rpc->pdu = NULL;
         }

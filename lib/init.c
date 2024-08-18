@@ -410,6 +410,10 @@ void rpc_get_stats(struct rpc_context *rpc, struct rpc_stats *stats)
         }
 #endif /* HAVE_MULTITHREADING */
 
+#ifdef ENABLE_PARANOID
+        rpc_paranoid_checks(rpc);
+#endif
+
         rpc->stats.waitpdu_len = rpc->waitpdu_len;
         *stats = rpc->stats;
 
@@ -448,6 +452,11 @@ static void rpc_purge_all_pdus(struct rpc_context *rpc, int status, const char *
 	while ((pdu = outqueue.head) != NULL) {
 		outqueue.head = pdu->next;
                 pdu->next = NULL;
+#ifdef ENABLE_PARANOID
+                assert(pdu->in_outqueue == PDU_PRESENT);
+                assert(pdu->in_waitpdu == PDU_ABSENT);
+                pdu->in_outqueue = PDU_ABSENT;
+#endif
 		pdu->cb(rpc, status, (void *) error, pdu->private_data);
 		rpc_free_pdu(rpc, pdu);
 
@@ -479,6 +488,11 @@ static void rpc_purge_all_pdus(struct rpc_context *rpc, int status, const char *
 		while((pdu = waitqueue.head) != NULL) {
 			waitqueue.head = pdu->next;
 			pdu->next = NULL;
+#ifdef ENABLE_PARANOID
+                        assert(pdu->in_outqueue == PDU_ABSENT);
+                        assert(pdu->in_waitpdu == PDU_PRESENT);
+                        pdu->in_waitpdu = PDU_ABSENT;
+#endif
 			pdu->cb(rpc, status, (void *) error, pdu->private_data);
 			rpc_free_pdu(rpc, pdu);
 		}

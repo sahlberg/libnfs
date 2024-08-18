@@ -454,6 +454,26 @@ struct rpc_pdu {
         int free_zdr;
         int free_pdu;
 
+#ifdef ENABLE_PARANOID
+        #define PDU_PRESENT 0x05050505
+        #define PDU_ABSENT  0xaaaaaaaa
+        /*
+         * We maintain some extra state inside pdu for performing paranoid
+         * checks.
+         */
+        int added_to_outqueue_at_line;
+        uint64_t added_to_outqueue_at_time;
+        int removed_from_outqueue_at_line;
+        uint64_t removed_from_outqueue_at_time;
+        uint32_t in_outqueue;
+
+        int added_to_waitpdu_at_line;
+        uint64_t added_to_waitpdu_at_time;
+        int removed_from_waitpdu_at_line;
+        uint64_t removed_from_waitpdu_at_time;
+        uint32_t in_waitpdu;
+#endif
+
 	struct rpc_data outdata;
 
         /* For sending/receiving
@@ -607,6 +627,10 @@ int rpc_queue_pdu(struct rpc_context *rpc, struct rpc_pdu *pdu);
 int rpc_process_pdu(struct rpc_context *rpc, char *buf, int size);
 struct rpc_pdu *rpc_find_pdu(struct rpc_context *rpc, uint32_t xid);
 void rpc_error_all_pdus(struct rpc_context *rpc, const char *error);
+
+#ifdef ENABLE_PARANOID
+void rpc_paranoid_checks(struct rpc_context *rpc);
+#endif
 
 /*
  * XXX This holds rpc->rpc_mutex, so if the caller is already holding

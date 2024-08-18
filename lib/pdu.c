@@ -290,6 +290,12 @@ struct rpc_pdu *rpc_allocate_pdu2(struct rpc_context *rpc, int program, int vers
 		return NULL;
 	}
 	memset(pdu, 0, pdu_size);
+
+#ifdef ENABLE_PARANOID
+        /* PDU is not present in any queue to start with */
+        pdu->in_outqueue = pdu->in_waitpdu = PDU_ABSENT;
+#endif
+
 #ifdef HAVE_MULTITHREADING
         if (rpc->multithreading_enabled) {
                 nfs_mt_mutex_lock(&rpc->rpc_mutex);
@@ -483,6 +489,12 @@ void rpc_free_pdu(struct rpc_context *rpc, struct rpc_pdu *pdu)
 #endif /* HAVE_LIBKRB5 */
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
+
+#ifdef ENABLE_PARANOID
+        /* PDU must be freed only after removing from all queues */
+        assert(pdu->in_outqueue == PDU_ABSENT);
+        assert(pdu->in_waitpdu == PDU_ABSENT);
+#endif
 
 	if (pdu->zdr_decode_buf != NULL) {
 		zdr_free(pdu->zdr_decode_fn, pdu->zdr_decode_buf);
@@ -753,6 +765,15 @@ int rpc_queue_pdu(struct rpc_context *rpc, struct rpc_pdu *pdu)
 #endif /* HAVE_MULTITHREADING */
 		rpc_enqueue(&rpc->waitpdu[hash], pdu);
 		rpc->waitpdu_len++;
+
+#ifdef ENABLE_PARANOID
+                assert(pdu->in_outqueue == PDU_ABSENT);
+                assert(pdu->in_waitpdu == PDU_ABSENT);
+                pdu->in_waitpdu = PDU_PRESENT;
+                pdu->added_to_waitpdu_at_line = __LINE__;
+                pdu->added_to_waitpdu_at_time = rpc_wallclock_time();
+#endif
+
 #ifdef HAVE_MULTITHREADING
                 if (rpc->multithreading_enabled) {
                         nfs_mt_mutex_unlock(&rpc->rpc_mutex);
@@ -771,6 +792,15 @@ int rpc_queue_pdu(struct rpc_context *rpc, struct rpc_pdu *pdu)
         assert(pdu->out.num_done == 0);
         rpc_enqueue(&rpc->outqueue, pdu);
         rpc->stats.outqueue_len++;
+
+#ifdef ENABLE_PARANOID
+        assert(pdu->in_waitpdu == PDU_ABSENT);
+        assert(pdu->in_outqueue == PDU_ABSENT);
+        pdu->in_outqueue = PDU_PRESENT;
+        pdu->added_to_outqueue_at_line = __LINE__;
+        pdu->added_to_outqueue_at_time = rpc_wallclock_time();
+#endif
+
 #ifdef HAVE_MULTITHREADING
         if (rpc->multithreading_enabled) {
                 nfs_mt_mutex_unlock(&rpc->rpc_mutex);
@@ -1109,6 +1139,12 @@ struct rpc_pdu *rpc_find_pdu(struct rpc_context *rpc, uint32_t xid)
 	 * but track previous entry for optimised removal */
 	prev_pdu = NULL;
 	for (pdu=q->head; pdu; pdu=pdu->next) {
+
+#ifdef ENABLE_PARANOID
+                assert(pdu->in_outqueue == PDU_ABSENT);
+                assert(pdu->in_waitpdu == PDU_PRESENT);
+#endif
+
 		if (pdu->xid != rpc->rm_xid[1]) {
 			prev_pdu = pdu;
 			continue;
@@ -1122,6 +1158,13 @@ struct rpc_pdu *rpc_find_pdu(struct rpc_context *rpc, uint32_t xid)
 			if (prev_pdu != NULL)
 				prev_pdu->next = pdu->next;
 			rpc->waitpdu_len--;
+
+#ifdef ENABLE_PARANOID
+                        pdu->in_waitpdu = PDU_ABSENT;
+                        pdu->removed_from_waitpdu_at_line = __LINE__;
+                        pdu->removed_from_waitpdu_at_time = rpc_wallclock_time();
+#endif
+
 		}
                 break;
         }
@@ -1202,3 +1245,79 @@ int rpc_process_pdu(struct rpc_context *rpc, char *buf, int size)
         return 0;
 }
 
+#ifdef ENABLE_PARANOID
+/*
+ * Perfom extensive validation on the rpc_context and the various pdu queues.
+ * This helps to catch bugs related to pdu queues.
+ * rpc->rpc_mutex exclusive lock must be held by the caller.
+ */
+void rpc_paranoid_checks(struct rpc_context *rpc)
+{
+        struct rpc_pdu *pdu, *next_pdu, *last_pdu = NULL;
+        int outqueue_count = 0;
+        int waitpdu_count = 0;
+        int i;
+
+        for (pdu = rpc->outqueue.head; pdu; pdu = pdu->next) {
+                /*
+                 * Must be present in outqueue and not waitpdu queue.
+                 */
+                assert(pdu->in_outqueue == PDU_PRESENT);
+                assert(pdu->in_waitpdu == PDU_ABSENT);
+
+                /*
+                 * Fully sent PDU should not be sitting in outqueue.
+                 */
+                assert(pdu->out.num_done < pdu->out.total_size);
+
+                /*
+                 * added_to_outqueue_at_time must be the latest.
+                 */
+                assert(pdu->added_to_outqueue_at_time >
+                                pdu->removed_from_outqueue_at_time);
+                assert(pdu->added_to_outqueue_at_time >
+                                pdu->added_to_waitpdu_at_time);
+                assert(pdu->added_to_outqueue_at_time >=
+                                pdu->removed_from_waitpdu_at_time);
+                outqueue_count++;
+                last_pdu = pdu;
+        }
+        assert(rpc->stats.outqueue_len == outqueue_count);
+        assert(rpc->outqueue.tail == last_pdu);
+
+        for (i = 0; i < rpc->num_hashes; i++) {
+                struct rpc_queue *q = &rpc->waitpdu[i];
+                last_pdu = NULL;
+                for (pdu = q->head; pdu; pdu = next_pdu) {
+                        next_pdu = pdu->next;
+
+                        /*
+                         * Must be present in waitpdu queue and not outqueue.
+                         */
+                        assert(pdu->in_waitpdu == PDU_PRESENT);
+                        assert(pdu->in_outqueue == PDU_ABSENT);
+
+                        /*
+                         * Only fully sent PDU should be sitting in waitpdu hash.
+                         */
+                        assert(pdu->out.num_done == pdu->out.total_size);
+
+                        /*
+                         * added_to_outqueue_at_time must be the latest.
+                         */
+                        assert(pdu->added_to_waitpdu_at_time >
+                                        pdu->removed_from_waitpdu_at_time);
+                        assert(pdu->added_to_waitpdu_at_time >
+                                        pdu->added_to_outqueue_at_time);
+                        assert(pdu->added_to_waitpdu_at_time >=
+                                        pdu->removed_from_outqueue_at_time);
+
+                        waitpdu_count++;
+                        last_pdu = pdu;
+                }
+                assert(q->tail == last_pdu);
+        }
+
+        assert(rpc->waitpdu_len == waitpdu_count);
+}
+#endif
