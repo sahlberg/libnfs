@@ -571,6 +571,14 @@ void pdu_set_timeout(struct rpc_context *rpc, struct rpc_pdu *pdu, uint64_t now_
 		pdu->major_timeout += 1000;
 		pdu->timeout += 1000;
 #endif
+                /*
+                 * Early on when rpc->retrans is not set or if user doesn't
+                 * set rpc->retrans, make sure major_timeout is set same as
+                 * timeout.
+                 */
+                if (pdu->major_timeout < pdu->timeout) {
+                        pdu->major_timeout = pdu->timeout;
+                }
 	}
 }
 
