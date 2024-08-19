@@ -409,14 +409,15 @@ struct rpc_pdu *rpc_nfs3_writev_task(struct rpc_context *rpc, rpc_cb cb,
         }
 
         /*
-         * We add 4 to the user provided iovcnt to account for one each for
+         * We add 5 to the user provided iovcnt to account for one each for
          * the following:
          * - Record marker
          * - RPC header
          * - NFS header
+         * - Write length
          * - Padding (optional)
          */
-	pdu = rpc_allocate_pdu2(rpc, NFS_PROGRAM, NFS_V3, NFS3_WRITE, cb, private_data, (zdrproc_t)zdr_WRITE3res, sizeof(WRITE3res), 0, iovcnt + 4);
+	pdu = rpc_allocate_pdu2(rpc, NFS_PROGRAM, NFS_V3, NFS3_WRITE, cb, private_data, (zdrproc_t)zdr_WRITE3res, sizeof(WRITE3res), 0, iovcnt + 5);
 	if (pdu == NULL) {
 		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu for NFS3/WRITE call");
 		return NULL;
