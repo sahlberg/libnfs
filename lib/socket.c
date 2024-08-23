@@ -840,6 +840,17 @@ rpc_read_from_socket(struct rpc_context *rpc)
 #endif /* HAVE_LIBKRB5 */
                                 /* We do not have rpc->pdu for server context */
                                 if (rpc->pdu && rpc->pdu->free_zdr) {
+                                        if (rpc->program == NFS_PROGRAM && rpc->version == NFS_V3) {
+                                                /*
+                                                 * If the READ failed, bail out here as there is no
+                                                 * data.
+                                                 */
+                                                const READ3res *res = (READ3res *) rpc->pdu->zdr_decode_buf;
+                                                if (res->status != NFS3_OK) {
+                                                        goto payload_finished;
+                                                }
+                                        }
+
                                         /*
                                          * We are doing zero-copy read.
                                          * pdu->read_count is the amount of read data returned by
@@ -895,9 +906,7 @@ rpc_read_from_socket(struct rpc_context *rpc)
                                                 continue;
                                         }
                                 }
-#ifdef HAVE_LIBKRB5
                         payload_finished:
-#endif /* HAVE_LIBKRB5 */
                                 if (rpc->fragments) {
                                         free(rpc->buf);
                                         rpc->buf = NULL;
