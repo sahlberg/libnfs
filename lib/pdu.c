@@ -89,17 +89,13 @@ void rpc_enqueue(struct rpc_queue *q, struct rpc_pdu *pdu)
 	pdu->next = NULL;
 }
 
-/*
- * Return pdu to outqueue to be retransmitted.
- * If there are more than one PDUs already in outqueue, this adds it right
- * after the head, not at the head. The idea is that the PDU at the head
- * may be half-sent, so it's not safe to replace the head. Also since we
- * usually want this pdu to be sent immediately we don't want to add it to
- * the end.
- * Even when it's safe to add to head (from rpc_reconnect_requeue()), it's ok
- * to add after head.
+/**
+ * Add pdu to the head of outqueue.
+ * It tries to add pdu to the head but if the pdu at the head is partially
+ * written to the socket it adds pdu after that.
+ * We do that to not mix data from different pdus being sent on the socket.
  */
-void rpc_return_to_outqueue(struct rpc_context *rpc, struct rpc_pdu *pdu)
+void rpc_add_to_outqueue(struct rpc_context *rpc, struct rpc_pdu *pdu)
 {
         if (rpc->outqueue.head == NULL) {
                 assert(rpc->outqueue.tail == NULL);
@@ -123,11 +119,31 @@ void rpc_return_to_outqueue(struct rpc_context *rpc, struct rpc_pdu *pdu)
                 assert(pdu != rpc->outqueue.head);
                 assert(pdu != rpc->outqueue.tail);
 
-                pdu->next = rpc->outqueue.head->next;
-                rpc->outqueue.head->next = pdu;
+                /*
+                 * Add to the head if head pdu is not partially-sent, else add
+                 * after that.
+                 */
+                if (rpc->outqueue.head->out.num_done == 0) {
+                        pdu->next = rpc->outqueue.head;
+                        rpc->outqueue.head = pdu;
+                } else {
+                        pdu->next = rpc->outqueue.head->next;
+                        rpc->outqueue.head->next = pdu;
+                }
         }
 
         rpc->stats.outqueue_len++;
+}
+
+/*
+ * Return pdu to outqueue to be retransmitted.
+ * It adds the pdu to the head of outqueue, unless the head pdu is partially
+ * sent, in which case it adds it right after the head pdu.
+ */
+void rpc_return_to_outqueue(struct rpc_context *rpc, struct rpc_pdu *pdu)
+{
+        rpc_add_to_outqueue(rpc, pdu);
+
         /*
          * Only already transmitted PDUs are added back to outqueue, so sending
          * it out will entail a retransmit.
@@ -582,7 +598,17 @@ void pdu_set_timeout(struct rpc_context *rpc, struct rpc_pdu *pdu, uint64_t now_
 	}
 }
 
-int rpc_queue_pdu(struct rpc_context *rpc, struct rpc_pdu *pdu)
+/**
+ * Queue pdu to rpc->outqueue.
+ * PDU is queued to the tail of outqueue unless high_prio is set, in which case
+ * it's queued to the head of outqueue (safe against partially sent head pdu).
+ * high_prio queueing may be useful for non-IO (non READ/WRITE) RPCs so they
+ * can be promptly sent out and they do not have to wait behind possibly huge
+ * number of WRITE/READ RPCs in the queue. Those (especially WRITE RPCs) can
+ * take very large time causing commands like stat/ls/find etc to appear to
+ * hang.
+ */
+int rpc_queue_pdu2(struct rpc_context *rpc, struct rpc_pdu *pdu, bool_t high_prio)
 {
 	int i, size = 0, pos;
         uint32_t recordmarker;
@@ -798,8 +824,13 @@ int rpc_queue_pdu(struct rpc_context *rpc, struct rpc_pdu *pdu)
 #endif /* HAVE_MULTITHREADING */
         /* Fresh PDU being queued to outqueue, num_done must be 0 */
         assert(pdu->out.num_done == 0);
-        rpc_enqueue(&rpc->outqueue, pdu);
-        rpc->stats.outqueue_len++;
+
+        if (!high_prio) {
+            rpc_enqueue(&rpc->outqueue, pdu);
+            rpc->stats.outqueue_len++;
+        } else {
+            rpc_add_to_outqueue(rpc, pdu);
+        }
 
 #ifdef ENABLE_PARANOID
         assert(pdu->in_waitpdu == PDU_ABSENT);
@@ -819,6 +850,11 @@ int rpc_queue_pdu(struct rpc_context *rpc, struct rpc_pdu *pdu)
         }
 
 	return 0;
+}
+
+int rpc_queue_pdu(struct rpc_context *rpc, struct rpc_pdu *pdu)
+{
+        return rpc_queue_pdu2(rpc, pdu, 0 /* high_prio */);
 }
 
 static int rpc_process_reply(struct rpc_context *rpc, ZDR *zdr)
