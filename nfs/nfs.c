@@ -123,7 +123,7 @@ struct rpc_pdu *rpc_nfs3_null_task(struct rpc_context *rpc, rpc_cb cb,
 		return NULL;
 	}
 
-	if (rpc_queue_pdu(rpc, pdu) != 0) {
+        if (rpc_queue_pdu2(rpc, pdu, 1 /* high_prio */) != 0) {
 		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for NFS3/NULL call");
 		return NULL;
 	}
@@ -149,7 +149,7 @@ struct rpc_pdu *rpc_nfs3_getattr_task(struct rpc_context *rpc, rpc_cb cb,
 		return NULL;
 	}
 
-	if (rpc_queue_pdu(rpc, pdu) != 0) {
+        if (rpc_queue_pdu2(rpc, pdu, 1 /* high_prio */) != 0) {
 		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for NFS3/GETATTR call");
 		return NULL;
 	}
@@ -175,7 +175,7 @@ struct rpc_pdu *rpc_nfs3_pathconf_task(struct rpc_context *rpc, rpc_cb cb,
 		return NULL;
 	}
 
-	if (rpc_queue_pdu(rpc, pdu) != 0) {
+        if (rpc_queue_pdu2(rpc, pdu, 1 /* high_prio */) != 0) {
 		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for NFS3/PATHCONF call");
 		return NULL;
 	}
@@ -201,7 +201,7 @@ struct rpc_pdu *rpc_nfs3_lookup_task(struct rpc_context *rpc, rpc_cb cb,
 		return NULL;
 	}
 
-	if (rpc_queue_pdu(rpc, pdu) != 0) {
+        if (rpc_queue_pdu2(rpc, pdu, 1 /* high_prio */) != 0) {
 		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for NFS3/LOOKUP call");
 		return NULL;
 	}
@@ -227,7 +227,7 @@ struct rpc_pdu *rpc_nfs3_access_task(struct rpc_context *rpc, rpc_cb cb,
 		return NULL;
 	}
 
-	if (rpc_queue_pdu(rpc, pdu) != 0) {
+        if (rpc_queue_pdu2(rpc, pdu, 1 /* high_prio */) != 0) {
 		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for NFS3/ACCESS call");
 		return NULL;
 	}
@@ -545,7 +545,7 @@ rpc_nfs3_setattr_task(struct rpc_context *rpc, rpc_cb cb, SETATTR3args *args,
 		return NULL;
 	}
 
-	if (rpc_queue_pdu(rpc, pdu) != 0) {
+        if (rpc_queue_pdu2(rpc, pdu, 1 /* high_prio */) != 0) {
 		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for NFS3/SETATTR call");
 		return NULL;
 	}
@@ -570,7 +570,7 @@ struct rpc_pdu *rpc_nfs3_mkdir_task(struct rpc_context *rpc, rpc_cb cb,
 		return NULL;
 	}
 
-	if (rpc_queue_pdu(rpc, pdu) != 0) {
+        if (rpc_queue_pdu2(rpc, pdu, 1 /* high_prio */) != 0) {
 		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for NFS3/MKDIR call");
 		return NULL;
 	}
@@ -596,7 +596,7 @@ struct rpc_pdu *rpc_nfs3_rmdir_task(struct rpc_context *rpc, rpc_cb cb,
 		return NULL;
 	}
 
-	if (rpc_queue_pdu(rpc, pdu) != 0) {
+        if (rpc_queue_pdu2(rpc, pdu, 1 /* high_prio */) != 0) {
 		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for NFS3/RMDIR call");
 		return NULL;
 	}
@@ -621,7 +621,7 @@ struct rpc_pdu *rpc_nfs3_create_task(struct rpc_context *rpc, rpc_cb cb,
 		return NULL;
 	}
 
-	if (rpc_queue_pdu(rpc, pdu) != 0) {
+        if (rpc_queue_pdu2(rpc, pdu, 1 /* high_prio */) != 0) {
 		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for NFS3/CREATE call");
 		return NULL;
 	}
@@ -647,7 +647,7 @@ struct rpc_pdu *rpc_nfs3_mknod_task(struct rpc_context *rpc, rpc_cb cb,
 		return NULL;
 	}
 
-	if (rpc_queue_pdu(rpc, pdu) != 0) {
+        if (rpc_queue_pdu2(rpc, pdu, 1 /* high_prio */) != 0) {
 		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for NFS3/MKNOD call");
 		return NULL;
 	}
@@ -673,7 +673,7 @@ struct rpc_pdu *rpc_nfs3_remove_task(struct rpc_context *rpc, rpc_cb cb,
 		return NULL;
 	}
 
-	if (rpc_queue_pdu(rpc, pdu) != 0) {
+        if (rpc_queue_pdu2(rpc, pdu, 1 /* high_prio */) != 0) {
 		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for NFS3/REMOVE call");
 		return NULL;
 	}
@@ -699,7 +699,7 @@ struct rpc_pdu *rpc_nfs3_readdir_task(struct rpc_context *rpc, rpc_cb cb,
 		return NULL;
 	}
 
-	if (rpc_queue_pdu(rpc, pdu) != 0) {
+        if (rpc_queue_pdu2(rpc, pdu, 1 /* high_prio */) != 0) {
 		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for NFS3/READDIR call");
 		return NULL;
 	}
@@ -725,7 +725,7 @@ struct rpc_pdu *rpc_nfs3_readdirplus_task(struct rpc_context *rpc, rpc_cb cb,
 		return NULL;
 	}
 
-	if (rpc_queue_pdu(rpc, pdu) != 0) {
+        if (rpc_queue_pdu2(rpc, pdu, 1 /* high_prio */) != 0) {
 		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for NFS3/READDIRPLUS call");
 		return NULL;
 	}
@@ -751,7 +751,7 @@ struct rpc_pdu *rpc_nfs3_fsstat_task(struct rpc_context *rpc, rpc_cb cb,
 		return NULL;
 	}
 
-	if (rpc_queue_pdu(rpc, pdu) != 0) {
+        if (rpc_queue_pdu2(rpc, pdu, 1 /* high_prio */) != 0) {
 		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for NFS3/FSSTAT call");
 		return NULL;
 	}
@@ -777,7 +777,7 @@ struct rpc_pdu *rpc_nfs3_fsinfo_task(struct rpc_context *rpc, rpc_cb cb,
 		return NULL;
 	}
 
-	if (rpc_queue_pdu(rpc, pdu) != 0) {
+        if (rpc_queue_pdu2(rpc, pdu, 1 /* high_prio */) != 0) {
 		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for NFS3/FSINFO call");
 		return NULL;
 	}
@@ -803,7 +803,7 @@ rpc_nfs3_readlink_task(struct rpc_context *rpc, rpc_cb cb,
 		return NULL;
 	}
 
-	if (rpc_queue_pdu(rpc, pdu) != 0) {
+        if (rpc_queue_pdu2(rpc, pdu, 1 /* high_prio */) != 0) {
 		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for NFS3/READLINK call");
 		return NULL;
 	}
@@ -828,7 +828,7 @@ struct rpc_pdu *rpc_nfs3_symlink_task(struct rpc_context *rpc, rpc_cb cb,
 		return NULL;
 	}
 
-	if (rpc_queue_pdu(rpc, pdu) != 0) {
+        if (rpc_queue_pdu2(rpc, pdu, 1 /* high_prio */) != 0) {
 		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for NFS3/SYMLINK call");
 		return NULL;
 	}
@@ -854,7 +854,7 @@ struct rpc_pdu *rpc_nfs3_rename_task(struct rpc_context *rpc, rpc_cb cb,
 		return NULL;
 	}
 
-	if (rpc_queue_pdu(rpc, pdu) != 0) {
+        if (rpc_queue_pdu2(rpc, pdu, 1 /* high_prio */) != 0) {
 		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for NFS3/RENAME call");
 		return NULL;
 	}
@@ -879,7 +879,7 @@ struct rpc_pdu *rpc_nfs3_link_task(struct rpc_context *rpc, rpc_cb cb,
 		return NULL;
 	}
 
-	if (rpc_queue_pdu(rpc, pdu) != 0) {
+        if (rpc_queue_pdu2(rpc, pdu, 1 /* high_prio */) != 0) {
 		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for NFS3/LINK call");
 		return NULL;
 	}
