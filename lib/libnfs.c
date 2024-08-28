@@ -1005,6 +1005,9 @@ rpc_connect_program_3_cb(struct rpc_context *rpc, int status,
 	}
 
 	rpc_disconnect(rpc, "normal disconnect");
+        rpc->program = data->program;
+        rpc->version = data->version;
+
         if (rpc_connect_port_internal(rpc, rpc_port, data)) {
 		data->cb(rpc, RPC_STATUS_ERROR, command_data,
                          data->private_data);
@@ -1112,6 +1115,9 @@ rpc_connect_port_async(struct rpc_context *rpc, const char *server,
 {
 	struct rpc_cb_data *data;
 
+        rpc->program = program;
+        rpc->version = version;
+
 	data = calloc(1, sizeof(struct rpc_cb_data));
 	if (data == NULL) {
 		return -1;
@@ -1150,6 +1156,9 @@ rpc_connect_program_async(struct rpc_context *rpc, const char *server,
 	data->cb           = cb;
 	data->private_data = private_data;
 
+        rpc->program = 100001;
+        rpc->version = 2;
+        
 	if (rpc_connect_async(rpc, server, 111, rpc_connect_program_1_cb,
                               data) != 0) {
 		rpc_set_error(rpc, "Failed to start connection. %s",

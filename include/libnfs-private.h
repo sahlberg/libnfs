@@ -278,6 +278,9 @@ struct rpc_context {
 
 	char *error_string;
 
+        uint32_t program;
+        uint32_t version;
+
 	rpc_cb connect_cb;
 	void *connect_data;
 
