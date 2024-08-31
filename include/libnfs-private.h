@@ -133,9 +133,13 @@ struct rpc_fragment {
 
 /*
  * Queue is singly-linked but we hold on to the tail
+ * Using tailp this can be used to queue high and low priority pdus where high
+ * priority pdus are at the head of the queue while low priority pdus are
+ * queued behind the high priority pdus. tailp is the tail of high priority
+ * pdus, after which the low priority pdus start.
  */
 struct rpc_queue {
-	struct rpc_pdu *head, *tail;
+	struct rpc_pdu *head, *tail, *tailp;
 };
 
 #define DEFAULT_HASHES 4
@@ -473,6 +477,10 @@ struct rpc_pdu {
         uint64_t removed_from_waitpdu_at_time;
         uint32_t in_waitpdu;
 #endif
+        /*
+         * Is it a high-prio pdu, added by rpc_add_to_outqueue_highp()?
+         */
+        bool_t is_high_prio;
 
 	struct rpc_data outdata;
 
@@ -615,7 +623,9 @@ struct rpc_pdu {
 
 void rpc_reset_queue(struct rpc_queue *q);
 void rpc_enqueue(struct rpc_queue *q, struct rpc_pdu *pdu);
-void rpc_add_to_outqueue(struct rpc_context *rpc, struct rpc_pdu *pdu);
+void rpc_add_to_outqueue_head(struct rpc_context *rpc, struct rpc_pdu *pdu);
+void rpc_add_to_outqueue_highp(struct rpc_context *rpc, struct rpc_pdu *pdu);
+void rpc_add_to_outqueue_lowp(struct rpc_context *rpc, struct rpc_pdu *pdu);
 void rpc_return_to_outqueue(struct rpc_context *rpc, struct rpc_pdu *pdu);
 int rpc_remove_pdu_from_queue(struct rpc_queue *q, struct rpc_pdu *remove_pdu);
 unsigned int rpc_hash_xid(struct rpc_context *rpc, uint32_t xid);
