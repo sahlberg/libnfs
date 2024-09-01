@@ -428,6 +428,13 @@ rpc_write_to_socket(struct rpc_context *rpc)
                                 if (rpc->outqueue.head == NULL)
                                         rpc->outqueue.tail = NULL;
 
+                                /*
+                                 * Last high priority pdu dequeued, no more
+                                 * high priority pdus in outqueue.
+                                 */
+                                if (rpc->outqueue.tailp == pdu)
+                                        rpc->outqueue.tailp = NULL;
+
                                 assert(rpc->stats.outqueue_len > 0);
                                 rpc->stats.outqueue_len--;
 

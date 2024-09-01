@@ -70,6 +70,7 @@ void rpc_reset_queue(struct rpc_queue *q)
 {
 	q->head = NULL;
 	q->tail = NULL;
+	q->tailp = NULL;
 }
 
 /*
@@ -95,44 +96,108 @@ void rpc_enqueue(struct rpc_queue *q, struct rpc_pdu *pdu)
  * written to the socket it adds pdu after that.
  * We do that to not mix data from different pdus being sent on the socket.
  */
-void rpc_add_to_outqueue(struct rpc_context *rpc, struct rpc_pdu *pdu)
+void rpc_add_to_outqueue_head(struct rpc_context *rpc, struct rpc_pdu *pdu)
 {
         if (rpc->outqueue.head == NULL) {
                 assert(rpc->outqueue.tail == NULL);
+                assert(rpc->outqueue.tailp == NULL);
                 assert(rpc->stats.outqueue_len == 0);
 
                 rpc->outqueue.head = rpc->outqueue.tail = pdu;
-                pdu->next = NULL;
-        } else if (rpc->outqueue.head == rpc->outqueue.tail) {
-                assert(rpc->stats.outqueue_len == 1);
-                assert(rpc->outqueue.head->next == NULL);
-                assert(rpc->outqueue.tail->next == NULL);
-                assert(pdu != rpc->outqueue.head);
-
-                rpc->outqueue.head->next = pdu;
-                rpc->outqueue.tail = pdu;
+                if (pdu->is_high_prio)
+                        rpc->outqueue.tailp = pdu;
                 pdu->next = NULL;
         } else {
-                assert(rpc->stats.outqueue_len > 1);
-                assert(rpc->outqueue.head->next != NULL);
-                assert(rpc->outqueue.tail->next == NULL);
-                assert(pdu != rpc->outqueue.head);
-                assert(pdu != rpc->outqueue.tail);
+                if (rpc->outqueue.head == rpc->outqueue.tail) {
+                        assert(rpc->stats.outqueue_len == 1);
+                        assert(rpc->outqueue.head->next == NULL);
+                        assert(rpc->outqueue.tail->next == NULL);
+                        assert(!rpc->outqueue.tailp ||
+                                        (rpc->outqueue.tailp == rpc->outqueue.tail));
+                        assert(pdu != rpc->outqueue.head);
+                } else {
+                        assert(rpc->stats.outqueue_len > 1);
+                        assert(rpc->outqueue.head->next != NULL);
+                        assert(rpc->outqueue.tail->next == NULL);
+                        assert(pdu != rpc->outqueue.head);
+                        assert(pdu != rpc->outqueue.tail);
+                        assert(pdu != rpc->outqueue.tailp);
+                }
 
                 /*
                  * Add to the head if head pdu is not partially-sent, else add
                  * after that.
+                 * If no high prio pdu queued and this one is high prio pdu,
+                 * set tailp as well, also if added after head pdu and tailp
+                 * points at head and pdu is high prio update tailp.
                  */
                 if (rpc->outqueue.head->out.num_done == 0) {
                         pdu->next = rpc->outqueue.head;
                         rpc->outqueue.head = pdu;
+                        if (pdu->is_high_prio && (rpc->outqueue.tailp == NULL))
+                                rpc->outqueue.tailp = pdu;
                 } else {
+                        if (pdu->is_high_prio &&
+                            ((rpc->outqueue.tailp == NULL) ||
+                             (rpc->outqueue.tailp == rpc->outqueue.head)))
+                                rpc->outqueue.tailp = pdu;
                         pdu->next = rpc->outqueue.head->next;
                         rpc->outqueue.head->next = pdu;
                 }
+
+                if (pdu->next == NULL)
+                        rpc->outqueue.tail = pdu;
         }
 
+        assert(rpc->outqueue.tail->next == NULL);
+        assert(rpc->outqueue.tail->is_high_prio ==
+                (rpc->outqueue.tailp == rpc->outqueue.tail));
+
         rpc->stats.outqueue_len++;
+}
+
+/**
+ * High priority pdus are added after tailp.
+ */
+void rpc_add_to_outqueue_highp(struct rpc_context *rpc, struct rpc_pdu *pdu)
+{
+        pdu->is_high_prio = TRUE;
+        if (rpc->outqueue.tailp == NULL) {
+                /*
+                 * First high priority pdu, add to head.
+                 */
+                rpc_add_to_outqueue_head(rpc, pdu);
+                assert(rpc->outqueue.head != NULL);
+                assert(rpc->outqueue.tail != NULL);
+                assert(rpc->outqueue.tailp != NULL);
+        } else {
+                assert(rpc->outqueue.head != NULL);
+                assert(rpc->outqueue.tail != NULL);
+                assert(pdu != rpc->outqueue.head);
+                assert(pdu != rpc->outqueue.tail);
+                assert(pdu != rpc->outqueue.tailp);
+
+                pdu->next = rpc->outqueue.tailp->next;
+                rpc->outqueue.tailp->next = pdu;
+                if (rpc->outqueue.tail == rpc->outqueue.tailp)
+                        rpc->outqueue.tail = pdu;
+                rpc->outqueue.tailp = pdu;
+                rpc->stats.outqueue_len++;
+        }
+}
+
+/**
+ * Low priority pdus are added to the tail.
+ */
+void rpc_add_to_outqueue_lowp(struct rpc_context *rpc, struct rpc_pdu *pdu)
+{
+        pdu->is_high_prio = FALSE;
+        rpc_enqueue(&rpc->outqueue, pdu);
+        rpc->stats.outqueue_len++;
+
+        assert(rpc->outqueue.head != NULL);
+        assert(rpc->outqueue.tail != NULL);
+        assert(pdu->next == NULL);
 }
 
 /*
@@ -142,7 +207,7 @@ void rpc_add_to_outqueue(struct rpc_context *rpc, struct rpc_pdu *pdu)
  */
 void rpc_return_to_outqueue(struct rpc_context *rpc, struct rpc_pdu *pdu)
 {
-        rpc_add_to_outqueue(rpc, pdu);
+        rpc_add_to_outqueue_head(rpc, pdu);
 
         /*
          * Only already transmitted PDUs are added back to outqueue, so sending
@@ -175,12 +240,20 @@ int rpc_remove_pdu_from_queue(struct rpc_queue *q, struct rpc_pdu *remove_pdu)
                  * Change the head to point to the next pdu.
                  * If tail is also pointing to remove_pdu, this means it's the
                  * only PDU and after removing that we will have an empty list.
+                 * If tailp is pointing to remove_pdu, this means it's the
+                 * only high prio pdu and after removing it tailp will be NULL.
                  */
                 if (q->head == remove_pdu) {
                         q->head = remove_pdu->next;
+
+                        if (q->tailp == remove_pdu) {
+                                q->tailp = NULL;
+                        }
+
                         if (q->tail == remove_pdu) {
                                 assert(remove_pdu->next == NULL);
                                 q->tail = NULL;
+                                assert(q->tailp == NULL);
                                 assert(q->head == NULL);
                         } else {
                                 assert(q->head != NULL);
@@ -210,11 +283,20 @@ int rpc_remove_pdu_from_queue(struct rpc_queue *q, struct rpc_pdu *remove_pdu)
                         q->tail = pdu;
                 }
 
+                if (q->tailp == remove_pdu) {
+                        assert(remove_pdu->is_high_prio);
+                        if (pdu->is_high_prio)
+                                q->tailp = pdu;
+                        else
+                                q->tailp = NULL;
+                }
+
                 remove_pdu->next = NULL;
 
                 return 1;
         } else {
                 assert(q->tail == NULL);
+                assert(q->tailp == NULL);
                 /* not found */
                 return 0;
         }
@@ -826,10 +908,9 @@ int rpc_queue_pdu2(struct rpc_context *rpc, struct rpc_pdu *pdu, bool_t high_pri
         assert(pdu->out.num_done == 0);
 
         if (!high_prio) {
-            rpc_enqueue(&rpc->outqueue, pdu);
-            rpc->stats.outqueue_len++;
+            rpc_add_to_outqueue_lowp(rpc, pdu);
         } else {
-            rpc_add_to_outqueue(rpc, pdu);
+            rpc_add_to_outqueue_highp(rpc, pdu);
         }
 
 #ifdef ENABLE_PARANOID
@@ -1298,6 +1379,7 @@ int rpc_process_pdu(struct rpc_context *rpc, char *buf, int size)
 void rpc_paranoid_checks(struct rpc_context *rpc)
 {
         struct rpc_pdu *pdu, *next_pdu, *last_pdu = NULL;
+        struct rpc_pdu *last_highprio_pdu = NULL;
         int outqueue_count = 0;
         int waitpdu_count = 0;
         int i;
@@ -1325,9 +1407,12 @@ void rpc_paranoid_checks(struct rpc_context *rpc)
                                 pdu->removed_from_waitpdu_at_time);
                 outqueue_count++;
                 last_pdu = pdu;
+                if (pdu->is_high_prio)
+                        last_highprio_pdu = pdu;
         }
         assert(rpc->stats.outqueue_len == outqueue_count);
         assert(rpc->outqueue.tail == last_pdu);
+        assert(rpc->outqueue.tailp == last_highprio_pdu);
 
         for (i = 0; i < rpc->num_hashes; i++) {
                 struct rpc_queue *q = &rpc->waitpdu[i];
