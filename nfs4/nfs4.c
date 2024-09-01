@@ -294,18 +294,19 @@ struct rpc_pdu *rpc_nfs4_readv_task(struct rpc_context *rpc, rpc_cb cb,
 		return NULL;
 	}
 
-	pdu->in.base = (struct iovec *) malloc(sizeof(struct iovec) * iovcnt);
-	if (!pdu->in.base) {
-		rpc_set_error(rpc, "error: Failed to allocate memory");
-		rpc_free_pdu(rpc, pdu);
-		return NULL;
-	}
+        pdu->in.base = (struct iovec *) malloc(sizeof(struct iovec) * iovcnt * 2);
+        if (!pdu->in.base) {
+                rpc_set_error(rpc, "error: Failed to allocate memory");
+                rpc_free_pdu(rpc, pdu);
+                return NULL;
+        }
 
         pdu->in.iov = pdu->in.base;
-	pdu->in.iovcnt = iovcnt;
+        pdu->in.iov_ref = pdu->in.base + iovcnt;
+        pdu->in.iovcnt = pdu->in.iovcnt_ref = iovcnt;
 
         for (i = 0; i < iovcnt; i++) {
-                pdu->in.iov[i] = iov[i];
+                pdu->in.iov[i] = pdu->in.iov_ref[i] = iov[i];
                 pdu->in.remaining_size += iov[i].iov_len;
         }
 
