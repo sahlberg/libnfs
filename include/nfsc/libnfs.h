@@ -2036,8 +2036,15 @@ EXTERN void nfs4_set_verifier(struct nfs_context *nfs, const char *verifier);
  * This function starts a separate service thread for multithreading support.
  * When multithreading is enabled the eventdriven async API is no longer
  * supported and you can only use the synchronous API.
+ *
+ * nfs_mt_service_thread_start_ss() is same as nfs_mt_service_thread_start()
+ * but allows caller to set the stack size of the libnfs service thread.
+ * Default 8MB stack size is not sufficient for very large readdir/readdirplus
+ * responses as the zdr decoder is recursive.
  */
-EXTERN int nfs_mt_service_thread_start(struct nfs_context *nfs);
+EXTERN int nfs_mt_service_thread_start_ss(struct nfs_context *nfs, size_t stack_bytes);
+#define nfs_mt_service_thread_start(nfs) nfs_mt_service_thread_start_ss(nfs, 0)
+
 /*
  * Shutdown multithreading support.
  */

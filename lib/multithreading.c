@@ -101,9 +101,17 @@ static void *nfs_mt_service_thread(void *arg)
         return NULL;
 }
 
-int nfs_mt_service_thread_start(struct nfs_context *nfs)
+int nfs_mt_service_thread_start_ss(struct nfs_context *nfs, size_t stack_bytes)
 {
-        if (pthread_create(&nfs->nfsi->service_thread, NULL,
+        pthread_attr_t attr;
+
+        pthread_attr_init(&attr);
+
+        if (stack_bytes != 0) {
+                pthread_attr_setstacksize(&attr, stack_bytes);
+        }
+
+        if (pthread_create(&nfs->nfsi->service_thread, &attr,
                            &nfs_mt_service_thread, nfs)) {
                 nfs_set_error(nfs, "Failed to start service thread");
                 return -1;
