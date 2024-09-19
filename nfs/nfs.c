@@ -823,7 +823,12 @@ struct rpc_pdu *rpc_nfs3_symlink_task(struct rpc_context *rpc, rpc_cb cb,
 {
 	struct rpc_pdu *pdu;
 
-	pdu = rpc_allocate_pdu(rpc, NFS_PROGRAM, NFS_V3, NFS3_SYMLINK, cb, private_data, (zdrproc_t)zdr_SYMLINK3res, sizeof(SYMLINK3res));
+    /*
+     * symlink target max length is 4096 bytes and we need space to encode
+     * symlink attributes too, so we use additional 512 bytes for request
+     * encoding.
+     */
+	pdu = rpc_allocate_pdu2(rpc, NFS_PROGRAM, NFS_V3, NFS3_SYMLINK, cb, private_data, (zdrproc_t)zdr_SYMLINK3res, sizeof(SYMLINK3res), 512, 0);
 	if (pdu == NULL) {
 		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu for NFS3/SYMLINK call");
 		return NULL;
