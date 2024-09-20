@@ -434,7 +434,7 @@ stat_cb(int status, struct nfs_context *nfs, void *data, void *private_data)
 
 	if (status < 0) {
 		nfs_set_error(nfs, "stat call failed with \"%s\"",
-                              (char *)data);
+                              nfs_get_error(nfs));
                 goto finished;
 	}
 #ifdef WIN32
@@ -480,7 +480,7 @@ stat64_cb(int status, struct nfs_context *nfs, void *data, void *private_data)
 
 	if (status < 0) {
 		nfs_set_error(nfs, "stat call failed with \"%s\"",
-                              (char *)data);
+                              nfs_get_error(nfs));
                 goto finished;
 	}
 	memcpy(cb_data->return_data, data, sizeof(struct nfs_stat_64));
@@ -546,7 +546,7 @@ open_cb(int status, struct nfs_context *nfs, void *data, void *private_data)
 
 	if (status < 0) {
 		nfs_set_error(nfs, "open call failed with \"%s\"",
-                              (char *)data);
+                              nfs_get_error(nfs));
                 goto finished;
 	}
 
@@ -624,7 +624,7 @@ chdir_cb(int status, struct nfs_context *nfs, void *data, void *private_data)
 
 	if (status < 0) {
 		nfs_set_error(nfs, "chdir call failed with \"%s\"",
-                              (char *)data);
+                              nfs_get_error(nfs));
                 goto finished;
 	}
 
@@ -665,7 +665,7 @@ pread_cb(int status, struct nfs_context *nfs, void *data, void *private_data)
 
 	if (status < 0) {
 		nfs_set_error(nfs, "%s call failed with \"%s\"", cb_data->call,
-                              (char *)data);
+                              nfs_get_error(nfs));
                 goto finished;
 	}
 
@@ -735,7 +735,7 @@ close_cb(int status, struct nfs_context *nfs, void *data, void *private_data)
 
 	if (status < 0) {
 		nfs_set_error(nfs, "close call failed with \"%s\"",
-                              (char *)data);
+                              nfs_get_error(nfs));
                 goto finished;
 	}
 
@@ -833,7 +833,7 @@ pwrite_cb(int status, struct nfs_context *nfs, void *data, void *private_data)
 
 	if (status < 0) {
 		nfs_set_error(nfs, "%s call failed with \"%s\"",
-                              cb_data->call, (char *)data);
+                              cb_data->call, nfs_get_error(nfs));
                 goto finished;
 	}
 
@@ -904,7 +904,7 @@ fsync_cb(int status, struct nfs_context *nfs, void *data, void *private_data)
 
 	if (status < 0) {
 		nfs_set_error(nfs, "fsync call failed with \"%s\"",
-                              (char *)data);
+                              nfs_get_error(nfs));
                 goto finished;
 	}
 
@@ -946,7 +946,7 @@ ftruncate_cb(int status, struct nfs_context *nfs, void *data,
 
 	if (status < 0) {
 		nfs_set_error(nfs, "ftruncate call failed with \"%s\"",
-                              (char *)data);
+                              nfs_get_error(nfs));
                 goto finished;
 	}
 
@@ -989,7 +989,7 @@ truncate_cb(int status, struct nfs_context *nfs, void *data, void *private_data)
 
 	if (status < 0) {
 		nfs_set_error(nfs, "truncate call failed with \"%s\"",
-                              (char *)data);
+                              nfs_get_error(nfs));
                 goto finished;
 	}
 
@@ -1029,7 +1029,7 @@ mkdir_cb(int status, struct nfs_context *nfs, void *data, void *private_data)
 
 	if (status < 0) {
 		nfs_set_error(nfs, "mkdir call failed with \"%s\"",
-                              (char *)data);
+                              nfs_get_error(nfs));
                 goto finished;
 	}
 
@@ -1093,7 +1093,7 @@ rmdir_cb(int status, struct nfs_context *nfs, void *data, void *private_data)
 
 	if (status < 0) {
 		nfs_set_error(nfs, "rmdir call failed with \"%s\"",
-                              (char *)data);
+                              nfs_get_error(nfs));
                 goto finished;
 	}
 
@@ -1135,7 +1135,7 @@ creat_cb(int status, struct nfs_context *nfs, void *data, void *private_data)
 
 	if (status < 0) {
 		nfs_set_error(nfs, "creat call failed with \"%s\"",
-                              (char *)data);
+                              nfs_get_error(nfs));
                 goto finished;
 	}
 
@@ -1181,7 +1181,7 @@ mknod_cb(int status, struct nfs_context *nfs, void *data, void *private_data)
 
 	if (status < 0) {
 		nfs_set_error(nfs, "mknod call failed with \"%s\"",
-                              (char *)data);
+                              nfs_get_error(nfs));
                 goto finished;
 	}
 
@@ -1222,7 +1222,7 @@ unlink_cb(int status, struct nfs_context *nfs, void *data, void *private_data)
 
 	if (status < 0) {
 		nfs_set_error(nfs, "unlink call failed with \"%s\"",
-                              (char *)data);
+                              nfs_get_error(nfs));
                 goto finished;
 	}
 
@@ -1265,7 +1265,7 @@ opendir_cb(int status, struct nfs_context *nfs, void *data, void *private_data)
 
 	if (status < 0) {
 		nfs_set_error(nfs, "opendir call failed with \"%s\"",
-                              (char *)data);
+                              nfs_get_error(nfs));
                 goto finished;
 	}
 
@@ -1442,7 +1442,7 @@ statvfs_cb(int status, struct nfs_context *nfs, void *data, void *private_data)
 
 	if (status < 0) {
 		nfs_set_error(nfs, "statvfs call failed with \"%s\"",
-                              (char *)data);
+                              nfs_get_error(nfs));
                 goto finished;
 	}
 
@@ -1486,7 +1486,7 @@ statvfs64_cb(int status, struct nfs_context *nfs, void *data,
 
 	if (status < 0) {
 		nfs_set_error(nfs, "statvfs64 call failed with \"%s\"",
-                              (char *)data);
+                              nfs_get_error(nfs));
                 goto finished;
 	}
 
@@ -1530,7 +1530,7 @@ readlink_cb(int status, struct nfs_context *nfs, void *data, void *private_data)
 
 	if (status < 0) {
 		nfs_set_error(nfs, "readlink call failed with \"%s\"",
-                              (char *)data);
+                              nfs_get_error(nfs));
                 goto finished;
 	}
 
@@ -1579,7 +1579,7 @@ readlink2_cb(int status, struct nfs_context *nfs, void *data, void *private_data
 
 	if (status < 0) {
 		nfs_set_error(nfs, "readlink call failed with \"%s\"",
-                              (char *)data);
+                              nfs_get_error(nfs));
                 goto finished;
 	}
 
@@ -1632,7 +1632,7 @@ chmod_cb(int status, struct nfs_context *nfs, void *data, void *private_data)
 
 	if (status < 0) {
 		nfs_set_error(nfs, "chmod call failed with \"%s\"",
-                              (char *)data);
+                              nfs_get_error(nfs));
                 goto finished;
 	}
 
@@ -1697,7 +1697,7 @@ fchmod_cb(int status, struct nfs_context *nfs, void *data, void *private_data)
 
 	if (status < 0) {
 		nfs_set_error(nfs, "fchmod call failed with \"%s\"",
-                              (char *)data);
+                              nfs_get_error(nfs));
                 goto finished;
 	}
 
@@ -1740,7 +1740,7 @@ chown_cb(int status, struct nfs_context *nfs, void *data, void *private_data)
 
 	if (status < 0) {
 		nfs_set_error(nfs, "chown call failed with \"%s\"",
-                              (char *)data);
+                              nfs_get_error(nfs));
                 goto finished;
 	}
 
@@ -1805,7 +1805,7 @@ fchown_cb(int status, struct nfs_context *nfs, void *data, void *private_data)
 
 	if (status < 0) {
 		nfs_set_error(nfs, "fchown call failed with \"%s\"",
-                              (char *)data);
+                              nfs_get_error(nfs));
                 goto finished;
 	}
 
@@ -1847,7 +1847,7 @@ utimes_cb(int status, struct nfs_context *nfs, void *data, void *private_data)
 
 	if (status < 0) {
 		nfs_set_error(nfs, "utimes call failed with \"%s\"",
-                              (char *)data);
+                              nfs_get_error(nfs));
                 goto finished;
 	}
 
@@ -1911,7 +1911,7 @@ utime_cb(int status, struct nfs_context *nfs, void *data, void *private_data)
 
 	if (status < 0) {
 		nfs_set_error(nfs, "utime call failed with \"%s\"",
-                              (char *)data);
+                              nfs_get_error(nfs));
                 goto finished;
 	}
 
@@ -1951,7 +1951,7 @@ access_cb(int status, struct nfs_context *nfs, void *data, void *private_data)
 
 	if (status < 0) {
 		nfs_set_error(nfs, "access call failed with \"%s\"",
-                              (char *)data);
+                              nfs_get_error(nfs));
                 goto finished;
 	}
 
@@ -1993,7 +1993,7 @@ access2_cb(int status, struct nfs_context *nfs, void *data, void *private_data)
 
 	if (status < 0) {
 		nfs_set_error(nfs, "access2 call failed with \"%s\"",
-                              (char *)data);
+                              nfs_get_error(nfs));
                 goto finished;
 	}
 
@@ -2035,7 +2035,7 @@ symlink_cb(int status, struct nfs_context *nfs, void *data, void *private_data)
 
 	if (status < 0) {
 		nfs_set_error(nfs, "symlink call failed with \"%s\"",
-			      (char *)data);
+			      nfs_get_error(nfs));
                 goto finished;
 	}
 
@@ -2077,7 +2077,7 @@ rename_cb(int status, struct nfs_context *nfs, void *data, void *private_data)
 
 	if (status < 0) {
 		nfs_set_error(nfs, "rename call failed with \"%s\"",
-                              (char *)data);
+                              nfs_get_error(nfs));
                 goto finished;
 	}
 
@@ -2119,7 +2119,7 @@ link_cb(int status, struct nfs_context *nfs, void *data, void *private_data)
 
 	if (status < 0) {
 		nfs_set_error(nfs, "link call failed with \"%s\"",
-                              (char *)data);
+                              nfs_get_error(nfs));
                 goto finished;
 	}
 
@@ -2175,7 +2175,7 @@ nfs3_getacl_cb(int status, struct nfs_context *nfs, void *data, void *private_da
 
 	if (status < 0) {
 		nfs_set_error(nfs, "getacl call failed with \"%s\"",
-                              (char *)data);
+                              nfs_get_error(nfs));
                 goto finished;
 	}
         memcpy(dst, src, sizeof(fattr3_acl));
@@ -2234,7 +2234,7 @@ nfs4_getacl_cb(int status, struct nfs_context *nfs, void *data, void *private_da
 
 	if (status < 0) {
 		nfs_set_error(nfs, "getacl call failed with \"%s\"",
-                              (char *)data);
+                              nfs_get_error(nfs));
                 goto finished;
 	}
         dst->fattr4_acl_len = src->fattr4_acl_len;
@@ -2302,7 +2302,7 @@ mount_getexports_cb(struct rpc_context *mount_context, int status, void *data,
 
 	if (status != 0) {
 		rpc_set_error(mount_context, "mount/export call failed with "
-                              "\"%s\"", (char *)data);
+                              "\"%s\"", rpc_get_error(mount_context));
                 goto finished;
 	}
 

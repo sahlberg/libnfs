@@ -271,7 +271,8 @@ int main(int argc, char *argv[])
 		}
 		count = file_pwrite(dst, buf, count, off);
 		if (count < 0) {
-			fprintf(stderr, "Failed to write to dest file\n");
+			fprintf(stderr, "Failed to write to dest file %s\n",
+				dst->is_nfs ? nfs_get_error(dst->nfs) : "");
 			free_file_context(src);
 			free_file_context(dst);
 			return 10;
