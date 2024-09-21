@@ -4247,7 +4247,7 @@ nfs3_pwrite_mcb(struct rpc_context *rpc, int status, void *command_data,
 	 * received all responses.
 	 */
 	if (status == RPC_STATUS_ERROR) {
-		data->error = 1;
+                data->error = -EFAULT;
 	}
 	if (status == RPC_STATUS_CANCEL) {
 		data->cancel = 1;
@@ -4260,14 +4260,14 @@ nfs3_pwrite_mcb(struct rpc_context *rpc, int status, void *command_data,
 		res = command_data;
 		if (res->status != NFS3_OK) {
 			nfs_set_error(nfs, "NFS: Write failed with %s(%d)", nfsstat3_to_str(res->status), nfsstat3_to_errno(res->status));
-			data->error = 1;
+                        data->error = nfsstat3_to_errno(res->status);
 		} else  {
 			size_t count = res->WRITE3res_u.resok.count;
 
 			if (count < mdata->count) {
 				if (count == 0) {
 					nfs_set_error(nfs, "NFS: Write failed. No bytes written!");
-					data->error = 1;
+                                        data->error = -EFAULT;
 				} else {
 					/* reissue reminder of this write request */
 					WRITE3args args;
@@ -4311,7 +4311,7 @@ nfs3_pwrite_mcb(struct rpc_context *rpc, int status, void *command_data,
 		return;
 	}
 	if (data->error != 0) {
-		data->cb(-EFAULT, nfs, command_data, data->private_data);
+		data->cb(data->error, nfs, command_data, data->private_data);
 		free_nfs_cb_data(data);
 		return;
 	}
