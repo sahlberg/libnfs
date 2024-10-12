@@ -313,10 +313,12 @@ struct rpc_context {
 	uint32_t max_waitpdu_len;
 
 #ifdef HAVE_MULTITHREADING
-        int multithreading_enabled;
         libnfs_mutex_t rpc_mutex;
 #ifndef HAVE_STDATOMIC_H
+        int multithreading_enabled;
         libnfs_mutex_t atomic_int_mutex;
+#else
+        atomic_int multithreading_enabled;
 #endif /* HAVE_STDATOMIC_H */
 #endif /* HAVE_MULTITHREADING */
 
