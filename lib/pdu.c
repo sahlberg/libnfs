@@ -694,6 +694,14 @@ int rpc_queue_pdu2(struct rpc_context *rpc, struct rpc_pdu *pdu, bool_t high_pri
 {
 	int i, size = 0, pos;
         uint32_t recordmarker;
+        /*
+         * First pdu added to an empty outqueue is special, as an optimization
+         * we send it inline from here. Since there is no other pdu being sent
+         * it's safe against mixing bytes from different pdus.
+         * First high prio pdu is also sent inline even if there are other low
+         * priority pdus present in outqueue.
+         */
+        bool_t send_now;
 #ifdef HAVE_LIBKRB5
         uint32_t maj, min, val, len;
         gss_buffer_desc message_buffer, output_token;
@@ -908,10 +916,12 @@ int rpc_queue_pdu2(struct rpc_context *rpc, struct rpc_pdu *pdu, bool_t high_pri
         assert(pdu->out.num_done == 0);
 
         if (!high_prio) {
-            rpc_add_to_outqueue_lowp(rpc, pdu);
+                rpc_add_to_outqueue_lowp(rpc, pdu);
         } else {
-            rpc_add_to_outqueue_highp(rpc, pdu);
+                rpc_add_to_outqueue_highp(rpc, pdu);
         }
+
+        send_now = (rpc->outqueue.head == pdu);
 
 #ifdef ENABLE_PARANOID
         assert(pdu->in_waitpdu == PDU_ABSENT);
@@ -926,7 +936,8 @@ int rpc_queue_pdu2(struct rpc_context *rpc, struct rpc_pdu *pdu, bool_t high_pri
                 nfs_mt_mutex_unlock(&rpc->rpc_mutex);
         }
 #endif /* HAVE_MULTITHREADING */
-        if (rpc->outqueue.head == pdu) {
+
+        if (send_now) {
                 rpc_write_to_socket(rpc);
         }
 
