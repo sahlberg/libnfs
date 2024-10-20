@@ -313,6 +313,11 @@ struct rpc_context {
 	uint32_t max_waitpdu_len;
 
 #ifdef HAVE_MULTITHREADING
+        /*
+         * Linux thread id returned by gettid().
+         * Used for logging.
+         */
+        pid_t tid;
         libnfs_mutex_t rpc_mutex;
 #ifndef HAVE_STDATOMIC_H
         int multithreading_enabled;
@@ -683,12 +688,22 @@ void nfs_set_error_locked(struct nfs_context *nfs, char *error_string, ...)
 #define RPC_LOG(rpc, level, format, ...) ;
 #define LOG(rpc, level, format, ...) ;
 #else
+#ifdef HAVE_MULTITHREADING
+#define RPC_LOG(rpc, level, format, ...) \
+	do { \
+		if (level <= rpc->debug) { \
+			fprintf(stderr, "[%d] libnfs:%d rpc %p " format "\n", rpc->tid, level, rpc, ## __VA_ARGS__); \
+		} \
+	} while (0)
+#else
 #define RPC_LOG(rpc, level, format, ...) \
 	do { \
 		if (level <= rpc->debug) { \
 			fprintf(stderr, "libnfs:%d rpc %p " format "\n", level, rpc, ## __VA_ARGS__); \
 		} \
 	} while (0)
+#endif /* HAVE_MULTITHREADING */
+
 /*
  * Use LOG() for logging from code where there is no rpc_context.
  * It only provides simple unconditional logging since we don't have any debug
