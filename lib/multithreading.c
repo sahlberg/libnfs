@@ -79,7 +79,14 @@ static void *nfs_mt_service_thread(void *arg)
 	int revents;
 	int ret;
 
-        nfs->rpc->multithreading_enabled = 1;
+        nfs->rpc->tid = gettid();
+
+        /* Prevent compiler reordering by introducing a dependency */
+        if (nfs->rpc->tid != 0) {
+                nfs->rpc->multithreading_enabled = 1;
+        }
+
+        assert(nfs->rpc->multithreading_enabled);
 
 	while (nfs->rpc->multithreading_enabled) {
 		pfd.fd = nfs_get_fd(nfs);

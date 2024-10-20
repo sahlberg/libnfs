@@ -96,6 +96,9 @@ struct utimbuf {
  * Used for interfacing the async version of the api into an external
  * eventsystem.
  *
+ * nfs_get_tid() returns the Linux tid of the libnfs thread processing
+ * requests for this nfs_context.
+ *
  * nfs_get_fd() returns the file descriptor for the context we need to
  * listen for events from.
  *
@@ -120,6 +123,7 @@ struct utimbuf {
  * You only need this for the async interface. The sync interface already
  * do this in their built-in event loops.
  */
+EXTERN int nfs_get_tid(struct nfs_context *nfs);
 EXTERN int nfs_get_fd(struct nfs_context *nfs);
 EXTERN int nfs_which_events(struct nfs_context *nfs);
 EXTERN int nfs_service(struct nfs_context *nfs, int revents);

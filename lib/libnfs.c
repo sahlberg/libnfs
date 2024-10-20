@@ -194,6 +194,13 @@ nfs_set_xprtsecurity(struct nfs_context *nfs, enum rpc_xprtsec xprtsec)
 #endif /* HAVE_TLS */
 
 int
+nfs_get_tid(struct nfs_context *nfs)
+{
+	assert(nfs->rpc->magic == RPC_CONTEXT_MAGIC);
+	return nfs->rpc->tid;
+}
+
+int
 nfs_get_fd(struct nfs_context *nfs)
 {
 	return rpc_get_fd(nfs->rpc);
