@@ -146,8 +146,14 @@ int nfs_mt_service_thread_start_ss(struct nfs_context *nfs, size_t stack_bytes)
 
 void nfs_mt_service_thread_stop(struct nfs_context *nfs)
 {
+	uint64_t evwrite = 1;
+	[[maybe_unused]] ssize_t evbytes;
+
+	/* Signal the service thread to stop */
         nfs->rpc->multithreading_enabled = 0;
-        pthread_join(nfs->nfsi->service_thread, NULL);
+	evbytes = write(rpc_get_evfd(rpc), &evwrite, sizeof(evwrite));
+	assert(evbytes == 8);
+	pthread_join(nfs->nfsi->service_thread, NULL);
 }
         
 /*
