@@ -151,7 +151,7 @@ void nfs_mt_service_thread_stop(struct nfs_context *nfs)
 
 	/* Signal the service thread to stop */
         nfs->rpc->multithreading_enabled = 0;
-	evbytes = write(rpc_get_evfd(rpc), &evwrite, sizeof(evwrite));
+	evbytes = write(rpc_get_evfd(nfs->rpc), &evwrite, sizeof(evwrite));
 	assert(evbytes == 8);
 	pthread_join(nfs->nfsi->service_thread, NULL);
 }
