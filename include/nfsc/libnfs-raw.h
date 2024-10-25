@@ -182,6 +182,7 @@ EXTERN void rpc_set_auth(struct rpc_context *rpc, struct AUTH *auth);
  * your event system and passing revents as 0.
  */
 EXTERN int rpc_get_fd(struct rpc_context *rpc);
+EXTERN int rpc_get_evfd(struct rpc_context *rpc);
 EXTERN int rpc_which_events(struct rpc_context *rpc);
 EXTERN int rpc_service(struct rpc_context *rpc, int revents);
 

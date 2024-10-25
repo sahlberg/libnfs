@@ -207,6 +207,12 @@ nfs_get_fd(struct nfs_context *nfs)
 }
 
 int
+nfs_get_evfd(struct nfs_context *nfs)
+{
+       return rpc_get_evfd(nfs->rpc);
+}
+
+int
 nfs_queue_length(struct nfs_context *nfs)
 {
 	return rpc_queue_length(nfs->rpc);

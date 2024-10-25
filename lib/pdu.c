@@ -56,6 +56,7 @@
 #include <string.h>
 #include <assert.h>
 #include <errno.h>
+#include <unistd.h>
 #include "slist.h"
 #include "libnfs-zdr.h"
 #include "libnfs.h"
@@ -937,8 +938,17 @@ int rpc_queue_pdu2(struct rpc_context *rpc, struct rpc_pdu *pdu, bool_t high_pri
         }
 #endif /* HAVE_MULTITHREADING */
 
+        /*
+         * If only PDU or a high priority PDU, send inline else let service
+         * thread know.
+         */
         if (send_now) {
                 rpc_write_to_socket(rpc);
+        } else {
+                uint64_t evwrite = 1;
+                [[maybe_unused]] ssize_t evbytes =
+                        write(rpc_get_evfd(rpc), &evwrite, sizeof(evwrite));
+                assert(evbytes == 8);
         }
 
 	return 0;
