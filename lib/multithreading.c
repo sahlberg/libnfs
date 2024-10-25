@@ -75,7 +75,7 @@ nfs_tid_t nfs_mt_get_tid(void)
 static void *nfs_mt_service_thread(void *arg)
 {
         struct nfs_context *nfs = (struct nfs_context *)arg;
-	struct pollfd pfd;
+	struct pollfd pfd[2];
 	int revents;
 	int ret;
 
@@ -88,17 +88,31 @@ static void *nfs_mt_service_thread(void *arg)
 
         assert(nfs->rpc->multithreading_enabled);
 
+        pfd[0].fd = nfs_get_evfd(nfs);
+        pfd[0].events = POLLIN;
+
 	while (nfs->rpc->multithreading_enabled) {
-		pfd.fd = nfs_get_fd(nfs);
-		pfd.events = nfs_which_events(nfs);
-		pfd.revents = 0;
+		pfd[0].revents = 0;
+		pfd[1].fd = nfs_get_fd(nfs);
+		pfd[1].events = nfs_which_events(nfs);
+		pfd[1].revents = 0;
         
-		ret = poll(&pfd, 1, nfs->rpc->poll_timeout);
+		ret = poll(pfd, 2, nfs->rpc->poll_timeout);
 		if (ret < 0) {
 			nfs_set_error(nfs, "Poll failed");
 			revents = -1;
 		} else {
-			revents = pfd.revents;
+                        if (pfd[0].revents != 0) {
+                                uint64_t evread;
+                                [[maybe_unused]] ssize_t evbytes;
+
+                                assert(pfd[0].revents == POLLIN);
+                                evbytes = read(pfd[0].fd, &evread, sizeof(evread));
+                                assert(evbytes == 8);
+                                assert(evread > 0);
+                        }
+
+			revents = pfd[1].revents;
 		}
 		if (nfs_service(nfs, revents) < 0) {
 			if (revents != -1)

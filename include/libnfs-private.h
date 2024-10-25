@@ -277,6 +277,7 @@ struct rpc_context {
 	uint32_t magic;
 	int fd;
 	int old_fd;
+	int evfd;
 	int is_connected;
 	int is_nonblocking;
 
@@ -312,12 +313,12 @@ struct rpc_context {
 	uint32_t waitpdu_len;
 	uint32_t max_waitpdu_len;
 
-#ifdef HAVE_MULTITHREADING
         /*
          * Linux thread id returned by gettid().
          * Used for logging.
          */
         pid_t tid;
+#ifdef HAVE_MULTITHREADING
         libnfs_mutex_t rpc_mutex;
 #ifndef HAVE_STDATOMIC_H
         int multithreading_enabled;

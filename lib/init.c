@@ -54,6 +54,8 @@
 #include <assert.h>
 #include <fcntl.h>
 #include <time.h>
+#include <sys/eventfd.h>
+
 #include "slist.h"
 #include "libnfs-zdr.h"
 #include "libnfs.h"
@@ -154,8 +156,20 @@ struct rpc_context *rpc_init_context(void)
 #endif
 #endif /* HAVE_MULTITHREADING */
 
+        /*
+         * eventfd for informing RPC service thread of new PDUs waiting to
+         * be sent.
+         */
+        rpc->evfd = eventfd(0, EFD_NONBLOCK);
+        if (rpc->evfd == -1) {
+		free(rpc->waitpdu);
+		free(rpc);
+		return NULL;
+        }
+
  	rpc->auth = authunix_create_default();
 	if (rpc->auth == NULL) {
+	        close(rpc->evfd);
 		free(rpc->waitpdu);
 		free(rpc);
 		return NULL;
@@ -565,6 +579,10 @@ void rpc_destroy_context(struct rpc_context *rpc)
 	if (rpc->fd != -1) {
  		close(rpc->fd);
 	}
+
+	if (rpc->evfd != -1) {
+		close(rpc->evfd);
+        }
 
 	if (rpc->error_string && rpc->error_string != oom) {
 		free(rpc->error_string);

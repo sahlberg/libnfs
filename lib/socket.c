@@ -257,6 +257,12 @@ rpc_get_fd(struct rpc_context *rpc)
 	return rpc->fd;
 }
 
+int
+rpc_get_evfd(struct rpc_context *rpc)
+{
+        return rpc->evfd;
+}
+
 /*
  * Does rpc->outqueue have one or more PDUs waiting to be sent out.
  */
