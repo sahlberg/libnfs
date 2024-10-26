@@ -154,7 +154,16 @@ void rpc_add_to_outqueue_head(struct rpc_context *rpc, struct rpc_pdu *pdu)
         assert(rpc->outqueue.tail->is_high_prio ==
                 (rpc->outqueue.tailp == rpc->outqueue.tail));
 
-        rpc->stats.outqueue_len++;
+        if (rpc->stats.outqueue_len++ == 0) {
+                /*
+                 * If this is the first pdu added to an empty outqueue let the
+                 * service thread know.
+                 */
+                uint64_t evwrite = 1;
+                [[maybe_unused]] ssize_t evbytes =
+                        write(rpc_get_evfd(rpc), &evwrite, sizeof(evwrite));
+                assert(evbytes == 8);
+        }
 }
 
 /**
@@ -177,6 +186,7 @@ void rpc_add_to_outqueue_highp(struct rpc_context *rpc, struct rpc_pdu *pdu)
                 assert(pdu != rpc->outqueue.head);
                 assert(pdu != rpc->outqueue.tail);
                 assert(pdu != rpc->outqueue.tailp);
+                assert(rpc->stats.outqueue_len > 0);
 
                 pdu->next = rpc->outqueue.tailp->next;
                 rpc->outqueue.tailp->next = pdu;
@@ -194,7 +204,16 @@ void rpc_add_to_outqueue_lowp(struct rpc_context *rpc, struct rpc_pdu *pdu)
 {
         pdu->is_high_prio = FALSE;
         rpc_enqueue(&rpc->outqueue, pdu);
-        rpc->stats.outqueue_len++;
+        if (rpc->stats.outqueue_len++ == 0) {
+                /*
+                 * If this is the first pdu added to an empty outqueue let the
+                 * service thread know.
+                 */
+                uint64_t evwrite = 1;
+                [[maybe_unused]] ssize_t evbytes =
+                        write(rpc_get_evfd(rpc), &evwrite, sizeof(evwrite));
+                assert(evbytes == 8);
+        }
 
         assert(rpc->outqueue.head != NULL);
         assert(rpc->outqueue.tail != NULL);
@@ -939,16 +958,10 @@ int rpc_queue_pdu2(struct rpc_context *rpc, struct rpc_pdu *pdu, bool_t high_pri
 #endif /* HAVE_MULTITHREADING */
 
         /*
-         * If only PDU or a high priority PDU, send inline else let service
-         * thread know.
+         * If only PDU or a high priority PDU, send inline.
          */
         if (send_now) {
                 rpc_write_to_socket(rpc);
-        } else {
-                uint64_t evwrite = 1;
-                [[maybe_unused]] ssize_t evbytes =
-                        write(rpc_get_evfd(rpc), &evwrite, sizeof(evwrite));
-                assert(evbytes == 8);
         }
 
 	return 0;
