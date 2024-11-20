@@ -571,14 +571,16 @@ rpc_read_from_socket(struct rpc_context *rpc)
                                       strerror(errno));
 			return -1;
 		}
-                rpc->rm_xid[0] = count;
-                rpc->rm_xid[1] = ntohl(*(uint32_t *)&buf[0]);
-                rpc->pdu = rpc_find_pdu(rpc, ntohl(*(uint32_t *)&buf[0]));
-                if (rpc->pdu == NULL) {
-			rpc_set_error(rpc, "Failed to match incoming PDU/XID."
-                                      " Ignoring PDU");
-			free(buf);
-			return -1;
+		if (!rpc->is_server_context) {
+			rpc->rm_xid[0] = count;
+			rpc->rm_xid[1] = ntohl(*(uint32_t *)&buf[0]);
+			rpc->pdu = rpc_find_pdu(rpc, ntohl(*(uint32_t *)&buf[0]));
+			if (rpc->pdu == NULL) {
+				rpc_set_error(rpc, "Failed to match incoming PDU/XID."
+						" Ignoring PDU");
+				free(buf);
+				return -1;
+			}
 		}
 		if (rpc_process_pdu(rpc, buf, count) != 0) {
 			rpc_set_error(rpc, "Invalid/garbage pdu received from "

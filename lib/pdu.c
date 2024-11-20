@@ -219,6 +219,9 @@ static struct rpc_pdu *rpc_allocate_reply_pdu(struct rpc_context *rpc,
 
 	pdu->outdata.data = (char *)(pdu + 1);
 
+        pdu->out.iov = pdu->out.fast_iov;
+        pdu->out.iov_capacity = RPC_FAST_VECTORS;
+
         /* Add an iovector for the record marker. Ignored for UDP */
         rpc_add_iovector(rpc, &pdu->out, pdu->outdata.data, 4, NULL);
 
@@ -702,13 +705,17 @@ int rpc_queue_pdu(struct rpc_context *rpc, struct rpc_pdu *pdu)
 		}
 #endif
 
-                if (rpc->is_broadcast) {
+                if (rpc->is_broadcast || rpc->is_server_context) {
                         if (sendto(rpc->fd, pdu->zdr.buf, size, MSG_DONTWAIT,
                                    (struct sockaddr *)&rpc->udp_dest,
                                    sizeof(rpc->udp_dest)) < 0) {
                                 rpc_set_error(rpc, "Sendto failed with errno %s", strerror(errno));
                                 rpc_free_pdu(rpc, pdu);
                                 return -1;
+                        }
+                        if (rpc->is_server_context) {
+                            rpc_free_pdu(rpc, pdu);
+                            return 0;
                         }
                 } else {
                         /*
