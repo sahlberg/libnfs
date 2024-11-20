@@ -1028,9 +1028,7 @@ static int rpc_send_error_reply(struct rpc_context *rpc,
                               rpc_get_error(rpc));
                 return -1;
         }
-        rpc_queue_pdu(rpc, pdu);
-
-        return 0;
+        return rpc_queue_pdu(rpc, pdu);
 }
 
 int rpc_send_reply(struct rpc_context *rpc,
@@ -1065,9 +1063,8 @@ int rpc_send_reply(struct rpc_context *rpc,
                               rpc_get_error(rpc));
                 return -1;
         }
-        rpc_queue_pdu(rpc, pdu);
 
-        return 0;
+        return rpc_queue_pdu(rpc, pdu);
 }
 
 static int rpc_process_call(struct rpc_context *rpc, ZDR *zdr)
