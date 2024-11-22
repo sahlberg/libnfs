@@ -786,7 +786,8 @@ rpc_read_from_socket(struct rpc_context *rpc)
                                 }
 
                                 /* Copy the next 4 bytes into inbuf */
-                                memcpy(rpc->inbuf, &rpc->rm_xid[1], 4);
+                                *((uint32_t *)rpc->inbuf) = htonl(rpc->rm_xid[1]);
+
                                 /* but set inpos to 0, we will update it above
                                  * that we have already read these 4 bytes in
                                  * PAYLOAD and FRAGMENT
