@@ -534,6 +534,34 @@ struct rpc_pdu *rpc_nfs3_commit_task(struct rpc_context *rpc, rpc_cb cb,
 	return pdu;
 }
 
+
+struct rpc_pdu *rpc_nfs3_azauth_task(struct rpc_context *rpc, rpc_cb cb,
+                                     struct AZAUTH3args *args,
+                                     void *private_data)
+{
+	struct rpc_pdu *pdu;
+
+	pdu = rpc_allocate_pdu(rpc, NFS_PROGRAM, NFS_V3, NFS3_AZAUTH, cb, private_data, (zdrproc_t)zdr_AZAUTH3res, sizeof(AZAUTH3res));
+	if (pdu == NULL) {
+		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu for NFS3/AZAUTH call");
+		return NULL;
+	}
+
+	if (zdr_AZAUTH3args(&pdu->zdr, args) == 0) {
+		rpc_set_error(rpc, "ZDR error: Failed to encode AZAUTH3args");
+		rpc_free_pdu(rpc, pdu);
+		return NULL;
+	}
+
+	if (rpc_queue_pdu2(rpc, pdu, 1 /* high_prio */) != 0) {
+		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for NFS3/AZAUTH call");
+		return NULL;
+	}
+
+	return pdu;
+}
+
+
 struct rpc_pdu *
 rpc_nfs3_setattr_task(struct rpc_context *rpc, rpc_cb cb, SETATTR3args *args,
                       void *private_data)

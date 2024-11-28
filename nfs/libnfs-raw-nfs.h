@@ -281,6 +281,35 @@ struct COMMIT3res {
 	} COMMIT3res_u;
 };
 typedef struct COMMIT3res COMMIT3res;
+
+struct AZAUTH3args {
+	char *client_version;
+	struct {
+		u_int clientid_len;
+		char *clientid_val;
+	} clientid;
+	char *authtype;
+	char *authtarget;
+	char *authdata;
+};
+typedef struct AZAUTH3args AZAUTH3args;
+
+struct AZAUTH3resok {
+	char *server_version;
+	struct {
+		u_int serverid_len;
+		char *serverid_val;
+	} serverid;
+};
+typedef struct AZAUTH3resok AZAUTH3resok;
+
+struct AZAUTH3res {
+	nfsstat3 status;
+	union {
+		AZAUTH3resok resok;
+	} AZAUTH3res_u;
+};
+typedef struct AZAUTH3res AZAUTH3res;
 #define ACCESS3_READ 0x0001
 #define ACCESS3_LOOKUP 0x0002
 #define ACCESS3_MODIFY 0x0004
@@ -1527,6 +1556,9 @@ extern  PATHCONF3res * nfs3_pathconf_3_svc(PATHCONF3args *, struct svc_req *);
 #define NFS3_COMMIT 21
 extern  COMMIT3res * nfs3_commit_3(COMMIT3args *, void *);
 extern  COMMIT3res * nfs3_commit_3_svc(COMMIT3args *, struct svc_req *);
+#define NFS3_AZAUTH 23
+extern  AZAUTH3res * nfs3_azauth_3(AZAUTH3args *, void *);
+extern  AZAUTH3res * nfs3_azauth_3_svc(AZAUTH3args *, struct svc_req *);
 extern int nfs_program_3_freeresult (void *, zdrproc_t, caddr_t);
 
 #else /* K&R C */
@@ -1596,6 +1628,9 @@ extern  PATHCONF3res * nfs3_pathconf_3_svc();
 #define NFS3_COMMIT 21
 extern  COMMIT3res * nfs3_commit_3();
 extern  COMMIT3res * nfs3_commit_3_svc();
+#define NFS3_AZAUTH 23
+extern  AZAUTH3res * nfs3_azauth_3();
+extern  AZAUTH3res * nfs3_azauth_3_svc();
 extern int nfs_program_3_freeresult ();
 #endif /* K&R C */
 
@@ -1665,6 +1700,9 @@ extern  uint32_t zdr_COMMIT3args (ZDR *, COMMIT3args*);
 extern  uint32_t zdr_COMMIT3resok (ZDR *, COMMIT3resok*);
 extern  uint32_t zdr_COMMIT3resfail (ZDR *, COMMIT3resfail*);
 extern  uint32_t zdr_COMMIT3res (ZDR *, COMMIT3res*);
+extern  uint32_t zdr_AZAUTH3args (ZDR *, AZAUTH3args*);
+extern  uint32_t zdr_AZAUTH3resok (ZDR *, AZAUTH3resok*);
+extern  uint32_t zdr_AZAUTH3res (ZDR *, AZAUTH3res*);
 extern  uint32_t zdr_ACCESS3args (ZDR *, ACCESS3args*);
 extern  uint32_t zdr_ACCESS3resok (ZDR *, ACCESS3resok*);
 extern  uint32_t zdr_ACCESS3resfail (ZDR *, ACCESS3resfail*);
@@ -1852,6 +1890,9 @@ extern uint32_t zdr_COMMIT3args ();
 extern uint32_t zdr_COMMIT3resok ();
 extern uint32_t zdr_COMMIT3resfail ();
 extern uint32_t zdr_COMMIT3res ();
+extern uint32_t zdr_AZAUTH3args ();
+extern uint32_t zdr_AZAUTH3resok ();
+extern uint32_t zdr_AZAUTH3res ();
 extern uint32_t zdr_ACCESS3args ();
 extern uint32_t zdr_ACCESS3resok ();
 extern uint32_t zdr_ACCESS3resfail ();

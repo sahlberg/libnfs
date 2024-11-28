@@ -1288,6 +1288,12 @@ rpc_nfs3_commit_task(struct rpc_context *rpc, rpc_cb cb,
                       struct COMMIT3args *args,
                       void *private_data);
 
+struct AZAUTH3args;
+EXTERN struct rpc_pdu *
+rpc_nfs3_azauth_task(struct rpc_context *rpc, rpc_cb cb,
+                      struct AZAUTH3args *args,
+                      void *private_data);
+
 /*
  * Call NFS3/SETATTR
  *

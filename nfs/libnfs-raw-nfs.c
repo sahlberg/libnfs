@@ -426,6 +426,48 @@ zdr_COMMIT3res (ZDR *zdrs, COMMIT3res *objp)
 }
 
 uint32_t
+zdr_AZAUTH3args (ZDR *zdrs, AZAUTH3args *objp)
+{
+	 if (!zdr_string (zdrs, &objp->client_version, 16))
+		 return FALSE;
+	 if (!zdr_bytes (zdrs, (char **)&objp->clientid.clientid_val, (u_int *) &objp->clientid.clientid_len, 8))
+		 return FALSE;
+	 if (!zdr_string (zdrs, &objp->authtype, 16))
+		 return FALSE;
+	 if (!zdr_string (zdrs, &objp->authtarget, 256))
+		 return FALSE;
+	 if (!zdr_string (zdrs, &objp->authdata, 16384))
+		 return FALSE;
+	return TRUE;
+}
+
+uint32_t
+zdr_AZAUTH3resok (ZDR *zdrs, AZAUTH3resok *objp)
+{
+	 if (!zdr_string (zdrs, &objp->server_version, 16))
+		 return FALSE;
+	 if (!zdr_bytes (zdrs, (char **)&objp->serverid.serverid_val, (u_int *) &objp->serverid.serverid_len, 8))
+		 return FALSE;
+	return TRUE;
+}
+
+uint32_t
+zdr_AZAUTH3res (ZDR *zdrs, AZAUTH3res *objp)
+{
+	 if (!zdr_nfsstat3 (zdrs, &objp->status))
+		 return FALSE;
+	switch (objp->status) {
+	case NFS3_OK:
+		 if (!zdr_AZAUTH3resok (zdrs, &objp->AZAUTH3res_u.resok))
+			 return FALSE;
+		break;
+	default:
+		break;
+	}
+	return TRUE;
+}
+
+uint32_t
 zdr_ACCESS3args (ZDR *zdrs, ACCESS3args *objp)
 {
 	 if (!zdr_nfs_fh3 (zdrs, &objp->object))

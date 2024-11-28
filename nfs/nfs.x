@@ -237,6 +237,26 @@ union COMMIT3res switch (nfsstat3 status) {
 		COMMIT3resfail resfail;
 };
 
+struct AZAUTH3args {
+	string client_version<16>;
+	opaque clientid<8>;
+	string authtype<16>;
+	string authtarget<256>;
+	string authdata<16384>;
+};
+
+struct AZAUTH3resok {
+	string server_version<16>;
+	opaque serverid<8>;
+};
+
+union AZAUTH3res switch (nfsstat3 status) {
+	case NFS3_OK:
+		AZAUTH3resok  resok;
+	default:
+		void;
+};
+
 const ACCESS3_READ    = 0x0001;
 const ACCESS3_LOOKUP  = 0x0002;
 const ACCESS3_MODIFY  = 0x0004;
@@ -1196,6 +1216,9 @@ program NFS_PROGRAM {
 
 		COMMIT3res
 		NFS3_COMMIT(COMMIT3args)           = 21;
+
+		AZAUTH3res
+		NFS3_AZAUTH(AZAUTH3args)	   = 23;
 	} = 3;
 } = 100003;
 
