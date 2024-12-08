@@ -272,6 +272,7 @@ struct gss_ctx_id_struct;
 struct rpc_context {
 	uint32_t magic;
 	int fd;
+        int socket_disabled; /* Do not allow read/write to the socket */
 	int old_fd;
 	int is_connected;
 	int is_nonblocking;
@@ -303,7 +304,6 @@ struct rpc_context {
 	struct rpc_queue outqueue;
 	struct sockaddr_storage udp_src;
         uint32_t num_hashes;
-
         /*
          * Queue of transmitted-and-awaiting-response PDUs.
          */

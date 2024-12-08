@@ -1140,6 +1140,29 @@ struct rpc_pdu *rpc_find_pdu(struct rpc_context *rpc, uint32_t xid)
         }
 #endif /* HAVE_MULTITHREADING */
 
+        /* First check outqueue */
+	q = &rpc->outqueue;
+	prev_pdu = NULL;
+	for (pdu=q->head; pdu; pdu=pdu->next) {
+		if (pdu->xid != xid) {
+			prev_pdu = pdu;
+			continue;
+		}
+		if (rpc->is_udp == 0 || rpc->is_broadcast == 0) {
+			/* Singly-linked but we track head and tail */
+			if (pdu == q->head)
+				q->head = pdu->next;
+			if (pdu == q->tail)
+				q->tail = prev_pdu;
+			if (prev_pdu != NULL)
+				prev_pdu->next = pdu->next;
+		}
+                break;
+        }
+        if (pdu) {
+                goto finished;
+        }
+
 	/* Look up the transaction in a hash table of our requests */
 	hash = rpc_hash_xid(rpc, rpc->rm_xid[1]);
 	q = &rpc->waitpdu[hash];
@@ -1148,7 +1171,7 @@ struct rpc_pdu *rpc_find_pdu(struct rpc_context *rpc, uint32_t xid)
 	 * but track previous entry for optimised removal */
 	prev_pdu = NULL;
 	for (pdu=q->head; pdu; pdu=pdu->next) {
-		if (pdu->xid != rpc->rm_xid[1]) {
+		if (pdu->xid != xid) {
 			prev_pdu = pdu;
 			continue;
 		}
@@ -1164,7 +1187,8 @@ struct rpc_pdu *rpc_find_pdu(struct rpc_context *rpc, uint32_t xid)
 		}
                 break;
         }
-
+        
+ finished:
         if (pdu) {
                 pdu->next = NULL;
         }

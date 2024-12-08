@@ -223,10 +223,15 @@ EXTERN void rpc_set_auth(struct rpc_context *rpc, struct AUTH *auth);
  * is invoked on a regular basis so that the timeout processing can take place.
  * The easiest way to do this is to call rpc_service() once every 100ms from
  * your event system and passing revents as 0.
+ *
+ * rpc_disable_socket() will disable libnfs reading/writing to the socket.
+ * Useful if you want to manage the socket from an external event loop and
+ * want to ensure that libnfs will never do i/o to the socket.
  */
 EXTERN int rpc_get_fd(struct rpc_context *rpc);
 EXTERN int rpc_which_events(struct rpc_context *rpc);
 EXTERN int rpc_service(struct rpc_context *rpc, int revents);
+EXTERN void rpc_disable_socket(struct rpc_context *rpc, int val);
 
 
 /*

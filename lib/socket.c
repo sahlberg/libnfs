@@ -293,6 +293,12 @@ rpc_which_events(struct rpc_context *rpc)
 	return events;
 }
 
+void
+rpc_disable_socket(struct rpc_context *rpc, int val)
+{
+        rpc->socket_disabled = val;
+}
+
 int
 rpc_write_to_socket(struct rpc_context *rpc)
 {
@@ -303,7 +309,9 @@ rpc_write_to_socket(struct rpc_context *rpc)
         int ret = 0;
 
         assert(rpc->magic == RPC_CONTEXT_MAGIC);
-
+        if (rpc->socket_disabled) {
+                return 0;
+        }
 	if (rpc->fd == -1) {
 		rpc_set_error(rpc, "trying to write but not connected");
 		return -1;
@@ -549,7 +557,9 @@ rpc_read_from_socket(struct rpc_context *rpc)
         uint32_t inbuf_size;
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
-
+        if (rpc->socket_disabled) {
+                return 0;
+        }
 	if (rpc->is_udp) {
 		socklen_t socklen = sizeof(rpc->udp_src);
                 char *buf = NULL;
