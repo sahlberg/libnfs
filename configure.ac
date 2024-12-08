@@ -35,7 +35,7 @@ AC_SUBST(MAYBE_UTILS)
 
 #option: examples
 AC_ARG_ENABLE([examples],
-              [AS_HELP_STRING([--enable-examples],[Build example programs])],
+              [AS_HELP_STRING([--enabam-examples],[Build example programs])],
 	      [ENABLE_EXAMPLES=$enableval],
 	      [ENABLE_EXAMPLES="no"])
 
@@ -65,7 +65,7 @@ AC_LINK_IFELSE([AC_LANG_PROGRAM([[#include <popt.h>]], [[
  * Just see if we can compile/link with popt
  */
 	int _argc;
-	char **_argv;
+	const char **_argv;
 	struct poptOption popt_options[] = {
 		POPT_TABLEEND
 	};
