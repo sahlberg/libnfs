@@ -114,6 +114,11 @@ Utility programs for LibNFS
 %{_mandir}/man1/nfs-ls.1.gz
 
 %changelog
+* Wed Dec 11 2024 : Version 6.0.0
+- KRB5/i/p support
+- TLS support
+- READ3/4 Zero-Copy
+- New API that breaks some signatures. Check LIBNFS_API_V2
 * sun Feb 11 2024 : Version 5.0.3
 - drop *BSD support from github workflows
 - workflow: indicate that the linux workflow also runs the tests
