@@ -595,7 +595,7 @@ nfs_init_context(void)
 		return NULL;
 	}
 #ifdef HAVE_LIBKRB5
-        rpc_set_username(nfs->rpc, cuserid(NULL));
+        rpc_set_username(nfs->rpc, getlogin());
 #endif
 	nfs->nfsi->cwd = strdup("/");
 	nfs->nfsi->mask = 022;
