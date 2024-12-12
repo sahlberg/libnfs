@@ -305,7 +305,7 @@ mount_cb(int status, struct nfs_context *nfs, void *data, void *private_data)
 
 	if (status < 0) {
 		nfs_set_error(nfs, "%s: %s",
-                              __FUNCTION__, nfs_get_error(nfs));
+                              __FUNCTION__, rpc_get_error(nfs->rpc));
                 goto finished;
 	}
 
