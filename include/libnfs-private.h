@@ -629,9 +629,9 @@ void nfs_set_error_locked(struct nfs_context *nfs, char *error_string, ...)
 #define RPC_LOG(rpc, level, format, ...) \
 	do { \
 		if (rpc->log_cb && level <= rpc->debug) { \
-			char buf[256];                    \
-			snprintf(buf, 255, "libnfs:%d rpc %p " format, level, rpc, ## __VA_ARGS__); \
-                        rpc->log_cb(rpc, level,  buf, rpc->log_private_data);                 \
+			char xxlogbuf[256];                    \
+			snprintf(xxlogbuf, 255, "libnfs:%d rpc %p " format, level, rpc, ## __VA_ARGS__); \
+                        rpc->log_cb(rpc, level,  xxlogbuf, rpc->log_private_data);                 \
 		} \
 	} while (0)
 #endif

@@ -25,6 +25,9 @@ AM_CPPFLAGS = \
 	"-D_U_=__attribute__((unused))"
 
 COMMON_LIBS = ../lib/libnfs.la -lpopt
+if HAVE_TLS
+COMMON_LIBS += -lgnutls
+endif
 nfs_writefile_LDADD = $(COMMON_LIBS)
 nfsclient_async_LDADD = $(COMMON_LIBS)
 nfsclient_raw_LDADD = $(COMMON_LIBS)

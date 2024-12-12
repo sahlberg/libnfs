@@ -270,11 +270,22 @@ AC_CACHE_CHECK([for talloc and tevent support],libnfs_cv_HAVE_TALLOC_TEVENT,[
 AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
 #include <talloc.h>
 #include <tevent.h>]], [[struct tevent_context *ctx = tevent_context_init(NULL);
- int major = talloc_version_major();]])],[libiscsi_cv_HAVE_TALLOC_TEVENT=yes],[libiscsi_cv_HAVE_TALLOC_TEVENT=no])])
-if test x"$libiscsi_cv_HAVE_TALLOC_TEVENT" = x"yes"; then
+ int major = talloc_version_major();]])],[libnfs_cv_HAVE_TALLOC_TEVENT=yes],[libnfs_cv_HAVE_TALLOC_TEVENT=no])])
+if test x"$libnfs_cv_HAVE_TALLOC_TEVENT" = x"yes"; then
     AC_DEFINE(HAVE_TALLOC_TEVENT,1,[Whether we have talloc nad tevent support])
 fi
-AM_CONDITIONAL([HAVE_TALLOC_TEVENT], [test $libiscsi_cv_HAVE_TALLOC_TEVENT = yes])
+AM_CONDITIONAL([HAVE_TALLOC_TEVENT], [test $libnfs_cv_HAVE_TALLOC_TEVENT = yes])
+
+# check for linux tls
+AC_CACHE_CHECK([for linux tls support],libnfs_cv_HAVE_TLS,[
+AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
+#include <gnutls/gnutls.h>
+#include <linux/tls.h>]],
+[[const char *v = GNUTLS_VERSION;]])],[libnfs_cv_HAVE_TLS=yes],[libnfs_cv_HAVE_TLS=no])])
+if test x"$libnfs_cv_HAVE_TLS" = x"yes"; then
+    AC_DEFINE(HAVE_TLS,1,[Whether we have linux tls support])
+fi
+AM_CONDITIONAL([HAVE_TLS], [test $libnfs_cv_HAVE_TLS = yes])
 
 AC_CHECK_MEMBERS([struct stat.st_mtim.tv_nsec])
 
@@ -300,6 +311,7 @@ AC_CONFIG_FILES([Makefile]
                 [rquota/Makefile]
                 [tests/Makefile]
                 [utils/Makefile]
+                [tls/Makefile]
                )
 
 AC_CONFIG_FILES([libnfs.pc])

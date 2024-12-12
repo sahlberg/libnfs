@@ -38,6 +38,10 @@
 #include "libnfs-private.h"
 #include "tls-private.h"
 
+#ifndef _U_
+#define _U_ __attribute__((unused))
+#endif
+
 /*
  * Older gnutls versions don't have kTLS support and don't export
  * gnutls_transport_is_ktls_enabled().

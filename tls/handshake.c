@@ -50,6 +50,10 @@
 #define GETENV getenv
 #endif
 
+#ifndef _U_
+#define _U_ __attribute__((unused))
+#endif
+
 /*
  * This is a safe version we choose. Technically the support was added in kernel
  * 4.17.

@@ -46,3 +46,7 @@ libnfs_la_LIBADD = \
 	../rquota/librquota.la \
 	$(LIBSOCKET)
 
+if HAVE_TLS
+libnfs_la_CPPFLAGS += -I$(abs_top_srcdir)/tls
+libnfs_la_LIBADD += ../tls/libtls.la
+endif

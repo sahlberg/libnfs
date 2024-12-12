@@ -1,5 +1,10 @@
-SUBDIRS = doc mount nfs nfs4 nlm nsm portmap rquota lib include $(MAYBE_UTILS) . $(MAYBE_EXAMPLES)
+SUBDIRS = doc mount nfs nfs4 nlm nsm portmap rquota 
 ACLOCAL_AMFLAGS = -I m4
+
+if HAVE_TLS
+SUBDIRS += tls
+endif
+SUBDIRS +=  lib include $(MAYBE_UTILS) . $(MAYBE_EXAMPLES)
 
 pkgconfigdir = $(libdir)/pkgconfig
 pkgconfig_DATA = libnfs.pc
