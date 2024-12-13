@@ -700,8 +700,8 @@ int rpc_queue_pdu(struct rpc_context *rpc, struct rpc_pdu *pdu)
 			assert(!rpc->is_udp);
 			assert(!rpc->is_broadcast);
 
-			RPC_LOG(rpc, 2, "Sending AUTH_TLS NULL RPC (%lu bytes)",
-					pdu->out.total_size);
+			RPC_LOG(rpc, 2, "Sending AUTH_TLS NULL RPC (%u bytes)",
+                                (int)pdu->out.total_size);
 		}
 #endif
 
