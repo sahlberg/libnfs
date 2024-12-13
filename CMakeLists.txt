@@ -20,6 +20,11 @@ option(ENABLE_UTILS "Build util programs" OFF)
 option(ENABLE_EXAMPLES "Build example programs" OFF)
 option(ENABLE_MULTITHREADING "Enable multithreading support" OFF)
 
+if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+  set(CMAKE_INSTALL_RPATH "${INSTALL_LIB_DIR}")
+  set(CMAKE_SKIP_INSTALL_RPATH FALSE)
+endif()
+
 if(ENABLE_TESTS)
   set(ENABLE_UTILS ON CACHE BOOL "Building utils required by tests" FORCE)
 endif()
