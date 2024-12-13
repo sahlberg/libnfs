@@ -35,6 +35,11 @@ THE SOFTWARE.
 #include <time.h>
 #include <stddef.h> // For size_t type
 
+/* We always have multithreading for windows */
+#ifndef HAVE_MULTITHREADING
+#define HAVE_MULTITHREADING 1
+#endif
+
 typedef unsigned long fsblkcnt_t;
 typedef unsigned long fsfilcnt_t;
 typedef unsigned int uid_t;

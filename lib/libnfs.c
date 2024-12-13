@@ -66,6 +66,10 @@
 #include <signal.h>
 #endif
 
+#ifdef WIN32
+#include <win32/win32_compat.h>
+#endif
+
 #include <errno.h>
 #include <stdarg.h>
 #include <stdlib.h>

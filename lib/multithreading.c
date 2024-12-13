@@ -224,7 +224,9 @@ int nfs_mt_sem_wait(libnfs_sem_t *sem)
 }
 #endif
 
-#elif WIN32 
+#endif /* HAVE_PTHREAD */
+
+#ifdef WIN32
 nfs_tid_t nfs_mt_get_tid(void)
 {
     return GetCurrentThreadId();
@@ -340,7 +342,7 @@ int nfs_mt_sem_wait(libnfs_sem_t* sem)
     return 0;
 }
 
-#endif
+#endif /* WIN32 */
 
 
 #endif /* HAVE_MULTITHREADING */
