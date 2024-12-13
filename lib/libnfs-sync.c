@@ -365,7 +365,7 @@ nfs_mount(struct nfs_context *nfs, const char *server, const char *export)
                 rpc_disconnect(nfs->rpc, "disconnect to try different dialect");
                 ret = _nfs_mount(nfs, server, export);
         }
-        nfs_set_error(nfs, rpc_get_error(nfs->rpc));
+        nfs_set_error(nfs, "%s", rpc_get_error(nfs->rpc));
 
         return ret;
 }
