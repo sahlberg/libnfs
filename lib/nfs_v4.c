@@ -181,6 +181,7 @@ struct nfs4_cb_data {
 static uint32_t standard_attributes[2] = {
         (1 << FATTR4_TYPE |
          1 << FATTR4_SIZE |
+         1 << FATTR4_FSID |
          1 << FATTR4_FILEID),
         (1 << (FATTR4_MODE - 32) |
          1 << (FATTR4_NUMLINKS - 32) |
@@ -487,6 +488,11 @@ nfs_parse_attributes(struct nfs_context *nfs, struct nfs4_cb_data *data,
         st->nfs_size = nfs_pntoh64((uint32_t *)(void *)buf);
         buf += 8;
         len -= 8;
+        /* FSID */
+        CHECK_GETATTR_BUF_SPACE(len, 16);
+        st->nfs_dev = ((uint64_t *)buf)[0] ^ ((uint64_t *)buf)[1];
+        buf += 16;
+        len -= 16;
         /* Inode */
         CHECK_GETATTR_BUF_SPACE(len, 8);
         st->nfs_ino = nfs_pntoh64((uint32_t *)(void *)buf);
