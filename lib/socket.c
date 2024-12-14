@@ -1752,6 +1752,11 @@ rpc_reconnect_requeue(struct rpc_context *rpc)
 	rpc->inpos = 0;
 	rpc->state = READ_RM;
 
+        /*
+         * Drop all fragments on reconnect
+         */
+        rpc_free_all_fragments(rpc);
+        
 	/* Socket is closed so we will not get any replies to any commands
 	 * in flight. Move them all over from the waitpdu queue back to the
          * out queue.
