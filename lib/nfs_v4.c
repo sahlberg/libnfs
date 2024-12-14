@@ -186,6 +186,7 @@ static uint32_t standard_attributes[2] = {
          1 << (FATTR4_NUMLINKS - 32) |
          1 << (FATTR4_OWNER - 32) |
          1 << (FATTR4_OWNER_GROUP - 32) |
+         1 << (FATTR4_RAWDEV - 32) |
          1 << (FATTR4_SPACE_USED - 32) |
          1 << (FATTR4_TIME_ACCESS - 32) |
          1 << (FATTR4_TIME_METADATA - 32) |
@@ -463,6 +464,13 @@ nfs_get_ugid(struct nfs_context *nfs, const char *buf, int slen, int is_user)
         return -1;                                                      \
     }
 
+static uint64_t
+specdata4_to_rdev(uint32_t *specdata)
+{
+        uint64_t rdev = ntohl(specdata[0]);
+        return (rdev << 32) | ntohl(specdata[1]);
+}
+
 static int
 nfs_parse_attributes(struct nfs_context *nfs, struct nfs4_cb_data *data,
                      struct nfs_stat_64 *st, const char *buf, int len)
@@ -543,6 +551,11 @@ nfs_parse_attributes(struct nfs_context *nfs, struct nfs4_cb_data *data,
         CHECK_GETATTR_BUF_SPACE(len, pad);
         buf += pad;
         len -= pad;
+        /* raw device */
+        CHECK_GETATTR_BUF_SPACE(len, 8);
+        st->nfs_rdev = specdata4_to_rdev((uint32_t *)buf);
+        buf += 8;
+        len -= 8;
         /* Space Used */
         CHECK_GETATTR_BUF_SPACE(len, 8);
         st->nfs_used = nfs_pntoh64((uint32_t *)(void *)buf);

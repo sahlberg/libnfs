@@ -55,93 +55,11 @@ WSADATA wsaData;
 #include "libnfs-raw.h"
 #include "libnfs-raw-mount.h"
 
-struct file_context {
-	int fd;
-	struct nfs_context *nfs;
-	struct nfsfh *nfsfh;
-	struct nfs_url *url;
-};
-
 void usage(void)
 {
 	fprintf(stderr, "Usage: nfs-stat <file>\n");
 	fprintf(stderr, "<file> stat an nfs file.\n");
 	exit(0);
-}
-
-void
-free_file_context(struct file_context *file_context)
-{
-	if (file_context->fd != -1) {
-		close(file_context->fd);
-	}
-	if (file_context->nfsfh != NULL) {
-		nfs_close(file_context->nfs, file_context->nfsfh);
-	}
-	if (file_context->nfs != NULL) {
-		nfs_destroy_context(file_context->nfs);
-	}
-	nfs_destroy_url(file_context->url);
-	free(file_context);
-}
-
-struct file_context *
-open_file(const char *url, int flags)
-{
-	struct file_context *file_context;
-
-	file_context = malloc(sizeof(struct file_context));
-	if (file_context == NULL) {
-		fprintf(stderr, "Failed to malloc file_context\n");
-		return NULL;
-	}
-	file_context->fd     = -1;
-	file_context->nfs    = NULL;
-	file_context->nfsfh  = NULL;
-	file_context->url    = NULL;
-	
-	file_context->nfs = nfs_init_context();
-	if (file_context->nfs == NULL) {
-		fprintf(stderr, "failed to init context\n");
-		free_file_context(file_context);
-		return NULL;
-	}
-
-	file_context->url = nfs_parse_url_full(file_context->nfs, url);
-	if (file_context->url == NULL) {
-		fprintf(stderr, "%s\n", nfs_get_error(file_context->nfs));
-		free_file_context(file_context);
-		return NULL;
-	}
-
-	if (nfs_mount(file_context->nfs, file_context->url->server,
-				file_context->url->path) != 0) {
-		fprintf(stderr, "Failed to mount nfs share : %s\n",
-			       nfs_get_error(file_context->nfs));
-		free_file_context(file_context);
-		return NULL;
-	}
-
-	if (flags == O_RDONLY) {
-		if (nfs_open(file_context->nfs, file_context->url->file, flags,
-				&file_context->nfsfh) != 0) {
- 			fprintf(stderr, "Failed to open file %s: %s\n",
-				       file_context->url->file,
-				       nfs_get_error(file_context->nfs));
-			free_file_context(file_context);
-			return NULL;
-		}
-	} else {
-		if (nfs_creat(file_context->nfs, file_context->url->file, 0660,
-				&file_context->nfsfh) != 0) {
- 			fprintf(stderr, "Failed to creat file %s: %s\n",
-				       file_context->url->file,
-				       nfs_get_error(file_context->nfs));
-			free_file_context(file_context);
-			return NULL;
-		}
-	}
-	return file_context;
 }
 
 char *get_file_type(int mode)
@@ -240,7 +158,8 @@ char *get_access_bits(int mode)
 
 int main(int argc, char *argv[])
 {
-	struct file_context *nf;
+	struct nfs_url *url;
+	struct nfs_context *nfs;
 	struct nfs_stat_64 st;
 	
 #ifdef WIN32
@@ -258,13 +177,26 @@ int main(int argc, char *argv[])
 		usage();
 	}
 
-	nf = open_file(argv[1], O_RDONLY);
-	if (nf == NULL) {
-		fprintf(stderr, "Failed to open %s\n", argv[1]);
+	nfs = nfs_init_context();
+	if (nfs == NULL) {
+		fprintf(stderr, "failed to init context\n");
 		exit(10);
 	}
-	if (nfs_fstat64(nf->nfs, nf->nfsfh, &st) < 0) {
-		fprintf(stderr, "Failed to stat %s\n", argv[1]);
+
+	url = nfs_parse_url_full(nfs, argv[1]);
+	if (url == NULL) {
+		fprintf(stderr, "%s\n", nfs_get_error(nfs));
+		exit(10);
+	}
+
+	if (nfs_mount(nfs, url->server, url->path) != 0) {
+		fprintf(stderr, "Failed to mount nfs share : %s\n",
+			       nfs_get_error(nfs));
+		exit(10);
+	}
+
+	if (nfs_stat64(nfs, url->file, &st) < 0) {
+		fprintf(stderr, "Failed to stat %s\n", url->file);
 		exit(10);
 	}
 
@@ -272,8 +204,16 @@ int main(int argc, char *argv[])
 	printf("  Size: %-16" PRIu64 "Blocks: %-11" PRIu64 " IO Block: %" PRIu64 "  %s\n",
 	       st.nfs_size, st.nfs_blocks, st.nfs_blksize,
 	       get_file_type(st.nfs_mode));
-	printf("Inode:%-12" PRIu64 "Links %" PRIu64 "\n",
+	printf("Inode:%-12" PRIu64 "Links %" PRIu64,
 	       st.nfs_ino, st.nfs_nlink);
+        switch (st.nfs_mode & S_IFMT) {
+	case S_IFCHR:
+	case S_IFBLK:
+		printf("  Device type: %d, %d", (int)(st.nfs_rdev >> 32), (int)(st.nfs_rdev & 0xffffffff));
+		break;
+	default:
+	}
+	printf("\n");
 	printf("Access: (%04" PRIo64 "/%s)  Uid: ( %" PRIu64 "/%s)  Gid: ( %" PRIu64 "/%s)\n",
 	       st.nfs_mode & 07777, get_access_bits(st.nfs_mode),
 	       st.nfs_uid, uid_to_name(st.nfs_uid),
@@ -282,7 +222,8 @@ int main(int argc, char *argv[])
 	printf("Access: %s", ctime( (const time_t *) &st.nfs_atime));
 	printf("Modify: %s", ctime( (const time_t *) &st.nfs_mtime));
 	printf("Change: %s", ctime( (const time_t *) &st.nfs_ctime));
-	free_file_context(nf);
 
+	nfs_destroy_context(nfs);
+	nfs_destroy_url(url);
 	return 0;
 }

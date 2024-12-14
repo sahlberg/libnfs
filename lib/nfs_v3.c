@@ -101,14 +101,11 @@
 #include "libnfs-raw-mount.h"
 #include "libnfs-private.h"
 
-static dev_t
-specdata3_to_rdev(struct specdata3 *rdev)
+static uint64_t
+specdata3_to_rdev(struct specdata3 *specdata)
 {
-#ifdef makedev
-	return makedev(rdev->specdata1, rdev->specdata2);
-#else
-	return 0;
-#endif
+        uint64_t rdev = specdata->specdata1;
+        return (rdev << 32) | specdata->specdata2;
 }
 
 struct mount_attr_cb {
