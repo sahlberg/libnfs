@@ -114,6 +114,9 @@ Utility programs for LibNFS
 %{_mandir}/man1/nfs-ls.1.gz
 
 %changelog
+* Sat Dec 14 2024 : Version 6.0.2
+- Fix compile issue on 32 bit platforms
+- Fix windows build
 * Fri Dec 13 2024 : Version 6.0.1
 - Fix compile bug on MacOS
 - Add autotools support to enable tls

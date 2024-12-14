@@ -1,5 +1,5 @@
 AC_PREREQ([2.69])
-AC_INIT([libnfs],[16.1.0],[ronniesahlberg@gmail.com])
+AC_INIT([libnfs],[16.2.0],[ronniesahlberg@gmail.com])
 AC_CONFIG_HEADERS([config.h])
 AM_INIT_AUTOMAKE([-Wall foreign subdir-objects])
 AC_CANONICAL_HOST
