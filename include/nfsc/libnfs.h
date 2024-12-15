@@ -822,8 +822,7 @@ EXTERN int nfs_readv_async(struct nfs_context *nfs, struct nfsfh *nfsfh,
  * -errno : An error occured.
  */
 EXTERN int nfs_readv(struct nfs_context *nfs, struct nfsfh *nfsfh,
-                     const struct iovec *iov, int iovcnt,
-                     void *buf, size_t count);
+                     const struct iovec *iov, int iovcnt);
 
 /*
  * PWRITE()

@@ -708,14 +708,14 @@ nfs_preadv(struct nfs_context *nfs, struct nfsfh *nfsfh,
 {
 	struct sync_cb_data cb_data;
 
-	cb_data.call = "pread";
+	cb_data.call = "preadv";
         if (nfs_init_cb_data(&nfs, &cb_data)) {
                 return -1;
         }
 
 	if (nfs_preadv_async(nfs, nfsfh, iov, iovcnt, offset,
                             pread_cb, &cb_data) != 0) {
-		nfs_set_error(nfs, "nfs_pread_async failed. %s",
+		nfs_set_error(nfs, "nfs_preadv_async failed. %s",
                               nfs_get_error(nfs));
                 nfs_destroy_cb_sem(&cb_data);
 		return -1;
@@ -743,6 +743,34 @@ nfs_read(struct nfs_context *nfs, struct nfsfh *nfsfh,
 
 	if (nfs_read_async(nfs, nfsfh, buf, count, pread_cb, &cb_data) != 0) {
 		nfs_set_error(nfs, "nfs_read_async failed. %s",
+                              nfs_get_error(nfs));
+                nfs_destroy_cb_sem(&cb_data);
+		return -1;
+	}
+
+	wait_for_nfs_reply(nfs, &cb_data);
+        nfs_destroy_cb_sem(&cb_data);
+
+	return cb_data.status;
+}
+
+/*
+ * readv()
+ */
+int
+nfs_readv(struct nfs_context *nfs, struct nfsfh *nfsfh,
+           const struct iovec *iov, int iovcnt)
+{
+	struct sync_cb_data cb_data;
+
+	cb_data.call = "readv";
+        if (nfs_init_cb_data(&nfs, &cb_data)) {
+                return -1;
+        }
+
+	if (nfs_readv_async(nfs, nfsfh, iov, iovcnt,
+                            pread_cb, &cb_data) != 0) {
+		nfs_set_error(nfs, "nfs_readv_async failed. %s",
                               nfs_get_error(nfs));
                 nfs_destroy_cb_sem(&cb_data);
 		return -1;
