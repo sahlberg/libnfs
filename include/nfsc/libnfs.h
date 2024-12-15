@@ -701,6 +701,7 @@ EXTERN int nfs_close_async(struct nfs_context *nfs, struct nfsfh *nfsfh,
 EXTERN int nfs_close(struct nfs_context *nfs, struct nfsfh *nfsfh);
 
 
+struct iovec;
 /*
  * PREAD()
  */
@@ -731,6 +732,36 @@ EXTERN int nfs_pread_async(struct nfs_context *nfs, struct nfsfh *nfsfh,
 EXTERN int nfs_pread(struct nfs_context *nfs, struct nfsfh *nfsfh,
                      void *buf, size_t count, uint64_t offset);
 
+/*
+ * PREADV()
+ */
+/*
+ * Async preadv()
+ *
+ * Function returns
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
+ *
+ * When the callback is invoked, status indicates the result:
+ *    >=0 : Success.
+ *          status is numer of bytes read.
+ * -errno : An error occured.
+ *          data is the error string.
+ */
+EXTERN int nfs_preadv_async(struct nfs_context *nfs, struct nfsfh *nfsfh,
+                           const struct iovec *iov, int iovcnt, uint64_t offset,
+                           nfs_cb cb, void *private_data);
+/*
+ * Sync preadv()
+ * Function returns
+ *    >=0 : numer of bytes read.
+ * -errno : An error occured.
+ */
+EXTERN int nfs_preadv(struct nfs_context *nfs, struct nfsfh *nfsfh,
+                      const struct iovec *iov, int iovcnt, uint64_t offset);
+        
 
 
 /*
@@ -762,6 +793,37 @@ EXTERN int nfs_read_async(struct nfs_context *nfs, struct nfsfh *nfsfh,
  */
 EXTERN int nfs_read(struct nfs_context *nfs, struct nfsfh *nfsfh,
                     void *buf, size_t count);
+
+/*
+ * READV()
+ */
+/*
+ * Async readv()
+ *
+ * Function returns
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
+ *
+ * When the callback is invoked, status indicates the result:
+ *    >=0 : Success.
+ *          status is numer of bytes read.
+ * -errno : An error occured.
+ *          data is the error string.
+ */
+EXTERN int nfs_readv_async(struct nfs_context *nfs, struct nfsfh *nfsfh,
+                           const struct iovec *iov, int iovcnt,
+                           nfs_cb cb, void *private_data);
+/*
+ * Sync readv()
+ * Function returns
+ *    >=0 : numer of bytes read.
+ * -errno : An error occured.
+ */
+EXTERN int nfs_readv(struct nfs_context *nfs, struct nfsfh *nfsfh,
+                     const struct iovec *iov, int iovcnt,
+                     void *buf, size_t count);
 
 /*
  * PWRITE()

@@ -903,6 +903,9 @@ int nfs3_opendir_async(struct nfs_context *nfs, const char *path, nfs_cb cb,
 int nfs3_pread_async_internal(struct nfs_context *nfs, struct nfsfh *nfsfh,
                               void *buf, size_t count, uint64_t offset,
                               nfs_cb cb, void *private_data, int update_pos);
+int nfs3_preadv_async_internal(struct nfs_context *nfs, struct nfsfh *nfsfh,
+                               const struct iovec *iov, int iovcnt, uint64_t offset,
+                               nfs_cb cb, void *private_data, int update_pos);
 int nfs3_pwrite_async_internal(struct nfs_context *nfs, struct nfsfh *nfsfh,
                                const char *buf, size_t count, uint64_t offset,
                                nfs_cb cb, void *private_data, int update_pos);
@@ -985,6 +988,9 @@ int nfs4_opendir_async(struct nfs_context *nfs, const char *path, nfs_cb cb,
 int nfs4_pread_async_internal(struct nfs_context *nfs, struct nfsfh *nfsfh,
                               void *buf, size_t count, uint64_t offset,
                               nfs_cb cb, void *private_data, int update_pos);
+int nfs4_preadv_async_internal(struct nfs_context *nfs, struct nfsfh *nfsfh,
+                               const struct iovec *iov, int iovcnt, uint64_t offset,
+                               nfs_cb cb, void *private_data, int update_pos);
 int nfs4_pwrite_async_internal(struct nfs_context *nfs, struct nfsfh *nfsfh,
                                uint64_t offset, size_t count, const char *buf,
                                nfs_cb cb, void *private_data, int update_pos);

@@ -2866,6 +2866,57 @@ nfs4_pread_async_internal(struct nfs_context *nfs, struct nfsfh *nfsfh,
         return 0;
 }
 
+int
+nfs4_preadv_async_internal(struct nfs_context *nfs, struct nfsfh *nfsfh,
+                           const struct iovec *iov, int iovcnt, uint64_t offset,
+                           nfs_cb cb, void *private_data, int update_pos)
+{
+        COMPOUND4args args;
+        nfs_argop4 op[2];
+        struct nfs4_cb_data *data;
+        int i;
+        struct rpc_pdu *pdu;
+        size_t count = 0;
+        
+        for (i = 0; i < iovcnt; i++) {
+                count += iov[i].iov_len;
+        }
+        
+        data = calloc(1, sizeof(*data));
+        if (data == NULL) {
+                nfs_set_error(nfs, "Out of memory. Failed to allocate "
+                              "cb data");
+                return -1;
+        }
+
+        data->nfs          = nfs;
+        data->cb           = cb;
+        data->private_data = private_data;
+
+        data->filler.blob0.val  = nfsfh;
+        data->filler.blob0.free = NULL;
+        data->rw_data.offset = offset;
+        data->rw_data.update_pos = update_pos;
+        
+        memset(op, 0, sizeof(op));
+
+        i = nfs4_op_putfh(nfs, &op[0], nfsfh);
+        i += nfs4_op_read(nfs, &op[i], nfsfh, offset, count);
+
+        memset(&args, 0, sizeof(args));
+        args.argarray.argarray_len = i;
+        args.argarray.argarray_val = op;
+
+        pdu = rpc_nfs4_readv_task(nfs->rpc, nfs4_pread_cb, iov, iovcnt, &args,
+                                 data);
+        if (pdu == NULL) {
+                free_nfs4_cb_data(data);
+                return -1;
+        }
+
+        return 0;
+}
+
 static void
 nfs4_symlink_cb(struct rpc_context *rpc, int status, void *command_data,
               void *private_data)

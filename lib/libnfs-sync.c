@@ -700,6 +700,34 @@ nfs_pread(struct nfs_context *nfs, struct nfsfh *nfsfh,
 }
 
 /*
+ * preadv()
+ */
+int
+nfs_preadv(struct nfs_context *nfs, struct nfsfh *nfsfh,
+           const struct iovec *iov, int iovcnt, uint64_t offset)
+{
+	struct sync_cb_data cb_data;
+
+	cb_data.call = "pread";
+        if (nfs_init_cb_data(&nfs, &cb_data)) {
+                return -1;
+        }
+
+	if (nfs_preadv_async(nfs, nfsfh, iov, iovcnt, offset,
+                            pread_cb, &cb_data) != 0) {
+		nfs_set_error(nfs, "nfs_pread_async failed. %s",
+                              nfs_get_error(nfs));
+                nfs_destroy_cb_sem(&cb_data);
+		return -1;
+	}
+
+	wait_for_nfs_reply(nfs, &cb_data);
+        nfs_destroy_cb_sem(&cb_data);
+
+	return cb_data.status;
+}
+
+/*
  * read()
  */
 int

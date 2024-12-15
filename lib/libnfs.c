@@ -1461,6 +1461,27 @@ nfs_pread_async(struct nfs_context *nfs, struct nfsfh *nfsfh,
 }
 
 int
+nfs_preadv_async(struct nfs_context *nfs, struct nfsfh *nfsfh,
+                 const struct iovec *iov, int iovcnt, uint64_t offset,
+                 nfs_cb cb, void *private_data)
+{
+	switch (nfs->nfsi->version) {
+        case NFS_V3:
+                return nfs3_preadv_async_internal(nfs, nfsfh,
+                                                  iov, iovcnt, offset,
+                                                  cb, private_data, 0);
+        case NFS_V4:
+                return nfs4_preadv_async_internal(nfs, nfsfh,
+                                                  iov, iovcnt, offset,
+                                                  cb, private_data, 0);
+        default:
+                nfs_set_error(nfs, "%s does not support NFSv%d",
+                              __FUNCTION__, nfs->nfsi->version);
+                return -1;
+        }
+}
+
+int
 nfs_read_async(struct nfs_context *nfs, struct nfsfh *nfsfh,
                void *buf, size_t count,
                nfs_cb cb, void *private_data)
@@ -1474,6 +1495,27 @@ nfs_read_async(struct nfs_context *nfs, struct nfsfh *nfsfh,
                 return nfs4_pread_async_internal(nfs, nfsfh,
                                                  buf, count, nfsfh->offset,
                                                  cb, private_data, 1);
+        default:
+                nfs_set_error(nfs, "%s does not support NFSv%d",
+                              __FUNCTION__, nfs->nfsi->version);
+                return -1;
+        }
+}
+
+int
+nfs_readv_async(struct nfs_context *nfs, struct nfsfh *nfsfh,
+                const struct iovec *iov, int iovcnt,
+                nfs_cb cb, void *private_data)
+{
+	switch (nfs->nfsi->version) {
+        case NFS_V3:
+                return nfs3_preadv_async_internal(nfs, nfsfh,
+                                                  iov, iovcnt, nfsfh->offset,
+                                                  cb, private_data, 1);
+        case NFS_V4:
+                return nfs4_preadv_async_internal(nfs, nfsfh,
+                                                  iov, iovcnt, nfsfh->offset,
+                                                  cb, private_data, 1);
         default:
                 nfs_set_error(nfs, "%s does not support NFSv%d",
                               __FUNCTION__, nfs->nfsi->version);

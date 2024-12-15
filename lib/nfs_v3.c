@@ -4544,6 +4544,56 @@ nfs3_pread_async_internal(struct nfs_context *nfs, struct nfsfh *nfsfh,
         return 0;
 }
 
+int
+nfs3_preadv_async_internal(struct nfs_context *nfs, struct nfsfh *nfsfh,
+                           const struct iovec *iov, int iovcnt, uint64_t offset,
+                           nfs_cb cb, void *private_data, int update_pos)
+{
+	struct nfs_cb_data *data;
+        READ3args args;
+        struct rpc_pdu *pdu;
+        size_t count = 0;
+        int i;
+
+        for (i = 0; i < iovcnt; i++) {
+                count += iov[i].iov_len;
+        }
+        if (count > nfs_get_readmax(nfs)) {
+                count = nfs_get_readmax(nfs);
+        }
+
+	data = calloc(1, sizeof(struct nfs_cb_data));
+	if (data == NULL) {
+		nfs_set_error(nfs, "out of memory: failed to allocate "
+                              "nfs_cb_data structure");
+		return -1;
+	}
+	data->nfs          = nfs;
+	data->cb           = cb;
+	data->private_data = private_data;
+	data->nfsfh        = nfsfh;
+	data->org_offset   = offset;
+	data->org_count    = count;
+	data->update_pos   = update_pos;
+
+	assert(data->num_calls == 0);
+
+	data->offset = offset;
+	data->count = (count3)count;
+	data->max_offset = data->offset;
+
+        nfs3_fill_READ3args(&args, nfsfh, offset, count);
+        pdu = rpc_nfs3_readv_task(nfs->rpc, nfs3_pread_cb, iov, iovcnt, &args, data);
+        if (pdu == NULL) {
+                nfs_set_error(nfs, "RPC error: Failed to send READ "
+                              "call for %s", data->path);
+                free_nfs_cb_data(data);
+                return -1;
+        }
+
+        return 0;
+}
+
 static int
 nfs3_chdir_continue_internal(struct nfs_context *nfs,
                              struct nfs_attr *attr _U_,
