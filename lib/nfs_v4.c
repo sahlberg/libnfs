@@ -3083,7 +3083,7 @@ nfs4_pwrite_cb(struct rpc_context *rpc, int status, void *command_data,
 
 int
 nfs4_pwrite_async_internal(struct nfs_context *nfs, struct nfsfh *nfsfh,
-                           uint64_t offset, size_t count, const char *buf,
+                           const void *buf, size_t count, uint64_t offset,
                            nfs_cb cb, void *private_data, int update_pos)
 {
         COMPOUND4args args;
@@ -3171,8 +3171,8 @@ nfs4_write_append_cb(struct rpc_context *rpc, int status, void *command_data,
                              garesok->obj_attributes.attr_vals.attrlist4_len);
         offset = st.nfs_size;
 
-        if (nfs4_pwrite_async_internal(nfs, nfsfh, offset,
-                                       (size_t)count, buf,
+        if (nfs4_pwrite_async_internal(nfs, nfsfh,
+                                       buf, (size_t)count, offset,
                                        data->cb, data->private_data, 1) < 0) {
                 free_nfs4_cb_data(data);
                 data->cb(-ENOMEM, nfs, nfs_get_error(nfs), data->private_data);
@@ -3233,8 +3233,8 @@ nfs4_write_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t count,
                 return 0;
         }
 
-        return nfs4_pwrite_async_internal(nfs, nfsfh, nfsfh->offset,
-                                          (size_t)count, buf,
+        return nfs4_pwrite_async_internal(nfs, nfsfh,
+                                          buf, (size_t)count, nfsfh->offset,
                                           cb, private_data, 1);
 }
 

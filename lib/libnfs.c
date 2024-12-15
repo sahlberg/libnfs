@@ -1534,9 +1534,8 @@ nfs_pwrite_async(struct nfs_context *nfs, struct nfsfh *nfsfh,
                                                   buf, count, offset,
                                                   cb, private_data, 0);
         case NFS_V4:
-                //qqq
-                return nfs4_pwrite_async_internal(nfs, nfsfh, offset,
-                                                  (size_t)count, buf,
+                return nfs4_pwrite_async_internal(nfs, nfsfh,
+                                                  buf, count, offset,
                                                   cb, private_data, 0);
         default:
                 nfs_set_error(nfs, "%s does not support NFSv%d.",

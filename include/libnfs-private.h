@@ -992,7 +992,7 @@ int nfs4_preadv_async_internal(struct nfs_context *nfs, struct nfsfh *nfsfh,
                                const struct iovec *iov, int iovcnt, uint64_t offset,
                                nfs_cb cb, void *private_data, int update_pos);
 int nfs4_pwrite_async_internal(struct nfs_context *nfs, struct nfsfh *nfsfh,
-                               uint64_t offset, size_t count, const char *buf,
+                               const void *buf, size_t count, uint64_t offset,
                                nfs_cb cb, void *private_data, int update_pos);
 int nfs4_readlink_async(struct nfs_context *nfs, const char *path, nfs_cb cb,
                         void *private_data);
