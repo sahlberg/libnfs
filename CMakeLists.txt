@@ -155,6 +155,14 @@ install(FILES cmake/FindNFS.cmake
         DESTINATION ${INSTALL_CMAKE_DIR})
 
 # handle pc-config files
+set(PKG_LIBLIST "")
+foreach(LIB ${SYSTEM_LIBRARIES})
+  if(IS_ABSOLUTE ${LIB} AND EXISTS ${LIB})
+    list(APPEND PKG_LIBLIST "${LIB}")
+  else()
+    list(APPEND PKG_LIBLIST "-l${LIB}")
+  endif()
+endforeach()
 configure_file(cmake/libnfs.pc.cmake
                ${CMAKE_CURRENT_BINARY_DIR}/libnfs.pc @ONLY)
 
