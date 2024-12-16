@@ -157,12 +157,6 @@ int win32_poll(struct pollfd *fds, unsigned int nfds, int timo)
 #endif
  
 #ifndef __MINGW32__
-struct timezone 
-{
-  int  tz_minuteswest; /* minutes W of Greenwich */
-  int  tz_dsttime;     /* type of dst correction */
-};
- 
 int win32_gettimeofday(struct timeval *tv, struct timezone *tz)
 {
   FILETIME ft;
