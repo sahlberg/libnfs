@@ -29,7 +29,12 @@ extern "C" {
 
 #ifdef HAVE_MULTITHREADING
 
-#ifdef HAVE_PTHREAD
+#ifdef WIN32
+typedef HANDLE libnfs_thread_t;
+typedef HANDLE libnfs_mutex_t;
+typedef HANDLE libnfs_sem_t;
+typedef DWORD nfs_tid_t;
+#elif defined(HAVE_PTHREAD)
 #include <pthread.h>
 typedef pthread_t libnfs_thread_t;
 typedef pthread_mutex_t libnfs_mutex_t;
@@ -47,13 +52,6 @@ typedef uint64_t nfs_tid_t;
 typedef pid_t nfs_tid_t;
 #endif
 #endif /* HAVE_PTHREAD */
-
-#ifdef WIN32
-typedef HANDLE libnfs_thread_t;
-typedef HANDLE libnfs_mutex_t;
-typedef HANDLE libnfs_sem_t;
-typedef DWORD nfs_tid_t;
-#endif
 
 nfs_tid_t nfs_mt_get_tid(void);
 int nfs_mt_mutex_init(libnfs_mutex_t *mutex);
