@@ -39,10 +39,6 @@
 #include "ps3_compat.h"
 #endif
 
-#ifdef WIN32
-#include <win32/win32_compat.h>
-#endif
-
 #include <stdint.h>
 
 #if defined(HAVE_SYS_UIO_H) || (defined(__APPLE__) && defined(__MACH__))
