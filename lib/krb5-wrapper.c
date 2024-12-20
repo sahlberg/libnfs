@@ -159,6 +159,7 @@ krb5_auth_init(struct rpc_context *rpc,
         gss_OID_set_desc mechOidSet;
         gss_OID_set_desc wantMech;
 
+        printf("krb5_auth_init() called\n");
         auth_data = calloc(1, sizeof(struct private_auth_data));
         if (auth_data == NULL) {
                 rpc_set_error(rpc, "Failed to allocate private_auth_data");

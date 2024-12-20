@@ -881,6 +881,7 @@ rpc_connect_program_5_cb(struct rpc_context *rpc, int status,
                                                 data->server,
                                                 rpc->username,
                                                 rpc->wanted_sec);
+                printf("krb5_auth_init returned authdata %p\n", rpc->auth_data);
                 if (rpc->auth_data == NULL) {
                         data->cb(rpc, RPC_STATUS_ERROR, rpc_get_error(rpc),
                                  data->private_data);
@@ -895,10 +896,11 @@ rpc_connect_program_5_cb(struct rpc_context *rpc, int status,
                         free_rpc_cb_data(data);
                         return;
                 }
-
+                printf("krb5_auth_request returned auth_data %p\n", rpc->auth_data);
 
                 gia.gss_token.gss_token_len = krb5_get_output_token_length(rpc->auth_data);
                 gia.gss_token.gss_token_val = (char *)krb5_get_output_token_buffer(rpc->auth_data);
+                printf("Call NULL procedure with gss token %p of size %d\n", gia.gss_token.gss_token_val, gia.gss_token.gss_token_len);
                 if (rpc_null_task_gss(rpc, data->program, data->version,
                                   &gia,
                                   rpc_connect_program_6_cb, data) == NULL) {
