@@ -48,6 +48,30 @@ extern "C" {
 struct nfs_context;
 struct rpc_context;
 
+struct auth_context;
+struct AZAUTH3args;
+
+/**
+ * Auth token info returned by get_token_callback_t.
+ */
+struct auth_token_cb_res {
+        /*
+         * This is the auth token set by the caller.
+         * It is a json string containing token and other relevant data
+         * sent as-is to the server in the AZAUTH3args.authdata arg of AzAuth
+         * RPC.
+         */
+        char *azauth_data;
+
+        /*
+         * Expiry time of the token contained in azauth_data.
+         * It is in seconds since unix epoch.
+         * libnfs will save this in auth_context.expiry_time and use it to
+         * correctly refresh the token before it expires.
+         */
+        uint64_t expiry_time;
+};
+
 struct nfs_url {
 	char *server;
 	char *path;
@@ -137,6 +161,20 @@ EXTERN int nfs_service(struct nfs_context *nfs, int revents);
 EXTERN int nfs_queue_length(struct nfs_context *nfs);
 
 /*
+ * Returns the tenant id stored in the opaque auth_context structure.
+ * Used by the get_token_callback_t implementation to retrieve the tenantid
+ * previously stored by nfs_set_auth_context().
+ */
+EXTERN const char *nfs_get_tenantid(const struct auth_context *auth);
+
+/*
+ * Returns the subscription id stored in the opaque auth_context structure.
+ * Used by the get_token_callback_t implementation to retrieve the
+ * subscription id previously stored by nfs_set_auth_context().
+ */
+EXTERN const char *nfs_get_subscriptionid(const struct auth_context *auth);
+
+/*
  * Used if you need different credentials than the default for the current user.
  */
 struct AUTH;
@@ -152,7 +190,7 @@ enum rpc_sec {
         RPC_SEC_KRB5P,
 };
 EXTERN void nfs_set_security(struct nfs_context *nfs, enum rpc_sec sec);
-        
+
 #ifdef HAVE_TLS
 /*
  * Various transport level security values that map to the mount option
@@ -208,6 +246,19 @@ EXTERN struct nfs_context *nfs_init_context(void);
  * Destroy an nfs context.
  */
 EXTERN void nfs_destroy_context(struct nfs_context *nfs);
+
+/*
+ * Function pointer type for getting auth token.
+ * It takes the auth_context, fetches the token for this context i.e., for the tenant,
+ * performs sanity checks and prepares the AZAUTH3args to be passed to rpc_nfs3_azauth_task.
+ * It returns auth_token_cb_res containing AZAUTH3args and expiry time of the token fetched.
+ */
+typedef struct auth_token_cb_res *(*get_token_callback_t)(struct auth_context *auth);
+
+/*
+ * Function to set get_token_callback_t.
+ */
+EXTERN void set_auth_token_callback(get_token_callback_t get_cb);
 
 /*
  * Commands that are in flight are kept on linked lists and keyed by
@@ -286,6 +337,19 @@ EXTERN struct nfs_url *nfs_parse_url_full(struct nfs_context *nfs,
                                           const char *url);
 
 /*
+ * Used to set values in auth_context present in nfs->rpc.
+ * User should call this function IFF they want to enable auth for the given
+ * nfs_context.
+ */
+EXTERN int nfs_set_auth_context(struct nfs_context *nfs,
+                                const char *export_path,
+                                const char *tenantid,
+                                const char *subscriptionid,
+                                const char *authtype,
+                                const char *client_version,
+                                const char *client_id);
+
+/*
  * Parse an NFS URL, but do not split path and file. File
  * in the resulting struct remains NULL.
  */
@@ -332,7 +396,7 @@ EXTERN void nfs_set_readmax(struct nfs_context *nfs, size_t readmax);
  * Set the maximum supported WRITE size by the server
  */
 EXTERN void nfs_set_writemax(struct nfs_context *nfs, size_t writemax);
-        
+
 /*
  *  MODIFY CONNECT PARAMETERS
  */
@@ -2036,7 +2100,7 @@ EXTERN void nfs4_set_verifier(struct nfs_context *nfs, const char *verifier);
 
 /*
  * MULTITHREADING
- */        
+ */
 /*
  * This function starts a separate service thread for multithreading support.
  * When multithreading is enabled the eventdriven async API is no longer
@@ -2054,7 +2118,7 @@ EXTERN int nfs_mt_service_thread_start_ss(struct nfs_context *nfs, size_t stack_
  * Shutdown multithreading support.
  */
 EXTERN void nfs_mt_service_thread_stop(struct nfs_context *nfs);
-        
+
 #ifdef __cplusplus
 }
 #endif

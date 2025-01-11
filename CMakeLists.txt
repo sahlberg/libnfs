@@ -16,16 +16,26 @@ set(INSTALL_CMAKE_DIR "${INSTALL_LIB_DIR}/cmake/libnfs" CACHE PATH "Installation
 option(BUILD_SHARED_LIBS "Build shared libraries" ON)
 option(ENABLE_TESTS "Build and run test programs" OFF)
 option(ENABLE_DOCUMENTATION "Build Documentation" OFF)
+option(ENABLE_PARANOID "Enable paranoid checking in the code" OFF)
 option(ENABLE_UTILS "Build util programs" OFF)
 option(ENABLE_EXAMPLES "Build example programs" OFF)
 option(ENABLE_MULTITHREADING "Enable multithreading support" OFF)
+option(ENABLE_INSECURE_AUTH_FOR_DEVTEST "Enable AZAUTH for non-TLS connections" OFF)
 
 if(ENABLE_TESTS)
   set(ENABLE_UTILS ON CACHE BOOL "Building utils required by tests" FORCE)
 endif()
 
+if(ENABLE_PARANOID)
+  add_definitions(-DENABLE_PARANOID)
+endif()
+
 if(ENABLE_MULTITHREADING)
   add_definitions(-DHAVE_MULTITHREADING)
+endif()
+
+if(ENABLE_INSECURE_AUTH_FOR_DEVTEST)
+  add_definitions(-DENABLE_INSECURE_AUTH_FOR_DEVTEST)
 endif()
 
 include(cmake/Macros.cmake)

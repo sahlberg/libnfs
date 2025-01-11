@@ -243,8 +243,10 @@ enum input_state {
 
 #ifdef HAVE_TLS
 struct tls_cb_data {
-	rpc_cb cb;
-	void *private_data;
+#define TLS_CB_DATA_MAGIC *((const uint32_t *) "TLCD")
+        uint32_t magic;
+        rpc_cb cb;
+        void *private_data;
 };
 
 typedef enum tls_handshake_state {
@@ -271,6 +273,67 @@ struct tls_context {
 #endif /* HAVE_TLS */
 
 #define INC_STATS(rpc, stat) ++((rpc)->stats.stat)
+
+/**
+ * Auth related context information.
+ * It contains two types of information:
+ * - Information needed for querying the token to be used for auth.
+ *   These are saved and read by the user and are opaue to libnfs.
+ * - Outcome of the auth process.
+ *   These are used by libnfs.
+ */
+#define AUTH_CONTEXT_MAGIC *((const uint32_t *) "ACTX")
+
+struct auth_context {
+        uint32_t magic;
+
+        /* /account/container for which the token is required */
+        char *export_path;
+
+        /* Tenant id to use for querying the token */
+        char *tenant_id;
+
+        /* Subscription id containing account/container */
+        char *subscription_id;
+
+        /* AuthType, currently only AzAuthAAD is supported */
+        char *auth_type;
+
+        /* Version of the client which initiates the auth request */
+        char *client_version;
+
+        /* ID of the client which initiates the auth request */
+        char *client_id;
+
+
+        /*
+         * Is this connection successfully authorized?
+         * Updated after a successful call to get_token_callback_t.
+         * Cleared on token expiry.
+         */
+        bool_t is_authorized;
+
+        /*
+         * Does the token need to be refreshed?
+         * This is edge trigerred. It's set once when we discover that the
+         * current token has expired and then cleared once we setup reconnect
+         * which will eventually refresh the token.
+         */
+        bool_t needs_refresh;
+
+        /*
+         * Expiry time of the current token.
+         * Updated after a successful call to get_token_callback_t.
+         */
+        uint64_t expiry_time;
+};
+
+struct azauth_cb_data {
+#define AZAUTH_CB_DATA_MAGIC *((const uint32_t *) "AZCD")
+        uint32_t magic;
+        rpc_cb cb;
+        void *private_data;
+};
 
 struct gss_ctx_id_struct;
 struct rpc_context {
@@ -435,6 +498,20 @@ struct rpc_context {
 
 	/* Context used for performing TLS handshake with the server */
 	struct tls_context tls_context;
+
+        /*
+         * Do we need to perform auth on connect/reconnect?
+         * This starts as FALSE and is set to TRUE if user calls
+         * nfs_set_auth_context() to convey his intent to use auth for this
+         * rpc_context.
+         * If use_azauth is TRUE then a connection must send AZAUTH RPC as
+         * the very first RPC, to authn+authz the client with the server.
+         * If auth fails, no RPCs can be sent over the connection.
+         * If use_azauth is TRUE auth_context contains information needed for
+         * authn and authz and also holds the outcome of authn and authz.
+         */
+        bool_t use_azauth;
+        struct auth_context auth_context;
 #endif /* HAVE_TLS */
 
 #ifdef HAVE_LIBKRB5
@@ -485,12 +562,41 @@ struct rpc_pdu {
         uint64_t removed_from_waitpdu_at_time;
         uint32_t in_waitpdu;
 #endif
+
+        /*
+         * Queueing priority that can be passed to rpc_queue_pdu2().
+         * These have the following meaning:
+         * PDU_Q_PRIO_LOW  - PDU will be queued at rpc_context.outqueue.tail.
+         *                   This adds the pdu behind all queued pdus.
+         * PDU_Q_PRIO_HI   - PDU will be queued at rpc_context.outqueue.tailp.
+         *                   This adds the pdu to the tail of the high prio
+         *                   queue, behind already queued high prio pdus but
+         *                   ahead of all already queued low prio pdus.
+         *                   PDUs queued with PDU_Q_PRIO_HI will have
+         *                   is_high_prio set.
+         * PDU_Q_PRIO_HEAD - PDU will be queued at rpc_context.outqueue.head.
+         *                   This adds the pdu ahead of all queued pdus.
+         *                   PDUs queued with PDU_Q_PRIO_HEAD will have
+         *                   both is_head_prio and is_high_prio set.
+         */
+        #define PDU_Q_PRIO_LOW  0
+        #define PDU_Q_PRIO_HI   1
+        #define PDU_Q_PRIO_HEAD 2
+
         /*
          * Is it a high-prio pdu, added by rpc_add_to_outqueue_highp()?
          */
         bool_t is_high_prio;
 
-	struct rpc_data outdata;
+        /*
+         * Is it a head-prio pdu, currently used only by AzAuth RPC.
+         * If this is TRUE, is_high_prio will also be TRUE, since head prio
+         * pdu is a high priority pdu. This is done for proper updation of
+         * various outqueue pointers.
+         */
+        bool_t is_head_prio;
+
+        struct rpc_data outdata;
 
         /* For sending/receiving
          * out contains at least three vectors:
@@ -632,6 +738,7 @@ struct rpc_pdu {
 void rpc_reset_queue(struct rpc_queue *q);
 void rpc_enqueue(struct rpc_queue *q, struct rpc_pdu *pdu);
 void rpc_add_to_outqueue_head(struct rpc_context *rpc, struct rpc_pdu *pdu);
+void rpc_add_to_outqueue_headp(struct rpc_context *rpc, struct rpc_pdu *pdu);
 void rpc_add_to_outqueue_highp(struct rpc_context *rpc, struct rpc_pdu *pdu);
 void rpc_add_to_outqueue_lowp(struct rpc_context *rpc, struct rpc_pdu *pdu);
 void rpc_return_to_outqueue(struct rpc_context *rpc, struct rpc_pdu *pdu);
@@ -643,7 +750,7 @@ void pdu_set_timeout(struct rpc_context *rpc, struct rpc_pdu *pdu, uint64_t now_
 
 void rpc_free_pdu(struct rpc_context *rpc, struct rpc_pdu *pdu);
 int rpc_queue_pdu(struct rpc_context *rpc, struct rpc_pdu *pdu);
-int rpc_queue_pdu2(struct rpc_context *rpc, struct rpc_pdu *pdu, bool_t high_prio);
+int rpc_queue_pdu2(struct rpc_context *rpc, struct rpc_pdu *pdu, int prio);
 int rpc_process_pdu(struct rpc_context *rpc, char *buf, int size);
 struct rpc_pdu *rpc_find_pdu(struct rpc_context *rpc, uint32_t xid);
 void rpc_error_all_pdus(struct rpc_context *rpc, const char *error);
@@ -1102,6 +1209,7 @@ int nfs4_write_async(struct nfs_context *nfs, struct nfsfh *nfsfh,
                      void *private_data);
 
 int rpc_write_to_socket(struct rpc_context *rpc);
+bool_t rpc_auth_needs_refresh(struct rpc_context *rpc);
 int _nfs_mount_async(struct nfs_context *nfs, const char *server,
                      const char *exportname, nfs_cb cb,
                      void *private_data);

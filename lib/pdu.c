@@ -167,10 +167,43 @@ void rpc_add_to_outqueue_head(struct rpc_context *rpc, struct rpc_pdu *pdu)
 }
 
 /**
+ * Head priority pdu is a high prio pdu added to outqueue.head, ahead of all
+ * high (and low) prio pdus.
+ */
+void rpc_add_to_outqueue_headp(struct rpc_context *rpc, struct rpc_pdu *pdu)
+{
+        /*
+         * AZAUTH RPC is the only one queued with head priority and
+         * AZAUTH RPC MUST only be sent if use_azauth is true.
+         */
+        assert(rpc->use_azauth);
+
+        /*
+         * When rpc_add_to_outqueue_headp() is called there shouldn't be any
+         * partially sent pdu in the queue. It's typically called either when
+         * the connection is freshly created, at which time there are no pdus
+         * in outqueue, or on reconnect, at which time outqueue must have been
+         * reset and num_done must have been set to 0 for the head pdu.
+         */
+        if (rpc->outqueue.head != NULL) {
+                assert(rpc->outqueue.head->out.num_done == 0);
+        }
+
+        pdu->is_head_prio = TRUE;
+        pdu->is_high_prio = TRUE;
+        rpc_add_to_outqueue_head(rpc, pdu);
+
+        assert(rpc->outqueue.head != NULL);
+        assert(rpc->outqueue.tail != NULL);
+        assert(rpc->outqueue.tailp != NULL);
+}
+
+/**
  * High priority pdus are added after tailp.
  */
 void rpc_add_to_outqueue_highp(struct rpc_context *rpc, struct rpc_pdu *pdu)
 {
+        assert(pdu->is_head_prio == FALSE);
         pdu->is_high_prio = TRUE;
         if (rpc->outqueue.tailp == NULL) {
                 /*
@@ -202,6 +235,7 @@ void rpc_add_to_outqueue_highp(struct rpc_context *rpc, struct rpc_pdu *pdu)
  */
 void rpc_add_to_outqueue_lowp(struct rpc_context *rpc, struct rpc_pdu *pdu)
 {
+        assert(pdu->is_head_prio == FALSE);
         pdu->is_high_prio = FALSE;
         rpc_enqueue(&rpc->outqueue, pdu);
         if (rpc->stats.outqueue_len++ == 0) {
@@ -607,6 +641,11 @@ void rpc_free_pdu(struct rpc_context *rpc, struct rpc_pdu *pdu)
 #endif /* HAVE_LIBKRB5 */
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
+        /*
+         * AZAUTH RPC is the only one queued with head priority and
+         * AZAUTH RPC MUST only be sent if use_azauth is true.
+         */
+        assert(!pdu->is_head_prio || rpc->use_azauth);
 
 #ifdef ENABLE_PARANOID
         /* PDU must be freed only after removing from all queues */
@@ -710,7 +749,7 @@ void pdu_set_timeout(struct rpc_context *rpc, struct rpc_pdu *pdu, uint64_t now_
  * take very large time causing commands like stat/ls/find etc to appear to
  * hang.
  */
-int rpc_queue_pdu2(struct rpc_context *rpc, struct rpc_pdu *pdu, bool_t high_prio)
+int rpc_queue_pdu2(struct rpc_context *rpc, struct rpc_pdu *pdu, int prio)
 {
 	int i, size = 0, pos;
         uint32_t recordmarker;
@@ -727,6 +766,10 @@ int rpc_queue_pdu2(struct rpc_context *rpc, struct rpc_pdu *pdu, bool_t high_pri
         gss_buffer_desc message_buffer, output_token;
         char *buf;
 #endif /* HAVE_LIBKRB5 */
+
+        assert(prio == PDU_Q_PRIO_LOW ||
+               prio == PDU_Q_PRIO_HI ||
+               prio == PDU_Q_PRIO_HEAD);
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
@@ -935,10 +978,12 @@ int rpc_queue_pdu2(struct rpc_context *rpc, struct rpc_pdu *pdu, bool_t high_pri
         /* Fresh PDU being queued to outqueue, num_done must be 0 */
         assert(pdu->out.num_done == 0);
 
-        if (!high_prio) {
+        if (prio == PDU_Q_PRIO_LOW) {
                 rpc_add_to_outqueue_lowp(rpc, pdu);
-        } else {
+        } else if (prio == PDU_Q_PRIO_HI) {
                 rpc_add_to_outqueue_highp(rpc, pdu);
+        } else {
+                rpc_add_to_outqueue_headp(rpc, pdu);
         }
 
         send_now = (rpc->outqueue.head == pdu);
@@ -958,9 +1003,44 @@ int rpc_queue_pdu2(struct rpc_context *rpc, struct rpc_pdu *pdu, bool_t high_pri
 #endif /* HAVE_MULTITHREADING */
 
         /*
-         * If only PDU or a high priority PDU, send inline.
+         * If only PDU or a high/head priority PDU, send inline.
          */
         if (send_now) {
+                /*
+                 * We need to check if the token has expired, before we issue
+                 * the RPC, else we can have the following problem:
+                 * - user has not used the mount for a long time, and in the
+                 *   meantime the token expired.
+                 * - now user uses the mount which issues a command from fuse.
+                 * - the command comes here and since it's the first request
+                 *   to be queued in outqueue, send_now is true and we send the
+                 *   request over to the server.
+                 * - server fails the requuest with "permission denied" as the
+                 *   auth token has expired.
+                 *
+                 * If the token has expired we do not send the request, but
+                 * instead wake up rpc_service() thread, which again calls
+                 * rpc_auth_needs_refresh() and triggers a reconnect.
+                 * This will queue the AZAUTH RPC ahead of this request,
+                 * perform the reconnect and auth refresh and once the refresh
+                 * is successful, issue this new request.
+                 */
+                if (rpc_auth_needs_refresh(rpc)) {
+                        RPC_LOG(rpc, 2, "Waking up rpc_service to refresh "
+                                        "auth token, not sending pdu %p",
+                                        pdu);
+
+                        /*
+                         * Wakeup rpc_service() thread which will refresh the
+                         * cert and issue the RPC after that.
+                         */
+                        uint64_t evwrite = 1;
+                        [[maybe_unused]] ssize_t evbytes =
+                                write(rpc_get_evfd(rpc), &evwrite, sizeof(evwrite));
+                        assert(evbytes == 8);
+                        return 0;
+                }
+
                 rpc_write_to_socket(rpc);
         }
 
@@ -969,7 +1049,7 @@ int rpc_queue_pdu2(struct rpc_context *rpc, struct rpc_pdu *pdu, bool_t high_pri
 
 int rpc_queue_pdu(struct rpc_context *rpc, struct rpc_pdu *pdu)
 {
-        return rpc_queue_pdu2(rpc, pdu, 0 /* high_prio */);
+        return rpc_queue_pdu2(rpc, pdu, PDU_Q_PRIO_LOW);
 }
 
 static int rpc_process_reply(struct rpc_context *rpc, ZDR *zdr)

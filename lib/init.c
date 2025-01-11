@@ -576,6 +576,18 @@ void rpc_destroy_context(struct rpc_context *rpc)
                 rpc->auth =NULL;
         }
 
+        /*
+         * Free pointers inside rpc->auth_context.
+         */
+        free(rpc->auth_context.export_path);
+        free(rpc->auth_context.tenant_id);
+        free(rpc->auth_context.subscription_id);
+        free(rpc->auth_context.auth_type);
+        free(rpc->auth_context.client_version);
+        free(rpc->auth_context.client_id);
+        rpc->auth_context.is_authorized = FALSE;
+        rpc->use_azauth = FALSE;
+
 	if (rpc->fd != -1) {
  		close(rpc->fd);
 	}
