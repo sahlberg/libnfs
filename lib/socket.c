@@ -1141,6 +1141,7 @@ rpc_service(struct rpc_context *rpc, int revents)
 {
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
+        printf("rpc_service(%p, 0x%08x) entered\n", rpc, revents);
 	/*
 	 * rpc_timeout_scan() will return -1 to indicate that we need to perform
 	 * recovery action by reconnecting and queueing all RPCs on the new
@@ -1148,10 +1149,12 @@ rpc_service(struct rpc_context *rpc, int revents)
 	 * connection is ready, events will be processed for that.
 	 */
 	if (rpc_timeout_scan(rpc) != 0) {
+                printf("timeout scan returned error\n");
 		return rpc_reconnect_requeue(rpc);
 	}
 
 	if (revents == -1 || revents & (POLLERR|POLLHUP)) {
+                printf("revents:%d 0x%08x\n", revents, revents);
 		if (revents != -1 && revents & POLLERR) {
 
 #ifdef WIN32
@@ -1161,6 +1164,7 @@ rpc_service(struct rpc_context *rpc, int revents)
 #endif
 			socklen_t err_size = sizeof(err);
 
+                        printf("pollerr happened   revents:0x%08x\n", revents);
 			if (getsockopt(rpc->fd, SOL_SOCKET, SO_ERROR,
 				(char *)&err, &err_size) != 0 || err != 0) {
 				if (err == 0) {
@@ -1175,9 +1179,11 @@ rpc_service(struct rpc_context *rpc, int revents)
 			}
 		}
 		if (revents != -1 && revents & POLLHUP) {
+                        printf("pollhup happened   revents:0x%08x\n", revents);
 			rpc_set_error(rpc, "Socket failed with POLLHUP");
 		}
 		if (rpc->auto_reconnect) {
+                        printf("need auto_reconnect   revents:0x%08x\n", revents);
 			return rpc_reconnect_requeue(rpc);
 		}
 		maybe_call_connect_cb(rpc, RPC_STATUS_ERROR);
@@ -1189,6 +1195,7 @@ rpc_service(struct rpc_context *rpc, int revents)
 		int err = 0;
 		socklen_t err_size = sizeof(err);
 
+                printf("check getsockopt(SO_ERROR)\n");
 		if (getsockopt(rpc->fd, SOL_SOCKET, SO_ERROR,
 				(char *)&err, &err_size) != 0 || err != 0) {
 			if (err == 0) {
@@ -1204,6 +1211,7 @@ rpc_service(struct rpc_context *rpc, int revents)
 		rpc->is_connected = 1;
 		RPC_LOG(rpc, 2, "connection established on fd %d", rpc->fd);
 		maybe_call_connect_cb(rpc, RPC_STATUS_SUCCESS);
+                printf("is connected, success\n");
 		return 0;
 	}
 
@@ -1219,6 +1227,7 @@ rpc_service(struct rpc_context *rpc, int revents)
 	 * it can advance the handshake process till it either completes successfully
 	 * or fails.
 	 */
+        printf("have tls\n");
 	if (rpc->tls_context.state == TLS_HANDSHAKE_IN_PROGRESS &&
 			(revents & (POLLOUT | POLLIN))) {
 		struct tls_cb_data *data = &rpc->tls_context.data;
@@ -1257,7 +1266,9 @@ rpc_service(struct rpc_context *rpc, int revents)
 #endif /* HAVE_TLS */
 
 	if (revents & POLLIN) {
+                printf("pollin\n");
 		if (rpc_read_from_socket(rpc) != 0) {
+                        printf("read_from_socket returned error\n");
                         if (rpc->is_server_context) {
                                 return -1;
                         } else {
@@ -1296,7 +1307,9 @@ rpc_service(struct rpc_context *rpc, int revents)
 #endif
 
 	if (revents & POLLOUT && rpc_has_queue(&rpc->outqueue)) {
+                printf("pollout\n");
 		if (rpc_write_to_socket(rpc) != 0) {
+                        printf("write_to_socket returned error\n");
                         if (rpc->is_server_context) {
                                 return -1;
                         } else {
@@ -1305,6 +1318,7 @@ rpc_service(struct rpc_context *rpc, int revents)
 		}
 	}
 
+        printf("rpc_service is successful\n");
 	return 0;
 }
 
