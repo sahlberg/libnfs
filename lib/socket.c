@@ -583,8 +583,8 @@ rpc_read_from_socket(struct rpc_context *rpc)
 		}
 		if (!rpc->is_server_context) {
 			rpc->rm_xid[0] = count;
-			rpc->rm_xid[1] = ntohl(*(uint32_t *)&buf[0]);
-			rpc->pdu = rpc_find_pdu(rpc, ntohl(*(uint32_t *)&buf[0]));
+			rpc->rm_xid[1] = ntohl(*(uint32_t *)(void *)&buf[0]);
+			rpc->pdu = rpc_find_pdu(rpc, ntohl(*(uint32_t *)(void *)&buf[0]));
 			if (rpc->pdu == NULL) {
 				rpc_set_error(rpc, "Failed to match incoming PDU/XID."
 						" Ignoring PDU");
@@ -796,7 +796,7 @@ rpc_read_from_socket(struct rpc_context *rpc)
                                 }
 
                                 /* Copy the next 4 bytes into inbuf */
-                                *((uint32_t *)rpc->inbuf) = htonl(rpc->rm_xid[1]);
+                                *((uint32_t *)(void *)rpc->inbuf) = htonl(rpc->rm_xid[1]);
 
                                 /* but set inpos to 0, we will update it above
                                  * that we have already read these 4 bytes in
@@ -858,7 +858,7 @@ rpc_read_from_socket(struct rpc_context *rpc)
                                                  * If the READ failed, bail out here as there is no
                                                  * data.
                                                  */
-                                                const READ3res *res = (READ3res *) rpc->pdu->zdr_decode_buf;
+                                                const READ3res *res = (READ3res *)(void *) rpc->pdu->zdr_decode_buf;
                                                 if (res->status != NFS3_OK) {
                                                         goto payload_finished;
                                                 }
