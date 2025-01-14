@@ -212,6 +212,7 @@ int main(int argc, char *argv[])
 		printf("  Device type: %d, %d", (int)(st.nfs_rdev >> 32), (int)(st.nfs_rdev & 0xffffffff));
 		break;
 	default:
+		break;
 	}
 	printf("\n");
 	printf("Access: (%04" PRIo64 "/%s)  Uid: ( %" PRIu64 "/%s)  Gid: ( %" PRIu64 "/%s)\n",
