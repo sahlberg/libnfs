@@ -48,7 +48,7 @@ AS_IF([test "x$with_libkrb5" != "xno"], [
     AC_MSG_NOTICE([Build with gssapi_krb5 support])
     dnl  Check for gssapi/gssapi.h
     AC_CHECK_HEADERS([gssapi/gssapi.h], [], [
-        AC_MSG_ERROR([You need gssapi development files to compile libsmb2.])
+        AC_MSG_ERROR([You need gssapi development files to compile libnfs with kerberos support.])
     ])
 ], [
     MAYBE_LIBKRB5=""
