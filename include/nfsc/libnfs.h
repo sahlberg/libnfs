@@ -161,20 +161,6 @@ EXTERN int nfs_service(struct nfs_context *nfs, int revents);
 EXTERN int nfs_queue_length(struct nfs_context *nfs);
 
 /*
- * Returns the tenant id stored in the opaque auth_context structure.
- * Used by the get_token_callback_t implementation to retrieve the tenantid
- * previously stored by nfs_set_auth_context().
- */
-EXTERN const char *nfs_get_tenantid(const struct auth_context *auth);
-
-/*
- * Returns the subscription id stored in the opaque auth_context structure.
- * Used by the get_token_callback_t implementation to retrieve the
- * subscription id previously stored by nfs_set_auth_context().
- */
-EXTERN const char *nfs_get_subscriptionid(const struct auth_context *auth);
-
-/*
  * Used if you need different credentials than the default for the current user.
  */
 struct AUTH;
@@ -343,8 +329,6 @@ EXTERN struct nfs_url *nfs_parse_url_full(struct nfs_context *nfs,
  */
 EXTERN int nfs_set_auth_context(struct nfs_context *nfs,
                                 const char *export_path,
-                                const char *tenantid,
-                                const char *subscriptionid,
                                 const char *authtype,
                                 const char *client_version,
                                 const char *client_id);

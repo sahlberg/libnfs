@@ -239,7 +239,7 @@ union COMMIT3res switch (nfsstat3 status) {
 
 struct AZAUTH3args {
 	string client_version<16>;
-	opaque clientid<8>;
+	string clientid<64>;
 	string authtype<16>;
 	string authtarget<256>;
 	string authdata<16384>;
@@ -247,7 +247,7 @@ struct AZAUTH3args {
 
 struct AZAUTH3resok {
 	string server_version<16>;
-	opaque serverid<8>;
+	string serverid<64>;
 };
 
 union AZAUTH3res switch (nfsstat3 status) {

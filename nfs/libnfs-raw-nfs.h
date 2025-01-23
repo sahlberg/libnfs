@@ -284,10 +284,7 @@ typedef struct COMMIT3res COMMIT3res;
 
 struct AZAUTH3args {
 	char *client_version;
-	struct {
-		u_int clientid_len;
-		char *clientid_val;
-	} clientid;
+	char *clientid;
 	char *authtype;
 	char *authtarget;
 	char *authdata;
@@ -296,10 +293,7 @@ typedef struct AZAUTH3args AZAUTH3args;
 
 struct AZAUTH3resok {
 	char *server_version;
-	struct {
-		u_int serverid_len;
-		char *serverid_val;
-	} serverid;
+	char *serverid;
 };
 typedef struct AZAUTH3resok AZAUTH3resok;
 

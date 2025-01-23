@@ -218,20 +218,6 @@ nfs_queue_length(struct nfs_context *nfs)
 	return rpc_queue_length(nfs->rpc);
 }
 
-const char *
-nfs_get_tenantid(const struct auth_context *auth)
-{
-        assert(auth->magic == AUTH_CONTEXT_MAGIC);
-	return auth->tenant_id;
-}
-
-const char *
-nfs_get_subscriptionid(const struct auth_context *auth)
-{
-        assert(auth->magic == AUTH_CONTEXT_MAGIC);
-	return auth->subscription_id;
-}
-
 /* Static variables to hold the registered get/put token callbacks */
 static get_token_callback_t get_auth_token_cb = NULL;
 
@@ -256,7 +242,7 @@ free_azauth_token(struct auth_token_cb_res *res, AZAUTH3args *args)
         assert(res && args);
 
         free(args->client_version);
-        free(args->clientid.clientid_val);
+        free(args->clientid);
         free(args->authtype);
         free(args->authtarget);
         free(args->authdata);
@@ -598,15 +584,11 @@ flags:
 
 int nfs_set_auth_context(struct nfs_context *nfs,
                          const char *export_path,
-                         const char *tenantid,
-                         const char *subscriptionid,
                          const char *authtype,
                          const char *client_version,
                          const char *client_id)
 {
         assert(export_path);
-        assert(tenantid);
-        assert(subscriptionid);
         assert(authtype);
         assert(client_version);
         assert(client_id);
@@ -627,8 +609,6 @@ int nfs_set_auth_context(struct nfs_context *nfs,
 
                 nfs->rpc->auth_context.magic = AUTH_CONTEXT_MAGIC;
                 nfs->rpc->auth_context.export_path = strdup(export_path);
-                nfs->rpc->auth_context.tenant_id = strdup(tenantid);
-                nfs->rpc->auth_context.subscription_id = strdup(subscriptionid);
                 nfs->rpc->auth_context.auth_type = strdup(authtype);
                 nfs->rpc->auth_context.client_version = strdup(client_version);
                 nfs->rpc->auth_context.client_id = strdup(client_id);
@@ -963,20 +943,13 @@ rpc_connect_program_4_2_cb(struct rpc_context *rpc, int status,
         RPC_LOG(rpc, 2, "AZAUTH successful!");
 
         const char *server_version = res->AZAUTH3res_u.resok.server_version;
-        const u_int server_id_len = res->AZAUTH3res_u.resok.serverid.serverid_len;
-        const char *server_id_val = res->AZAUTH3res_u.resok.serverid.serverid_val;
+        const char *server_id = res->AZAUTH3res_u.resok.serverid;
 
         assert(server_version);
-        assert(server_id_len == 8);
-        assert(server_id_val);
+        assert(server_id);
 
-        /*
-         * serverid is encoded as an integer by the server.
-         */
-        const uint64_t serverid = *(uint64_t *) server_id_val;
-
-        RPC_LOG(rpc, 2, "AZAUTH Server version=%s Server id len=%u Served id=%lu",
-                server_version, server_id_len, serverid);
+        RPC_LOG(rpc, 2, "AZAUTH Server version=%s Served id=%s",
+                server_version, server_id);
 
         /* AZAUTH RPC successful, connection is now authorized */
         rpc->auth_context.is_authorized = TRUE;
@@ -2869,8 +2842,7 @@ rpc_perform_azauth(struct rpc_context *rpc, rpc_cb cb, void *private_data)
         AZAUTH3args azauthargs;
 
         azauthargs.client_version = strdup(rpc->auth_context.client_version);
-        azauthargs.clientid.clientid_len = strlen(rpc->auth_context.client_id);
-        azauthargs.clientid.clientid_val = strdup(rpc->auth_context.client_id);
+        azauthargs.clientid = strdup(rpc->auth_context.client_id);
         azauthargs.authtype = strdup(rpc->auth_context.auth_type);
         azauthargs.authtarget = strdup(rpc->auth_context.export_path);
         azauthargs.authdata = strdup(res->azauth_data);
@@ -2878,7 +2850,7 @@ rpc_perform_azauth(struct rpc_context *rpc, rpc_cb cb, void *private_data)
         RPC_LOG(rpc, 2, "AZAuth3Args: client_version: %s, client_id: %s, "
                         "authtype: %s, authtarget: %s",
                 azauthargs.client_version,
-                azauthargs.clientid.clientid_val,
+                azauthargs.clientid,
                 azauthargs.authtype,
                 azauthargs.authtarget);
 

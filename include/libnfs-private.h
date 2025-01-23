@@ -290,12 +290,6 @@ struct auth_context {
         /* /account/container for which the token is required */
         char *export_path;
 
-        /* Tenant id to use for querying the token */
-        char *tenant_id;
-
-        /* Subscription id containing account/container */
-        char *subscription_id;
-
         /* AuthType, currently only AzAuthAAD is supported */
         char *auth_type;
 
