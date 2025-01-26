@@ -48,5 +48,5 @@ libnfs_la_LIBADD = \
 
 if HAVE_TLS
 libnfs_la_CPPFLAGS += -I$(abs_top_srcdir)/tls
-libnfs_la_LIBADD += ../tls/libtls.la
+libnfs_la_LIBADD += ../tls/libtls.la -lgnutls
 endif
