@@ -499,7 +499,7 @@ struct rpc_pdu {
 
 	/* function to decode the zdr reply data and buffer to decode into */
 	zdrproc_t zdr_decode_fn;
-	caddr_t zdr_decode_buf;
+	void *zdr_decode_buf;
 	uint32_t zdr_decode_bufsize;
 
         uint32_t discard_after_sending:1;
