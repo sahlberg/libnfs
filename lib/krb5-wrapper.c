@@ -163,6 +163,7 @@ krb5_auth_init(struct rpc_context *rpc,
         auth_data = calloc(1, sizeof(struct private_auth_data));
         if (auth_data == NULL) {
                 rpc_set_error(rpc, "Failed to allocate private_auth_data");
+                printf("%s\n", rpc_get_error(rpc));
                 return NULL;
         }
         auth_data->context = GSS_C_NO_CONTEXT;
@@ -171,6 +172,7 @@ krb5_auth_init(struct rpc_context *rpc,
         if (asprintf(&auth_data->g_server, "nfs@%s", server) < 0) {
                 krb5_free_auth_data(auth_data);
                 rpc_set_error(rpc, "Failed to allocate server string");
+                printf("%s\n", rpc_get_error(rpc));
                 return NULL;
         }
 
@@ -183,6 +185,7 @@ krb5_auth_init(struct rpc_context *rpc,
         if (maj != GSS_S_COMPLETE) {
                 krb5_free_auth_data(auth_data);
                 krb5_set_gss_error(rpc, "gss_import_name", maj, min);
+                printf("%s\n", rpc_get_error(rpc));
                 return NULL;
         }
 
@@ -196,6 +199,7 @@ krb5_auth_init(struct rpc_context *rpc,
         if (maj != GSS_S_COMPLETE) {
                 krb5_free_auth_data(auth_data);
                 krb5_set_gss_error(rpc, "gss_import_name", maj, min);
+                printf("%s\n", rpc_get_error(rpc));
                 return NULL;
         }
 
@@ -223,6 +227,7 @@ krb5_auth_init(struct rpc_context *rpc,
         if (maj != GSS_S_COMPLETE) {
                 krb5_free_auth_data(auth_data);
                 krb5_set_gss_error(rpc, "gss_acquire_cred", maj, min);
+                printf("%s\n", rpc_get_error(rpc));
                 return NULL;
         }
 
@@ -244,6 +249,7 @@ krb5_auth_init(struct rpc_context *rpc,
                 if (GSS_ERROR(maj)) {
                         krb5_free_auth_data(auth_data);
                         krb5_set_gss_error(rpc, "gss_set_neg_mechs", maj, min);
+                printf("%s\n", rpc_get_error(rpc));
                         return NULL;
                 }
         }
