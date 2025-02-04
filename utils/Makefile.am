@@ -16,6 +16,9 @@ AM_CPPFLAGS = \
 	"-D_U_=__attribute__((unused))"
 
 COMMON_LIBS = ../lib/libnfs.la $(LIBSOCKET)
+if HAVE_TLS
+COMMON_LIBS += -lgnutls
+endif
 
 nfs_cat_LDADD = $(COMMON_LIBS)
 nfs_ls_LDADD = $(COMMON_LIBS)
