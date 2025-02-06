@@ -589,7 +589,7 @@ rpc_read_from_socket(struct rpc_context *rpc)
 				rpc_set_error(rpc, "Failed to match incoming PDU/XID."
 						" Ignoring PDU");
 				free(buf);
-				return -1;
+				return 0;
 			}
 		}
 		if (rpc_process_pdu(rpc, buf, count) != 0) {
