@@ -563,7 +563,11 @@ void pdu_set_timeout(struct rpc_context *rpc, struct rpc_pdu *pdu, uint64_t now_
 		pdu->major_timeout += 1000;
 		pdu->timeout += 1000;
 #endif
-	}
+                /* Never less than pdu->timeout */
+                if (pdu->major_timeout < pdu->timeout) {
+                        pdu->major_timeout = pdu->timeout;
+                }
+        }
 }
 
 int rpc_queue_pdu(struct rpc_context *rpc, struct rpc_pdu *pdu)
