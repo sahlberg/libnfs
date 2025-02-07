@@ -189,6 +189,24 @@ int rpc_remove_pdu_from_queue(struct rpc_queue *q, struct rpc_pdu *remove_pdu)
         }
 }
 
+static int rpc_remove_pdu_from_queue_unlocked(struct rpc_queue *q, struct rpc_pdu *remove_pdu)
+{
+        int ret;
+
+#ifdef HAVE_MULTITHREADING
+        if (rpc->multithreading_enabled) {
+                nfs_mt_mutex_lock(&rpc->rpc_mutex);
+        }
+#endif /* HAVE_MULTITHREADING */
+        ret = rpc_remove_pdu_from_queue(q, remove_pdu);
+#ifdef HAVE_MULTITHREADING
+        if (rpc->multithreading_enabled) {
+                nfs_mt_mutex_unlock(&rpc->rpc_mutex);
+        }
+#endif /* HAVE_MULTITHREADING */
+        return ret;
+}
+        
 unsigned int rpc_hash_xid(struct rpc_context *rpc, uint32_t xid)
 {
 	return (xid * 7919) % rpc->num_hashes;
@@ -705,17 +723,34 @@ int rpc_queue_pdu(struct rpc_context *rpc, struct rpc_pdu *pdu)
 		}
 #endif
 
+		hash = rpc_hash_xid(rpc, pdu->xid);
+
+#ifdef HAVE_MULTITHREADING
+                if (rpc->multithreading_enabled) {
+                        nfs_mt_mutex_lock(&rpc->rpc_mutex);
+                }
+#endif /* HAVE_MULTITHREADING */
+                rpc_enqueue(&rpc->waitpdu[hash], pdu);
+                rpc->waitpdu_len++;
+#ifdef HAVE_MULTITHREADING
+                if (rpc->multithreading_enabled) {
+                        nfs_mt_mutex_unlock(&rpc->rpc_mutex);
+                }
+#endif /* HAVE_MULTITHREADING */
+
                 if (rpc->is_broadcast || rpc->is_server_context) {
                         if (sendto(rpc->fd, pdu->zdr.buf, size, MSG_DONTWAIT,
                                    (struct sockaddr *)&rpc->udp_dest,
                                    sizeof(rpc->udp_dest)) < 0) {
                                 rpc_set_error(rpc, "Sendto failed with errno %s", strerror(errno));
+                                rpc_remove_pdu_from_queue_unlocked(&rpc->waitpdu[hash], pdu);
                                 rpc_free_pdu(rpc, pdu);
                                 return -1;
                         }
                         if (rpc->is_server_context) {
-                            rpc_free_pdu(rpc, pdu);
-                            return 0;
+                                rpc_remove_pdu_from_queue_unlocked(&rpc->waitpdu[hash], pdu);
+                                rpc_free_pdu(rpc, pdu);
+                                return 0;
                         }
                 } else {
                         /*
@@ -737,24 +772,12 @@ int rpc_queue_pdu(struct rpc_context *rpc, struct rpc_pdu *pdu)
                         }
                         if (writev(rpc->fd, iovp, iovn) < 0) {
                                 rpc_set_error(rpc, "Sendto failed with errno %s", strerror(errno));
+                                rpc_remove_pdu_from_queue_unlocked(&rpc->waitpdu[hash], pdu);
                                 rpc_free_pdu(rpc, pdu);
                                 return -1;
                         }
                 }
 
-		hash = rpc_hash_xid(rpc, pdu->xid);
-#ifdef HAVE_MULTITHREADING
-                if (rpc->multithreading_enabled) {
-                        nfs_mt_mutex_lock(&rpc->rpc_mutex);
-                }
-#endif /* HAVE_MULTITHREADING */
-		rpc_enqueue(&rpc->waitpdu[hash], pdu);
-		rpc->waitpdu_len++;
-#ifdef HAVE_MULTITHREADING
-                if (rpc->multithreading_enabled) {
-                        nfs_mt_mutex_unlock(&rpc->rpc_mutex);
-                }
-#endif /* HAVE_MULTITHREADING */
 		return 0;
 	}
 
