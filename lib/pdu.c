@@ -189,7 +189,9 @@ int rpc_remove_pdu_from_queue(struct rpc_queue *q, struct rpc_pdu *remove_pdu)
         }
 }
 
-static int rpc_remove_pdu_from_queue_unlocked(struct rpc_queue *q, struct rpc_pdu *remove_pdu)
+static int rpc_remove_pdu_from_queue_unlocked(struct rpc_context *rpc,
+                                              struct rpc_queue *q,
+                                              struct rpc_pdu *remove_pdu)
 {
         int ret;
 
@@ -747,12 +749,12 @@ int rpc_queue_pdu(struct rpc_context *rpc, struct rpc_pdu *pdu)
                                    (struct sockaddr *)&rpc->udp_dest,
                                    sizeof(rpc->udp_dest)) < 0) {
                                 rpc_set_error(rpc, "Sendto failed with errno %s", strerror(errno));
-                                rpc_remove_pdu_from_queue_unlocked(&rpc->waitpdu[hash], pdu);
+                                rpc_remove_pdu_from_queue_unlocked(rpc, &rpc->waitpdu[hash], pdu);
                                 rpc_free_pdu(rpc, pdu);
                                 return -1;
                         }
                         if (rpc->is_server_context) {
-                                rpc_remove_pdu_from_queue_unlocked(&rpc->waitpdu[hash], pdu);
+                                rpc_remove_pdu_from_queue_unlocked(rpc, &rpc->waitpdu[hash], pdu);
                                 rpc_free_pdu(rpc, pdu);
                                 return 0;
                         }
@@ -776,7 +778,7 @@ int rpc_queue_pdu(struct rpc_context *rpc, struct rpc_pdu *pdu)
                         }
                         if (writev(rpc->fd, iovp, iovn) < 0) {
                                 rpc_set_error(rpc, "Sendto failed with errno %s", strerror(errno));
-                                rpc_remove_pdu_from_queue_unlocked(&rpc->waitpdu[hash], pdu);
+                                rpc_remove_pdu_from_queue_unlocked(rpc, &rpc->waitpdu[hash], pdu);
                                 rpc_free_pdu(rpc, pdu);
                                 return -1;
                         }
