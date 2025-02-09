@@ -25,4 +25,4 @@ set_target_properties(nfs PROPERTIES
 install(TARGETS nfs EXPORT libnfs
                     RUNTIME DESTINATION bin
                     ARCHIVE DESTINATION lib
-                    LIBRARY DESTINATION lib)
+                    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})

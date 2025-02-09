@@ -44,6 +44,7 @@ if(IOS)
 endif()
 
 include(cmake/ConfigureChecks.cmake)
+include(cmake/GNUInstallDirs.cmake)
 
 include_directories(${CMAKE_CURRENT_BINARY_DIR}
                     include
