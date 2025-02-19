@@ -914,7 +914,7 @@ static int rpc_process_reply(struct rpc_context *rpc, ZDR *zdr)
                          * that finished authentication.
                          */
                         if (pdu->gss_seqno == 0) {
-                                struct rpc_gss_init_res *gir = (struct rpc_gss_init_res *)pdu->zdr_decode_buf;
+                                struct rpc_gss_init_res *gir = (struct rpc_gss_init_res *)(void *)pdu->zdr_decode_buf;
 
                                 rpc->context_len = gir->handle.handle_len;
                                 free(rpc->context);
