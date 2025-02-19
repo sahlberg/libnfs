@@ -858,7 +858,7 @@ rpc_read_from_socket(struct rpc_context *rpc)
                                                  * If the READ failed, bail out here as there is no
                                                  * data.
                                                  */
-                                                const READ3res *res = (READ3res *) rpc->pdu->zdr_decode_buf;
+                                                const READ3res *res = (READ3res *)(void *) rpc->pdu->zdr_decode_buf;
                                                 if (res->status != NFS3_OK) {
                                                         goto payload_finished;
                                                 }
