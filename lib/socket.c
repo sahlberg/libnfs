@@ -439,7 +439,7 @@ rpc_write_to_socket(struct rpc_context *rpc)
                         }
 
                         num_pdus++;
-                        pdu = pdu->next;      
+                        pdu = pdu->next;
                 } while ((rpc->max_waitpdu_len == 0 ||
                           rpc->max_waitpdu_len > (rpc->waitpdu_len + num_pdus)) &&
                          pdu != NULL && niov < iovcnt);
@@ -1288,10 +1288,10 @@ rpc_auth_needs_refresh(struct rpc_context *rpc)
 
 	/*
 	 * If connection is not authorized, we need not check for expiry time
-	 * as it will not be set. 
+	 * as it will not be set.
 	 * It is important to check because rpc_service will be running and this
-	 * function will keep getting called. We should check for expiry only when 
-	 * connection is authorized. 
+	 * function will keep getting called. We should check for expiry only when
+	 * connection is authorized.
 	 */
 	if (!rpc->auth_context.is_authorized) {
 		return FALSE;
@@ -1557,30 +1557,34 @@ rpc_connect_sockaddr_async(struct rpc_context *rpc)
 	case AF_INET:
 		socksize = sizeof(struct sockaddr_in);
 		rpc->fd = create_socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-		if (set_bind_device(rpc->fd, rpc->ifname) != 0) {
-			rpc_set_error (rpc, "Failed to bind to interface");
-			return -1;
-		}
+                if (rpc->fd != -1) {
+                        if (set_bind_device(rpc->fd, rpc->ifname) != 0) {
+                                rpc_set_error (rpc, "Failed to bind to interface");
+                                return -1;
+                        }
 
 #ifdef HAVE_NETINET_TCP_H
-		if (rpc->tcp_syncnt != RPC_PARAM_UNDEFINED) {
-			set_tcp_sockopt(rpc->fd, TCP_SYNCNT, rpc->tcp_syncnt);
-		}
+                        if (rpc->tcp_syncnt != RPC_PARAM_UNDEFINED) {
+                                set_tcp_sockopt(rpc->fd, TCP_SYNCNT, rpc->tcp_syncnt);
+                        }
 #endif
+                }
 		break;
 	case AF_INET6:
 		socksize = sizeof(struct sockaddr_in6);
 		rpc->fd = create_socket(AF_INET6, SOCK_STREAM, IPPROTO_TCP);
-		if (set_bind_device(rpc->fd, rpc->ifname) != 0) {
-			rpc_set_error (rpc, "Failed to bind to interface");
-			return -1;
-		}
+                if (rpc->fd != -1) {
+                        if (set_bind_device(rpc->fd, rpc->ifname) != 0) {
+                                rpc_set_error (rpc, "Failed to bind to interface");
+                                return -1;
+                        }
 
 #ifdef HAVE_NETINET_TCP_H
-		if (rpc->tcp_syncnt != RPC_PARAM_UNDEFINED) {
-			set_tcp_sockopt(rpc->fd, TCP_SYNCNT, rpc->tcp_syncnt);
-		}
+                        if (rpc->tcp_syncnt != RPC_PARAM_UNDEFINED) {
+                                set_tcp_sockopt(rpc->fd, TCP_SYNCNT, rpc->tcp_syncnt);
+                        }
 #endif
+                }
 		break;
 	default:
 		rpc_set_error(rpc, "Can not handle AF_FAMILY:%d", s->ss_family);
@@ -1588,7 +1592,7 @@ rpc_connect_sockaddr_async(struct rpc_context *rpc)
 	}
 
 	if (rpc->fd == -1) {
-		rpc_set_error(rpc, "Failed to open socket");
+		rpc_set_error(rpc, "Failed to open socket: %s", strerror(errno));
 		return -1;
 	}
 
@@ -1719,12 +1723,32 @@ static int
 rpc_set_sockaddr(struct rpc_context *rpc, const char *server, int port)
 {
 	struct addrinfo *ai = NULL;
+        int err, i;
 
-	if (getaddrinfo(server, NULL, NULL, &ai) != 0) {
-		rpc_set_error(rpc, "Invalid address:%s. "
-			      "Can not resolv into IPv4/v6 structure.", server);
-		return -1;
- 	}
+        for (i = 0; i < 100; i++) {
+                if ((err = getaddrinfo(server, NULL, NULL, &ai)) != 0) {
+                        if (err == EAI_AGAIN) {
+                                RPC_LOG(rpc, 2, "rpc_set_sockaddr: getaddrinfo(%s) failed "
+                                        "temporarily, trying again!", server);
+                                usleep(1000 * 100);
+                                continue;
+                        }
+
+                        rpc_set_error(rpc, "Invalid address:%s. "
+                                      "Can not resolv into IPv4/v6 structure: %s (%s)",
+                                      server, gai_strerror(err), strerror(errno));
+                        return -1;
+                }
+
+                err = 0;
+                break;
+        }
+
+        if (err != 0) {
+                rpc_set_error(rpc, "Failed to resolve address %s, even after 100 retries!",
+                              server);
+                return -1;
+        }
 
 	switch (ai->ai_family) {
 	case AF_INET:
