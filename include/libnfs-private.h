@@ -825,6 +825,7 @@ struct nfsfh {
         struct nfs_fh fh;
         int is_sync;
         int is_append;
+        int is_readonly;
         int is_dirty;
         uint64_t offset;
 
