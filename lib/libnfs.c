@@ -1643,6 +1643,10 @@ int
 nfs_ftruncate_async(struct nfs_context *nfs, struct nfsfh *nfsfh,
                     uint64_t length, nfs_cb cb, void *private_data)
 {
+        if (nfsfh->is_readonly) {
+                nfs_set_error(nfs, "Trying to truncate to read-only file");
+                return -1;
+        }
 	switch (nfs->nfsi->version) {
         case NFS_V3:
                 return nfs3_ftruncate_async(nfs, nfsfh, length,
