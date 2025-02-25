@@ -4776,6 +4776,9 @@ nfs3_open_cb(struct rpc_context *rpc, int status, void *command_data,
 	if (data->continue_int & O_APPEND) {
 		nfsfh->is_append = 1;
 	}
+	if (!(data->continue_int & (O_WRONLY|O_RDWR))) {
+		nfsfh->is_readonly = 1;
+	}
 
 	/* steal the filehandle */
 	nfsfh->fh = data->fh;

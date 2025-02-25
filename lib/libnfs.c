@@ -1532,6 +1532,10 @@ nfs_pwrite_async(struct nfs_context *nfs, struct nfsfh *nfsfh,
                  const void *buf, size_t count, uint64_t offset,
                  nfs_cb cb, void *private_data)
 {
+        if (nfsfh->is_readonly) {
+                nfs_set_error(nfs, "Trying to write to read-only file");
+                return -1;
+        }
 	switch (nfs->nfsi->version) {
         case NFS_V3:
                 return nfs3_pwrite_async_internal(nfs, nfsfh,
@@ -1553,6 +1557,10 @@ nfs_write_async(struct nfs_context *nfs, struct nfsfh *nfsfh,
                 const void *buf, size_t count,
                 nfs_cb cb, void *private_data)
 {
+        if (nfsfh->is_readonly) {
+                nfs_set_error(nfs, "Trying to write to read-only file");
+                return -1;
+        }
 	switch (nfs->nfsi->version) {
         case NFS_V3:
                 return nfs3_write_async(nfs, nfsfh,

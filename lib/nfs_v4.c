@@ -2196,6 +2196,10 @@ nfs4_open_cb(struct rpc_context *rpc, int status, void *command_data,
                 fh->is_append = 1;
         }
 
+	if (!(data->filler.flags & (O_WRONLY|O_RDWR))) {
+                fh->is_readonly = 1;
+        }
+
         /* Parse Open */
         if ((i = nfs4_find_op(nfs, data, res, OP_OPEN, "OPEN")) < 0) {
                 return;
