@@ -218,6 +218,12 @@ nfs_queue_length(struct nfs_context *nfs)
 	return rpc_queue_length(nfs->rpc);
 }
 
+void
+nfs_set_resolve_on_reconnect(struct nfs_context *nfs)
+{
+        rpc_set_resolve_on_reconnect(nfs->rpc);
+}
+
 /* Static variables to hold the registered get/put token callbacks */
 static get_token_callback_t get_auth_token_cb = NULL;
 

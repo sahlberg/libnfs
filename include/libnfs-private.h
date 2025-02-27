@@ -405,6 +405,21 @@ struct rpc_context {
 	int num_retries;
 
 	/*
+	 * If true, reconnect will resolve 'server' afresh before reconnecting,
+	 * else it'll reconnect to the last resolved address stored in
+	 * rpc_context->s.
+	 * Defaults to false and can be set by calling
+	 * rpc_set_resolve_on_reconnect(). Once set it'll remain set for the
+	 * life of the rpc transport and will decide the reconnect behaviour
+	 * everytime a reconnect is needed.
+	 * If resolve_on_reconnect is set, rpc_reconnect_requeue() will set
+	 * resolve_server before calling rpc_connect_sockaddr_async() which
+	 * will then resolve 'server' address before reconnecting.
+	 */
+	bool_t resolve_on_reconnect;
+	bool_t resolve_server;
+
+	/*
 	 * NFS server name or IP address. It has the following uses:
 	 * - Used for certificate verification, in case of xprtsec=[tls,mtls]
 	 *   mount option.
@@ -415,6 +430,15 @@ struct rpc_context {
 	 * save a copy here from nfs_get_server().
 	 */
 	char *server;
+
+	/*
+	 * rpc_set_sockaddr() stores the same port number which it saves in
+	 * rpc_context->s, so that it can be used during reconnect, so this is
+	 * the last port to which this rpc_context connected. Note that an
+	 * rpc_context may first connect to portmap and then to mount and then
+	 * to nfs, all on different ports.
+	 */
+	int port;
 
 	/* fragment reassembly */
 	struct rpc_fragment *fragments;

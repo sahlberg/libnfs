@@ -248,6 +248,13 @@ EXTERN uint64_t rpc_pdu_get_dispatch_usecs(struct rpc_pdu *pdu);
 EXTERN int rpc_queue_length(struct rpc_context *rpc);
 
 /*
+ * Call this if you want the server name to be resolved before reconnect.
+ * Default behaviour is to not resolve on reconnect and instead connect
+ * to the address resolved on initial connect.
+ */
+EXTERN void rpc_set_resolve_on_reconnect(struct rpc_context *rpc);
+
+/*
  * Returns the number of commands awaiting from the server.
  * Can be used by the application to check if there are any
  * more responses we are awaiting from the server

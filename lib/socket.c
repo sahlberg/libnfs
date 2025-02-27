@@ -108,6 +108,9 @@ static int
 rpc_reconnect_requeue(struct rpc_context *rpc);
 
 static int
+rpc_set_sockaddr(struct rpc_context *rpc, const char *server, int port);
+
+static int
 create_socket(int domain, int type, int protocol)
 {
 #ifdef SOCK_CLOEXEC
@@ -1467,21 +1470,21 @@ rpc_service(struct rpc_context *rpc, int revents)
 		}
 	}
 
+	if ((revents & POLLOUT) && rpc_outqueue_present(rpc)) {
 #ifdef HAVE_TLS
-	/*
-	 * For secure NFS connections we should never write to the socket w/o
-	 * properly completing the TLS handshake. Note that we do allow reads
-	 * from the socket as we would want to read response to the AUTH_TLS
-	 * NULL RPC.
-	 */
-	if (rpc->use_tls && (rpc->tls_context.state != TLS_HANDSHAKE_COMPLETED)) {
-                RPC_LOG(rpc, 2, "TLS handshake state %d on fd %d, skipping socket write!",
-			rpc->tls_context.state, rpc->fd);
-                return 0;
-        }
+                /*
+                 * For secure NFS connections we should never write to the socket w/o
+                 * properly completing the TLS handshake. Note that we do allow reads
+                 * from the socket as we would want to read response to the AUTH_TLS
+                 * NULL RPC.
+                 */
+                if (rpc->use_tls && (rpc->tls_context.state != TLS_HANDSHAKE_COMPLETED)) {
+                        RPC_LOG(rpc, 2, "TLS handshake state %d on fd %d, skipping socket write!",
+                                        rpc->tls_context.state, rpc->fd);
+                        return 0;
+                }
 #endif
 
-	if ((revents & POLLOUT) && rpc_outqueue_present(rpc)) {
 		if (rpc_write_to_socket(rpc) != 0) {
                         if (rpc->is_server_context) {
                                 return -1;
@@ -1552,6 +1555,32 @@ rpc_connect_sockaddr_async(struct rpc_context *rpc)
         socklen_t socksize;
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
+
+        /*
+         * If the user has configured "resolve on reconnect" behaviour, then
+         * we must resolve server name fresh and not connect to the last
+         * resolved address.
+         */
+        if (rpc->resolve_server) {
+                /* Can only be set if user opted for it */
+                assert(rpc->resolve_on_reconnect);
+
+                /*
+                 * resolve_server must be set only on reconnect, which means
+                 * address must have been resolved earlier, and hence port
+                 * must be set.
+                 */
+                assert(rpc->port != 0);
+                assert(rpc->server != NULL);
+
+                RPC_LOG(rpc, 2, "Resolving server %s on reconnect (port %d)",
+                                rpc->server, rpc->port);
+
+                if (rpc_set_sockaddr(rpc, rpc->server, rpc->port) != 0) {
+                        return -1;
+                }
+                rpc->resolve_server = 0;
+        }
 
 	switch (s->ss_family) {
 	case AF_INET:
@@ -1725,6 +1754,13 @@ rpc_set_sockaddr(struct rpc_context *rpc, const char *server, int port)
 	struct addrinfo *ai = NULL;
         int err, i;
 
+        assert(strcmp(rpc->server, server) == 0);
+        /*
+         * When called on reconnect (rpc->resolve_server is set) rpc->port must
+         * be set and must match the port passed.
+         */
+        assert(!rpc->resolve_server || (rpc->port == port));
+
         for (i = 0; i < 100; i++) {
                 if ((err = getaddrinfo(server, NULL, NULL, &ai)) != 0) {
                         if (err == EAI_AGAIN) {
@@ -1752,6 +1788,40 @@ rpc_set_sockaddr(struct rpc_context *rpc, const char *server, int port)
 
 	switch (ai->ai_family) {
 	case AF_INET:
+	        /*
+	         * If not the first call to rpc_set_sockaddr(), address family
+	         * must match what's already saved. Port can be different as
+	         * the same rpc_context may connect to portmapper, mount and
+	         * nfs, all over different ports. Address can change in case
+	         * of migration of NFS server.
+	         */
+	        assert(((struct sockaddr_in *)&rpc->s)->sin_family == AF_UNSPEC ||
+	               ((struct sockaddr_in *)&rpc->s)->sin_family == AF_INET);
+
+                if (rpc->resolve_server) {
+                        char ip_str_old[INET_ADDRSTRLEN];
+                        char ip_str_new[INET_ADDRSTRLEN];
+
+                        inet_ntop(AF_INET, &(((struct sockaddr_in *)&rpc->s)->sin_addr),
+                                  ip_str_old, INET_ADDRSTRLEN);
+                        inet_ntop(AF_INET, &(((struct sockaddr_in *)(ai->ai_addr))->sin_addr),
+                                  ip_str_new, INET_ADDRSTRLEN);
+
+                        assert(((struct sockaddr_in *)&rpc->s)->sin_family == AF_INET);
+                        assert(((struct sockaddr_in *)&rpc->s)->sin_addr.s_addr != 0);
+                        assert(((struct sockaddr_in *)&rpc->s)->sin_port == htons(port));
+
+                        if (((struct sockaddr_in *)&rpc->s)->sin_addr.s_addr !=
+                            ((struct sockaddr_in *)(ai->ai_addr))->sin_addr.s_addr) {
+                                RPC_LOG(rpc, 1, "rpc_set_sockaddr (%s): IPv4 address changed "
+                                                "from %s -> %s", server,
+                                                ip_str_old, ip_str_new);
+                        } else {
+                                RPC_LOG(rpc, 2, "rpc_set_sockaddr (%s): IPv4 address again "
+                                                "resolved to %s", server, ip_str_new);
+                        }
+                }
+
 		((struct sockaddr_in *)&rpc->s)->sin_family = ai->ai_family;
 		((struct sockaddr_in *)&rpc->s)->sin_port = htons(port);
 		((struct sockaddr_in *)&rpc->s)->sin_addr =
@@ -1763,6 +1833,9 @@ rpc_set_sockaddr(struct rpc_context *rpc, const char *server, int port)
 		break;
 #if !defined(PS3_PPU) && !defined(PS2_EE)
 	case AF_INET6:
+	        assert(((struct sockaddr_in *)&rpc->s)->sin_family == AF_UNSPEC ||
+	               ((struct sockaddr_in *)&rpc->s)->sin_family == AF_INET6);
+
 		((struct sockaddr_in6 *)&rpc->s)->sin6_family = ai->ai_family;
 		((struct sockaddr_in6 *)&rpc->s)->sin6_port = htons(port);
 		((struct sockaddr_in6 *)&rpc->s)->sin6_addr =
@@ -1775,6 +1848,11 @@ rpc_set_sockaddr(struct rpc_context *rpc, const char *server, int port)
 #endif
 	}
 	freeaddrinfo(ai);
+
+        /*
+         * Note the port for reconnect.
+         */
+	rpc->port = port;
 
         return 0;
 }
@@ -2141,12 +2219,20 @@ rpc_reconnect_requeue(struct rpc_context *rpc)
 	if (rpc->auto_reconnect < 0 || rpc->num_retries > 0) {
 		rpc->num_retries--;
 		rpc->connect_cb  = reconnect_cb;
-		RPC_LOG(rpc, 1, "reconnect initiated");
+		RPC_LOG(rpc, 1, "reconnect initiated to %s", rpc->server);
+		/*
+		 * If user has opted for "resolve on reconnect", let
+		 * rpc_connect_sockaddr_async() know that.
+		 */
+		rpc->resolve_server = rpc->resolve_on_reconnect;
 		if (rpc_connect_sockaddr_async(rpc) != 0) {
 			rpc_error_all_pdus(rpc, "RPC ERROR: Failed to "
                                            "reconnect async");
 			return -1;
 		}
+		/* rpc_connect_sockaddr_async() must have reset it */
+		assert(!rpc->resolve_server);
+
 		INC_STATS(rpc, num_reconnects);
 		return 0;
 	}
@@ -2304,6 +2390,18 @@ rpc_set_fd(struct rpc_context *rpc, int fd)
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
 	rpc->fd = fd;
+}
+
+void
+rpc_set_resolve_on_reconnect(struct rpc_context *rpc)
+{
+	assert(rpc->magic == RPC_CONTEXT_MAGIC);
+	/*
+	 * It's not a sin to call rpc_set_resolve_on_reconnect() more than
+	 * once but our callers shouldn't call so catch that.
+	 */
+	assert(!rpc->resolve_on_reconnect);
+	rpc->resolve_on_reconnect = 1;
 }
 
 int

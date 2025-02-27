@@ -161,6 +161,13 @@ EXTERN int nfs_service(struct nfs_context *nfs, int revents);
 EXTERN int nfs_queue_length(struct nfs_context *nfs);
 
 /*
+ * Call this if you want the server name to be resolved before reconnect.
+ * Default behaviour is to not resolve on reconnect and instead connect
+ * to the address resolved on initial connect.
+ */
+EXTERN void nfs_set_resolve_on_reconnect(struct nfs_context *nfs);
+
+/*
  * Used if you need different credentials than the default for the current user.
  */
 struct AUTH;
@@ -263,7 +270,6 @@ EXTERN void set_auth_token_callback(get_token_callback_t get_cb);
  * before you mount the share.
  */
 EXTERN int nfs_set_hash_size(struct nfs_context *nfs, int hashes);
-
 
 /*
  * URL parsing functions.
