@@ -129,6 +129,16 @@ struct rpc_stats {
          * rpc->waitpdu_len.
          */
         uint32_t waitpdu_len;
+
+        /*
+         * Stats for finding avg number of bytes we could write before
+         * writev() returned EAGAIN. This is an indication of the receive
+         * window advertised by the server.
+         */
+        uint64_t last_write_bytes_before_eagain;
+        uint64_t tot_write_bytes_before_eagain;
+        uint64_t num_write_eagain;
+
 };
 
 struct rpc_context;

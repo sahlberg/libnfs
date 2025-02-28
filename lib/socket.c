@@ -456,16 +456,31 @@ rpc_write_to_socket(struct rpc_context *rpc)
                 count = writev(rpc->fd, iov, niov);
                 if (count == -1) {
                         if (errno == EAGAIN || errno == EWOULDBLOCK) {
-                                ret = 0;
-                                 goto finished;
+                                /*
+                                 * Update EAGAIN stats to get an idea about the
+                                 * receive window advertised by the peer.
+                                 * Once write() returns EAGAIN, we only come back
+                                 * to write after poll() returns POLLOUT, which
+                                 * it'll do only when there's enough sndbuf space
+                                 * in the socket.
+                                 */
+                                assert(rpc->stats.last_write_bytes_before_eagain > 0);
+                                rpc->stats.tot_write_bytes_before_eagain +=
+                                        rpc->stats.last_write_bytes_before_eagain;
+                                rpc->stats.last_write_bytes_before_eagain = 0;
+                                INC_STATS(rpc, num_write_eagain);
 
+                                ret = 0;
+                                goto finished;
                         }
                         rpc_set_error_locked(rpc, "Error when writing to "
-					     "socket :%d %s", errno,
-					     rpc_get_error(rpc));
+                                        "socket :%d %s", errno,
+                                        rpc_get_error(rpc));
                         ret = -1;
                         goto finished;
                 }
+
+                rpc->stats.last_write_bytes_before_eagain += count;
 
                 /* Check how many pdu we completed */
                 while (count > 0 && (pdu = rpc->outqueue.head) != NULL) {
