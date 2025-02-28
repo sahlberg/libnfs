@@ -268,6 +268,7 @@ void rpc_return_to_outqueue(struct rpc_context *rpc, struct rpc_pdu *pdu)
          * it out will entail a retransmit.
          */
         INC_STATS(rpc, num_retransmitted);
+        pdu->is_retransmitted = 1;
 
         /*
          * Reset output and input cursors as we have to re-send the whole pdu
@@ -618,6 +619,9 @@ struct rpc_pdu *rpc_allocate_pdu2(struct rpc_context *rpc, int program, int vers
         /* Add an iovector for the header */
         rpc_add_iovector(rpc, &pdu->out, &pdu->outdata.data[4],
                          zdr_getpos(&pdu->zdr), NULL);
+
+        /* Freshly allocated PDU cannot be retransmitted */
+        assert(!pdu->is_retransmitted);
 
 	return pdu;
  failed:
@@ -1419,6 +1423,11 @@ struct rpc_pdu *rpc_find_pdu(struct rpc_context *rpc, uint32_t xid)
 #endif /* HAVE_MULTITHREADING */
 
         return pdu;
+}
+
+bool_t rpc_pdu_is_retransmitted(struct rpc_pdu *pdu)
+{
+        return pdu->is_retransmitted;
 }
 
 uint32_t rpc_pdu_get_req_size(struct rpc_pdu *pdu)

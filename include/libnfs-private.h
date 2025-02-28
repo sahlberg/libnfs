@@ -614,6 +614,22 @@ struct rpc_pdu {
          */
         bool_t is_head_prio;
 
+        /*
+         * Was this PDU retransmitted?
+         * libnfs lets its users know if a PDU that completed, was retransmitted
+         * or was it only sent to the server once. Users can use this info to
+         * do useful things, f.e., one of the thing they can do is work around
+         * the weakly consistent nature of NFS by treating an NFS3ERR_NOENT
+         * returned by a REMOVE/RMDIR call as NFS3_OK since it may have been
+         * deleted the first time it was sent and the subsequent retransmit
+         * may have gone to another node (which doesn't share the DRC cache)
+         * and hence it failed it with NFS3ERR_NOENT.
+         * Note that most applications will handle an unlink() call succeeding
+         * for a non-existent file better than unlink() call failing with
+         * NOENT for a file that was actually present.
+         */
+        bool_t is_retransmitted;
+
         struct rpc_data outdata;
 
         /* For sending/receiving

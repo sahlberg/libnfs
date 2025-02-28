@@ -202,6 +202,17 @@ EXTERN int rpc_service(struct rpc_context *rpc, int revents);
 EXTERN struct rpc_pdu *rpc_get_pdu(struct rpc_context *rpc);
 
 /*
+ * Was this PDU retransmitted? i.e., did we send it to the server more than
+ * once? User can use this info to relax some errors, f.e., a REMOVE request
+ * that fails with NFS3ERR_NOENT can be treated as success if it was a
+ * retransmited request.
+ * Note that most applications will handle an unlink() call succeeding for a
+ * non-existent file better than unlink() call failing with NOENT for a file
+ * that was actually present.
+ */
+EXTERN bool_t rpc_pdu_is_retransmitted(struct rpc_pdu *pdu);
+
+/*
  * Get the size in bytes of the RPC request that libnfs will send out for
  * this PDU. The size includes the RPC header, the NFS header and any data
  * bytes sent (only WRITE RPC request will send data bytes).
