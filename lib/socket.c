@@ -2358,7 +2358,9 @@ int
 rpc_queue_length(struct rpc_context *rpc)
 {
 	int i = 0;
+#ifdef ENABLE_PARANOID
 	struct rpc_pdu *pdu;
+#endif
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
