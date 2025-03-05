@@ -662,6 +662,10 @@ struct AUTH *authnone_create(void)
 
 struct AUTH *libnfs_authunix_create(const char *host, uint32_t uid, uint32_t gid, uint32_t len, uint32_t *groups)
 {
+	if (len > 16) { // The maximum number of auxiliary groups is 16, refer to RFC 5531 section 14
+		return NULL;
+	}
+
 	struct AUTH *auth;
 	int size;
 	uint32_t *buf;
@@ -669,6 +673,10 @@ struct AUTH *libnfs_authunix_create(const char *host, uint32_t uid, uint32_t gid
 
 	size = 4 + 4 + ((strlen(host) + 3) & ~3) + 4 + 4 + 4 + len * 4;
 	auth = calloc(1, sizeof(struct AUTH));
+	if (auth == NULL) {
+		return NULL;
+	}
+
 	auth->ah_cred.oa_flavor = AUTH_UNIX;
 	auth->ah_cred.oa_length = size;
 	auth->ah_cred.oa_base = calloc(1, size);
