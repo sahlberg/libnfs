@@ -145,7 +145,9 @@ struct rpc_queue {
 #define DEFAULT_HASHES 4
 #define NFS_RA_TIMEOUT 5
 #define NFS_MIN_XFER_SIZE NFSMAXDATA2
-#define NFS_MAX_XFER_SIZE (4 * 1024 * 1024)
+//#define NFS_MAX_XFER_SIZE (4 * 1024 * 1024)
+/* 100MB MAX RPC size for supporting full size Blob block write */
+#define NFS_MAX_XFER_SIZE (100 * 1024 * 1024)
 #define NFS_DEF_XFER_SIZE (1 * 1024 * 1024)
 #define ZDR_ENCODE_OVERHEAD 1024
 #define ZDR_ENCODEBUF_MINSIZE 4096
