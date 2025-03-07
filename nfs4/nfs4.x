@@ -448,6 +448,16 @@ typedef nfstime4        fattr4_time_metadata;
 typedef nfstime4        fattr4_time_modify;
 typedef settime4        fattr4_time_modify_set;
 
+typedef struct {
+	fattr4_maxread maxread;
+	fattr4_maxwrite maxwrite;
+} fattr4_attr;
+
+enum fattr4_attr_type {
+    FATTR4_ATTR_TYPE_MAXREAD = (1u << 0),
+    FATTR4_ATTR_TYPE_MAXWRITE = (1u << 1),
+};
+typedef enum fattr4_attr_type fattr4_attr_type;
 
 /*
  * Mandatory Attributes

@@ -182,6 +182,18 @@ struct nfs4_cb_data {
         struct rw_data rw_data;
 };
 
+
+struct nfs4_cb_data_with_attr_type {
+        /* Original cb data */
+        struct nfs4_cb_data *data;
+
+        /* Types of attributes which were asked for */
+        fattr4_attr_type attrtype;
+
+        /* A dynamically allocated list of attibutes which were asked for */
+        uint32_t *attrs;
+};
+
 static uint32_t standard_attributes[2] = {
         (1 << FATTR4_TYPE |
          1 << FATTR4_SIZE |
@@ -2718,6 +2730,140 @@ nfs4_getacl_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_cb cb,
         return 0;
 }
 
+static void
+nfs4_getattr_async_cb(struct rpc_context *rpc, int status, void *command_data,
+                      void *private_data)
+{
+        struct nfs4_cb_data_with_attr_type *dt = private_data;
+        struct nfs4_cb_data *data = dt->data;
+        struct nfs_context *nfs = data->nfs;
+        COMPOUND4res *res = command_data;
+        GETATTR4resok *garesok;
+        fattr4_attr attr;
+        fattr4_attr_type attrtype = dt->attrtype;
+        ZDR zdr;
+        int i;
+
+        assert(rpc->magic == RPC_CONTEXT_MAGIC);
+
+        if (check_nfs4_error(nfs, status, data, res, "GETACL")) {
+                data->cb(-EIO, nfs, "GETACL failed", data->private_data);
+                goto free_cb;
+        }
+
+        if ((i = nfs4_find_op(nfs, data, res, OP_GETATTR, "GETATTR")) < 0) {
+                data->cb(-EIO, nfs, "GETACL failed", data->private_data);
+                goto free_cb;
+        }
+        garesok = &res->resarray.resarray_val[i].nfs_resop4_u.opgetattr.GETATTR4res_u.resok4;
+
+        memset(&attr, 0, sizeof(attr));
+        zdrmem_create(&zdr,
+                      garesok->obj_attributes.attr_vals.attrlist4_val,
+                      garesok->obj_attributes.attr_vals.attrlist4_len,
+                      ZDR_DECODE);
+
+        if (attrtype & FATTR4_ATTR_TYPE_MAXREAD) {
+                if (!zdr_fattr4_maxread(&zdr, &attr.maxread)) {
+                        data->cb(-EIO, nfs, "Failed to unmarshall fattr4_maxread", data->private_data);
+                        goto done;
+                }
+        }
+
+        if (attrtype & FATTR4_ATTR_TYPE_MAXWRITE) {
+                if (!zdr_fattr4_maxwrite(&zdr, &attr.maxwrite)) {
+                        data->cb(-EIO, nfs, "Failed to unmarshall fattr4_maxwrite", data->private_data);
+                        goto done;
+                }
+        }
+
+        data->cb(0, nfs, &attr, data->private_data);
+
+done:
+        zdr_destroy(&zdr);
+free_cb:
+        free_nfs4_cb_data(data);
+        free(dt->attrs);
+        free(dt);
+}
+
+int
+nfs4_getattr_async(struct nfs_context *nfs, fattr4_attr_type attrtype,
+                   nfs_cb cb, void *private_data)
+{
+        struct nfs4_cb_data_with_attr_type *dt;
+        COMPOUND4args args;
+        struct nfsfh fh;
+        nfs_argop4 op[2];
+        fattr4_attr attr;
+        uint32_t *attrs;
+        int attrs_size;
+        int i;
+
+        // note: We don't actually need to run any callback
+        // cause there's nothing to ask server for.
+        if (attrtype == 0) {
+                memset(&attr, 0, sizeof(attr));
+                (cb)(0, nfs, &attr, private_data);
+                return 0;
+        }
+
+        // note: if more attrs will be created could be estimated dynamically
+        attrs_size = 1;
+        attrs = calloc(1, sizeof(*attrs) * attrs_size);
+        if (attrs == NULL) {
+                nfs_set_error(nfs, "Out of memory.");
+                return -1;
+        }
+
+        if (attrtype & FATTR4_ATTR_TYPE_MAXREAD) {
+                attrs[0] |= 1 << FATTR4_MAXREAD;
+        }
+
+        if (attrtype & FATTR4_ATTR_TYPE_MAXWRITE) {
+                attrs[0] |= 1 << FATTR4_MAXWRITE;
+        }
+
+        dt = calloc(1, sizeof(*dt));
+        if (dt == NULL) {
+                free(attrs);
+                nfs_set_error(nfs, "Out of memory.");
+                return -1;
+        }
+
+        dt->data = calloc(1, sizeof(*dt->data));
+        if (dt->data == NULL) {
+                free(attrs);
+                free(dt);
+                nfs_set_error(nfs, "Out of memory.");
+                return -1;
+        }
+
+        dt->attrtype           = attrtype;
+        dt->attrs              = attrs;
+        dt->data->nfs          = nfs;
+        dt->data->cb           = cb;
+        dt->data->private_data = private_data;
+
+        fh.fh.len = nfs->nfsi->rootfh.len;
+        fh.fh.val = nfs->nfsi->rootfh.val;
+
+        i = nfs4_op_putfh(nfs, &op[0], &fh);
+        i += nfs4_op_getattr(nfs, &op[i], attrs, attrs_size);
+
+        memset(&args, 0, sizeof(args));
+        args.argarray.argarray_len = i;
+        args.argarray.argarray_val = op;
+
+        if (rpc_nfs4_compound_task(nfs->rpc, nfs4_getattr_async_cb, &args, dt) == NULL) {
+                free_nfs4_cb_data(dt->data);
+                free(dt->attrs);
+                free(dt);
+                return -1;
+        }
+
+        return 0;
+}
 
 static void
 nfs4_close_cb(struct rpc_context *rpc, int status, void *command_data,

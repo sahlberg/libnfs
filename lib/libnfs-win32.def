@@ -134,6 +134,8 @@ nfs4_set_verifier
 nfs4_acl_free
 nfs4_getacl
 nfs4_getacl_async
+nfs4_getattr
+nfs4_getattr_async
 win32_poll
 rpc_cancel_pdu
 rpc_connect_async

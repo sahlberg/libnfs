@@ -42,6 +42,31 @@ EXTERN int nfs4_getacl(struct nfs_context *nfs, struct nfsfh *nfsfh,
 
 EXTERN void nfs4_acl_free(fattr4_acl *nfs4acl);
 
+/*
+ * NFSv4 get some of attributes
+ * Function returns
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
+ *
+ * When the callback is invoked, status indicates the result:
+ *      0 : Success.
+ * -errno : An error occured.
+ *          data is the error string.
+ */
+EXTERN int nfs4_getattr_async(struct nfs_context *nfs, fattr4_attr_type attrtype,
+							  nfs_cb cb, void *private_data);
+
+/*
+ * NFSv4 Syncroniasly get some of attributes
+ * Function returns
+ *      0 : The operation was successful.
+ * -errno : The command failed.
+ */
+EXTERN int nfs4_getattr(struct nfs_context *nfs, fattr4_attr_type attrtype,
+						fattr4_attr *attr);
+
 #ifdef __cplusplus
 }
 #endif

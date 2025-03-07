@@ -2346,6 +2346,47 @@ nfs4_getacl(struct nfs_context *nfs, struct nfsfh *nfsfh,
 	return cb_data.status;
 }
 
+static void
+nfs4_getattr_cb(int status, struct nfs_context *nfs, void *data, void *private_data)
+{
+	struct sync_cb_data *cb_data = private_data;
+    fattr4_attr *src = data;
+    fattr4_attr *dst = cb_data->return_data;
+
+	if (status < 0) {
+		nfs_set_error(nfs, "getattr call failed with \"%s\"", nfs_get_error(nfs));
+        goto finished;
+	}
+
+    dst->maxread = src->maxread;
+    dst->maxwrite = src->maxwrite;
+
+finished:
+    cb_data_is_finished(cb_data, status);
+}
+
+int
+nfs4_getattr(struct nfs_context *nfs, fattr4_attr_type attrtype, fattr4_attr *attr)
+{
+	struct sync_cb_data cb_data;
+
+	cb_data.return_data = attr;
+    if (nfs_init_cb_data(&nfs, &cb_data)) {
+        return -1;
+    }
+
+	if (nfs4_getattr_async(nfs, attrtype, nfs4_getattr_cb, &cb_data) != 0) {
+		nfs_set_error(nfs, "nfs4_getattr_async failed. %s", nfs_get_error(nfs));
+        nfs_destroy_cb_sem(&cb_data);
+		return -1;
+	}
+
+	wait_for_nfs_reply(nfs, &cb_data);
+    nfs_destroy_cb_sem(&cb_data);
+
+	return cb_data.status;
+}
+
 void
 mount_getexports_cb(struct rpc_context *mount_context, int status, void *data,
                     void *private_data)

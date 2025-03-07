@@ -487,6 +487,18 @@ typedef nfstime4 fattr4_time_metadata;
 typedef nfstime4 fattr4_time_modify;
 
 typedef settime4 fattr4_time_modify_set;
+
+typedef struct {
+	fattr4_maxread maxread;
+	fattr4_maxwrite maxwrite;
+} fattr4_attr;
+
+enum fattr4_attr_type {
+    FATTR4_ATTR_TYPE_MAXREAD = (1u << 0),
+    FATTR4_ATTR_TYPE_MAXWRITE = (1u << 1),
+};
+typedef enum fattr4_attr_type fattr4_attr_type;
+
 #define FATTR4_SUPPORTED_ATTRS 0
 #define FATTR4_TYPE 1
 #define FATTR4_FH_EXPIRE_TYPE 2
@@ -3081,6 +3093,34 @@ EXTERN int nfs4_getacl(struct nfs_context *nfs, struct nfsfh *nfsfh,
                        fattr4_acl *nfs4acl);
 
 EXTERN void nfs4_acl_free(fattr4_acl *nfs4acl);
+
+/*
+ * NFSv4 get some of attributes
+ */
+/*
+ * get some of attributes
+ * Function returns
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
+ *
+ * When the callback is invoked, status indicates the result:
+ *      0 : Success.
+ * -errno : An error occured.
+ *          data is the error string.
+ */
+EXTERN int nfs4_getattr_async(struct nfs_context *nfs, fattr4_attr_type attrtype,
+							  nfs_cb cb, void *private_data);
+
+/*
+ * Sync nfs4 get some of attributes
+ * Function returns
+ *      0 : The operation was successful.
+ * -errno : The command failed.
+ */
+EXTERN int nfs4_getattr(struct nfs_context *nfs, fattr4_attr_type attrtype,
+						fattr4_attr *attr);
 
 #ifdef __cplusplus
 }

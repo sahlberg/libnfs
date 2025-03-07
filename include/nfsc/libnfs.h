@@ -309,11 +309,17 @@ EXTERN const struct sockaddr_storage *nfs_get_server_address(struct nfs_context 
 
 /*
  * Get the maximum supported READ size by the server
+ *
+ * Notice that in case of NFSv4 it may not get you a proper configuration of server.
+ * You can call nfs4_getattr to retrieve it.
  */
 EXTERN size_t nfs_get_readmax(struct nfs_context *nfs);
 
 /*
  * Get the maximum supported WRITE size by the server
+ *
+ * Notice that in case of NFSv4 it may not get you a proper configuration of server.
+ * You can call nfs4_getattr to retrieve it.
  */
 EXTERN size_t nfs_get_writemax(struct nfs_context *nfs);
 
