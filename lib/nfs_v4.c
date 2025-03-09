@@ -212,6 +212,11 @@ static uint32_t getacl_attributes[1] = {
         (1 << FATTR4_ACL )
 };
 
+static uint32_t rwmax_attributes[1] = {
+        (1 << FATTR4_MAXREAD |
+         1 << FATTR4_MAXWRITE )
+};
+
 static int
 nfs4_open_async_internal(struct nfs_context *nfs, struct nfs4_cb_data *data,
                          int flags, int mode);
@@ -1484,6 +1489,71 @@ nfs4_populate_access(struct nfs4_cb_data *data, nfs_argop4 *op)
         return nfs4_op_access(data->nfs, op, mode);
 }
 
+
+static int
+nfs_parse_rwmax(struct nfs_context *nfs, const char *buf, int len)
+{
+        /* READ MAX */
+        CHECK_GETATTR_BUF_SPACE(len, 8);
+        nfs_set_readmax(nfs, nfs_pntoh64((uint32_t *)(void *)buf));
+        buf += 8;
+        len -= 8;
+        /* WRITE MAX */
+        CHECK_GETATTR_BUF_SPACE(len, 8);
+        nfs_set_writemax(nfs, nfs_pntoh64((uint32_t *)(void *)buf));
+        buf += 8;
+        len -= 8;
+
+        return 0;
+}
+
+static void
+nfs4_mount_5_cb(struct rpc_context *rpc, int status, void *command_data,
+                void *private_data)
+{
+        struct nfs4_cb_data *data = private_data;
+        struct nfs_context *nfs = data->nfs;
+        COMPOUND4res *res = command_data;
+        GETATTR4resok *garesok;
+        int i;
+
+        if (check_nfs4_error(nfs, status, data, res, "RWMAX")) {
+                return;
+        }
+
+        if ((i = nfs4_find_op(nfs, data, res, OP_GETATTR, "GETATTR")) < 0) {
+                return;
+        }
+        garesok = &res->resarray.resarray_val[i].nfs_resop4_u.opgetattr.GETATTR4res_u.resok4;
+        if (nfs_parse_rwmax(nfs,
+                            garesok->obj_attributes.attr_vals.attrlist4_val,
+                            garesok->obj_attributes.attr_vals.attrlist4_len) < 0) {
+                data->cb(-EINVAL, nfs, nfs_get_error(nfs), data->private_data);
+                free_nfs4_cb_data(data);
+        }
+        
+	/*
+	 * Now the entire mount process (including the NFS FSINFO and GETATTR)
+	 * has completed. Any RPC failure till now would have caused the mount
+	 * process to fail. Note that it's desirable for the mount process to
+	 * fail upfront if it encounters any errors (TCP or RPC), rather than
+	 * keep trying indefinitely causing the mount process to "hang", but
+	 * from now on the RPC transport will be used to carry NFS RPCs issued
+	 * by the application which may not be equipped to handle TCP connection
+	 * failure and RPC timeouts, so we set the resiliency parameters of the
+	 * rpc_context as selected by the user using the mount options. The
+	 * default resiliency parameters emulate the common "hard" mount and
+	 * we are resilient to any TCP or RPC connectivity issues.
+         */
+	rpc_set_resiliency(rpc,
+			   nfs->nfsi->auto_reconnect,
+			   nfs->nfsi->timeout,
+			   nfs->nfsi->retrans);
+        
+        data->cb(0, nfs, NULL, data->private_data);
+        free_nfs4_cb_data(data);
+}
+
 static void
 nfs4_mount_4_cb(struct rpc_context *rpc, int status, void *command_data,
                 void *private_data)
@@ -1492,6 +1562,9 @@ nfs4_mount_4_cb(struct rpc_context *rpc, int status, void *command_data,
         struct nfs_context *nfs = data->nfs;
         COMPOUND4res *res = command_data;
         GETFH4resok *gfhresok;
+        COMPOUND4args args;
+        nfs_argop4 op[2];
+        struct nfsfh nfsfh;
         int i;
 
         assert(rpc->magic == RPC_CONTEXT_MAGIC);
@@ -1517,26 +1590,23 @@ nfs4_mount_4_cb(struct rpc_context *rpc, int status, void *command_data,
                gfhresok->object.nfs_fh4_val,
                nfs->nfsi->rootfh.len);
 
-	/*
-	 * Now the entire mount process (including the NFS FSINFO and GETATTR)
-	 * has completed. Any RPC failure till now would have caused the mount
-	 * process to fail. Note that it's desirable for the mount process to
-	 * fail upfront if it encounters any errors (TCP or RPC), rather than
-	 * keep trying indefinitely causing the mount process to "hang", but
-	 * from now on the RPC transport will be used to carry NFS RPCs issued
-	 * by the application which may not be equipped to handle TCP connection
-	 * failure and RPC timeouts, so we set the resiliency parameters of the
-	 * rpc_context as selected by the user using the mount options. The
-	 * default resiliency parameters emulate the common "hard" mount and
-	 * we are resilient to any TCP or RPC connectivity issues.
-         */
-	rpc_set_resiliency(rpc,
-			   nfs->nfsi->auto_reconnect,
-			   nfs->nfsi->timeout,
-			   nfs->nfsi->retrans);
+        memset(op, 0, sizeof(op));
+        nfsfh.fh = nfs->nfsi->rootfh;
+        i = nfs4_op_putfh(nfs, &op[0], &nfsfh);
+        i += nfs4_op_getattr(nfs, &op[i], rwmax_attributes, 1);
+               
+        memset(&args, 0, sizeof(args));
+        args.argarray.argarray_len = i;
+        args.argarray.argarray_val = op;
 
-        data->cb(0, nfs, NULL, data->private_data);
-        free_nfs4_cb_data(data);
+        if (rpc_nfs4_compound_task(rpc, nfs4_mount_5_cb, &args,
+                                   private_data) == NULL) {
+                nfs_set_error(nfs, "Failed to queue GETATTR rwmax. %s",
+                              nfs_get_error(nfs));
+                data->cb(-ENOMEM, nfs, nfs_get_error(nfs), data->private_data);
+                free_nfs4_cb_data(data);
+                return;
+        }
 }
 
 static void
