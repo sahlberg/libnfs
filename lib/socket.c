@@ -1334,13 +1334,6 @@ rpc_set_resiliency(struct rpc_context *rpc,
                 return;
         }
 
-	assert(retrans >= 0);
-	/*
-	 * Retransmission count doesn't have any significance for infinite timeouts,
-	 * warn the caller.
-	 */
-	assert(retrans == 0 || timeout_msecs > 0);
-
 	rpc->auto_reconnect = num_tcp_reconnect;
 	rpc->timeout = timeout_msecs;
 	rpc->retrans = retrans;

@@ -170,7 +170,7 @@ int nfs_mt_sem_wait(libnfs_sem_t* sem)
     return 0;
 }
 
-#elif HAVE_PTHREAD /* WIN32 */
+#elif defined(HAVE_PTHREAD) /* WIN32 */
 
 #include <unistd.h>
 #include <sys/syscall.h>
