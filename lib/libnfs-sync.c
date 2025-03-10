@@ -360,6 +360,7 @@ nfs_mount(struct nfs_context *nfs, const char *server, const char *export)
          */
         if (ret && nfs->nfsi->default_version) {
                 free(nfs->nfsi->rootfh.val);
+                nfs->nfsi->rootfh.val = NULL;
                 nfs->nfsi->rootfh.len = 0;
                 nfs->nfsi->version = NFS_V4;
                 rpc_disconnect(nfs->rpc, "disconnect to try different dialect");
