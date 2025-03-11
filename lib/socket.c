@@ -759,7 +759,7 @@ rpc_read_from_socket(struct rpc_context *rpc)
                                         if (rpc->sec != RPC_SEC_KRB5P)
 #endif /* HAVE_LIBKRB5 */
                                                 if (rpc->state != READ_FRAGMENT && rpc->pdu && rpc->pdu->in.base) {
-                                                        inbuf_size = ZCRP + 4;
+                                                        inbuf_size = ZCRP;
                                                 }
                                 }
 
