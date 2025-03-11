@@ -524,17 +524,14 @@ flags:
 	/*
 	 * Call this in the end after all options are processed, as it uses
 	 * rpc->debug.
-	 */
-	if (nfs->rpc->wanted_xprtsec != RPC_XPRTSEC_NONE) {
+	 */ 
+	if (nfs->rpc->wanted_xprtsec == RPC_XPRTSEC_TLS ||
+            nfs->rpc->wanted_xprtsec == RPC_XPRTSEC_MTLS) {
 		/* tls_global_init() MUST succeed for us to use TLS security */
 		if (tls_global_init(nfs->rpc) != 0) {
-                        if (nfs->rpc->wanted_xprtsec == RPC_XPRTSEC_UNDEFINED) {
-                                nfs->rpc->wanted_xprtsec = RPC_XPRTSEC_NONE;
-                        } else {
-                                nfs_set_error(nfs, "tls_global_init() failed!");
-                                nfs_destroy_url(urls);
-                                return NULL;
-                        }
+                        nfs_set_error(nfs, "tls_global_init() failed!");
+                        nfs_destroy_url(urls);
+                        return NULL;
 		}
 	}
 #endif

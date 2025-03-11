@@ -102,7 +102,7 @@ Arguments supported by libnfs are :
                    : Specify the security mode.
  xprtsec=<none|tls|mtls>
                    : Specify the transport security mode.
-                     none : No TLS security.
+                     none : No TLS security. This is the default.
                      tls  : TLS with server authentication only.
                      mtls : Mutual TLS, both server and client authentication.
 
