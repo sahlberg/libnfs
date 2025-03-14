@@ -2382,7 +2382,7 @@ mount_getexports_cb(struct rpc_context *mount_context, int status, void *data,
 }
 
 struct exportnode *
-mount_getexports_timeout(const char *server, int timeout)
+mount_getexports_timeout(struct nfs_context *nfs, const char *server, int timeout)
 {
 	struct sync_cb_data cb_data;
 	struct rpc_context *rpc;
@@ -2393,26 +2393,24 @@ mount_getexports_timeout(const char *server, int timeout)
                 return NULL;
         }
 
-	rpc = rpc_init_context();
+	rpc = nfs_get_rpc_context(nfs);
 	rpc_set_timeout(rpc, timeout);
-	if (mount_getexports_async(rpc, server, mount_getexports_cb,
-                                   &cb_data) != 0) {
-		rpc_destroy_context(rpc);
+	if (mount_getexports_async(nfs, server, mount_getexports_cb,
+	                           &cb_data) != 0) {
                 nfs_destroy_cb_sem(&cb_data);
 		return NULL;
 	}
 
 	wait_for_reply(rpc, &cb_data);
         nfs_destroy_cb_sem(&cb_data);
-	rpc_destroy_context(rpc);
 
 	return cb_data.return_data;
 }
 
 struct exportnode *
-mount_getexports(const char *server)
+mount_getexports(struct nfs_context *nfs, const char *server)
 {
-	return mount_getexports_timeout(server, -1);
+	return mount_getexports_timeout(nfs, server, -1);
 }
 
 void
