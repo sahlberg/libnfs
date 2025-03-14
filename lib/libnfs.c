@@ -2459,12 +2459,20 @@ mount_export_4_cb(struct rpc_context *rpc, int status, void *command_data,
 }
 
 int
-mount_getexports_async(struct rpc_context *rpc, const char *server, rpc_cb cb,
+mount_getexports_async(struct nfs_context *nfs, const char *server, rpc_cb cb,
                        void *private_data)
 {
 	struct mount_cb_data *data;
+	char *new_server;
 
-	assert(rpc->magic == RPC_CONTEXT_MAGIC);
+	new_server = strdup(server);
+	if (new_server == NULL) {
+			nfs_set_error(nfs, "out of memory. failed to allocate "
+			                   "memory for nfs server string");
+			return -1;
+	}
+	free(nfs->nfsi->server);
+	nfs->nfsi->server = new_server;
 
 	data = calloc(1, sizeof(struct mount_cb_data));
 	if (data == NULL) {
@@ -2477,10 +2485,20 @@ mount_getexports_async(struct rpc_context *rpc, const char *server, rpc_cb cb,
 		free_mount_cb_data(data);
 		return -1;
 	}
-	if (rpc_connect_program_async(rpc, data->server, MOUNT_PROGRAM,
-                                      MOUNT_V3, mount_export_4_cb, data) != 0) {
-		rpc_set_error(rpc, "Failed to start connection. %s",
-                              rpc_get_error(rpc));
+	if (nfs->nfsi->mountport) {
+			if (rpc_connect_port_async(nfs->rpc, data->server, nfs->nfsi->mountport, MOUNT_PROGRAM,
+			                           MOUNT_V3, mount_export_4_cb, data) != 0) {
+			nfs_set_error(nfs, "Failed to start connection. %s",
+			              nfs_get_error(nfs));
+			free_mount_cb_data(data);
+			return -1;
+		}
+		return 0;
+	}
+	if (rpc_connect_program_async(nfs->rpc, data->server, MOUNT_PROGRAM,
+	                              MOUNT_V3, mount_export_4_cb, data) != 0) {
+		nfs_set_error(nfs, "Failed to start connection. %s",
+		                   nfs_get_error(nfs));
 		free_mount_cb_data(data);
 		return -1;
 	}

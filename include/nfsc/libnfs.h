@@ -1986,7 +1986,7 @@ EXTERN int nfs_link(struct nfs_context *nfs, const char *oldpath,
  * -errno : An error occured.
  *          data is the error string.
  */
-EXTERN int mount_getexports_async(struct rpc_context *rpc, const char *server,
+EXTERN int mount_getexports_async(struct nfs_context *nfs, const char *server,
                                   rpc_cb cb, void *private_data);
 /*
  * Sync getexports(<server>)
@@ -1996,7 +1996,7 @@ EXTERN int mount_getexports_async(struct rpc_context *rpc, const char *server,
  *
  * returned data must be freed by calling mount_free_export_list(exportnode);
  */
-EXTERN struct exportnode *mount_getexports(const char *server);
+EXTERN struct exportnode *mount_getexports(struct nfs_context *nfs, const char *server);
 
 /*
  * Sync getexports_timeout(<server>, <timeout>)
@@ -2006,7 +2006,7 @@ EXTERN struct exportnode *mount_getexports(const char *server);
  *
  * returned data must be freed by calling mount_free_export_list(exportnode);
  */
-EXTERN struct exportnode *mount_getexports_timeout(const char *server, int timeout);
+EXTERN struct exportnode *mount_getexports_timeout(struct nfs_context *nfs, const char *server, int timeout);
 
 EXTERN void mount_free_export_list(struct exportnode *exports);
 
