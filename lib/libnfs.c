@@ -872,7 +872,7 @@ rpc_connect_program_5_cb(struct rpc_context *rpc, int status,
 	}
 
 #ifdef HAVE_LIBKRB5
-        if (data->program == 100003 && rpc->wanted_sec != RPC_SEC_UNDEFINED) {
+        if (data->program == 100003 && rpc->wanted_sec != RPC_SEC_UNDEFINED && rpc->username) {
                 rpc_gss_init_arg gia;
 
                 rpc->sec = rpc->wanted_sec;

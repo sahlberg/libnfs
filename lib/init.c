@@ -278,8 +278,13 @@ struct rpc_context *rpc_init_udp_context(void)
 
 int rpc_set_username(struct rpc_context *rpc, const char *username)
 {
-#ifdef HAVE_LIBKRB5
         free(discard_const(rpc->username));
+        rpc->username = NULL;
+                
+        if (username == NULL) {
+                return 0;
+        }
+#ifdef HAVE_LIBKRB5
         rpc->username = strdup(username);
 	if (rpc->username == NULL) {
 		rpc_set_error(rpc,
