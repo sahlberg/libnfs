@@ -1,12 +1,12 @@
-set(UTILITIES nfs-cat nfs-ls)
+set(UTILITIES nfs-cat nfs-ls nfs-cp nfs-stat)
 
-if(NOT CMAKE_SYSTEM_NAME STREQUAL Windows)
-  list(APPEND UTILITIES nfs-cp nfs-stat)
-endif()
 
 foreach(TARGET ${UTILITIES})
   add_executable(${TARGET} ${TARGET}.c)
-  target_link_libraries(${TARGET} nfs nfs_mount)
+  target_link_libraries(${TARGET} nfs)
+  target_include_directories(${TARGET} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/../mount")
+
+  
 
   if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
     set_target_properties(${TARGET} PROPERTIES
