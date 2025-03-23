@@ -1,17 +1,29 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
-VisualStudioVersion = 17.13.35913.81 d17.13
+VisualStudioVersion = 17.13.35913.81
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "libnfs", "libnfs.vcxproj", "{7CAB9B67-6AA9-497F-A900-20D9D05049F5}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "nfs-cp", "..\nfs-cp\nfs-cp.vcxproj", "{8C223950-DD30-4C89-BD5D-C105951FE2B6}"
+	ProjectSection(ProjectDependencies) = postProject
+		{7CAB9B67-6AA9-497F-A900-20D9D05049F5} = {7CAB9B67-6AA9-497F-A900-20D9D05049F5}
+	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "nfs-ls", "..\nfs-ls\nfs-ls.vcxproj", "{43A2C9EF-338F-4326-9DF2-1CE0B1DA1C6B}"
+	ProjectSection(ProjectDependencies) = postProject
+		{7CAB9B67-6AA9-497F-A900-20D9D05049F5} = {7CAB9B67-6AA9-497F-A900-20D9D05049F5}
+	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "nfs-cat", "..\nfs-cat\nfs-cat.vcxproj", "{9F409B95-A653-4DD4-9583-12664503B122}"
+	ProjectSection(ProjectDependencies) = postProject
+		{7CAB9B67-6AA9-497F-A900-20D9D05049F5} = {7CAB9B67-6AA9-497F-A900-20D9D05049F5}
+	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "nfs-stat", "..\nfs-stat\nfs-stat.vcxproj", "{2AA7FE6E-AB6D-47EC-B3EA-4A44F036CEDD}"
+	ProjectSection(ProjectDependencies) = postProject
+		{7CAB9B67-6AA9-497F-A900-20D9D05049F5} = {7CAB9B67-6AA9-497F-A900-20D9D05049F5}
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
