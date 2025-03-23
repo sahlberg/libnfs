@@ -18,9 +18,19 @@ endif()
 
 add_library(nfs ${SOURCES})
 target_link_libraries(nfs PRIVATE ${CORE_LIBRARIES} PUBLIC ${SYSTEM_LIBRARIES})
+
+# Set version properties for the library
 set_target_properties(nfs PROPERTIES
-                          VERSION ${PROJECT_VERSION}
-                          SOVERSION ${SOVERSION})
+    VERSION ${PROJECT_VERSION}
+    SOVERSION ${SOVERSION}
+)
+
+# Set the output filename to "libnfs" consistently across platforms
+set_target_properties(nfs PROPERTIES
+    OUTPUT_NAME "libnfs"  # Ensures consistent output name (e.g., libnfs.dll on Windows, libnfs.so on Unix)
+    PREFIX ""             # Removes the "lib" prefix on Unix-like systems to avoid "liblibnfs.so"
+)
+
 
 install(TARGETS nfs EXPORT libnfs
                     RUNTIME DESTINATION bin
