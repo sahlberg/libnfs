@@ -1139,7 +1139,7 @@ nfs4_allocate_op(struct nfs_context *nfs, nfs_argop4 **op,
 
         count = nfs4_num_path_components(nfs, path);
 
-        *op = malloc(sizeof(**op) * (2 + 2 * count + num_extra));
+        *op = malloc(sizeof(**op) * (2 + count + num_extra));
         if (*op == NULL) {
                 nfs_set_error(nfs, "Failed to allocate op array");
                 return -1;
