@@ -2382,7 +2382,7 @@ mount_getexports_cb(struct rpc_context *mount_context, int status, void *data,
 }
 
 struct exportnode *
-mount_getexports_timeout(const char *server, int timeout)
+mount_getexports_timeout(const char *server, int mountport, int timeout)
 {
 	struct sync_cb_data cb_data;
 	struct rpc_context *rpc;
@@ -2394,6 +2394,7 @@ mount_getexports_timeout(const char *server, int timeout)
         }
 
 	rpc = rpc_init_context();
+	rpc_set_mountport(rpc, mountport);
 	rpc_set_timeout(rpc, timeout);
 	if (mount_getexports_async(rpc, server, mount_getexports_cb,
                                    &cb_data) != 0) {
@@ -2410,9 +2411,9 @@ mount_getexports_timeout(const char *server, int timeout)
 }
 
 struct exportnode *
-mount_getexports(const char *server)
+mount_getexports(const char *server, int mountport)
 {
-	return mount_getexports_timeout(server, -1);
+	return mount_getexports_timeout(server, mountport, -1);
 }
 
 void
