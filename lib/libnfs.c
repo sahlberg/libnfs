@@ -417,6 +417,15 @@ nfs_parse_url(struct nfs_context *nfs, const char *url, int dir, int incomplete)
 		return NULL;
 	}
 
+	strp = strchr(urls->server, ':');
+        if (strp) {
+                *strp++ = 0;
+		nfs->nfsi->nfsport =  atoi(strp);
+        }
+
+	if (strp == NULL)
+		strp = urls->server;
+
 	strp = strchr(urls->server, '/');
 	if (strp == NULL) {
 		if (incomplete) {
@@ -435,12 +444,6 @@ nfs_parse_url(struct nfs_context *nfs, const char *url, int dir, int incomplete)
 		return NULL;
 	}
 	*strp = 0;
-
-	strp = strchr(urls->server, ':');
-        if (strp) {
-                *strp++ = 0;
-		nfs->nfsi->nfsport =  atoi(strp);
-        }
 
 	if (dir) {
 		flagsp = strchr(urls->path, '?');
@@ -519,6 +522,10 @@ flags:
 		free(urls->server);
 		urls->server = NULL;
 	}
+
+	urls->port = nfs->nfsi->nfsport;
+	if (nfs->nfsi->mountport)
+		urls->port = nfs->nfsi->mountport;
 
 #ifdef HAVE_TLS
 	/*

@@ -51,6 +51,7 @@ struct rpc_context;
 
 struct nfs_url {
 	char *server;
+	int  port;
 	char *path;
 	char *file;
 };
@@ -1999,6 +2000,15 @@ EXTERN int mount_getexports_async(struct rpc_context *rpc, const char *server,
  */
 EXTERN struct exportnode *mount_getexports(const char *server);
 
+/*
+ * Sync getexports_mountport(<server>, <mountport>)
+ * Function returns
+ *            NULL : something failed
+ *  exports export : a linked list of exported directories
+ *
+ * returned data must be freed by calling mount_free_export_list(exportnode);
+ */
+EXTERN struct exportnode *mount_getexports_mountport(const char *server, int mountport);
 /*
  * Sync getexports_timeout(<server>, <timeout>)
  * Function returns

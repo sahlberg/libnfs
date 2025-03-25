@@ -73,11 +73,14 @@ void print_usage(void)
 	fprintf(stderr, "Usage: nfs-ls [-?|--help|--usage] [-R|--recursive] [-s|--summary] [-D|--discovery] <url>\n");
 }
 
-int process_server(const char *server) {
+int process_server(const char *server, int mountport) {
 	struct exportnode *exports;
 	struct exportnode *export;
 
-	exports = mount_getexports(server);
+	if (mountport)
+		exports = mount_getexports_mountport(server, mountport);
+	else
+		exports = mount_getexports(server);
 	if (exports == NULL) {
 		fprintf(stderr, "Failed to get exports for server %s.\n", server);
 		return -1;
@@ -220,7 +223,7 @@ int main(int argc, char *argv[])
 			}
 			for (srv=srvrs; srv; srv = srv->next) {
 				if (recursive) {
-					process_server(srv->addr);
+					process_server(srv->addr, 0);
 				} else {
 					printf("nfs://%s\n", srv->addr);
 				}
@@ -230,7 +233,7 @@ int main(int argc, char *argv[])
 			goto finished;
 		}
 		if (url->server && !url->path) {
-			ret = process_server(url->server);
+			ret = process_server(url->server, url->port);
 			goto finished;
 		}
 		nfs_destroy_url(url);
