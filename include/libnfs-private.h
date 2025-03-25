@@ -350,6 +350,8 @@ struct rpc_context {
 	 */
 	char *server;
 
+	int mountport;
+
 	/* fragment reassembly */
 	struct rpc_fragment *fragments;
 
@@ -653,6 +655,8 @@ void rpc_set_resiliency(struct rpc_context *rpc,
 void rpc_set_interface(struct rpc_context *rpc, const char *ifname);
 
 void rpc_set_tcp_syncnt(struct rpc_context *rpc, int v);
+void rpc_set_mountport(struct rpc_context *rpc, int port);
+int rpc_get_mountport(struct rpc_context *rpc);
 void rpc_set_poll_timeout(struct rpc_context *rpc, int poll_timeout);
 int rpc_get_poll_timeout(struct rpc_context *rpc);
 void rpc_set_timeout(struct rpc_context *rpc, int timeout);

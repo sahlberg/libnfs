@@ -2390,6 +2390,7 @@ nfs_set_nfsport(struct nfs_context *nfs, int port) {
 void
 nfs_set_mountport(struct nfs_context *nfs, int port) {
 	nfs->nfsi->mountport = port;
+	rpc_set_mountport(nfs->rpc, port);
 }
 
 size_t
@@ -2557,6 +2558,16 @@ mount_getexports_async(struct rpc_context *rpc, const char *server, rpc_cb cb,
 	if (data->server == NULL) {
 		free_mount_cb_data(data);
 		return -1;
+	}
+	if (rpc->mountport) {
+		if (rpc_connect_port_async(rpc, data->server, rpc->mountport, MOUNT_PROGRAM,
+		                                              MOUNT_V3, mount_export_4_cb, data) != 0) {
+				rpc_set_error(rpc, "Failed to start connection. %s",
+				              rpc_get_error(rpc));
+				free_mount_cb_data(data);
+			return -1;
+		}
+		return 0;
 	}
 	if (rpc_connect_program_async(rpc, data->server, MOUNT_PROGRAM,
                                       MOUNT_V3, mount_export_4_cb, data) != 0) {
