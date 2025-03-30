@@ -27,6 +27,7 @@
 #include "ps2_compat.h"
 #endif
 
+#include <stddef.h>
 #include <stdint.h>
 #if !defined(_WIN32)
 #include <sys/time.h>
