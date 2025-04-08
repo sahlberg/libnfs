@@ -366,7 +366,7 @@ check_nfs4_error(struct nfs_context *nfs, int status,
                               data->path,
                               nfsstat4_to_str(res->status),
                               nfsstat4_to_errno(res->status));
-                data->cb(nfsstat3_to_errno(res->status), nfs,
+                data->cb(nfsstat4_to_errno(res->status), nfs,
                          nfs_get_error(nfs), data->private_data);
                 free_nfs4_cb_data(data);
                 return 1;
@@ -1292,7 +1292,7 @@ nfs4_lookup_path_1_cb(struct rpc_context *rpc, int status, void *command_data,
                               data->path,
                               nfsstat4_to_str(res->status),
                               nfsstat4_to_errno(res->status));
-                data->cb(nfsstat3_to_errno(res->status), nfs,
+                data->cb(nfsstat4_to_errno(res->status), nfs,
                          nfs_get_error(nfs), data->private_data);
                 free_nfs4_cb_data(data);
                 return;
