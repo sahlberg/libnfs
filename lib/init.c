@@ -572,6 +572,20 @@ void rpc_destroy_context(struct rpc_context *rpc)
 	free(rpc);
 }
 
+void rpc_set_mountport(struct rpc_context *rpc, int port)
+{
+	assert(rpc->magic == RPC_CONTEXT_MAGIC);
+
+	rpc->mountport = port;
+}
+
+int rpc_get_mountport(struct rpc_context *rpc)
+{
+	assert(rpc->magic == RPC_CONTEXT_MAGIC);
+
+	return rpc->mountport;
+}
+
 void rpc_set_poll_timeout(struct rpc_context *rpc, int poll_timeout)
 {
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);

@@ -2382,6 +2382,34 @@ mount_getexports_cb(struct rpc_context *mount_context, int status, void *data,
 }
 
 struct exportnode *
+mount_getexports_mountport(const char *server, int mountport)
+{
+	struct sync_cb_data cb_data;
+	struct rpc_context *rpc;
+
+
+	cb_data.return_data = NULL;
+        if (nfs_init_cb_data(NULL, &cb_data)) {
+                return NULL;
+        }
+
+	rpc = rpc_init_context();
+	rpc_set_mountport(rpc, mountport);
+	if (mount_getexports_async(rpc, server, mount_getexports_cb,
+                                   &cb_data) != 0) {
+		rpc_destroy_context(rpc);
+                nfs_destroy_cb_sem(&cb_data);
+		return NULL;
+	}
+
+	wait_for_reply(rpc, &cb_data);
+        nfs_destroy_cb_sem(&cb_data);
+	rpc_destroy_context(rpc);
+
+	return cb_data.return_data;
+}
+
+struct exportnode *
 mount_getexports_timeout(const char *server, int timeout)
 {
 	struct sync_cb_data cb_data;
