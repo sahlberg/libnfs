@@ -2725,14 +2725,10 @@ nfs4_getacl_cb(struct rpc_context *rpc, int status, void *command_data,
         assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
         if (check_nfs4_error(nfs, status, data, res, "GETACL")) {
-                data->cb(-EIO, nfs, "GETACL failed", data->private_data);
-                free_nfs4_cb_data(data);
                 return;
         }
 
         if ((i = nfs4_find_op(nfs, data, res, OP_GETATTR, "GETATTR")) < 0) {
-                data->cb(-EIO, nfs, "GETACL failed", data->private_data);
-                free_nfs4_cb_data(data);
                 return;
         }
         garesok = &res->resarray.resarray_val[i].nfs_resop4_u.opgetattr.GETATTR4res_u.resok4;
