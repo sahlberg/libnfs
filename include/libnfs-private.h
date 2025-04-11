@@ -745,6 +745,7 @@ struct nfs_context_internal {
        libnfs_mutex_t nfs4_open_call_mutex;
        struct nfs_thread_context *thread_ctx;
 #endif /* HAVE_MULTITHREADING */
+       int readonly;
 };
 
 struct nfs_context {

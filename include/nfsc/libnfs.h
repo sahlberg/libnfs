@@ -149,6 +149,11 @@ enum rpc_sec {
         RPC_SEC_KRB5P,
 };
 EXTERN void nfs_set_security(struct nfs_context *nfs, enum rpc_sec sec);
+
+/*
+ * Set readonly parameter of the mount.
+ */
+EXTERN void nfs_set_readonly(struct nfs_context *nfs, int readonly);
         
 #ifdef HAVE_TLS
 /*
@@ -251,6 +256,7 @@ EXTERN int nfs_set_hash_size(struct nfs_context *nfs, int hashes);
  * auto-traverse-mounts=<0|1>
  *                   : Should libnfs try to traverse across nested mounts
  *                     automatically or not. Default is 1 == enabled.
+ * readonly	     : Set the mount to readonly.
  * dircache=<0|1>    : Disable/enable directory caching. Enabled by default.
  * autoreconnect=<-1|0|>=1>
  *                   : Control the auto-reconnect behaviour to the NFS session.

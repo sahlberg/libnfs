@@ -71,6 +71,7 @@
 #endif
 
 #include <errno.h>
+#include <fcntl.h>
 #include <stdarg.h>
 #include <stdlib.h>
 #include <string.h>
@@ -246,6 +247,19 @@ nfs_set_interface(struct nfs_context *nfs, const char *ifname)
 	rpc_set_interface(nfs_get_rpc_context(nfs), ifname);
 }
 #endif
+
+static int
+nfs_set_context_args_no_val(struct nfs_context *nfs, const char *arg)
+{
+	if (!strcmp(arg, "readonly")) {
+		nfs_set_readonly(nfs, 1);
+	} else {
+                nfs_set_error(nfs, "Unknown url argument : %s",
+                              arg);
+                return -1;
+        }
+	return 0;
+}
 
 static int
 nfs_set_context_args(struct nfs_context *nfs, const char *arg, const char *val)
@@ -499,7 +513,12 @@ flags:
                                 nfs_destroy_url(urls);
 				return NULL;
                         }
-		}
+		} else {
+			if (nfs_set_context_args_no_val(nfs, strp) != 0) {
+                                nfs_destroy_url(urls);
+				return NULL;
+                        }
+                }
 	}
 
         strp =strchr(urls->server, '@');
@@ -1409,6 +1428,12 @@ int
 nfs_open2_async(struct nfs_context *nfs, const char *path, int flags,
                 int mode, nfs_cb cb, void *private_data)
 {
+        if (nfs->nfsi->readonly && (flags & (O_WRONLY|O_RDWR|O_APPEND|O_CREAT|O_TRUNC))) {
+                nfs_set_error(nfs, "EROFS. Readonly mount");
+                cb(-EROFS, nfs, NULL, private_data);
+                return 0;
+        }
+
 	switch (nfs->nfsi->version) {
         case NFS_V3:
                 return nfs3_open_async(nfs, path, flags, mode,
@@ -1750,6 +1775,12 @@ int
 nfs_truncate_async(struct nfs_context *nfs, const char *path, uint64_t length,
                    nfs_cb cb, void *private_data)
 {
+        if (nfs->nfsi->readonly) {
+                nfs_set_error(nfs, "EROFS. Readonly mount");
+                cb(-EROFS, nfs, NULL, private_data);
+                return 0;
+        }
+
 	switch (nfs->nfsi->version) {
         case NFS_V3:
                 return nfs3_truncate_async(nfs, path, length, cb, private_data);
@@ -1766,6 +1797,12 @@ int
 nfs_mkdir2_async(struct nfs_context *nfs, const char *path, int mode,
                  nfs_cb cb, void *private_data)
 {
+        if (nfs->nfsi->readonly) {
+                nfs_set_error(nfs, "EROFS. Readonly mount");
+                cb(-EROFS, nfs, NULL, private_data);
+                return 0;
+        }
+
 	switch (nfs->nfsi->version) {
         case NFS_V3:
                 return nfs3_mkdir2_async(nfs, path, mode, cb, private_data);
@@ -1789,6 +1826,12 @@ int
 nfs_rmdir_async(struct nfs_context *nfs, const char *path, nfs_cb cb,
                  void *private_data)
 {
+        if (nfs->nfsi->readonly) {
+                nfs_set_error(nfs, "EROFS. Readonly mount");
+                cb(-EROFS, nfs, NULL, private_data);
+                return 0;
+        }
+
 	switch (nfs->nfsi->version) {
         case NFS_V3:
                 return nfs3_rmdir_async(nfs, path, cb, private_data);
@@ -1805,6 +1848,12 @@ int
 nfs_creat_async(struct nfs_context *nfs, const char *path,
                 int mode, nfs_cb cb, void *private_data)
 {
+        if (nfs->nfsi->readonly) {
+                nfs_set_error(nfs, "EROFS. Readonly mount");
+                cb(-EROFS, nfs, NULL, private_data);
+                return 0;
+        }
+
 	switch (nfs->nfsi->version) {
         case NFS_V3:
                 return nfs3_creat_async(nfs, path, mode,
@@ -1823,6 +1872,12 @@ int
 nfs_unlink_async(struct nfs_context *nfs, const char *path, nfs_cb cb,
                   void *private_data)
 {
+        if (nfs->nfsi->readonly) {
+                nfs_set_error(nfs, "EROFS. Readonly mount");
+                cb(-EROFS, nfs, NULL, private_data);
+                return 0;
+        }
+
 	switch (nfs->nfsi->version) {
         case NFS_V3:
                 return nfs3_unlink_async(nfs, path, cb, private_data);
@@ -1839,6 +1894,12 @@ int
 nfs_mknod_async(struct nfs_context *nfs, const char *path, int mode, int dev,
                  nfs_cb cb, void *private_data)
 {
+        if (nfs->nfsi->readonly) {
+                nfs_set_error(nfs, "EROFS. Readonly mount");
+                cb(-EROFS, nfs, NULL, private_data);
+                return 0;
+        }
+
 	switch (nfs->nfsi->version) {
         case NFS_V3:
                 return nfs3_mknod_async(nfs, path, mode, dev, cb, private_data);
@@ -2030,6 +2091,12 @@ int
 nfs_chmod_async(struct nfs_context *nfs, const char *path, int mode,
                 nfs_cb cb, void *private_data)
 {
+        if (nfs->nfsi->readonly) {
+                nfs_set_error(nfs, "EROFS. Readonly mount");
+                cb(-EROFS, nfs, NULL, private_data);
+                return 0;
+        }
+
 	switch (nfs->nfsi->version) {
         case NFS_V3:
                 return nfs3_chmod_async_internal(nfs, path, 0, mode,
@@ -2048,6 +2115,12 @@ int
 nfs_lchmod_async(struct nfs_context *nfs, const char *path, int mode,
                  nfs_cb cb, void *private_data)
 {
+        if (nfs->nfsi->readonly) {
+                nfs_set_error(nfs, "EROFS. Readonly mount");
+                cb(-EROFS, nfs, NULL, private_data);
+                return 0;
+        }
+
 	switch (nfs->nfsi->version) {
         case NFS_V3:
                 return nfs3_chmod_async_internal(nfs, path, 1, mode,
@@ -2066,6 +2139,12 @@ int
 nfs_fchmod_async(struct nfs_context *nfs, struct nfsfh *nfsfh, int mode,
                   nfs_cb cb, void *private_data)
 {
+        if (nfs->nfsi->readonly) {
+                nfs_set_error(nfs, "EROFS. Readonly mount");
+                cb(-EROFS, nfs, NULL, private_data);
+                return 0;
+        }
+
 	switch (nfs->nfsi->version) {
         case NFS_V3:
                 return nfs3_fchmod_async(nfs, nfsfh, mode, cb, private_data);
@@ -2082,6 +2161,12 @@ int
 nfs_chown_async(struct nfs_context *nfs, const char *path, int uid, int gid,
                 nfs_cb cb, void *private_data)
 {
+        if (nfs->nfsi->readonly) {
+                nfs_set_error(nfs, "EROFS. Readonly mount");
+                cb(-EROFS, nfs, NULL, private_data);
+                return 0;
+        }
+
 	switch (nfs->nfsi->version) {
         case NFS_V3:
                 return nfs3_chown_async_internal(nfs, path, 0, uid, gid,
@@ -2100,6 +2185,12 @@ int
 nfs_lchown_async(struct nfs_context *nfs, const char *path, int uid, int gid,
                  nfs_cb cb, void *private_data)
 {
+        if (nfs->nfsi->readonly) {
+                nfs_set_error(nfs, "EROFS. Readonly mount");
+                cb(-EROFS, nfs, NULL, private_data);
+                return 0;
+        }
+
 	switch (nfs->nfsi->version) {
         case NFS_V3:
                 return nfs3_chown_async_internal(nfs, path, 1, uid, gid,
@@ -2118,6 +2209,12 @@ int
 nfs_fchown_async(struct nfs_context *nfs, struct nfsfh *nfsfh, int uid,
                  int gid, nfs_cb cb, void *private_data)
 {
+        if (nfs->nfsi->readonly) {
+                nfs_set_error(nfs, "EROFS. Readonly mount");
+                cb(-EROFS, nfs, NULL, private_data);
+                return 0;
+        }
+
 	switch (nfs->nfsi->version) {
         case NFS_V3:
                 return nfs3_fchown_async(nfs, nfsfh, uid, gid,
@@ -2136,6 +2233,12 @@ int
 nfs_utimes_async(struct nfs_context *nfs, const char *path,
                  struct timeval *times, nfs_cb cb, void *private_data)
 {
+        if (nfs->nfsi->readonly) {
+                nfs_set_error(nfs, "EROFS. Readonly mount");
+                cb(-EROFS, nfs, NULL, private_data);
+                return 0;
+        }
+
 	switch (nfs->nfsi->version) {
         case NFS_V3:
                 return nfs3_utimes_async_internal(nfs, path, 0, times,
@@ -2154,6 +2257,12 @@ int
 nfs_lutimes_async(struct nfs_context *nfs, const char *path,
                   struct timeval *times, nfs_cb cb, void *private_data)
 {
+        if (nfs->nfsi->readonly) {
+                nfs_set_error(nfs, "EROFS. Readonly mount");
+                cb(-EROFS, nfs, NULL, private_data);
+                return 0;
+        }
+
 	switch (nfs->nfsi->version) {
         case NFS_V3:
                 return nfs3_utimes_async_internal(nfs, path, 1, times,
@@ -2172,6 +2281,12 @@ int
 nfs_utime_async(struct nfs_context *nfs, const char *path,
                 struct utimbuf *times, nfs_cb cb, void *private_data)
 {
+        if (nfs->nfsi->readonly) {
+                nfs_set_error(nfs, "EROFS. Readonly mount");
+                cb(-EROFS, nfs, NULL, private_data);
+                return 0;
+        }
+
 	switch (nfs->nfsi->version) {
         case NFS_V3:
                 return nfs3_utime_async(nfs, path, times, cb, private_data);
@@ -2238,6 +2353,12 @@ int
 nfs_rename_async(struct nfs_context *nfs, const char *oldpath,
                   const char *newpath, nfs_cb cb, void *private_data)
 {
+        if (nfs->nfsi->readonly) {
+                nfs_set_error(nfs, "EROFS. Readonly mount");
+                cb(-EROFS, nfs, NULL, private_data);
+                return 0;
+        }
+
 	switch (nfs->nfsi->version) {
         case NFS_V3:
                 return nfs3_rename_async(nfs, oldpath, newpath,
@@ -2256,6 +2377,12 @@ int
 nfs_link_async(struct nfs_context *nfs, const char *oldpath,
                const char *newpath, nfs_cb cb, void *private_data)
 {
+        if (nfs->nfsi->readonly) {
+                nfs_set_error(nfs, "EROFS. Readonly mount");
+                cb(-EROFS, nfs, NULL, private_data);
+                return 0;
+        }
+
 	switch (nfs->nfsi->version) {
         case NFS_V3:
                 return nfs3_link_async(nfs, oldpath, newpath,
@@ -2338,6 +2465,11 @@ nfs_set_debug(struct nfs_context *nfs, int level) {
 void
 nfs_set_auto_traverse_mounts(struct nfs_context *nfs, int enabled) {
 	nfs->nfsi->auto_traverse_mounts = enabled;
+}
+
+void
+nfs_set_readonly(struct nfs_context *nfs, int readonly) {
+	nfs->nfsi->readonly = readonly;
 }
 
 void
