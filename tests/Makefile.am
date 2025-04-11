@@ -10,7 +10,7 @@ noinst_PROGRAMS = prog_access prog_access2 prog_chmod prog_chown prog_create \
 	prog_mknod prog_mount prog_opendir prog_open_read prog_open_write \
 	prog_rename prog_rmdir prog_stat prog_statvfs prog_symlink \
 	prog_timeout prog_truncate prog_unlink prog_utimes \
-	prog_read_update_pos
+	prog_read_update_pos prog_readonly
 
 EXTRA_PROGRAMS = ld_timeout
 CLEANFILES = ld_timeout.o ld_timeout.so
