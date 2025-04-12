@@ -375,7 +375,7 @@ static struct nfs_url *
 nfs_parse_url(struct nfs_context *nfs, const char *url, int dir, int incomplete)
 {
 	struct nfs_url *urls;
-	char *strp, *flagsp, *strp2, ch;
+	char *strp, *flagsp, *strp2, ch, *original_server;
         int tmp;
 
 	if (strncmp(url, "nfs://", 6)) {
@@ -528,14 +528,17 @@ flags:
                         nfs_destroy_url(urls);
                         return NULL;
                 }
+                original_server = urls->server;
                 urls->server = strdup(strp);
 		if (urls->server == NULL) {
+                        urls->server = original_server;
 			nfs_destroy_url(urls);
 			rpc_set_error(nfs->rpc,
 				      "Out of memory: Failed to allocate "
 				      "server name");
 			return NULL;
 		}
+                free(original_server);
         }
 	if (urls->server && strlen(urls->server) <= 1) {
 		free(urls->server);

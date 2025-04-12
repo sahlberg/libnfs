@@ -20,6 +20,7 @@ set(TEST_PROGS prog_access
                prog_open_read
                prog_open_write
                prog_opendir
+               prog_parse_url_full
                prog_read_update_pos
                prog_rename
                prog_rmdir
