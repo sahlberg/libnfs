@@ -1414,9 +1414,11 @@ nfs4_lookup_path_1_cb(struct rpc_context *rpc, int status, void *command_data,
                 data->cb(-ENOMEM, nfs, nfs_get_error(nfs), data->private_data);
                 free_nfs4_cb_data(data);
                 free(path);
+                free(op);
                 return;
         }
         free(path);
+        free(op);
 }
 
 static int
