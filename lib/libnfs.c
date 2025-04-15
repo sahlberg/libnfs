@@ -375,8 +375,9 @@ static struct nfs_url *
 nfs_parse_url(struct nfs_context *nfs, const char *url, int dir, int incomplete)
 {
 	struct nfs_url *urls;
-	char *strp, *flagsp, *strp2, ch, *original_server;
+	char *strp, *flagsp, *strp2, ch, *original_server, *port_str, *slash_pos, *end_ptr;
         int tmp;
+        size_t port_len;
 
 	if (strncmp(url, "nfs://", 6)) {
 		nfs_set_error(nfs, "Invalid URL specified");
@@ -416,7 +417,7 @@ nfs_parse_url(struct nfs_context *nfs, const char *url, int dir, int incomplete)
                 }
                 ch |= tmp & 0x0f;
                 *strp = ch;
-                strcpy(strp + 1, strp + 3);
+                memmove(strp + 1, strp + 3, strlen(strp + 3) + 1);
                 strp++;
         }
 
@@ -433,8 +434,37 @@ nfs_parse_url(struct nfs_context *nfs, const char *url, int dir, int incomplete)
 
 	strp = strchr(urls->server, ':');
         if (strp) {
-                *strp++ = 0;
-		nfs->nfsi->nfsport =  atoi(strp);
+                strp++;
+                slash_pos = strchr(strp, '/');
+                port_len = slash_pos ? (size_t)(slash_pos - strp) : strlen(strp);
+                port_str = (char*)malloc(port_len + 1);
+                if (!port_str)
+                {
+                        nfs_destroy_url(urls);
+                        nfs_set_error(nfs, "Out of memory");
+                        return NULL;
+                }
+                strncpy(port_str, strp, port_len);
+                port_str[port_len] = '\0';
+                int port_num = strtol(port_str, &end_ptr, 10);
+                if (end_ptr == port_str || port_num < 0 || port_num > 65535)
+                {
+                        free(port_str);
+                        nfs_destroy_url(urls);
+                        nfs_set_error(nfs, "Invalid port number");
+                        return NULL;
+                }
+		nfs->nfsi->nfsport =  port_num;
+                if (slash_pos == NULL)
+                {
+                        *strp = '\0';
+                }
+                else
+                {
+                        memmove(strp - 1, slash_pos, strlen(slash_pos) + 1);
+                }
+
+                free(port_str);
         }
 
 	if (strp == NULL)
