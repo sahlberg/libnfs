@@ -611,7 +611,9 @@ int nfs_set_auth_context(struct nfs_context *nfs,
 #endif
                 assert(nfs->rpc->use_azauth == FALSE);
 
-                nfs->rpc->use_azauth = TRUE;
+                if (!strcmp(authtype,"AzAuthAAD")) {
+                        nfs->rpc->use_azauth = TRUE;
+                }
 
                 nfs->rpc->auth_context.magic = AUTH_CONTEXT_MAGIC;
                 nfs->rpc->auth_context.export_path = strdup(export_path);
@@ -2830,8 +2832,6 @@ rpc_null_task_authtls(struct rpc_context *rpc, int nfs_version, rpc_cb cb,
 struct rpc_pdu *
 rpc_perform_azauth(struct rpc_context *rpc, rpc_cb cb, void *private_data)
 {
-        /* MUST be called only if use_azauth is enabled */
-        assert(rpc->use_azauth);
         assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
         struct rpc_pdu *pdu;
