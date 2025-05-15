@@ -138,3 +138,9 @@
 
 /* Define for large files, on AIX-style hosts. */
 #cmakedefine _LARGE_FILES
+
+/* Define to 1 if you have the <dispatch/dispatch.h> header file. */
+#cmakedefine HAVE_DISPATCH_DISPATCH_H
+
+/* Define to 1 if pthread_threadid_np() exists. */
+#cmakedefine HAVE_PTHREAD_THREADID_NP
