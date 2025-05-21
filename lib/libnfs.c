@@ -34,6 +34,10 @@
 #include <unistd.h>
 #endif
 
+#ifdef HAVE_PWD_H
+#include <pwd.h>
+#endif
+
 #ifdef HAVE_SYS_VFS_H
 #include <sys/vfs.h>
 #endif
@@ -635,6 +639,12 @@ nfs_init_context(void)
 {
 	struct nfs_context *nfs;
 	struct nfs_context_internal *nfsi;
+#ifdef HAVE_LIBKRB5
+	char *login;
+#if defined(HAVE_PWD_H) && defined(HAVE_UNISTD_H)
+	struct passwd *euid_passwd;
+#endif
+#endif
         int i;
         uint64_t v;
         verifier4 verifier;
@@ -659,7 +669,16 @@ nfs_init_context(void)
 		return NULL;
 	}
 #ifdef HAVE_LIBKRB5
-        rpc_set_username(nfs->rpc, getlogin());
+	login = getlogin();
+#if defined(HAVE_PWD_H) && defined(HAVE_UNISTD_H)
+	if (login == NULL) {
+		euid_passwd = getpwuid(geteuid());
+		if (euid_passwd) {
+			login = euid_passwd->pw_name;
+		}
+	}
+#endif
+	rpc_set_username(nfs->rpc, login ? login : "");
 #endif
 	nfs->nfsi->cwd = strdup("/");
 	nfs->nfsi->mask = 022;

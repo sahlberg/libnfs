@@ -45,6 +45,9 @@
 /* Define to 1 if you have the <poll.h> header file. */
 #cmakedefine HAVE_POLL_H
 
+/* Define to 1 if you have the <pwd.h> header file. */
+#cmakedefine HAVE_PWD_H
+
 /* Whether sockaddr struct has sa_len */
 #cmakedefine HAVE_SOCKADDR_LEN
 
