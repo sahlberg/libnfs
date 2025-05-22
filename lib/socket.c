@@ -1173,8 +1173,7 @@ rpc_service(struct rpc_context *rpc, int revents)
 				rpc_set_error(rpc, "rpc_service: POLLERR, "
 						   "Unknown socket error.");
 			}
-		}
-		if (revents != -1 && revents & POLLHUP) {
+		} else if (revents != -1 && revents & POLLHUP) {
 			rpc_set_error(rpc, "Socket failed with POLLHUP");
 		}
 		if (rpc->auto_reconnect) {
