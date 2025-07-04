@@ -409,6 +409,12 @@ nfs_umount(struct nfs_context *nfs)
 	}
 
 	wait_for_nfs_reply(nfs, &cb_data);
+	if (cb_data.status == -EIO) {
+                /* We have already disconnected the session in nfs3_umount_2_cb so
+                 * -EIO is epxected at this point
+                 */
+                cb_data.status = 0;
+        }
         nfs_destroy_cb_sem(&cb_data);
 
 	/* Dont want any more callbacks even if the socket is closed */
