@@ -339,7 +339,7 @@ struct rpc_pdu *rpc_allocate_pdu2(struct rpc_context *rpc, int program, int vers
         rpc_add_iovector(rpc, &pdu->out, pdu->outdata.data, 4, NULL);
 
         zdrmem_create(&pdu->zdr, &pdu->outdata.data[4],
-                      ZDR_ENCODEBUF_MINSIZE + alloc_hint, ZDR_ENCODE);
+                      ZDR_ENCODEBUF_MINSIZE + alloc_hint - 4, ZDR_ENCODE);
 	memset(&pdu->msg, 0, sizeof(struct rpc_msg));
 	pdu->msg.xid                = pdu->xid;
         pdu->msg.direction          = CALL;
