@@ -360,7 +360,8 @@ check_nfs4_error(struct nfs_context *nfs, int status,
                 free_nfs4_cb_data(data);
                 return 1;
         }
-        if (res && res->status != NFS4_OK) {
+        /* status==RPC_STATUS_SUCCESS so res must be a valid pointer */
+        if (res->status != NFS4_OK) {
                 nfs_set_error(nfs, "NFS4: %s (path %s) failed with "
                               "%s(%d)", op_name,
                               data->path,
