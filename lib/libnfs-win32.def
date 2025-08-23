@@ -173,6 +173,7 @@ rpc_pmap4_taddr2uaddr_task
 rpc_pmap4_getversaddr_task
 rpc_pmap4_indirect_task
 rpc_pmap4_getstat_task
+rpc_pmap4_getaddrlist_task
 rpc_mount1_null_task
 rpc_mount1_mnt_task
 rpc_mount1_dump_task

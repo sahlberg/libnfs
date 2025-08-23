@@ -1045,6 +1045,25 @@ rpc_pmap4_indirect_task(struct rpc_context *rpc, int program,
                         char *data, int datalen,
                         rpc_cb cb, void *private_data);
 
+/*
+ * Call PORTMAPPER4/GETADDRLIST.
+ *
+ * Function returns
+ *  pdu : The command was queued successfully. The callback will be invoked once
+ *        the command completes.
+ * NULL : An error occured when trying to queue the command.
+ *        The callback will not be invoked.
+ *
+ * When the callback is invoked, status indicates the result:
+ * RPC_STATUS_SUCCESS : We got a successful response from the server.
+ *                      data is a 'pmap4_entry_list_ptr' pointer.
+ * RPC_STATUS_ERROR   : The command failed with an error.
+ *                      data is the error string.
+ * RPC_STATUS_CANCEL  : The command was cancelled.
+ *                      data is NULL.
+ */
+EXTERN struct rpc_pdu *
+rpc_pmap4_getaddrlist_task(struct rpc_context *rpc, struct pmap4_mapping *map, rpc_cb cb, void *private_data);
 
 /*
  * Call PORTMAPPER4/GETSTAT.
@@ -1065,6 +1084,7 @@ rpc_pmap4_indirect_task(struct rpc_context *rpc, int program,
  */
 EXTERN struct rpc_pdu *
 rpc_pmap4_getstat_task(struct rpc_context *rpc, rpc_cb cb, void *private_data);
+
 
 
 /*

@@ -64,6 +64,7 @@ WSADATA wsaData;
 
 struct client {
        int is_finished;
+       int gal4prog, gal4vers;
 };
 
 void pmap2_dump_cb(struct rpc_context *rpc, int status, void *data, void *private_data)
@@ -343,6 +344,52 @@ void pmap4_getstat_cb(struct rpc_context *rpc, int status, void *data, void *pri
 	client->is_finished = 1;
 }
 
+void pmap4_getaddrlist_cb(struct rpc_context *rpc, int status, void *data, void *private_data)
+{
+	struct client *client = private_data;
+	struct rpcb_entry_list *el = *(pmap4_entry_list_ptr *)data;
+	rpcb_entry *e;
+	char *semantics = NULL;
+	char *tnc;
+	
+	if (status == RPC_STATUS_ERROR) {
+		printf("PORTMAP4/GETTIME call failed with \"%s\"\n", (char *)data);
+		exit(10);
+	}
+	if (status != RPC_STATUS_SUCCESS) {
+		printf("PORTMAP4/GETTIME call failed, status:%d\n", status);
+		exit(10);
+	}
+
+	printf("PORTMAP4/GETADDRLIST:\n");
+	printf("%10s %4s %20s %20s\n",
+	       "program", "vers", "tp_family/name/class", "address");
+	while (el) {
+		e = &el->rpcb_entry_map;
+		switch (e->r_nc_semantics) {
+		case NC_TPI_CLTS:
+			semantics = "clts";
+			break;
+		case NC_TPI_COTS:
+			semantics = "cots";
+			break;
+		case NC_TPI_COTS_ORD:
+			semantics = "cots_ord";
+			break;
+		case NC_TPI_RAW:
+			semantics = "raw";
+			break;
+		}
+		asprintf(&tnc, "%s/%s/%s", e->r_nc_protofmly, e->r_nc_proto, semantics);
+		printf("%10d %4d %20s %20s\n",
+		       client->gal4prog, client->gal4vers, tnc, e->r_maddr);
+		free(tnc);
+		el = el->next;
+	}
+	
+	client->is_finished = 1;
+}
+
 void pmap3_uaddr2taddr_cb(struct rpc_context *rpc, int status, void *data, void *private_data)
 {
 	struct client *client = private_data;
@@ -495,6 +542,7 @@ int main(int argc _U_, char *argv[] _U_)
 	int dump4 = 0;
 	int gettime4 = 0;
 	int getstat4 = 0;
+	int getaddrlist4 = 0;
 	int command_found = 0;
 
 	int set2prog, set2vers, set2prot, set2port;
@@ -586,6 +634,11 @@ int main(int argc _U_, char *argv[] _U_)
 			command_found++;
 		} else if (!strcmp(argv[i], "getstat4")) {
 			getstat4 = 1;
+			command_found++;
+		} else if (!strcmp(argv[i], "getaddrlist4")) {
+			getaddrlist4 = 1;
+			client.gal4prog = atoi(argv[++i]);
+			client.gal4vers = atoi(argv[++i]);
 			command_found++;
 		} else {
 			server = argv[i];
@@ -717,6 +770,20 @@ int main(int argc _U_, char *argv[] _U_)
 		map.owner = unset3owner;
 		if (rpc_pmap3_unset_task(rpc, &map, pmap3_unset_cb, &client) == NULL) {
 			printf("Failed to send UNSET3 request\n");
+			exit(10);
+		}
+		wait_until_finished(rpc, &client);
+	}
+	if (getaddrlist4) {
+		struct pmap4_mapping map;
+
+		map.prog  = client.gal4prog;
+		map.vers  = client.gal4vers;
+		map.netid = "";
+		map.addr  = "";
+		map.owner = "";
+		if (rpc_pmap4_getaddrlist_task(rpc, &map, pmap4_getaddrlist_cb, &client) == NULL) {
+			printf("Failed to send GETADDRLIST4 request\n");
 			exit(10);
 		}
 		wait_until_finished(rpc, &client);

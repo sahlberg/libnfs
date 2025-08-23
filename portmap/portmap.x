@@ -194,6 +194,28 @@ struct rpcb_stat {
 
 typedef rpcb_stat pmap4_stat_byvers[RPCBVERS_STAT];
 
+/* Semantics */
+const NC_TPI_CLTS     = 1;
+const NC_TPI_COTS     = 2;
+const NC_TPI_COTS_ORD = 3;
+const NC_TPI_RAW      = 4;
+
+struct rpcb_entry {
+	string          r_maddr<>;            /* merged address of service */
+	string          r_nc_netid<>;         /* netid field */
+	unsigned int    r_nc_semantics;       /* semantics of transport */
+	string          r_nc_protofmly<>;     /* protocol family */
+	string          r_nc_proto<>;         /* protocol name */
+};
+
+struct rpcb_entry_list {
+	rpcb_entry rpcb_entry_map;
+	struct rpcb_entry_list *next;
+};
+
+typedef rpcb_entry_list *pmap4_entry_list_ptr;
+
+
 typedef pmap2_mapping     PMAP2SETargs;
 typedef pmap2_mapping     PMAP2UNSETargs;
 typedef pmap2_mapping     PMAP2GETPORTargs;
@@ -227,6 +249,8 @@ typedef pmap4_string_result   PMAP4GETVERSADDRres;
 typedef pmap4_indirect_args   PMAP4INDIRECTargs;
 typedef pmap4_indirect_result PMAP4INDIRECTres;
 typedef pmap4_stat_byvers     PMAP4GETSTATres;
+typedef pmap4_mapping         PMAP4GETADDRLISTargs;
+typedef pmap4_entry_list_ptr  PMAP4GETADDRLISTres;
 
 
 program PMAP_PROGRAM {
@@ -311,10 +335,8 @@ program PMAP_PROGRAM {
 		PMAP4INDIRECTres
 		PMAP4_INDIRECT(PMAP4INDIRECTargs)  = 10;
 
-                /*                
                 PMAP4GETADDRLISTres
 		PMAP4_GETADDRLIST(PMAP4GETADDRLISTargs) = 11;
-                */
 
                 PMAP4GETSTATres
 		PMAP4_GETSTAT(void)           = 12;

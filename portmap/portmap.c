@@ -703,3 +703,27 @@ rpc_pmap4_getstat_task(struct rpc_context *rpc, rpc_cb cb, void *private_data)
 	return pdu;
 }
 
+struct rpc_pdu *
+rpc_pmap4_getaddrlist_task(struct rpc_context *rpc, struct pmap4_mapping *map, rpc_cb cb, void *private_data)
+{
+	struct rpc_pdu *pdu;
+
+	pdu = rpc_allocate_pdu(rpc, PMAP_PROGRAM, PMAP_V4, PMAP4_GETADDRLIST, cb, private_data, (zdrproc_t)zdr_pmap4_entry_list_ptr, sizeof(pmap4_entry_list_ptr));
+	if (pdu == NULL) {
+		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu for PORTMAP4/GETADDRLIST call");
+		return NULL;
+	}
+
+	if (zdr_pmap4_mapping(&pdu->zdr, map) == 0) {
+		rpc_set_error(rpc, "ZDR error: Failed to encode data for PORTMAP4/GETADDRLIST call");
+		rpc_free_pdu(rpc, pdu);
+		return NULL;
+	}
+
+	if (rpc_queue_pdu(rpc, pdu) != 0) {
+		rpc_set_error(rpc, "Failed to queue PORTMAP4/GETADDRLIST pdu");
+		return NULL;
+	}
+
+	return pdu;
+}

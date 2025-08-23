@@ -733,6 +733,46 @@ zdr_pmap4_stat_byvers (ZDR *zdrs, pmap4_stat_byvers objp)
 }
 
 uint32_t
+zdr_rpcb_entry (ZDR *zdrs, rpcb_entry *objp)
+{
+	
+
+	 if (!zdr_string (zdrs, &objp->r_maddr, ~0))
+		 return FALSE;
+	 if (!zdr_string (zdrs, &objp->r_nc_netid, ~0))
+		 return FALSE;
+	 if (!zdr_u_int (zdrs, &objp->r_nc_semantics))
+		 return FALSE;
+	 if (!zdr_string (zdrs, &objp->r_nc_protofmly, ~0))
+		 return FALSE;
+	 if (!zdr_string (zdrs, &objp->r_nc_proto, ~0))
+		 return FALSE;
+	return TRUE;
+}
+
+uint32_t
+zdr_rpcb_entry_list (ZDR *zdrs, rpcb_entry_list *objp)
+{
+	
+
+	 if (!zdr_rpcb_entry (zdrs, &objp->rpcb_entry_map))
+		 return FALSE;
+	 if (!zdr_pointer (zdrs, (char **)&objp->next, sizeof (rpcb_entry_list), (zdrproc_t) zdr_rpcb_entry_list))
+		 return FALSE;
+	return TRUE;
+}
+
+uint32_t
+zdr_pmap4_entry_list_ptr (ZDR *zdrs, pmap4_entry_list_ptr *objp)
+{
+	
+
+	 if (!zdr_pointer (zdrs, (char **)objp, sizeof (rpcb_entry_list), (zdrproc_t) zdr_rpcb_entry_list))
+		 return FALSE;
+	return TRUE;
+}
+
+uint32_t
 zdr_PMAP2SETargs (ZDR *zdrs, PMAP2SETargs *objp)
 {
 	
@@ -1038,6 +1078,26 @@ zdr_PMAP4GETSTATres (ZDR *zdrs, PMAP4GETSTATres objp)
 	
 
 	 if (!zdr_pmap4_stat_byvers (zdrs, objp))
+		 return FALSE;
+	return TRUE;
+}
+
+uint32_t
+zdr_PMAP4GETADDRLISTargs (ZDR *zdrs, PMAP4GETADDRLISTargs *objp)
+{
+	
+
+	 if (!zdr_pmap4_mapping (zdrs, objp))
+		 return FALSE;
+	return TRUE;
+}
+
+uint32_t
+zdr_PMAP4GETADDRLISTres (ZDR *zdrs, PMAP4GETADDRLISTres *objp)
+{
+	
+
+	 if (!zdr_pmap4_entry_list_ptr (zdrs, objp))
 		 return FALSE;
 	return TRUE;
 }
