@@ -76,8 +76,10 @@ struct libnfs_server {
 
 struct libnfs_servers {
         struct event_base *base;
-        int listen_s;
-        struct libnfs_server udp_server;
+        int listen_4;
+        int listen_6;
+        struct libnfs_server udp_server4;
+        struct libnfs_server udp_server6;
         struct libnfs_server_procs *server_procs;
 };
 
@@ -216,98 +218,143 @@ static void do_accept(evutil_socket_t s, short events, void *private_data)
         update_events(server->rpc, server->read_event, server->write_event);
 }
 
-struct libnfs_servers *libnfs_create_server(struct event_base *base,
-                                            int port,
-                                            struct libnfs_server_procs *server_procs)
+static int _create_udp_server(struct event_base *base,
+                              struct sockaddr *sa, int sa_size,
+                              struct libnfs_server *server,
+                              struct libnfs_servers *servers)
 {
-        struct sockaddr_in in;
-        struct event *listen_event;
-        struct libnfs_servers *servers;
-        int one = 1, i, s;
-
-        in.sin_family = AF_INET;
-        in.sin_port = htons(port);
-        in.sin_addr.s_addr = htonl (INADDR_ANY);
-
-        servers = calloc(1, sizeof(struct libnfs_servers));
-        if (servers == NULL) {
-                return NULL;
-        }
-
-        servers->listen_s = -1;
-        servers->base = base;
-        servers->server_procs = server_procs;
-
+        int i, s;
+        
         /*
          * UDP: Create and bind to the socket we want to use for the UDP server.
          */
-        s = socket(AF_INET, SOCK_DGRAM, 0);
+        s = socket(sa->sa_family, SOCK_DGRAM, 0);
         if (s == -1) {
                 printf("Failed to create udp socket\n");
-                return NULL;
+                return -1;
         }
         evutil_make_socket_nonblocking(s);
-        setsockopt(s, SOL_SOCKET, SO_REUSEADDR, &one, sizeof(one));
+        evutil_make_listen_socket_reuseable(s);
+        evutil_make_socket_closeonexec(s);
 
-        if (bind(s, (struct sockaddr *)&in, sizeof(in)) < 0) {
+        if (bind(s, sa, sa_size) < 0) {
                 printf("Failed to bind udp socket\n");
-                return NULL;
+                return -1;
         }
 
         /*
          * UDP: Create a libnfs server context for this socket.
          */
-        servers->udp_server.rpc = rpc_init_server_context(s);
+        server->rpc = rpc_init_server_context(s);
         
         for (i = 0; servers->server_procs[i].program; i++) {
-                rpc_register_service(servers->udp_server.rpc,
+                rpc_register_service(server->rpc,
                                      servers->server_procs[i].program,
                                      servers->server_procs[i].version,
                                      servers->server_procs[i].procs,
                                      servers->server_procs[i].num_procs);
         }
 
-        servers->udp_server.read_event = event_new(servers->base,
-                                                   s,
-                                                   EV_READ|EV_PERSIST,
-                                                   libnfs_server_io, &servers->udp_server);
-        event_add(servers->udp_server.read_event, NULL);
+        server->read_event = event_new(base,
+                                       s,
+                                       EV_READ|EV_PERSIST,
+                                       libnfs_server_io, server);
+        event_add(server->read_event, NULL);
+
+        return 0;
+}
 
 
-
+static int _create_tcp_server(struct event_base *base,
+                              struct sockaddr *sa, int sa_size,
+                              int *s,
+                              struct libnfs_servers *servers)
+{
+        int i;
+        struct event *listen_event;
+        
         /*
          * TCP: Set up a listening socket for incoming TCP connections.
          * Once clients connect, inside do_accept() we will create a proper
          * libnfs server context for each connection.
          */
-        servers->listen_s = socket(AF_INET, SOCK_STREAM, 0);
-        if (servers->listen_s == -1) {
+        *s = socket(sa->sa_family, SOCK_STREAM, 0);
+        if (*s == -1) {
                 printf("Failed to create listening socket\n");
-                return NULL;
+                return -1;
         }
-        evutil_make_socket_nonblocking(s);
-        setsockopt(servers->listen_s, SOL_SOCKET, SO_REUSEADDR, &one, sizeof(one));
+        evutil_make_socket_nonblocking(*s);
+        evutil_make_listen_socket_reuseable(*s);
+        evutil_make_socket_closeonexec(*s);
 
-        if (bind(servers->listen_s, (struct sockaddr *)&in, sizeof(in)) < 0) {
-                printf("Failed to bind listening socket\n");
-                return NULL;
+        if (bind(*s, sa, sa_size) < 0) {
+                printf("Failed to bind listening socket %s\n", strerror(errno));
+                return -1;
         }
-        if (listen(servers->listen_s, 16) < 0) {
+        if (listen(*s, 16) < 0) {
                 printf("failed to listen to socket\n");
-                return NULL;
+                return -1;
         }
-        listen_event = event_new(servers->base,
-                                 servers->listen_s,
+        listen_event = event_new(base,
+                                 *s,
                                  EV_READ|EV_PERSIST,
                                  do_accept, servers);
         event_add(listen_event, NULL);
+
+        return 0;
+}
+
+struct libnfs_servers *libnfs_create_server(struct event_base *base,
+                                            int port,
+                                            struct libnfs_server_procs *server_procs)
+{
+        struct sockaddr_in in;
+        struct sockaddr_in6 in6;
+        struct libnfs_servers *servers;
+
+        in.sin_family = AF_INET;
+        in.sin_port = htons(port);
+        in.sin_addr.s_addr = htonl (INADDR_ANY);
+
+        in6.sin6_family = AF_INET6;
+        in6.sin6_port = htons(port);
+        in6.sin6_addr = in6addr_any;
+
+        servers = calloc(1, sizeof(struct libnfs_servers));
+        if (servers == NULL) {
+                return NULL;
+        }
+
+        servers->listen_4 = -1;
+        servers->listen_6 = -1;
+        servers->base = base;
+        servers->server_procs = server_procs;
+
+        if (_create_udp_server(base, (struct sockaddr *)&in, sizeof(in), &servers->udp_server4, servers)) {
+                return NULL;
+        }
+        if (_create_udp_server(base, (struct sockaddr *)&in6, sizeof(in6), &servers->udp_server6, servers)) {
+                return NULL;
+        }
+        if (_create_tcp_server(base, (struct sockaddr *)&in6, sizeof(in6), &servers->listen_6, servers)) {
+                return NULL;
+        }
+#if 0
+        /* Listening to in6addr_any above binds to both tcp and tcp6 on Linux so this will fail
+         * TODO: only make this call if we either do not have ipv6 support or no Linux
+         */
+        if (_create_tcp_server(base, (struct sockaddr *)&in, sizeof(in), &servers->listen_4, servers)) {
+                return NULL;
+        }
+#endif
         
         return servers;
 }
 
 
-
-
+/*
+ * Portmapper implementation begins here
+ */
 
 struct mapping {
         struct mapping *next;
