@@ -100,6 +100,100 @@ struct pmap3_netbuf {
 	opaque buf<>;
 };
 
+struct pmap4_string_result {
+       string addr<>;
+};
+
+struct pmap4_mapping {
+       unsigned int prog;
+       unsigned int vers;
+       string netid<>;
+       string addr<>;
+       string owner<>;
+};
+
+struct pmap4_mapping_list {
+       pmap4_mapping map;
+       pmap4_mapping_list *next;
+};
+
+struct pmap4_dump_result {
+       struct pmap4_mapping_list *list;
+};
+
+struct pmap4_bcast_args {
+       unsigned int prog;
+       unsigned int vers;
+       unsigned int proc;
+       opaque args<>;
+};
+
+struct pmap4_bcast_result {
+	unsigned int port;
+	opaque res<>;
+};
+
+struct pmap4_netbuf {
+	unsigned int maxlen;
+	/* This pretty much contains a sockaddr_storage.
+	 * Beware differences in endianess for ss_family
+	 * and whether or not ss_len exists.
+	 */
+	opaque buf<>;
+};
+
+struct pmap4_indirect_args {
+       unsigned int prog;
+       unsigned int vers;
+       unsigned int proc;
+       opaque args<>;
+};
+
+struct pmap4_indirect_result {
+	unsigned int port;
+	opaque res<>;
+};
+
+const RPCBSTAT_HIGHPROC = 13; /* # of procs in rpcbind V4 plus one */
+const RPCBVERS_STAT     = 3; /* provide only for rpcbind V2, V3 and V4 */
+const RPCBVERS_4_STAT   = 2;
+const RPCBVERS_3_STAT   = 1;
+const RPCBVERS_2_STAT   = 0;
+
+struct rpcbs_addrlist {
+	unsigned int prog;
+	unsigned int vers;
+	int success;
+	int failure;
+	string netid<>;
+	struct rpcbs_addrlist *next;
+};
+
+struct rpcbs_rmtcalllist {
+	unsigned int prog;
+	unsigned int vers;
+	unsigned int proc;
+	int success;
+	int failure;
+	int indirect;    /* whether callit or indirect */
+	string netid<>;
+	struct rpcbs_rmtcalllist *next;
+};
+
+typedef int rpcbs_proc[RPCBSTAT_HIGHPROC];
+typedef rpcbs_addrlist *rpcbs_addrlist_ptr;
+typedef rpcbs_rmtcalllist *rpcbs_rmtcalllist_ptr;
+
+struct rpcb_stat {
+	rpcbs_proc              info;
+	int                     setinfo;
+	int                     unsetinfo;
+	rpcbs_addrlist_ptr      addrinfo;
+	rpcbs_rmtcalllist_ptr   rmtinfo;
+};
+
+typedef rpcb_stat pmap4_stat_byvers[RPCBVERS_STAT];
+
 typedef pmap2_mapping     PMAP2SETargs;
 typedef pmap2_mapping     PMAP2UNSETargs;
 typedef pmap2_mapping     PMAP2GETPORTargs;
@@ -112,11 +206,28 @@ typedef pmap3_mapping       PMAP3UNSETargs;
 typedef pmap3_mapping       PMAP3GETADDRargs;
 typedef pmap3_string_result PMAP3GETADDRres;
 typedef pmap3_dump_result   PMAP3DUMPres;
-typedef pmap3_call_result   PMAP3CALLITargs;
+typedef pmap3_call_args     PMAP3CALLITargs;
 typedef pmap3_call_result   PMAP3CALLITres;
 typedef pmap3_netbuf        PMAP3UADDR2TADDRres;
 typedef pmap3_netbuf        PMAP3TADDR2UADDRargs;
 typedef pmap3_string_result PMAP3TADDR2UADDRres;
+
+typedef pmap4_mapping         PMAP4SETargs;
+typedef pmap4_mapping         PMAP4UNSETargs;
+typedef pmap4_mapping         PMAP4GETADDRargs;
+typedef pmap4_string_result   PMAP4GETADDRres;
+typedef pmap4_dump_result     PMAP4DUMPres;
+typedef pmap4_bcast_args      PMAP4BCASTargs;
+typedef pmap4_bcast_result    PMAP4BCASTres;
+typedef pmap4_netbuf          PMAP4UADDR2TADDRres;
+typedef pmap4_netbuf          PMAP4TADDR2UADDRargs;
+typedef pmap4_string_result   PMAP4TADDR2UADDRres;
+typedef pmap4_mapping         PMAP4GETVERSADDRargs;
+typedef pmap4_string_result   PMAP4GETVERSADDRres;
+typedef pmap4_indirect_args   PMAP4INDIRECTargs;
+typedef pmap4_indirect_result PMAP4INDIRECTres;
+typedef pmap4_stat_byvers     PMAP4GETSTATres;
+
 
 program PMAP_PROGRAM {
 	version PMAP_V2 {
@@ -166,5 +277,47 @@ program PMAP_PROGRAM {
 		PMAP3TADDR2UADDRres
 		PMAP3_TADDR2UADDR(PMAP3TADDR2UADDRargs) = 8;
 	} = 3;
+	version PMAP_V4 {
+		void
+		PMAP4_NULL(void)              = 0;
+
+		uint32_t
+		PMAP4_SET(PMAP4SETargs)      = 1;
+
+		uint32_t
+		PMAP4_UNSET(PMAP4UNSETargs)    = 2;
+
+		PMAP4GETADDRres
+		PMAP4_GETADDR(PMAP4GETADDRargs) = 3;
+
+		PMAP4DUMPres
+		PMAP4_DUMP(void)              = 4;
+
+		PMAP4BCASTres
+		PMAP4_BCAST(PMAP4BCASTargs)  = 5;
+
+		uint32_t
+		PMAP4_GETTIME(void)           = 6;
+
+		PMAP4UADDR2TADDRres
+		PMAP4_UADDR2TADDR(string)     = 7;
+
+		PMAP4TADDR2UADDRres
+		PMAP4_TADDR2UADDR(PMAP4TADDR2UADDRargs) = 8;
+
+		PMAP4GETVERSADDRres
+		PMAP4_GETVERSADDR(PMAP4GETVERSADDRargs) = 9;
+                
+		PMAP4INDIRECTres
+		PMAP4_INDIRECT(PMAP4INDIRECTargs)  = 10;
+
+                /*                
+                PMAP4GETADDRLISTres
+		PMAP4_GETADDRLIST(PMAP4GETADDRLISTargs) = 11;
+                */
+
+                PMAP4GETSTATres
+		PMAP4_GETSTAT(void)           = 12;
+	} = 4;
 } = 100000;
 

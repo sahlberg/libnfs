@@ -315,6 +315,424 @@ zdr_pmap3_netbuf (ZDR *zdrs, pmap3_netbuf *objp)
 }
 
 uint32_t
+zdr_pmap4_string_result (ZDR *zdrs, pmap4_string_result *objp)
+{
+	
+
+	 if (!zdr_string (zdrs, &objp->addr, ~0))
+		 return FALSE;
+	return TRUE;
+}
+
+uint32_t
+zdr_pmap4_mapping (ZDR *zdrs, pmap4_mapping *objp)
+{
+	
+
+	 if (!zdr_u_int (zdrs, &objp->prog))
+		 return FALSE;
+	 if (!zdr_u_int (zdrs, &objp->vers))
+		 return FALSE;
+	 if (!zdr_string (zdrs, &objp->netid, ~0))
+		 return FALSE;
+	 if (!zdr_string (zdrs, &objp->addr, ~0))
+		 return FALSE;
+	 if (!zdr_string (zdrs, &objp->owner, ~0))
+		 return FALSE;
+	return TRUE;
+}
+
+uint32_t
+zdr_pmap4_mapping_list (ZDR *zdrs, pmap4_mapping_list *objp)
+{
+	
+
+	 if (!zdr_pmap4_mapping (zdrs, &objp->map))
+		 return FALSE;
+	 if (!zdr_pointer (zdrs, (char **)&objp->next, sizeof (pmap4_mapping_list), (zdrproc_t) zdr_pmap4_mapping_list))
+		 return FALSE;
+	return TRUE;
+}
+
+uint32_t
+zdr_pmap4_dump_result (ZDR *zdrs, pmap4_dump_result *objp)
+{
+	
+
+	 if (!zdr_pointer (zdrs, (char **)&objp->list, sizeof (pmap4_mapping_list), (zdrproc_t) zdr_pmap4_mapping_list))
+		 return FALSE;
+	return TRUE;
+}
+
+uint32_t
+zdr_pmap4_bcast_args (ZDR *zdrs, pmap4_bcast_args *objp)
+{
+	
+
+
+	if (zdrs->x_op == ZDR_ENCODE) {
+		int32_t *buf;
+		buf = ZDR_INLINE (zdrs, 3 * BYTES_PER_ZDR_UNIT);
+		if (buf == NULL) {
+			 if (!zdr_u_int (zdrs, &objp->prog))
+				 return FALSE;
+			 if (!zdr_u_int (zdrs, &objp->vers))
+				 return FALSE;
+			 if (!zdr_u_int (zdrs, &objp->proc))
+				 return FALSE;
+
+		} else {
+		IZDR_PUT_U_LONG(buf, objp->prog);
+		IZDR_PUT_U_LONG(buf, objp->vers);
+		IZDR_PUT_U_LONG(buf, objp->proc);
+		}
+		 if (!zdr_bytes (zdrs, (char **)&objp->args.args_val, (uint32_t *) &objp->args.args_len, ~0))
+			 return FALSE;
+		return TRUE;
+	} else if (zdrs->x_op == ZDR_DECODE) {
+		int32_t *buf;
+		buf = ZDR_INLINE (zdrs, 3 * BYTES_PER_ZDR_UNIT);
+		if (buf == NULL) {
+			 if (!zdr_u_int (zdrs, &objp->prog))
+				 return FALSE;
+			 if (!zdr_u_int (zdrs, &objp->vers))
+				 return FALSE;
+			 if (!zdr_u_int (zdrs, &objp->proc))
+				 return FALSE;
+
+		} else {
+		objp->prog = IZDR_GET_U_LONG(buf);
+		objp->vers = IZDR_GET_U_LONG(buf);
+		objp->proc = IZDR_GET_U_LONG(buf);
+		}
+		 if (!zdr_bytes (zdrs, (char **)&objp->args.args_val, (uint32_t *) &objp->args.args_len, ~0))
+			 return FALSE;
+	 return TRUE;
+	}
+
+	 if (!zdr_u_int (zdrs, &objp->prog))
+		 return FALSE;
+	 if (!zdr_u_int (zdrs, &objp->vers))
+		 return FALSE;
+	 if (!zdr_u_int (zdrs, &objp->proc))
+		 return FALSE;
+	 if (!zdr_bytes (zdrs, (char **)&objp->args.args_val, (uint32_t *) &objp->args.args_len, ~0))
+		 return FALSE;
+	return TRUE;
+}
+
+uint32_t
+zdr_pmap4_bcast_result (ZDR *zdrs, pmap4_bcast_result *objp)
+{
+	
+
+	 if (!zdr_u_int (zdrs, &objp->port))
+		 return FALSE;
+	 if (!zdr_bytes (zdrs, (char **)&objp->res.res_val, (uint32_t *) &objp->res.res_len, ~0))
+		 return FALSE;
+	return TRUE;
+}
+
+uint32_t
+zdr_pmap4_netbuf (ZDR *zdrs, pmap4_netbuf *objp)
+{
+	
+
+	 if (!zdr_u_int (zdrs, &objp->maxlen))
+		 return FALSE;
+	 if (!zdr_bytes (zdrs, (char **)&objp->buf.buf_val, (uint32_t *) &objp->buf.buf_len, ~0))
+		 return FALSE;
+	return TRUE;
+}
+
+uint32_t
+zdr_pmap4_indirect_args (ZDR *zdrs, pmap4_indirect_args *objp)
+{
+	
+
+
+	if (zdrs->x_op == ZDR_ENCODE) {
+		int32_t *buf;
+		buf = ZDR_INLINE (zdrs, 3 * BYTES_PER_ZDR_UNIT);
+		if (buf == NULL) {
+			 if (!zdr_u_int (zdrs, &objp->prog))
+				 return FALSE;
+			 if (!zdr_u_int (zdrs, &objp->vers))
+				 return FALSE;
+			 if (!zdr_u_int (zdrs, &objp->proc))
+				 return FALSE;
+
+		} else {
+		IZDR_PUT_U_LONG(buf, objp->prog);
+		IZDR_PUT_U_LONG(buf, objp->vers);
+		IZDR_PUT_U_LONG(buf, objp->proc);
+		}
+		 if (!zdr_bytes (zdrs, (char **)&objp->args.args_val, (uint32_t *) &objp->args.args_len, ~0))
+			 return FALSE;
+		return TRUE;
+	} else if (zdrs->x_op == ZDR_DECODE) {
+		int32_t *buf;
+		buf = ZDR_INLINE (zdrs, 3 * BYTES_PER_ZDR_UNIT);
+		if (buf == NULL) {
+			 if (!zdr_u_int (zdrs, &objp->prog))
+				 return FALSE;
+			 if (!zdr_u_int (zdrs, &objp->vers))
+				 return FALSE;
+			 if (!zdr_u_int (zdrs, &objp->proc))
+				 return FALSE;
+
+		} else {
+		objp->prog = IZDR_GET_U_LONG(buf);
+		objp->vers = IZDR_GET_U_LONG(buf);
+		objp->proc = IZDR_GET_U_LONG(buf);
+		}
+		 if (!zdr_bytes (zdrs, (char **)&objp->args.args_val, (uint32_t *) &objp->args.args_len, ~0))
+			 return FALSE;
+	 return TRUE;
+	}
+
+	 if (!zdr_u_int (zdrs, &objp->prog))
+		 return FALSE;
+	 if (!zdr_u_int (zdrs, &objp->vers))
+		 return FALSE;
+	 if (!zdr_u_int (zdrs, &objp->proc))
+		 return FALSE;
+	 if (!zdr_bytes (zdrs, (char **)&objp->args.args_val, (uint32_t *) &objp->args.args_len, ~0))
+		 return FALSE;
+	return TRUE;
+}
+
+uint32_t
+zdr_pmap4_indirect_result (ZDR *zdrs, pmap4_indirect_result *objp)
+{
+	
+
+	 if (!zdr_u_int (zdrs, &objp->port))
+		 return FALSE;
+	 if (!zdr_bytes (zdrs, (char **)&objp->res.res_val, (uint32_t *) &objp->res.res_len, ~0))
+		 return FALSE;
+	return TRUE;
+}
+
+uint32_t
+zdr_rpcbs_addrlist (ZDR *zdrs, rpcbs_addrlist *objp)
+{
+	
+
+
+	if (zdrs->x_op == ZDR_ENCODE) {
+		int32_t *buf;
+		buf = ZDR_INLINE (zdrs, 4 * BYTES_PER_ZDR_UNIT);
+		if (buf == NULL) {
+			 if (!zdr_u_int (zdrs, &objp->prog))
+				 return FALSE;
+			 if (!zdr_u_int (zdrs, &objp->vers))
+				 return FALSE;
+			 if (!zdr_int (zdrs, &objp->success))
+				 return FALSE;
+			 if (!zdr_int (zdrs, &objp->failure))
+				 return FALSE;
+
+		} else {
+		IZDR_PUT_U_LONG(buf, objp->prog);
+		IZDR_PUT_U_LONG(buf, objp->vers);
+		IZDR_PUT_LONG(buf, objp->success);
+		IZDR_PUT_LONG(buf, objp->failure);
+		}
+		 if (!zdr_string (zdrs, &objp->netid, ~0))
+			 return FALSE;
+		 if (!zdr_pointer (zdrs, (char **)&objp->next, sizeof (rpcbs_addrlist), (zdrproc_t) zdr_rpcbs_addrlist))
+			 return FALSE;
+		return TRUE;
+	} else if (zdrs->x_op == ZDR_DECODE) {
+		int32_t *buf;
+		buf = ZDR_INLINE (zdrs, 4 * BYTES_PER_ZDR_UNIT);
+		if (buf == NULL) {
+			 if (!zdr_u_int (zdrs, &objp->prog))
+				 return FALSE;
+			 if (!zdr_u_int (zdrs, &objp->vers))
+				 return FALSE;
+			 if (!zdr_int (zdrs, &objp->success))
+				 return FALSE;
+			 if (!zdr_int (zdrs, &objp->failure))
+				 return FALSE;
+
+		} else {
+		objp->prog = IZDR_GET_U_LONG(buf);
+		objp->vers = IZDR_GET_U_LONG(buf);
+		objp->success = IZDR_GET_LONG(buf);
+		objp->failure = IZDR_GET_LONG(buf);
+		}
+		 if (!zdr_string (zdrs, &objp->netid, ~0))
+			 return FALSE;
+		 if (!zdr_pointer (zdrs, (char **)&objp->next, sizeof (rpcbs_addrlist), (zdrproc_t) zdr_rpcbs_addrlist))
+			 return FALSE;
+	 return TRUE;
+	}
+
+	 if (!zdr_u_int (zdrs, &objp->prog))
+		 return FALSE;
+	 if (!zdr_u_int (zdrs, &objp->vers))
+		 return FALSE;
+	 if (!zdr_int (zdrs, &objp->success))
+		 return FALSE;
+	 if (!zdr_int (zdrs, &objp->failure))
+		 return FALSE;
+	 if (!zdr_string (zdrs, &objp->netid, ~0))
+		 return FALSE;
+	 if (!zdr_pointer (zdrs, (char **)&objp->next, sizeof (rpcbs_addrlist), (zdrproc_t) zdr_rpcbs_addrlist))
+		 return FALSE;
+	return TRUE;
+}
+
+uint32_t
+zdr_rpcbs_rmtcalllist (ZDR *zdrs, rpcbs_rmtcalllist *objp)
+{
+	
+
+
+	if (zdrs->x_op == ZDR_ENCODE) {
+		int32_t *buf;
+		buf = ZDR_INLINE (zdrs, 6 * BYTES_PER_ZDR_UNIT);
+		if (buf == NULL) {
+			 if (!zdr_u_int (zdrs, &objp->prog))
+				 return FALSE;
+			 if (!zdr_u_int (zdrs, &objp->vers))
+				 return FALSE;
+			 if (!zdr_u_int (zdrs, &objp->proc))
+				 return FALSE;
+			 if (!zdr_int (zdrs, &objp->success))
+				 return FALSE;
+			 if (!zdr_int (zdrs, &objp->failure))
+				 return FALSE;
+			 if (!zdr_int (zdrs, &objp->indirect))
+				 return FALSE;
+
+		} else {
+		IZDR_PUT_U_LONG(buf, objp->prog);
+		IZDR_PUT_U_LONG(buf, objp->vers);
+		IZDR_PUT_U_LONG(buf, objp->proc);
+		IZDR_PUT_LONG(buf, objp->success);
+		IZDR_PUT_LONG(buf, objp->failure);
+		IZDR_PUT_LONG(buf, objp->indirect);
+		}
+		 if (!zdr_string (zdrs, &objp->netid, ~0))
+			 return FALSE;
+		 if (!zdr_pointer (zdrs, (char **)&objp->next, sizeof (rpcbs_rmtcalllist), (zdrproc_t) zdr_rpcbs_rmtcalllist))
+			 return FALSE;
+		return TRUE;
+	} else if (zdrs->x_op == ZDR_DECODE) {
+		int32_t *buf;
+		buf = ZDR_INLINE (zdrs, 6 * BYTES_PER_ZDR_UNIT);
+		if (buf == NULL) {
+			 if (!zdr_u_int (zdrs, &objp->prog))
+				 return FALSE;
+			 if (!zdr_u_int (zdrs, &objp->vers))
+				 return FALSE;
+			 if (!zdr_u_int (zdrs, &objp->proc))
+				 return FALSE;
+			 if (!zdr_int (zdrs, &objp->success))
+				 return FALSE;
+			 if (!zdr_int (zdrs, &objp->failure))
+				 return FALSE;
+			 if (!zdr_int (zdrs, &objp->indirect))
+				 return FALSE;
+
+		} else {
+		objp->prog = IZDR_GET_U_LONG(buf);
+		objp->vers = IZDR_GET_U_LONG(buf);
+		objp->proc = IZDR_GET_U_LONG(buf);
+		objp->success = IZDR_GET_LONG(buf);
+		objp->failure = IZDR_GET_LONG(buf);
+		objp->indirect = IZDR_GET_LONG(buf);
+		}
+		 if (!zdr_string (zdrs, &objp->netid, ~0))
+			 return FALSE;
+		 if (!zdr_pointer (zdrs, (char **)&objp->next, sizeof (rpcbs_rmtcalllist), (zdrproc_t) zdr_rpcbs_rmtcalllist))
+			 return FALSE;
+	 return TRUE;
+	}
+
+	 if (!zdr_u_int (zdrs, &objp->prog))
+		 return FALSE;
+	 if (!zdr_u_int (zdrs, &objp->vers))
+		 return FALSE;
+	 if (!zdr_u_int (zdrs, &objp->proc))
+		 return FALSE;
+	 if (!zdr_int (zdrs, &objp->success))
+		 return FALSE;
+	 if (!zdr_int (zdrs, &objp->failure))
+		 return FALSE;
+	 if (!zdr_int (zdrs, &objp->indirect))
+		 return FALSE;
+	 if (!zdr_string (zdrs, &objp->netid, ~0))
+		 return FALSE;
+	 if (!zdr_pointer (zdrs, (char **)&objp->next, sizeof (rpcbs_rmtcalllist), (zdrproc_t) zdr_rpcbs_rmtcalllist))
+		 return FALSE;
+	return TRUE;
+}
+
+uint32_t
+zdr_rpcbs_proc (ZDR *zdrs, rpcbs_proc objp)
+{
+	
+
+	 if (!zdr_vector (zdrs, (char *)objp, RPCBSTAT_HIGHPROC,
+		sizeof (int), (zdrproc_t) zdr_int))
+		 return FALSE;
+	return TRUE;
+}
+
+uint32_t
+zdr_rpcbs_addrlist_ptr (ZDR *zdrs, rpcbs_addrlist_ptr *objp)
+{
+	
+
+	 if (!zdr_pointer (zdrs, (char **)objp, sizeof (rpcbs_addrlist), (zdrproc_t) zdr_rpcbs_addrlist))
+		 return FALSE;
+	return TRUE;
+}
+
+uint32_t
+zdr_rpcbs_rmtcalllist_ptr (ZDR *zdrs, rpcbs_rmtcalllist_ptr *objp)
+{
+	
+
+	 if (!zdr_pointer (zdrs, (char **)objp, sizeof (rpcbs_rmtcalllist), (zdrproc_t) zdr_rpcbs_rmtcalllist))
+		 return FALSE;
+	return TRUE;
+}
+
+uint32_t
+zdr_rpcb_stat (ZDR *zdrs, rpcb_stat *objp)
+{
+	
+
+	 if (!zdr_rpcbs_proc (zdrs, objp->info))
+		 return FALSE;
+	 if (!zdr_int (zdrs, &objp->setinfo))
+		 return FALSE;
+	 if (!zdr_int (zdrs, &objp->unsetinfo))
+		 return FALSE;
+	 if (!zdr_rpcbs_addrlist_ptr (zdrs, &objp->addrinfo))
+		 return FALSE;
+	 if (!zdr_rpcbs_rmtcalllist_ptr (zdrs, &objp->rmtinfo))
+		 return FALSE;
+	return TRUE;
+}
+
+uint32_t
+zdr_pmap4_stat_byvers (ZDR *zdrs, pmap4_stat_byvers objp)
+{
+	
+
+	 if (!zdr_vector (zdrs, (char *)objp, RPCBVERS_STAT,
+		sizeof (rpcb_stat), (zdrproc_t) zdr_rpcb_stat))
+		 return FALSE;
+	return TRUE;
+}
+
+uint32_t
 zdr_PMAP2SETargs (ZDR *zdrs, PMAP2SETargs *objp)
 {
 	
@@ -429,7 +847,7 @@ zdr_PMAP3CALLITargs (ZDR *zdrs, PMAP3CALLITargs *objp)
 {
 	
 
-	 if (!zdr_pmap3_call_result (zdrs, objp))
+	 if (!zdr_pmap3_call_args (zdrs, objp))
 		 return FALSE;
 	return TRUE;
 }
@@ -470,6 +888,156 @@ zdr_PMAP3TADDR2UADDRres (ZDR *zdrs, PMAP3TADDR2UADDRres *objp)
 	
 
 	 if (!zdr_pmap3_string_result (zdrs, objp))
+		 return FALSE;
+	return TRUE;
+}
+
+uint32_t
+zdr_PMAP4SETargs (ZDR *zdrs, PMAP4SETargs *objp)
+{
+	
+
+	 if (!zdr_pmap4_mapping (zdrs, objp))
+		 return FALSE;
+	return TRUE;
+}
+
+uint32_t
+zdr_PMAP4UNSETargs (ZDR *zdrs, PMAP4UNSETargs *objp)
+{
+	
+
+	 if (!zdr_pmap4_mapping (zdrs, objp))
+		 return FALSE;
+	return TRUE;
+}
+
+uint32_t
+zdr_PMAP4GETADDRargs (ZDR *zdrs, PMAP4GETADDRargs *objp)
+{
+	
+
+	 if (!zdr_pmap4_mapping (zdrs, objp))
+		 return FALSE;
+	return TRUE;
+}
+
+uint32_t
+zdr_PMAP4GETADDRres (ZDR *zdrs, PMAP4GETADDRres *objp)
+{
+	
+
+	 if (!zdr_pmap4_string_result (zdrs, objp))
+		 return FALSE;
+	return TRUE;
+}
+
+uint32_t
+zdr_PMAP4DUMPres (ZDR *zdrs, PMAP4DUMPres *objp)
+{
+	
+
+	 if (!zdr_pmap4_dump_result (zdrs, objp))
+		 return FALSE;
+	return TRUE;
+}
+
+uint32_t
+zdr_PMAP4BCASTargs (ZDR *zdrs, PMAP4BCASTargs *objp)
+{
+	
+
+	 if (!zdr_pmap4_bcast_args (zdrs, objp))
+		 return FALSE;
+	return TRUE;
+}
+
+uint32_t
+zdr_PMAP4BCASTres (ZDR *zdrs, PMAP4BCASTres *objp)
+{
+	
+
+	 if (!zdr_pmap4_bcast_result (zdrs, objp))
+		 return FALSE;
+	return TRUE;
+}
+
+uint32_t
+zdr_PMAP4UADDR2TADDRres (ZDR *zdrs, PMAP4UADDR2TADDRres *objp)
+{
+	
+
+	 if (!zdr_pmap4_netbuf (zdrs, objp))
+		 return FALSE;
+	return TRUE;
+}
+
+uint32_t
+zdr_PMAP4TADDR2UADDRargs (ZDR *zdrs, PMAP4TADDR2UADDRargs *objp)
+{
+	
+
+	 if (!zdr_pmap4_netbuf (zdrs, objp))
+		 return FALSE;
+	return TRUE;
+}
+
+uint32_t
+zdr_PMAP4TADDR2UADDRres (ZDR *zdrs, PMAP4TADDR2UADDRres *objp)
+{
+	
+
+	 if (!zdr_pmap4_string_result (zdrs, objp))
+		 return FALSE;
+	return TRUE;
+}
+
+uint32_t
+zdr_PMAP4GETVERSADDRargs (ZDR *zdrs, PMAP4GETVERSADDRargs *objp)
+{
+	
+
+	 if (!zdr_pmap4_mapping (zdrs, objp))
+		 return FALSE;
+	return TRUE;
+}
+
+uint32_t
+zdr_PMAP4GETVERSADDRres (ZDR *zdrs, PMAP4GETVERSADDRres *objp)
+{
+	
+
+	 if (!zdr_pmap4_string_result (zdrs, objp))
+		 return FALSE;
+	return TRUE;
+}
+
+uint32_t
+zdr_PMAP4INDIRECTargs (ZDR *zdrs, PMAP4INDIRECTargs *objp)
+{
+	
+
+	 if (!zdr_pmap4_indirect_args (zdrs, objp))
+		 return FALSE;
+	return TRUE;
+}
+
+uint32_t
+zdr_PMAP4INDIRECTres (ZDR *zdrs, PMAP4INDIRECTres *objp)
+{
+	
+
+	 if (!zdr_pmap4_indirect_result (zdrs, objp))
+		 return FALSE;
+	return TRUE;
+}
+
+uint32_t
+zdr_PMAP4GETSTATres (ZDR *zdrs, PMAP4GETSTATres objp)
+{
+	
+
+	 if (!zdr_pmap4_stat_byvers (zdrs, objp))
 		 return FALSE;
 	return TRUE;
 }

@@ -121,6 +121,34 @@ void pmap3_dump_cb(struct rpc_context *rpc, int status, void *data, void *privat
 	client->is_finished = 1;
 }
 
+void pmap4_dump_cb(struct rpc_context *rpc, int status, void *data, void *private_data)
+{
+	struct client *client = private_data;
+	struct pmap4_dump_result *dr = data;
+	struct pmap4_mapping_list *list = dr->list;
+
+	if (status == RPC_STATUS_ERROR) {
+		printf("PORTMAP4/DUMP call failed with \"%s\"\n", (char *)data);
+		exit(10);
+	}
+	if (status != RPC_STATUS_SUCCESS) {
+		printf("PORTMAP4/DUMP call failed, status:%d\n", status);
+		exit(10);
+	}
+
+	printf("PORTMAP4/DUMP:\n");
+	while (list) {
+		printf("	Prog:%d Vers:%d Netid:%s Addr:%s Owner:%s\n",
+			list->map.prog,
+			list->map.vers,
+			list->map.netid,
+			list->map.addr,
+			list->map.owner);
+		list = list->next;
+	}
+	client->is_finished = 1;
+}
+
 void pmap3_getaddr_cb(struct rpc_context *rpc, int status, void *data, void *private_data)
 {
 	struct client *client = private_data;
@@ -238,6 +266,80 @@ void pmap3_gettime_cb(struct rpc_context *rpc, int status, void *data, void *pri
 	printf("PORTMAP3/GETTIME:\n");
 	printf("	Time:%d %s\n", (int)t, ctime(&t));
 
+	client->is_finished = 1;
+}
+
+void pmap4_gettime_cb(struct rpc_context *rpc, int status, void *data, void *private_data)
+{
+	struct client *client = private_data;
+	time_t t = *(uint32_t *)data;
+
+	if (status == RPC_STATUS_ERROR) {
+		printf("PORTMAP4/GETTIME call failed with \"%s\"\n", (char *)data);
+		exit(10);
+	}
+	if (status != RPC_STATUS_SUCCESS) {
+		printf("PORTMAP4/GETTIME call failed, status:%d\n", status);
+		exit(10);
+	}
+
+	printf("PORTMAP4/GETTIME:\n");
+	printf("	Time:%d %s\n", (int)t, ctime(&t));
+
+	client->is_finished = 1;
+}
+
+void pmap4_getstat_cb(struct rpc_context *rpc, int status, void *data, void *private_data)
+{
+	struct client *client = private_data;
+	pmap4_stat_byvers *st = data;
+	int v;
+	
+	if (status == RPC_STATUS_ERROR) {
+		printf("PORTMAP4/GETTIME call failed with \"%s\"\n", (char *)data);
+		exit(10);
+	}
+	if (status != RPC_STATUS_SUCCESS) {
+		printf("PORTMAP4/GETTIME call failed, status:%d\n", status);
+		exit(10);
+	}
+
+	printf("PORTMAP4/GETSTAT:\n");
+	for (v = 0; v < 3; v++) {
+		int s;
+		rpcbs_rmtcalllist_ptr rmt;
+		rpcbs_addrlist_ptr adi;
+
+		printf("PORTMAP%d: ", v + 2);
+		printf("NULL: %d  ", (*st)[v].info[0]);
+		printf("SET: %d/%d  ", (*st)[v].setinfo, (*st)[v].info[1]);
+		printf("UNSET: %d/%d  ", (*st)[v].unsetinfo, (*st)[v].info[2]);
+		for(s = 0, adi = (*st)[v].addrinfo; adi; adi = adi->next) {
+			s += rmt->success;
+		}
+		printf("GETADDR: %d/%d  ", s, (*st)[v].info[3]);
+		printf("DUMP: %d  ", (*st)[v].info[4]);
+		for(s = 0, rmt = (*st)[v].rmtinfo; rmt; rmt = rmt->next) {
+			s += rmt->success;
+		}
+		printf("CALLIT: %d/%d  ", s, (*st)[v].info[5]);
+		if (v == 0) {
+			printf("\n");
+			continue;
+		}
+		printf("TIME: %d  ", (*st)[v].info[6]);
+		printf("U2T: %d  ", (*st)[v].info[7]);
+		printf("T2U: %d  ", (*st)[v].info[8]);
+		if (v == 1) {
+			printf("\n");
+			continue;
+		}
+		printf("VERADDR: %d  ", (*st)[v].info[9]);
+		printf("INDIRECT: %d  ", (*st)[v].info[10]);
+		printf("GETLIST: %d  ", (*st)[v].info[11]);
+		printf("GETSTAT: %d  ", (*st)[v].info[12]);
+		printf("\n");
+	}
 	client->is_finished = 1;
 }
 
@@ -390,6 +492,9 @@ int main(int argc _U_, char *argv[] _U_)
 	int dump3 = 0;
 	int gettime3 = 0;
 	int u2t3 = 0;
+	int dump4 = 0;
+	int gettime4 = 0;
+	int getstat4 = 0;
 	int command_found = 0;
 
 	int set2prog, set2vers, set2prot, set2port;
@@ -473,6 +578,15 @@ int main(int argc _U_, char *argv[] _U_)
 		} else if (!strcmp(argv[i], "null3")) {
 			null3 = 1;
 			command_found++;
+		} else if (!strcmp(argv[i], "dump4")) {
+			dump4 = 1;
+			command_found++;
+		} else if (!strcmp(argv[i], "gettime4")) {
+			gettime4 = 1;
+			command_found++;
+		} else if (!strcmp(argv[i], "getstat4")) {
+			getstat4 = 1;
+			command_found++;
 		} else {
 			server = argv[i];
 		}
@@ -488,6 +602,13 @@ int main(int argc _U_, char *argv[] _U_)
 	}
 	wait_until_finished(rpc, &client);
 
+	if (dump4) {
+		if (rpc_pmap4_dump_task(rpc, pmap4_dump_cb, &client) == NULL) {
+			printf("Failed to send DUMP4 request\n");
+			exit(10);
+		}
+		wait_until_finished(rpc, &client);
+	}
 	if (null2) {
 		if (rpc_pmap2_null_task(rpc, pmap2_null_cb, &client) == NULL) {
 			printf("Failed to send NULL2 request\n");
@@ -519,6 +640,20 @@ int main(int argc _U_, char *argv[] _U_)
 	if (gettime3) {
 		if (rpc_pmap3_gettime_task(rpc, pmap3_gettime_cb, &client) == NULL) {
 			printf("Failed to send GETTIME3 request\n");
+			exit(10);
+		}
+		wait_until_finished(rpc, &client);
+	}
+	if (gettime4) {
+		if (rpc_pmap4_gettime_task(rpc, pmap4_gettime_cb, &client) == NULL) {
+			printf("Failed to send GETTIME4 request\n");
+			exit(10);
+		}
+		wait_until_finished(rpc, &client);
+	}
+	if (getstat4) {
+		if (rpc_pmap4_getstat_task(rpc, pmap4_getstat_cb, &client) == NULL) {
+			printf("Failed to send GETSTAT4 request\n");
 			exit(10);
 		}
 		wait_until_finished(rpc, &client);

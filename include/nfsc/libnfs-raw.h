@@ -802,6 +802,272 @@ rpc_pmap3_taddr2uaddr_task(struct rpc_context *rpc,
                             rpc_cb cb, void *private_data);
 
 /*
+ * PORTMAP v4 FUNCTIONS
+ */
+
+/*
+ * Call PORTMAPPER4/NULL
+ *
+ * Function returns
+ *  pdu : The command was queued successfully. The callback will be invoked once
+ *        the command completes.
+ * NULL : An error occured when trying to queue the command.
+ *        The callback will not be invoked.
+ *
+ * When the callback is invoked, status indicates the result:
+ * RPC_STATUS_SUCCESS : We got a successful response from the server.
+ *                      data is NULL.
+ * RPC_STATUS_ERROR   : The command failed with an error.
+ *                      data is the error string.
+ * RPC_STATUS_CANCEL  : The command was cancelled.
+ *                      data is NULL.
+ */
+EXTERN struct rpc_pdu *
+rpc_pmap4_null_task(struct rpc_context *rpc,
+                     rpc_cb cb, void *private_data);
+
+/*
+ * Call PORTMAPPER4/SET.
+ *
+ * Function returns
+ *  pdu : The command was queued successfully. The callback will be invoked once
+ *        the command completes.
+ * NULL : An error occured when trying to queue the command.
+ *        The callback will not be invoked.
+ *
+ * When the callback is invoked, status indicates the result:
+ * RPC_STATUS_SUCCESS : We got a successful response from the server.
+ *                      data is uint32_t * containing status.
+ * RPC_STATUS_ERROR   : The command failed with an error.
+ *                      data is the error string.
+ * RPC_STATUS_CANCEL  : The command was cancelled.
+ *                      data is NULL.
+ */
+struct pmap4_mapping;
+EXTERN struct rpc_pdu *
+rpc_pmap4_set_task(struct rpc_context *rpc,
+                    struct pmap4_mapping *map,
+                    rpc_cb cb, void *private_data);
+
+/*
+ * Call PORTMAPPER4/UNSET.
+ *
+ * Function returns
+ *  pdu : The command was queued successfully. The callback will be invoked once
+ *        the command completes.
+ * NULL : An error occured when trying to queue the command.
+ *        The callback will not be invoked.
+ *
+ * When the callback is invoked, status indicates the result:
+ * RPC_STATUS_SUCCESS : We got a successful response from the server.
+ *                      data is uint32_t * containing status.
+ * RPC_STATUS_ERROR   : The command failed with an error.
+ *                      data is the error string.
+ * RPC_STATUS_CANCEL  : The command was cancelled.
+ *                      data is NULL.
+ */
+EXTERN struct rpc_pdu *
+rpc_pmap4_unset_task(struct rpc_context *rpc,
+                      struct pmap4_mapping *map,
+                      rpc_cb cb, void *private_data);
+
+/*
+ * Call PORTMAPPER4/GETADDR.
+ *
+ * Function returns
+ *  pdu : The command was queued successfully. The callback will be invoked once
+ *        the command completes.
+ * NULL : An error occured when trying to queue the command.
+ *        The callback will not be invoked.
+ *
+ * When the callback is invoked, status indicates the result:
+ * RPC_STATUS_SUCCESS : We got a successful response from the server.
+ *                      data is struct pmap4_string_result.
+ * RPC_STATUS_ERROR   : The command failed with an error.
+ *                      data is the error string.
+ * RPC_STATUS_CANCEL  : The command was cancelled.
+ *                      data is NULL.
+ */
+EXTERN struct rpc_pdu *
+rpc_pmap4_getaddr_task(struct rpc_context *rpc,
+                        struct pmap4_mapping *map,
+                        rpc_cb cb, void *private_data);
+
+/*
+ * Call PORTMAPPER4/DUMP.
+ *
+ * Function returns
+ *  pdu : The command was queued successfully. The callback will be invoked once
+ *        the command completes.
+ * NULL : An error occured when trying to queue the command.
+ *        The callback will not be invoked.
+ *
+ * When the callback is invoked, status indicates the result:
+ * RPC_STATUS_SUCCESS : We got a successful response from the server.
+ *                      data is struct pmap4_dump_result.
+ * RPC_STATUS_ERROR   : The command failed with an error.
+ *                      data is the error string.
+ * RPC_STATUS_CANCEL  : The command was cancelled.
+ *                      data is NULL.
+ */
+EXTERN struct rpc_pdu *
+rpc_pmap4_dump_task(struct rpc_context *rpc,
+                     rpc_cb cb, void *private_data);
+
+/*
+ * Call PORTMAPPER4/BCAST.
+ *
+ * Function returns
+ *  pdu : The command was queued successfully. The callback will be invoked once
+ *        the command completes.
+ * NULL : An error occured when trying to queue the command.
+ *        The callback will not be invoked.
+ *
+ * When the callback is invoked, status indicates the result:
+ * RPC_STATUS_SUCCESS : We got a successful response from the server.
+ *                      data is a 'pmap4_bcast_result' pointer.
+ * RPC_STATUS_ERROR   : The command failed with an error.
+ *                      data is the error string.
+ * RPC_STATUS_CANCEL  : The command was cancelled.
+ *                      data is NULL.
+ */
+EXTERN struct rpc_pdu *
+rpc_pmap4_bcast_task(struct rpc_context *rpc, int program,
+                     int version, int procedure,
+                     char *data, int datalen,
+                     rpc_cb cb, void *private_data);
+
+/*
+ * Call PORTMAPPER4/GETTIME.
+ *
+ * Function returns
+ *  pdu : The command was queued successfully. The callback will be invoked once
+ *        the command completes.
+ * NULL : An error occured when trying to queue the command.
+ *        The callback will not be invoked.
+ *
+ * When the callback is invoked, status indicates the result:
+ * RPC_STATUS_SUCCESS : We got a successful response from the server.
+ *                      data is a uint32_t * containing status.
+ * RPC_STATUS_ERROR   : The command failed with an error.
+ *                      data is the error string.
+ * RPC_STATUS_CANCEL  : The command was cancelled.
+ *                      data is NULL.
+ */
+EXTERN struct rpc_pdu *
+rpc_pmap4_gettime_task(struct rpc_context *rpc,
+                        rpc_cb cb, void *private_data);
+
+/*
+ * Call PORTMAPPER4/UADDR2TADDR.
+ *
+ * Function returns
+ *  pdu : The command was queued successfully. The callback will be invoked once
+ *        the command completes.
+ * NULL : An error occured when trying to queue the command.
+ *        The callback will not be invoked.
+ *
+ * When the callback is invoked, status indicates the result:
+ * RPC_STATUS_SUCCESS : We got a successful response from the server.
+ *                      data is a struct pmap4_netbuf *.
+ * RPC_STATUS_ERROR   : The command failed with an error.
+ *                      data is the error string.
+ * RPC_STATUS_CANCEL  : The command was cancelled.
+ *                      data is NULL.
+ */
+EXTERN struct rpc_pdu *
+rpc_pmap4_uaddr2taddr_task(struct rpc_context *rpc, char *uaddr,
+                            rpc_cb cb, void *private_data);
+
+/*
+ * Call PORTMAPPER4/TADDR2UADDR.
+ *
+ * Function returns
+ *  pdu : The command was queued successfully. The callback will be invoked once
+ *        the command completes.
+ * NULL : An error occured when trying to queue the command.
+ *        The callback will not be invoked.
+ *
+ * When the callback is invoked, status indicates the result:
+ * RPC_STATUS_SUCCESS : We got a successful response from the server.
+ *                      data is a struct pmap4_string_result *.
+ * RPC_STATUS_ERROR   : The command failed with an error.
+ *                      data is the error string.
+ * RPC_STATUS_CANCEL  : The command was cancelled.
+ *                      data is NULL.
+ */
+struct pmap4_netbuf;
+EXTERN struct rpc_pdu *
+rpc_pmap4_taddr2uaddr_task(struct rpc_context *rpc,
+                            struct pmap4_netbuf *netbuf,
+                            rpc_cb cb, void *private_data);
+
+/*
+ * Call PORTMAPPER4/GETVERSADDR.
+ *
+ * Function returns
+ *  pdu : The command was queued successfully. The callback will be invoked once
+ *        the command completes.
+ * NULL : An error occured when trying to queue the command.
+ *        The callback will not be invoked.
+ *
+ * When the callback is invoked, status indicates the result:
+ * RPC_STATUS_SUCCESS : We got a successful response from the server.
+ *                      data is a struct pmap4_string_result *.
+ * RPC_STATUS_ERROR   : The command failed with an error.
+ *                      data is the error string.
+ * RPC_STATUS_CANCEL  : The command was cancelled.
+ *                      data is NULL.
+ */
+EXTERN struct rpc_pdu *
+rpc_pmap4_getversaddr_task(struct rpc_context *rpc, struct pmap4_mapping *map, rpc_cb cb, void *private_data);
+
+/*
+ * Call PORTMAPPER4/INDIRECT.
+ *
+ * Function returns
+ *  pdu : The command was queued successfully. The callback will be invoked once
+ *        the command completes.
+ * NULL : An error occured when trying to queue the command.
+ *        The callback will not be invoked.
+ *
+ * When the callback is invoked, status indicates the result:
+ * RPC_STATUS_SUCCESS : We got a successful response from the server.
+ *                      data is a 'pmap4_indirect_result' pointer.
+ * RPC_STATUS_ERROR   : The command failed with an error.
+ *                      data is the error string.
+ * RPC_STATUS_CANCEL  : The command was cancelled.
+ *                      data is NULL.
+ */
+EXTERN struct rpc_pdu *
+rpc_pmap4_indirect_task(struct rpc_context *rpc, int program,
+                        int version, int procedure,
+                        char *data, int datalen,
+                        rpc_cb cb, void *private_data);
+
+
+/*
+ * Call PORTMAPPER4/GETSTAT.
+ *
+ * Function returns
+ *  pdu : The command was queued successfully. The callback will be invoked once
+ *        the command completes.
+ * NULL : An error occured when trying to queue the command.
+ *        The callback will not be invoked.
+ *
+ * When the callback is invoked, status indicates the result:
+ * RPC_STATUS_SUCCESS : We got a successful response from the server.
+ *                      data is a 'pmap4_stat_byvers' pointer.
+ * RPC_STATUS_ERROR   : The command failed with an error.
+ *                      data is the error string.
+ * RPC_STATUS_CANCEL  : The command was cancelled.
+ *                      data is NULL.
+ */
+EXTERN struct rpc_pdu *
+rpc_pmap4_getstat_task(struct rpc_context *rpc, rpc_cb cb, void *private_data);
+
+
+/*
  * MOUNT v3 FUNCTIONS
  */
 EXTERN char *mountstat3_to_str(int stat);

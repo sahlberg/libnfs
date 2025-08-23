@@ -409,3 +409,297 @@ rpc_pmap3_taddr2uaddr_task(struct rpc_context *rpc, struct pmap3_netbuf *nb, rpc
 
 	return pdu;
 }
+
+/*
+ * PORTMAP v4
+ */
+struct rpc_pdu *
+rpc_pmap4_null_task(struct rpc_context *rpc, rpc_cb cb, void *private_data)
+{
+	struct rpc_pdu *pdu;
+
+	pdu = rpc_allocate_pdu(rpc, PMAP_PROGRAM, PMAP_V4, PMAP4_NULL, cb, private_data, (zdrproc_t)zdr_void, 0);
+	if (pdu == NULL) {
+		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu for PORTMAP4/NULL call");
+		return NULL;
+	}
+
+	if (rpc_queue_pdu(rpc, pdu) != 0) {
+		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for PORTMAP4/NULL call");
+		return NULL;
+	}
+
+	return pdu;
+}
+
+struct rpc_pdu *
+rpc_pmap4_set_task(struct rpc_context *rpc, struct pmap4_mapping *map, rpc_cb cb, void *private_data)
+{
+	struct rpc_pdu *pdu;
+
+	pdu = rpc_allocate_pdu(rpc, PMAP_PROGRAM, PMAP_V4, PMAP4_SET, cb, private_data, (zdrproc_t)zdr_int, sizeof(uint32_t));
+	if (pdu == NULL) {
+		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu for PORTMAP4/SET call");
+		return NULL;
+	}
+
+	if (zdr_pmap4_mapping(&pdu->zdr, map) == 0) {
+		rpc_set_error(rpc, "ZDR error: Failed to encode data for PORTMAP4/SET call");
+		rpc_free_pdu(rpc, pdu);
+		return NULL;
+	}
+
+	if (rpc_queue_pdu(rpc, pdu) != 0) {
+		rpc_set_error(rpc, "Failed to queue PORTMAP4/SET pdu");
+		return NULL;
+	}
+
+	return pdu;
+}
+
+struct rpc_pdu *
+rpc_pmap4_unset_task(struct rpc_context *rpc, struct pmap4_mapping *map, rpc_cb cb, void *private_data)
+{
+	struct rpc_pdu *pdu;
+
+	pdu = rpc_allocate_pdu(rpc, PMAP_PROGRAM, PMAP_V4, PMAP3_UNSET, cb, private_data, (zdrproc_t)zdr_int, sizeof(uint32_t));
+	if (pdu == NULL) {
+		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu for PORTMAP4/UNSET call");
+		return NULL;
+	}
+
+	if (zdr_pmap4_mapping(&pdu->zdr, map) == 0) {
+		rpc_set_error(rpc, "ZDR error: Failed to encode data for PORTMAP4/UNSET call");
+		rpc_free_pdu(rpc, pdu);
+		return NULL;
+	}
+
+	if (rpc_queue_pdu(rpc, pdu) != 0) {
+		rpc_set_error(rpc, "Failed to queue PORTMAP4/UNSET pdu");
+		return NULL;
+	}
+
+	return pdu;
+}
+
+struct rpc_pdu *
+rpc_pmap4_getaddr_task(struct rpc_context *rpc, struct pmap4_mapping *map, rpc_cb cb, void *private_data)
+{
+	struct rpc_pdu *pdu;
+
+	pdu = rpc_allocate_pdu(rpc, PMAP_PROGRAM, PMAP_V4, PMAP4_GETADDR, cb, private_data, (zdrproc_t)zdr_pmap4_string_result, sizeof(pmap4_string_result));
+	if (pdu == NULL) {
+		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu for PORTMAP4/GETADDR call");
+		return NULL;
+	}
+
+	if (zdr_pmap4_mapping(&pdu->zdr, map) == 0) {
+		rpc_set_error(rpc, "ZDR error: Failed to encode data for PORTMAP4/GETADDR call");
+		rpc_free_pdu(rpc, pdu);
+		return NULL;
+	}
+
+	if (rpc_queue_pdu(rpc, pdu) != 0) {
+		rpc_set_error(rpc, "Failed to queue PORTMAP4/GETADDR pdu");
+		return NULL;
+	}
+
+	return pdu;
+}
+
+struct rpc_pdu *
+rpc_pmap4_dump_task(struct rpc_context *rpc, rpc_cb cb, void *private_data)
+{
+	struct rpc_pdu *pdu;
+
+	pdu = rpc_allocate_pdu(rpc, PMAP_PROGRAM, PMAP_V4, PMAP4_DUMP, cb, private_data, (zdrproc_t)zdr_pmap4_dump_result, sizeof(pmap4_dump_result));
+	if (pdu == NULL) {
+		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu for PORTMAP4/DUMP call");
+		return NULL;
+	}
+
+	if (rpc_queue_pdu(rpc, pdu) != 0) {
+		rpc_set_error(rpc, "Failed to queue PORTMAP4/DUMP pdu");
+		return NULL;
+	}
+
+	return pdu;
+}
+
+struct rpc_pdu *
+rpc_pmap4_gettime_task(struct rpc_context *rpc, rpc_cb cb, void *private_data)
+{
+	struct rpc_pdu *pdu;
+
+	pdu = rpc_allocate_pdu(rpc, PMAP_PROGRAM, PMAP_V4, PMAP4_GETTIME, cb, private_data, (zdrproc_t)zdr_int, sizeof(uint32_t));
+	if (pdu == NULL) {
+		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu for PORTMAP4/GETTIME call");
+		return NULL;
+	}
+
+	if (rpc_queue_pdu(rpc, pdu) != 0) {
+		rpc_set_error(rpc, "Failed to queue PORTMAP4/GETTIME pdu");
+		return NULL;
+	}
+
+	return pdu;
+}
+
+struct rpc_pdu *
+rpc_pmap4_bcast_task(struct rpc_context *rpc, int program, int version, int procedure, char *data, int datalen, rpc_cb cb, void *private_data)
+{
+	struct rpc_pdu *pdu;
+	struct pmap4_bcast_args ca;
+
+	pdu = rpc_allocate_pdu(rpc, PMAP_PROGRAM, PMAP_V4, PMAP4_BCAST, cb, private_data, (zdrproc_t)zdr_pmap4_bcast_result, sizeof(pmap4_bcast_result));
+	if (pdu == NULL) {
+		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu for PORTMAP4/BCAST call");
+		return NULL;
+	}
+
+	ca.prog = program;
+	ca.vers = version;
+	ca.proc = procedure;
+	ca.args.args_len = datalen;
+	ca.args.args_val = data;
+
+	if (zdr_pmap4_bcast_args(&pdu->zdr, &ca) == 0) {
+		rpc_set_error(rpc, "ZDR error: Failed to encode data for PORTMAP4/BCAST call");
+		rpc_free_pdu(rpc, pdu);
+		return NULL;
+	}
+
+	if (rpc_queue_pdu(rpc, pdu) != 0) {
+		rpc_set_error(rpc, "Failed to queue PORTMAP4/BCAST pdu: %s", rpc_get_error(rpc));
+		return NULL;
+	}
+
+	return pdu;
+}
+
+struct rpc_pdu *
+rpc_pmap4_uaddr2taddr_task(struct rpc_context *rpc, char *uaddr, rpc_cb cb, void *private_data)
+{
+	struct rpc_pdu *pdu;
+
+	pdu = rpc_allocate_pdu(rpc, PMAP_PROGRAM, PMAP_V4, PMAP4_UADDR2TADDR, cb, private_data, (zdrproc_t)zdr_pmap4_netbuf, sizeof(pmap4_netbuf));
+	if (pdu == NULL) {
+		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu for PORTMAP4/UADDR2TADDR call");
+		return NULL;
+	}
+
+	if (zdr_string(&pdu->zdr, &uaddr, 255) == 0) {
+		rpc_set_error(rpc, "ZDR error: Failed to encode data for PORTMAP4/UADDR2TADDR call");
+		rpc_free_pdu(rpc, pdu);
+		return NULL;
+	}
+
+	if (rpc_queue_pdu(rpc, pdu) != 0) {
+		rpc_set_error(rpc, "Failed to queue PORTMAP4/UADDR2TADDR pdu: %s", rpc_get_error(rpc));
+		return NULL;
+	}
+
+	return pdu;
+}
+
+struct rpc_pdu *
+rpc_pmap4_taddr2uaddr_task(struct rpc_context *rpc, struct pmap4_netbuf *nb, rpc_cb cb, void *private_data)
+{
+	struct rpc_pdu *pdu;
+
+	pdu = rpc_allocate_pdu(rpc, PMAP_PROGRAM, PMAP_V4, PMAP4_TADDR2UADDR, cb, private_data, (zdrproc_t)zdr_pmap4_string_result, sizeof(pmap4_string_result));
+	if (pdu == NULL) {
+		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu for PORTMAP4/TADDR2UADDR call");
+		return NULL;
+	}
+
+	if (zdr_pmap4_netbuf(&pdu->zdr, nb) == 0) {
+		rpc_set_error(rpc, "ZDR error: Failed to encode data for PORTMAP4/TADDR2UADDR call");
+		rpc_free_pdu(rpc, pdu);
+		return NULL;
+	}
+
+	if (rpc_queue_pdu(rpc, pdu) != 0) {
+		rpc_set_error(rpc, "Failed to queue PORTMAP4/TADDR2UADDR pdu: %s", rpc_get_error(rpc));
+		return NULL;
+	}
+
+	return pdu;
+}
+
+struct rpc_pdu *
+rpc_pmap4_getversaddr_task(struct rpc_context *rpc, struct pmap4_mapping *map, rpc_cb cb, void *private_data)
+{
+	struct rpc_pdu *pdu;
+
+	pdu = rpc_allocate_pdu(rpc, PMAP_PROGRAM, PMAP_V4, PMAP4_GETVERSADDR, cb, private_data, (zdrproc_t)zdr_pmap4_string_result, sizeof(pmap4_string_result));
+	if (pdu == NULL) {
+		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu for PORTMAP4/GETVERSADDR call");
+		return NULL;
+	}
+
+	if (zdr_pmap4_mapping(&pdu->zdr, map) == 0) {
+		rpc_set_error(rpc, "ZDR error: Failed to encode data for PORTMAP4/GETVERSADDR call");
+		rpc_free_pdu(rpc, pdu);
+		return NULL;
+	}
+
+	if (rpc_queue_pdu(rpc, pdu) != 0) {
+		rpc_set_error(rpc, "Failed to queue PORTMAP4/GETVERSADDR pdu");
+		return NULL;
+	}
+
+	return pdu;
+}
+
+struct rpc_pdu *
+rpc_pmap4_indirect_task(struct rpc_context *rpc, int program, int version, int procedure, char *data, int datalen, rpc_cb cb, void *private_data)
+{
+	struct rpc_pdu *pdu;
+	struct pmap4_indirect_args ca;
+
+	pdu = rpc_allocate_pdu(rpc, PMAP_PROGRAM, PMAP_V4, PMAP4_INDIRECT, cb, private_data, (zdrproc_t)zdr_pmap4_indirect_result, sizeof(pmap4_indirect_result));
+	if (pdu == NULL) {
+		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu for PORTMAP4/INDIRECT call");
+		return NULL;
+	}
+
+	ca.prog = program;
+	ca.vers = version;
+	ca.proc = procedure;
+	ca.args.args_len = datalen;
+	ca.args.args_val = data;
+
+	if (zdr_pmap4_indirect_args(&pdu->zdr, &ca) == 0) {
+		rpc_set_error(rpc, "ZDR error: Failed to encode data for PORTMAP4/INDIRECT call");
+		rpc_free_pdu(rpc, pdu);
+		return NULL;
+	}
+
+	if (rpc_queue_pdu(rpc, pdu) != 0) {
+		rpc_set_error(rpc, "Failed to queue PORTMAP4/INDIRECT pdu: %s", rpc_get_error(rpc));
+		return NULL;
+	}
+
+	return pdu;
+}
+
+struct rpc_pdu *
+rpc_pmap4_getstat_task(struct rpc_context *rpc, rpc_cb cb, void *private_data)
+{
+	struct rpc_pdu *pdu;
+
+	pdu = rpc_allocate_pdu(rpc, PMAP_PROGRAM, PMAP_V4, PMAP4_GETSTAT, cb, private_data, (zdrproc_t)zdr_pmap4_stat_byvers, sizeof(pmap4_stat_byvers));
+	if (pdu == NULL) {
+		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu for PORTMAP4/GETSTAT call");
+		return NULL;
+	}
+
+	if (rpc_queue_pdu(rpc, pdu) != 0) {
+		rpc_set_error(rpc, "Failed to queue PORTMAP4/GETSTAT pdu");
+		return NULL;
+	}
+
+	return pdu;
+}
+
