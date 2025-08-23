@@ -68,43 +68,27 @@ WSADATA wsaData;
 
 #include <event2/event.h>
 
-struct event_base *base;
-
-struct server {
+struct libnfs_server {
         struct rpc_context *rpc;
         struct event *read_event;
         struct event *write_event;
 };
 
-/* Socket where we listen for incomming rpc connections */
-struct event *listen_event;
-int listen_socket = -1;
-
-/* Socket used for UDP server */
-struct server udp_server;
-int udp_socket = -1;
-
-struct mapping {
-        struct mapping *next;
-        u_int prog;
-        u_int vers;
-        int port;
-        char *netid;
-        char *addr;
-        char *owner;
+struct libnfs_servers {
+        struct event_base *base;
+        int listen_s;
+        struct libnfs_server udp_server;
+        struct libnfs_server_procs *server_procs;
 };
-struct mapping *map;
 
+struct libnfs_server_procs {
+        uint32_t program;
+        uint32_t version;
+        struct service_proc *procs;
+        int num_procs;
+};
 
-void free_map_item(struct mapping *item)
-{
-        free(item->netid);
-        free(item->addr);
-        free(item->owner);
-        free(item);
-}
-
-static void free_server(struct server *server)
+static void free_server(struct libnfs_server *server)
 {
         if (server->rpc) {
                 rpc_disconnect(server->rpc, NULL);
@@ -143,6 +127,206 @@ static void update_events(struct rpc_context *rpc, struct event *read_event,
                         event_del(write_event);
                 }
         }
+}
+
+/*
+ * This callback is invoked from the event system when an event we are waiting
+ * for has become active.
+ */
+static void libnfs_server_io(evutil_socket_t fd, short events, void *private_data)
+{
+        struct libnfs_server *server = private_data;
+        int revents = 0;
+
+        /*
+         * Translate the libevent read/write flags to the corresponding
+         * flags that libnfs uses.
+         */
+        if (events & EV_READ) {
+                revents |= POLLIN;
+        }
+        if (events & EV_WRITE) {
+                revents |= POLLOUT;
+        }
+
+        /*
+         * Let libnfs process the event.
+         */
+        if (rpc_service(server->rpc, revents) < 0) {
+                free_server(server);
+                return;
+        }
+
+        /*
+         * Update which events we are interested in. It might have changed
+         * for example if we no longer have any data pending to send
+         * we no longer need to wait for the socket to become writeable.
+         */
+        update_events(server->rpc, server->read_event, server->write_event);
+}
+
+
+
+/*
+ * This callback is invoked when we have a client connecting to our TCP
+ * port.
+ */
+static void do_accept(evutil_socket_t s, short events, void *private_data)
+{
+        struct libnfs_servers *servers = private_data;
+        struct sockaddr_storage ss;
+        socklen_t len = sizeof(ss);
+        struct libnfs_server *server;
+        int i, fd;
+
+        server = malloc(sizeof(struct libnfs_server));
+        if (server == NULL) {
+                return;
+        }
+        memset(server, 0, sizeof(*server));
+
+        if ((fd = accept(s, (struct sockaddr *)&ss, &len)) < 0) {
+                free_server(server);
+                return;
+        }
+        evutil_make_socket_nonblocking(fd);
+
+        server->rpc = rpc_init_server_context(fd);
+        if (server->rpc == NULL) {
+                close(fd);
+                free_server(server);
+                return;
+        }
+
+        for (i = 0; servers->server_procs[i].program; i++) {
+                rpc_register_service(server->rpc,
+                                     servers->server_procs[i].program,
+                                     servers->server_procs[i].version,
+                                     servers->server_procs[i].procs,
+                                     servers->server_procs[i].num_procs);
+        }
+
+        /*
+         * Create events for read and write for this new server instance.
+         */
+        server->read_event = event_new(servers->base, fd, EV_READ|EV_PERSIST,
+                                       libnfs_server_io, server);
+        server->write_event = event_new(servers->base, fd, EV_WRITE|EV_PERSIST,
+                                        libnfs_server_io, server);
+        update_events(server->rpc, server->read_event, server->write_event);
+}
+
+struct libnfs_servers *libnfs_create_server(struct event_base *base,
+                                            int port,
+                                            struct libnfs_server_procs *server_procs)
+{
+        struct sockaddr_in in;
+        struct event *listen_event;
+        struct libnfs_servers *servers;
+        int one = 1, i, s;
+
+        in.sin_family = AF_INET;
+        in.sin_port = htons(port);
+        in.sin_addr.s_addr = htonl (INADDR_ANY);
+
+        servers = calloc(1, sizeof(struct libnfs_servers));
+        if (servers == NULL) {
+                return NULL;
+        }
+
+        servers->listen_s = -1;
+        servers->base = base;
+        servers->server_procs = server_procs;
+
+        /*
+         * UDP: Create and bind to the socket we want to use for the UDP server.
+         */
+        s = socket(AF_INET, SOCK_DGRAM, 0);
+        if (s == -1) {
+                printf("Failed to create udp socket\n");
+                return NULL;
+        }
+        evutil_make_socket_nonblocking(s);
+        setsockopt(s, SOL_SOCKET, SO_REUSEADDR, &one, sizeof(one));
+
+        if (bind(s, (struct sockaddr *)&in, sizeof(in)) < 0) {
+                printf("Failed to bind udp socket\n");
+                return NULL;
+        }
+
+        /*
+         * UDP: Create a libnfs server context for this socket.
+         */
+        servers->udp_server.rpc = rpc_init_server_context(s);
+        
+        for (i = 0; servers->server_procs[i].program; i++) {
+                rpc_register_service(servers->udp_server.rpc,
+                                     servers->server_procs[i].program,
+                                     servers->server_procs[i].version,
+                                     servers->server_procs[i].procs,
+                                     servers->server_procs[i].num_procs);
+        }
+
+        servers->udp_server.read_event = event_new(servers->base,
+                                                   s,
+                                                   EV_READ|EV_PERSIST,
+                                                   libnfs_server_io, &servers->udp_server);
+        event_add(servers->udp_server.read_event, NULL);
+
+
+
+        /*
+         * TCP: Set up a listening socket for incoming TCP connections.
+         * Once clients connect, inside do_accept() we will create a proper
+         * libnfs server context for each connection.
+         */
+        servers->listen_s = socket(AF_INET, SOCK_STREAM, 0);
+        if (servers->listen_s == -1) {
+                printf("Failed to create listening socket\n");
+                return NULL;
+        }
+        evutil_make_socket_nonblocking(s);
+        setsockopt(servers->listen_s, SOL_SOCKET, SO_REUSEADDR, &one, sizeof(one));
+
+        if (bind(servers->listen_s, (struct sockaddr *)&in, sizeof(in)) < 0) {
+                printf("Failed to bind listening socket\n");
+                return NULL;
+        }
+        if (listen(servers->listen_s, 16) < 0) {
+                printf("failed to listen to socket\n");
+                return NULL;
+        }
+        listen_event = event_new(servers->base,
+                                 servers->listen_s,
+                                 EV_READ|EV_PERSIST,
+                                 do_accept, servers);
+        event_add(listen_event, NULL);
+        
+        return servers;
+}
+
+
+
+
+
+struct mapping {
+        struct mapping *next;
+        u_int prog;
+        u_int vers;
+        int port;
+        char *netid;
+        char *addr;
+        char *owner;
+};
+struct mapping *map;
+
+
+void free_map_item(struct mapping *item)
+{
+        free(item->netid);
+        free(item->addr);
+        free(item->owner);
+        free(item);
 }
 
 /*
@@ -497,97 +681,19 @@ struct service_proc pmap3_pt[] = {
         //{PMAP3_TADDR2UADDR, pmap3_...},
 };
 
-/*
- * This callback is invoked from the event system when an event we are waiting
- * for has become active.
- */
-static void server_io(evutil_socket_t fd, short events, void *private_data)
-{
-        struct server *server = private_data;
-        int revents = 0;
 
-        /*
-         * Translate the libevent read/write flags to the corresponding
-         * flags that libnfs uses.
-         */
-        if (events & EV_READ) {
-                revents |= POLLIN;
-        }
-        if (events & EV_WRITE) {
-                revents |= POLLOUT;
-        }
-
-        /*
-         * Let libnfs process the event.
-         */
-        if (rpc_service(server->rpc, revents) < 0) {
-                free_server(server);
-                return;
-        }
-
-        /*
-         * Update which events we are interested in. It might have changed
-         * for example if we no longer have any data pending to send
-         * we no longer need to wait for the socket to become writeable.
-         */
-        update_events(server->rpc, server->read_event, server->write_event);
-}
-
-
-/*
- * This callback is invoked when we have a client connecting to our TCP
- * port.
- */
-static void do_accept(evutil_socket_t s, short events, void *private_data)
-{
-        struct sockaddr_storage ss;
-        socklen_t len = sizeof(ss);
-        struct server *server;
-        int fd;
-        
-        server = malloc(sizeof(struct server));
-        if (server == NULL) {
-                return;
-        }
-        memset(server, 0, sizeof(*server));
-
-        if ((fd = accept(s, (struct sockaddr *)&ss, &len)) < 0) {
-                free_server(server);
-                return;
-        }
-        evutil_make_socket_nonblocking(fd);
-
-        server->rpc = rpc_init_server_context(fd);
-        if (server->rpc == NULL) {
-                close(fd);
-                free_server(server);
-                return;
-        }
-
-        /*
-         * Register both v2 and v3 of the protocol to the new
-         * server context.
-         */
-        rpc_register_service(server->rpc, PMAP_PROGRAM, PMAP_V2,
-                             pmap2_pt, sizeof(pmap2_pt) / sizeof(pmap2_pt[0]));
-        rpc_register_service(server->rpc, PMAP_PROGRAM, PMAP_V3,
-                             pmap3_pt, sizeof(pmap3_pt) / sizeof(pmap3_pt[0]));
-
-        /*
-         * Create events for read and write for this new server instance.
-         */
-        server->read_event = event_new(base, fd, EV_READ|EV_PERSIST,
-                                       server_io, server);
-        server->write_event = event_new(base, fd, EV_WRITE|EV_PERSIST,
-                                        server_io, server);
-        update_events(server->rpc, server->read_event, server->write_event);
-}
 
 int main(int argc, char *argv[])
 {
-        struct sockaddr_in in;
-        int one = 1;
+        struct event_base *base;
+        struct libnfs_servers *servers;
 
+        struct libnfs_server_procs server_procs[] = {
+                { PMAP_PROGRAM, PMAP_V2, pmap2_pt, sizeof(pmap2_pt) / sizeof(pmap2_pt[0]) },
+                { PMAP_PROGRAM, PMAP_V3, pmap3_pt, sizeof(pmap3_pt) / sizeof(pmap3_pt[0]) },
+                { 0, 0, 0, 0}
+        };
+        
 #ifdef WIN32
         if (WSAStartup(MAKEWORD(2,2), &wsaData) != 0) {
                 printf("Failed to start Winsock2\n");
@@ -598,21 +704,6 @@ int main(int argc, char *argv[])
 #ifdef AROS
         aros_init_socket();
 #endif
-
-        base = event_base_new();
-        if (base == NULL) {
-                printf("Failed create event context\n");
-                exit(10);
-        }
-
-        
-        /*
-         * Portmapper listens on port 111, any address.
-         * Just initialize it for now as we will need it several times below.
-         */
-        in.sin_family = AF_INET;
-        in.sin_port = htons(111);
-        in.sin_addr.s_addr = htonl (INADDR_ANY);
 
 
         /* This is the portmapper protocol itself which we obviously
@@ -628,71 +719,13 @@ int main(int argc, char *argv[])
                       strdup("portmapper-service"));
 
         
-        /*
-         * TCP: Set up a listening socket for incoming TCP connections.
-         * Once clients connect, inside do_accept() we will create a proper
-         * libnfs server context for each connection.
-         */
-        listen_socket = socket(AF_INET, SOCK_STREAM, 0);
-        if (listen_socket == -1) {
-                printf("Failed to create listening socket\n");
-                exit(10);
-        }
-        evutil_make_socket_nonblocking(listen_socket);
-        setsockopt(listen_socket, SOL_SOCKET, SO_REUSEADDR, &one, sizeof(one));
-
-        if (bind(listen_socket, (struct sockaddr *)&in, sizeof(in)) < 0) {
-                printf("Failed to bind listening socket\n");
-                exit(10);
-        }
-        if (listen(listen_socket, 16) < 0) {
-                printf("failed to listen to socket\n");
-                exit(10);
-        }
-        listen_event = event_new(base,
-                                 listen_socket,
-                                 EV_READ|EV_PERSIST,
-                                 do_accept, NULL);
-        event_add(listen_event, NULL);
-
-
-        /*
-         * UDP: Create and bind to the socket we want to use for the UDP server.
-         */
-        udp_socket = socket(AF_INET, SOCK_DGRAM, 0);
-        if (udp_socket == -1) {
-                printf("Failed to create udp socket\n");
-                exit(10);
-        }
-        evutil_make_socket_nonblocking(udp_socket);
-        setsockopt(udp_socket, SOL_SOCKET, SO_REUSEADDR, &one, sizeof(one));
-
-        if (bind(udp_socket, (struct sockaddr *)&in, sizeof(in)) < 0) {
-                printf("Failed to bind udp socket\n");
+        base = event_base_new();
+        if (base == NULL) {
+                printf("Failed create event context\n");
                 exit(10);
         }
 
-        /*
-         * UDP: Create a libnfs server context for this socket.
-         */
-        memset(&udp_server, 0, sizeof(udp_server));
-        udp_server.rpc = rpc_init_server_context(udp_socket);
-        
-        /*
-         * UDP: Register both v2 and v3 of the protocol to the
-         * UDP server context.
-         */
-        rpc_register_service(udp_server.rpc, PMAP_PROGRAM, PMAP_V2,
-                             pmap2_pt, sizeof(pmap2_pt) / sizeof(pmap2_pt[0]));
-        rpc_register_service(udp_server.rpc, PMAP_PROGRAM, PMAP_V3,
-                             pmap3_pt, sizeof(pmap3_pt) / sizeof(pmap3_pt[0]));
-
-        udp_server.read_event = event_new(base,
-                                          udp_socket,
-                                          EV_READ|EV_PERSIST,
-                                          server_io, &udp_server);
-        event_add(udp_server.read_event, NULL);
-
+        servers = libnfs_create_server(base, 111, &server_procs[0]);
         
         /*
          * Everything is now set up. Start the event loop.
