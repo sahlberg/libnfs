@@ -86,9 +86,9 @@ struct pmap3_call_args {
        opaque args<>;
 };
 
-struct pmap3_call_result {
-	unsigned int port;
-	opaque res<>;
+struct rpcb_rmtcallres {
+       string addr<>;
+       opaque results<>;
 };
 
 struct pmap3_netbuf {
@@ -128,11 +128,6 @@ struct pmap4_bcast_args {
        opaque args<>;
 };
 
-struct pmap4_bcast_result {
-	unsigned int port;
-	opaque res<>;
-};
-
 struct pmap4_netbuf {
 	unsigned int maxlen;
 	/* This pretty much contains a sockaddr_storage.
@@ -147,11 +142,6 @@ struct pmap4_indirect_args {
        unsigned int vers;
        unsigned int proc;
        opaque args<>;
-};
-
-struct pmap4_indirect_result {
-	unsigned int port;
-	opaque res<>;
 };
 
 const RPCBSTAT_HIGHPROC = 13; /* # of procs in rpcbind V4 plus one */
@@ -229,7 +219,8 @@ typedef pmap3_mapping       PMAP3GETADDRargs;
 typedef pmap3_string_result PMAP3GETADDRres;
 typedef pmap3_dump_result   PMAP3DUMPres;
 typedef pmap3_call_args     PMAP3CALLITargs;
-typedef pmap3_call_result   PMAP3CALLITres;
+typedef rpcb_rmtcallres     PMAP3CALLITres;
+typedef pmap3_string_result PMAP3UADDR2TADDRargs;
 typedef pmap3_netbuf        PMAP3UADDR2TADDRres;
 typedef pmap3_netbuf        PMAP3TADDR2UADDRargs;
 typedef pmap3_string_result PMAP3TADDR2UADDRres;
@@ -240,14 +231,15 @@ typedef pmap4_mapping         PMAP4GETADDRargs;
 typedef pmap4_string_result   PMAP4GETADDRres;
 typedef pmap4_dump_result     PMAP4DUMPres;
 typedef pmap4_bcast_args      PMAP4BCASTargs;
-typedef pmap4_bcast_result    PMAP4BCASTres;
+typedef rpcb_rmtcallres       PMAP4BCASTres;
+typedef pmap3_string_result   PMAP4UADDR2TADDRargs;
 typedef pmap4_netbuf          PMAP4UADDR2TADDRres;
 typedef pmap4_netbuf          PMAP4TADDR2UADDRargs;
 typedef pmap4_string_result   PMAP4TADDR2UADDRres;
 typedef pmap4_mapping         PMAP4GETVERSADDRargs;
 typedef pmap4_string_result   PMAP4GETVERSADDRres;
 typedef pmap4_indirect_args   PMAP4INDIRECTargs;
-typedef pmap4_indirect_result PMAP4INDIRECTres;
+typedef rpcb_rmtcallres       PMAP4INDIRECTres;
 typedef pmap4_stat_byvers     PMAP4GETSTATres;
 typedef pmap4_mapping         PMAP4GETADDRLISTargs;
 typedef pmap4_entry_list_ptr  PMAP4GETADDRLISTres;
@@ -296,7 +288,7 @@ program PMAP_PROGRAM {
 		PMAP3_GETTIME(void)           = 6;
 
 		PMAP3UADDR2TADDRres
-		PMAP3_UADDR2TADDR(string)     = 7;
+		PMAP3_UADDR2TADDR(PMAP3UADDR2TADDRargs) = 7;
 
 		PMAP3TADDR2UADDRres
 		PMAP3_TADDR2UADDR(PMAP3TADDR2UADDRargs) = 8;
@@ -324,7 +316,7 @@ program PMAP_PROGRAM {
 		PMAP4_GETTIME(void)           = 6;
 
 		PMAP4UADDR2TADDRres
-		PMAP4_UADDR2TADDR(string)     = 7;
+		PMAP4_UADDR2TADDR(PMAP4UADDR2TADDRargs) = 7;
 
 		PMAP4TADDR2UADDRres
 		PMAP4_TADDR2UADDR(PMAP4TADDR2UADDRargs) = 8;

@@ -91,6 +91,10 @@
 extern "C" {
 #endif
 
+#define container_of(ptr, type, member) ({                      \
+        const typeof( ((type *)0)->member ) *__mptr = (ptr);    \
+        (type *)((char *)__mptr - offsetof(type,member));})
+        
 #ifndef MIN
 #define MIN(a, b) (((a) < (b)) ? (a) : (b))
 #endif
@@ -303,6 +307,9 @@ struct rpc_context {
          */
 	struct rpc_queue outqueue;
 	struct sockaddr_storage udp_src;
+#ifdef __linux__        
+	struct sockaddr_storage udp_dst; /* Which ip we received a UDP packet on */
+#endif
         uint32_t num_hashes;
         /*
          * Queue of transmitted-and-awaiting-response PDUs.
@@ -641,17 +648,6 @@ void nfs_set_error_locked(struct nfs_context *nfs, char *error_string, ...)
 const char *nfs_get_server(struct nfs_context *nfs);
 const char *nfs_get_export(struct nfs_context *nfs);
 
-/* we dont want to expose UDP to normal applications/users  this is private to libnfs to use exclusively for broadcast RPC */
-int rpc_bind_udp(struct rpc_context *rpc, char *addr, int port);
-int rpc_set_udp_destination(struct rpc_context *rpc, char *addr, int port, int is_broadcast);
-struct rpc_context *rpc_init_udp_context(void);
-struct sockaddr *rpc_get_recv_sockaddr(struct rpc_context *rpc);
-
-void rpc_set_resiliency(struct rpc_context *rpc,
-			int num_tcp_reconnect,
-			int timeout,
-			int retrans);
-
 void rpc_set_interface(struct rpc_context *rpc, const char *ifname);
 
 void rpc_set_tcp_syncnt(struct rpc_context *rpc, int v);
@@ -663,7 +659,6 @@ void rpc_set_timeout(struct rpc_context *rpc, int timeout);
 int rpc_get_timeout(struct rpc_context *rpc);
 int rpc_add_fragment(struct rpc_context *rpc, char *data, uint32_t size);
 void rpc_free_all_fragments(struct rpc_context *rpc);
-int rpc_is_udp_socket(struct rpc_context *rpc);
 uint64_t rpc_current_time(void);
 uint64_t rpc_current_time_us(void);
 

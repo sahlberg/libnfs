@@ -291,13 +291,13 @@ zdr_pmap3_call_args (ZDR *zdrs, pmap3_call_args *objp)
 }
 
 uint32_t
-zdr_pmap3_call_result (ZDR *zdrs, pmap3_call_result *objp)
+zdr_rpcb_rmtcallres (ZDR *zdrs, rpcb_rmtcallres *objp)
 {
 	
 
-	 if (!zdr_u_int (zdrs, &objp->port))
+	 if (!zdr_string (zdrs, &objp->addr, ~0))
 		 return FALSE;
-	 if (!zdr_bytes (zdrs, (char **)&objp->res.res_val, (uint32_t *) &objp->res.res_len, ~0))
+	 if (!zdr_bytes (zdrs, (char **)&objp->results.results_val, (uint32_t *) &objp->results.results_len, ~0))
 		 return FALSE;
 	return TRUE;
 }
@@ -422,18 +422,6 @@ zdr_pmap4_bcast_args (ZDR *zdrs, pmap4_bcast_args *objp)
 }
 
 uint32_t
-zdr_pmap4_bcast_result (ZDR *zdrs, pmap4_bcast_result *objp)
-{
-	
-
-	 if (!zdr_u_int (zdrs, &objp->port))
-		 return FALSE;
-	 if (!zdr_bytes (zdrs, (char **)&objp->res.res_val, (uint32_t *) &objp->res.res_len, ~0))
-		 return FALSE;
-	return TRUE;
-}
-
-uint32_t
 zdr_pmap4_netbuf (ZDR *zdrs, pmap4_netbuf *objp)
 {
 	
@@ -498,18 +486,6 @@ zdr_pmap4_indirect_args (ZDR *zdrs, pmap4_indirect_args *objp)
 	 if (!zdr_u_int (zdrs, &objp->proc))
 		 return FALSE;
 	 if (!zdr_bytes (zdrs, (char **)&objp->args.args_val, (uint32_t *) &objp->args.args_len, ~0))
-		 return FALSE;
-	return TRUE;
-}
-
-uint32_t
-zdr_pmap4_indirect_result (ZDR *zdrs, pmap4_indirect_result *objp)
-{
-	
-
-	 if (!zdr_u_int (zdrs, &objp->port))
-		 return FALSE;
-	 if (!zdr_bytes (zdrs, (char **)&objp->res.res_val, (uint32_t *) &objp->res.res_len, ~0))
 		 return FALSE;
 	return TRUE;
 }
@@ -897,7 +873,17 @@ zdr_PMAP3CALLITres (ZDR *zdrs, PMAP3CALLITres *objp)
 {
 	
 
-	 if (!zdr_pmap3_call_result (zdrs, objp))
+	 if (!zdr_rpcb_rmtcallres (zdrs, objp))
+		 return FALSE;
+	return TRUE;
+}
+
+uint32_t
+zdr_PMAP3UADDR2TADDRargs (ZDR *zdrs, PMAP3UADDR2TADDRargs *objp)
+{
+	
+
+	 if (!zdr_pmap3_string_result (zdrs, objp))
 		 return FALSE;
 	return TRUE;
 }
@@ -997,7 +983,17 @@ zdr_PMAP4BCASTres (ZDR *zdrs, PMAP4BCASTres *objp)
 {
 	
 
-	 if (!zdr_pmap4_bcast_result (zdrs, objp))
+	 if (!zdr_rpcb_rmtcallres (zdrs, objp))
+		 return FALSE;
+	return TRUE;
+}
+
+uint32_t
+zdr_PMAP4UADDR2TADDRargs (ZDR *zdrs, PMAP4UADDR2TADDRargs *objp)
+{
+	
+
+	 if (!zdr_pmap3_string_result (zdrs, objp))
 		 return FALSE;
 	return TRUE;
 }
@@ -1067,7 +1063,7 @@ zdr_PMAP4INDIRECTres (ZDR *zdrs, PMAP4INDIRECTres *objp)
 {
 	
 
-	 if (!zdr_pmap4_indirect_result (zdrs, objp))
+	 if (!zdr_rpcb_rmtcallres (zdrs, objp))
 		 return FALSE;
 	return TRUE;
 }

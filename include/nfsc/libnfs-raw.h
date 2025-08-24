@@ -293,6 +293,14 @@ EXTERN struct rpc_context *rpc_init_server_context(int s);
  *  ...
  *
  *
+ * The call argument is only valid for the duration of the callback.
+ * If your application needs to call rpc_send_reply() not from the callback
+ * but from a different context at a later time you will need to make a temporary
+ * copy of the call structure using rpc_copy_deferred_call()/rpc_free_deferred_call().
+ * See for example examples/rpcbind.c where during the callit processing
+ * we create a copy so that we can send the reply at a later point in time
+ * when the rpc created in callit has completed.
+ *
  * The return value is:
  *  0:  Procedure was completed normally.
  * !0:  An abnormal error has occured. It is unrecoverable and the only
@@ -319,6 +327,12 @@ EXTERN int rpc_register_service(struct rpc_context *rpc, int program,
 EXTERN int rpc_send_reply(struct rpc_context *rpc, struct rpc_msg *call,
                           void *reply, zdrproc_t encode_fn,
                           int alloc_hint);
+
+EXTERN struct rpc_msg *rpc_copy_deferred_call(struct rpc_context *rpc,
+                                              struct rpc_msg *call);
+
+EXTERN void rpc_free_deferred_call(struct rpc_context *rpc,
+                                   struct rpc_msg *call);
 
 /*
  * When an operation failed, this function can extract a detailed error string.

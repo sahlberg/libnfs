@@ -19,6 +19,10 @@
 #include "config.h"
 #endif
 
+#ifdef __linux__
+#define _GNU_SOURCE
+#endif
+
 #ifdef AROS
 #include "aros_compat.h"
 #endif
@@ -116,8 +120,19 @@ create_socket(int domain, int type, int protocol)
 	   close-on-exec flag on all sockets to avoid leaking file
 	   descriptors to child processes */
 	int fd = socket(domain, type|SOCK_CLOEXEC, protocol);
-	if (fd >= 0 || errno != EINVAL)
+	if (fd >= 0 || errno != EINVAL) {
+                if (type == SOCK_DGRAM) {
+                        int opt;
+                        if (domain == AF_INET) {
+                                opt = 1;
+                                setsockopt(fd, IPPROTO_IP, IP_PKTINFO, &opt, sizeof(opt));
+                        } else {
+                                opt = 1;
+                                setsockopt(fd, IPPROTO_IPV6, IPV6_PKTINFO, &opt, sizeof(opt));
+                        }
+                }
 		return fd;
+        }
 #endif
 #endif
 
@@ -570,8 +585,44 @@ rpc_read_from_socket(struct rpc_context *rpc)
                                       "recvfrom");
 			return -1;
 		}
+#ifdef __linux__
+                struct sockaddr_in *sin;
+                struct sockaddr_in6 *sin6;
+                char cmbuf[0x100];
+                struct iovec iov = { buf, MAX_UDP_SIZE };
+                struct msghdr mh = {
+                        .msg_iov = &iov,
+                        .msg_iovlen = 1,
+                        .msg_name = &rpc->udp_src,
+                        .msg_namelen = socklen,
+                        .msg_control = cmbuf,
+                        .msg_controllen = sizeof(cmbuf),
+                };
+                count = recvmsg(rpc->fd, &mh, 0);
+                for (struct cmsghdr *cmsg = CMSG_FIRSTHDR(&mh);
+                     cmsg != NULL;
+                     cmsg = CMSG_NXTHDR(&mh, cmsg)) {
+                        if (cmsg->cmsg_type != IP_PKTINFO) {
+                                continue;
+                        }
+                        switch (cmsg->cmsg_level) {
+                        case IPPROTO_IP:
+                                sin = (struct sockaddr_in *)&rpc->udp_dst;
+                                sin->sin_family = AF_INET;
+                                sin->sin_addr.s_addr = ((struct in_pktinfo *)CMSG_DATA(cmsg))->ipi_addr.s_addr;
+                                break;
+                        case IPPROTO_IPV6:
+                                sin6 = (struct sockaddr_in6 *)&rpc->udp_dst;
+                                sin6->sin6_family = AF_INET6;
+                                memcpy(&sin6->sin6_addr.s6_addr[0], &((struct in6_pktinfo *)CMSG_DATA(cmsg))->ipi6_addr.s6_addr[0], 16);
+                                break;
+                        }
+                        break;
+                }
+#else /* __linux__ */
 		count = recvfrom(rpc->fd, buf, MAX_UDP_SIZE, MSG_DONTWAIT,
                                  (struct sockaddr *)&rpc->udp_src, &socklen);
+#endif /* __linux__ */
 		if (count == -1) {
 			free(buf);
 			if (errno == EINTR || errno == EAGAIN) {
@@ -1890,12 +1941,22 @@ rpc_set_udp_destination(struct rpc_context *rpc, char *addr, int port,
 }
 
 struct sockaddr *
-rpc_get_recv_sockaddr(struct rpc_context *rpc)
+rpc_get_udp_src_sockaddr(struct rpc_context *rpc)
 {
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
 	return (struct sockaddr *)&rpc->udp_src;
 }
+
+#ifdef __linux__
+struct sockaddr *
+rpc_get_udp_dst_sockaddr(struct rpc_context *rpc)
+{
+	assert(rpc->magic == RPC_CONTEXT_MAGIC);
+
+	return (struct sockaddr *)&rpc->udp_dst;
+}
+#endif
 
 int
 rpc_queue_length(struct rpc_context *rpc)

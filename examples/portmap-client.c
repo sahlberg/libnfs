@@ -270,6 +270,26 @@ void pmap3_unset_cb(struct rpc_context *rpc, int status, void *data, void *priva
 	client->is_finished = 1;
 }
 
+void pmap4_unset_cb(struct rpc_context *rpc, int status, void *data, void *private_data)
+{
+	struct client *client = private_data;
+	uint32_t res = *(uint32_t *)data;
+
+	if (status == RPC_STATUS_ERROR) {
+		printf("PORTMAP4/UNSET call failed with \"%s\"\n", (char *)data);
+		exit(10);
+	}
+	if (status != RPC_STATUS_SUCCESS) {
+		printf("PORTMAP4/UNSET call failed, status:%d\n", status);
+		exit(10);
+	}
+
+	printf("PORTMAP4/UNSET:\n");
+	printf("	Res:%d\n", res);
+
+	client->is_finished = 1;
+}
+
 void pmap3_gettime_cb(struct rpc_context *rpc, int status, void *data, void *private_data)
 {
 	struct client *client = private_data;
@@ -410,6 +430,26 @@ void pmap4_getaddrlist_cb(struct rpc_context *rpc, int status, void *data, void 
 	client->is_finished = 1;
 }
 
+void pmap3_taddr2uaddr_cb(struct rpc_context *rpc, int status, void *data, void *private_data)
+{
+	struct client *client = private_data;
+	struct pmap3_string_result *res = (struct pmap3_string_result *)data;
+
+	if (status == RPC_STATUS_ERROR) {
+		printf("PORTMAP3/TADDR2UADDR call failed with \"%s\"\n", (char *)data);
+		exit(10);
+	}
+	if (status != RPC_STATUS_SUCCESS) {
+		printf("PORTMAP3/TADDR2UADDR call failed, status:%d\n", status);
+		exit(10);
+	}
+
+	printf("PORTMAP3/TADDR2UADDR:\n");
+	printf("    %s\n", res->addr);
+
+	client->is_finished = 1;
+}
+
 void pmap3_uaddr2taddr_cb(struct rpc_context *rpc, int status, void *data, void *private_data)
 {
 	struct client *client = private_data;
@@ -439,6 +479,7 @@ void pmap3_uaddr2taddr_cb(struct rpc_context *rpc, int status, void *data, void 
 	printf("\n");
 	printf("        ---\n");
 	ss = (struct sockaddr_storage *)&nb->buf.buf_val[0];
+	memset(host, 0, sizeof(host));
 	getnameinfo((struct sockaddr *)ss, sizeof(struct sockaddr_storage),
 		&host[0], sizeof(host), &port[0], sizeof(port),
 		NI_NUMERICHOST|NI_NUMERICSERV);
@@ -553,28 +594,27 @@ int main(int argc _U_, char *argv[] _U_)
 	int null3 = 0;
 	int set2 = 0;
 	int unset2 = 0;
-	int set3 = 0;
-	int unset3 = 0;
+	int set3 = 0, set4 = 0;
+	int unset3 = 0, unset4 = 0;
 	int getport2 = 0;
-	int getaddr3 = 0;
-	int dump3 = 0;
-	int gettime3 = 0;
+	int getaddr3 = 0, getaddr4 = 0;
+	int dump3 = 0, dump4 = 0;
+	int gettime3 = 0, gettime4 = 0;
 	int u2t3 = 0;
-	int dump4 = 0;
-	int gettime4 = 0;
+	int t2u3 = 0;
 	int getstat4 = 0;
 	int getaddrlist4 = 0;
 	int command_found = 0;
 
 	PMAP2GETPORTargs get2args;
+	PMAP3SETargs set3args;
+	PMAP4SETargs set4args;
+	PMAP3UNSETargs unset3args;
+	PMAP4UNSETargs unset4args;
+	PMAP3GETADDRargs getaddr3args;
+	PMAP4GETADDRargs getaddr4args;
 	int set2prog, set2vers, set2prot, set2port;
 	int unset2prog, unset2vers, unset2prot, unset2port;
-	int set3prog, set3vers;
-	char *set3netid, *set3addr, *set3owner;
-	int unset3prog, unset3vers;
-	char *unset3netid, *unset3addr, *unset3owner;
-	int getaddr3prog, getaddr3vers;
-	char *getaddr3netid, *getaddr3addr, *getaddr3owner;
 	char *u2t3string;
 
 #ifdef WIN32
@@ -627,45 +667,72 @@ int main(int argc _U_, char *argv[] _U_)
 		} else if (!strcmp(argv[i], "dump3")) {
 			dump3 = 1;
 			command_found++;
+		} else if (!strcmp(argv[i], "dump4")) {
+			dump4 = 1;
+			command_found++;
 		} else if (!strcmp(argv[i], "gettime3")) {
 			gettime3 = 1;
+			command_found++;
+		} else if (!strcmp(argv[i], "gettime4")) {
+			gettime4 = 1;
 			command_found++;
 		} else if (!strcmp(argv[i], "u2t3")) {
 			u2t3 = 1;
 			u2t3string = argv[++i];
 			command_found++;
+		} else if (!strcmp(argv[i], "t2u3")) {
+			t2u3 = 1;
+			command_found++;
 		} else if (!strcmp(argv[i], "getaddr3")) {
 			getaddr3 = 1;
-			getaddr3prog = atoi(argv[++i]);
-			getaddr3vers = atoi(argv[++i]);
-			getaddr3netid = argv[++i];
-			getaddr3addr  = argv[++i];
-			getaddr3owner = argv[++i];
+			getaddr3args.prog = atoi(argv[++i]);
+			getaddr3args.vers = atoi(argv[++i]);
+			getaddr3args.netid = argv[++i];
+			getaddr3args.addr  = argv[++i];
+			getaddr3args.owner = argv[++i];
+			command_found++;
+		} else if (!strcmp(argv[i], "getaddr4")) {
+			getaddr4 = 1;
+			getaddr4args.prog = atoi(argv[++i]);
+			getaddr4args.vers = atoi(argv[++i]);
+			getaddr4args.netid = argv[++i];
+			getaddr4args.addr  = argv[++i];
+			getaddr4args.owner = argv[++i];
 			command_found++;
 		} else if (!strcmp(argv[i], "set3")) {
 			set3 = 1;
-			set3prog = atoi(argv[++i]);
-			set3vers = atoi(argv[++i]);
-			set3netid = argv[++i];
-			set3addr  = argv[++i];
-			set3owner = argv[++i];
+			set3args.prog = atoi(argv[++i]);
+			set3args.vers = atoi(argv[++i]);
+			set3args.netid = argv[++i];
+			set3args.addr  = argv[++i];
+			set3args.owner = argv[++i];
 			command_found++;
-		} else if (!strcmp(argv[i], "unset3")) {
-			unset3 = 1;
-			unset3prog = atoi(argv[++i]);
-			unset3vers = atoi(argv[++i]);
-			unset3netid = argv[++i];
-			unset3addr  = argv[++i];
-			unset3owner = argv[++i];
+		} else if (!strcmp(argv[i], "set4")) {
+			set4 = 1;
+			set4args.prog = atoi(argv[++i]);
+			set4args.vers = atoi(argv[++i]);
+			set4args.netid = argv[++i];
+			set4args.addr  = argv[++i];
+			set4args.owner = argv[++i];
 			command_found++;
 		} else if (!strcmp(argv[i], "null3")) {
 			null3 = 1;
 			command_found++;
-		} else if (!strcmp(argv[i], "dump4")) {
-			dump4 = 1;
+		} else if (!strcmp(argv[i], "unset3")) {
+			unset3 = 1;
+			unset3args.prog = atoi(argv[++i]);
+			unset3args.vers = atoi(argv[++i]);
+			unset3args.netid = argv[++i];
+			unset3args.addr = argv[++i];
+			unset3args.owner = argv[++i];
 			command_found++;
-		} else if (!strcmp(argv[i], "gettime4")) {
-			gettime4 = 1;
+		} else if (!strcmp(argv[i], "unset4")) {
+			unset4 = 1;
+			unset4args.prog = atoi(argv[++i]);
+			unset4args.vers = atoi(argv[++i]);
+			unset4args.netid = argv[++i];
+			unset4args.addr = argv[++i];
+			unset4args.owner = argv[++i];
 			command_found++;
 		} else if (!strcmp(argv[i], "getstat4")) {
 			getstat4 = 1;
@@ -753,16 +820,34 @@ int main(int argc _U_, char *argv[] _U_)
 		}
 		wait_until_finished(rpc, &client);
 	}
+	if (t2u3) {
+		struct sockaddr_storage ss;
+		socklen_t ss_len = sizeof(struct sockaddr_storage);
+		PMAP3TADDR2UADDRargs t2u3args;
+		
+		if (getsockname(rpc_get_fd(rpc), (struct sockaddr *)&ss, &ss_len)) {
+			printf("Failed to get socket name for rpc context\n");
+			exit(10);
+		}
+		t2u3args.maxlen = ss_len;
+		t2u3args.buf.buf_len = ss_len;
+		t2u3args.buf.buf_val = (char *)&ss;
+		if (rpc_pmap3_taddr2uaddr_task(rpc, &t2u3args, pmap3_taddr2uaddr_cb, &client) == NULL) {
+			printf("Failed to send TADDR2UADDR3 request\n");
+			exit(10);
+		}
+		wait_until_finished(rpc, &client);
+	}
 	if (getaddr3) {
-		struct pmap3_mapping map;
-
-		map.prog  = getaddr3prog;
-		map.vers  = getaddr3vers;
-		map.netid = getaddr3netid;
-		map.addr  = getaddr3addr;
-		map.owner = getaddr3owner;
-		if (rpc_pmap3_getaddr_task(rpc, &map, pmap3_getaddr_cb, &client) == NULL) {
+		if (rpc_pmap3_getaddr_task(rpc, &getaddr3args, pmap3_getaddr_cb, &client) == NULL) {
 			printf("Failed to send GETADDR3 request\n");
+			exit(10);
+		}
+		wait_until_finished(rpc, &client);
+	}
+	if (getaddr4) {
+		if (rpc_pmap4_getaddr_task(rpc, &getaddr4args, pmap3_getaddr_cb, &client) == NULL) {
+			printf("Failed to send GETADDR4 request\n");
 			exit(10);
 		}
 		wait_until_finished(rpc, &client);
@@ -789,29 +874,29 @@ int main(int argc _U_, char *argv[] _U_)
 		wait_until_finished(rpc, &client);
 	}
 	if (set3) {
-		struct pmap3_mapping map;
-
-		map.prog  = set3prog;
-		map.vers  = set3vers;
-		map.netid = set3netid;
-		map.addr  = set3addr;
-		map.owner = set3owner;
-		if (rpc_pmap3_set_task(rpc, &map, pmap3_set_cb, &client) == NULL) {
+		if (rpc_pmap3_set_task(rpc, &set3args, pmap3_set_cb, &client) == NULL) {
 			printf("Failed to send SET3 request\n");
 			exit(10);
 		}
 		wait_until_finished(rpc, &client);
 	}
 	if (unset3) {
-		struct pmap3_mapping map;
-
-		map.prog  = unset3prog;
-		map.vers  = unset3vers;
-		map.netid = unset3netid;
-		map.addr  = unset3addr;
-		map.owner = unset3owner;
-		if (rpc_pmap3_unset_task(rpc, &map, pmap3_unset_cb, &client) == NULL) {
+		if (rpc_pmap3_unset_task(rpc, &unset3args, pmap3_unset_cb, &client) == NULL) {
 			printf("Failed to send UNSET3 request\n");
+			exit(10);
+		}
+		wait_until_finished(rpc, &client);
+	}
+	if (set4) {
+		if (rpc_pmap4_set_task(rpc, &set4args, pmap3_set_cb, &client) == NULL) {
+			printf("Failed to send SET4 request\n");
+			exit(10);
+		}
+		wait_until_finished(rpc, &client);
+	}
+	if (unset4) {
+		if (rpc_pmap4_unset_task(rpc, &unset4args, pmap4_unset_cb, &client) == NULL) {
+			printf("Failed to send UNSET4 request\n");
 			exit(10);
 		}
 		wait_until_finished(rpc, &client);

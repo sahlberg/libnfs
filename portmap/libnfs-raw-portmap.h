@@ -119,14 +119,14 @@ struct pmap3_call_args {
 };
 typedef struct pmap3_call_args pmap3_call_args;
 
-struct pmap3_call_result {
-	uint32_t port;
+struct rpcb_rmtcallres {
+	char *addr;
 	struct {
-		uint32_t res_len;
-		char *res_val;
-	} res;
+		uint32_t results_len;
+		char *results_val;
+	} results;
 };
-typedef struct pmap3_call_result pmap3_call_result;
+typedef struct rpcb_rmtcallres rpcb_rmtcallres;
 
 struct pmap3_netbuf {
 	uint32_t maxlen;
@@ -173,15 +173,6 @@ struct pmap4_bcast_args {
 };
 typedef struct pmap4_bcast_args pmap4_bcast_args;
 
-struct pmap4_bcast_result {
-	uint32_t port;
-	struct {
-		uint32_t res_len;
-		char *res_val;
-	} res;
-};
-typedef struct pmap4_bcast_result pmap4_bcast_result;
-
 struct pmap4_netbuf {
 	uint32_t maxlen;
 	struct {
@@ -201,15 +192,6 @@ struct pmap4_indirect_args {
 	} args;
 };
 typedef struct pmap4_indirect_args pmap4_indirect_args;
-
-struct pmap4_indirect_result {
-	uint32_t port;
-	struct {
-		uint32_t res_len;
-		char *res_val;
-	} res;
-};
-typedef struct pmap4_indirect_result pmap4_indirect_result;
 #define RPCBSTAT_HIGHPROC 13
 #define RPCBVERS_STAT 3
 #define RPCBVERS_4_STAT 2
@@ -300,7 +282,9 @@ typedef pmap3_dump_result PMAP3DUMPres;
 
 typedef pmap3_call_args PMAP3CALLITargs;
 
-typedef pmap3_call_result PMAP3CALLITres;
+typedef rpcb_rmtcallres PMAP3CALLITres;
+
+typedef pmap3_string_result PMAP3UADDR2TADDRargs;
 
 typedef pmap3_netbuf PMAP3UADDR2TADDRres;
 
@@ -320,7 +304,9 @@ typedef pmap4_dump_result PMAP4DUMPres;
 
 typedef pmap4_bcast_args PMAP4BCASTargs;
 
-typedef pmap4_bcast_result PMAP4BCASTres;
+typedef rpcb_rmtcallres PMAP4BCASTres;
+
+typedef pmap3_string_result PMAP4UADDR2TADDRargs;
 
 typedef pmap4_netbuf PMAP4UADDR2TADDRres;
 
@@ -334,7 +320,7 @@ typedef pmap4_string_result PMAP4GETVERSADDRres;
 
 typedef pmap4_indirect_args PMAP4INDIRECTargs;
 
-typedef pmap4_indirect_result PMAP4INDIRECTres;
+typedef rpcb_rmtcallres PMAP4INDIRECTres;
 
 typedef pmap4_stat_byvers PMAP4GETSTATres;
 
@@ -412,8 +398,8 @@ extern  PMAP3CALLITres * pmap3_callit_3_svc(PMAP3CALLITargs *, struct svc_req *)
 extern  uint32_t * pmap3_gettime_3(void *, void *);
 extern  uint32_t * pmap3_gettime_3_svc(void *, struct svc_req *);
 #define PMAP3_UADDR2TADDR 7
-extern  PMAP3UADDR2TADDRres * pmap3_uaddr2taddr_3(char **, void *);
-extern  PMAP3UADDR2TADDRres * pmap3_uaddr2taddr_3_svc(char **, struct svc_req *);
+extern  PMAP3UADDR2TADDRres * pmap3_uaddr2taddr_3(PMAP3UADDR2TADDRargs *, void *);
+extern  PMAP3UADDR2TADDRres * pmap3_uaddr2taddr_3_svc(PMAP3UADDR2TADDRargs *, struct svc_req *);
 #define PMAP3_TADDR2UADDR 8
 extern  PMAP3TADDR2UADDRres * pmap3_taddr2uaddr_3(PMAP3TADDR2UADDRargs *, void *);
 extern  PMAP3TADDR2UADDRres * pmap3_taddr2uaddr_3_svc(PMAP3TADDR2UADDRargs *, struct svc_req *);
@@ -474,8 +460,8 @@ extern  PMAP4BCASTres * pmap4_bcast_4_svc(PMAP4BCASTargs *, struct svc_req *);
 extern  uint32_t * pmap4_gettime_4(void *, void *);
 extern  uint32_t * pmap4_gettime_4_svc(void *, struct svc_req *);
 #define PMAP4_UADDR2TADDR 7
-extern  PMAP4UADDR2TADDRres * pmap4_uaddr2taddr_4(char **, void *);
-extern  PMAP4UADDR2TADDRres * pmap4_uaddr2taddr_4_svc(char **, struct svc_req *);
+extern  PMAP4UADDR2TADDRres * pmap4_uaddr2taddr_4(PMAP4UADDR2TADDRargs *, void *);
+extern  PMAP4UADDR2TADDRres * pmap4_uaddr2taddr_4_svc(PMAP4UADDR2TADDRargs *, struct svc_req *);
 #define PMAP4_TADDR2UADDR 8
 extern  PMAP4TADDR2UADDRres * pmap4_taddr2uaddr_4(PMAP4TADDR2UADDRargs *, void *);
 extern  PMAP4TADDR2UADDRres * pmap4_taddr2uaddr_4_svc(PMAP4TADDR2UADDRargs *, struct svc_req *);
@@ -549,17 +535,15 @@ extern  uint32_t zdr_pmap3_mapping (ZDR *, pmap3_mapping*);
 extern  uint32_t zdr_pmap3_mapping_list (ZDR *, pmap3_mapping_list*);
 extern  uint32_t zdr_pmap3_dump_result (ZDR *, pmap3_dump_result*);
 extern  uint32_t zdr_pmap3_call_args (ZDR *, pmap3_call_args*);
-extern  uint32_t zdr_pmap3_call_result (ZDR *, pmap3_call_result*);
+extern  uint32_t zdr_rpcb_rmtcallres (ZDR *, rpcb_rmtcallres*);
 extern  uint32_t zdr_pmap3_netbuf (ZDR *, pmap3_netbuf*);
 extern  uint32_t zdr_pmap4_string_result (ZDR *, pmap4_string_result*);
 extern  uint32_t zdr_pmap4_mapping (ZDR *, pmap4_mapping*);
 extern  uint32_t zdr_pmap4_mapping_list (ZDR *, pmap4_mapping_list*);
 extern  uint32_t zdr_pmap4_dump_result (ZDR *, pmap4_dump_result*);
 extern  uint32_t zdr_pmap4_bcast_args (ZDR *, pmap4_bcast_args*);
-extern  uint32_t zdr_pmap4_bcast_result (ZDR *, pmap4_bcast_result*);
 extern  uint32_t zdr_pmap4_netbuf (ZDR *, pmap4_netbuf*);
 extern  uint32_t zdr_pmap4_indirect_args (ZDR *, pmap4_indirect_args*);
-extern  uint32_t zdr_pmap4_indirect_result (ZDR *, pmap4_indirect_result*);
 extern  uint32_t zdr_rpcbs_addrlist (ZDR *, rpcbs_addrlist*);
 extern  uint32_t zdr_rpcbs_rmtcalllist (ZDR *, rpcbs_rmtcalllist*);
 extern  uint32_t zdr_rpcbs_proc (ZDR *, rpcbs_proc);
@@ -583,6 +567,7 @@ extern  uint32_t zdr_PMAP3GETADDRres (ZDR *, PMAP3GETADDRres*);
 extern  uint32_t zdr_PMAP3DUMPres (ZDR *, PMAP3DUMPres*);
 extern  uint32_t zdr_PMAP3CALLITargs (ZDR *, PMAP3CALLITargs*);
 extern  uint32_t zdr_PMAP3CALLITres (ZDR *, PMAP3CALLITres*);
+extern  uint32_t zdr_PMAP3UADDR2TADDRargs (ZDR *, PMAP3UADDR2TADDRargs*);
 extern  uint32_t zdr_PMAP3UADDR2TADDRres (ZDR *, PMAP3UADDR2TADDRres*);
 extern  uint32_t zdr_PMAP3TADDR2UADDRargs (ZDR *, PMAP3TADDR2UADDRargs*);
 extern  uint32_t zdr_PMAP3TADDR2UADDRres (ZDR *, PMAP3TADDR2UADDRres*);
@@ -593,6 +578,7 @@ extern  uint32_t zdr_PMAP4GETADDRres (ZDR *, PMAP4GETADDRres*);
 extern  uint32_t zdr_PMAP4DUMPres (ZDR *, PMAP4DUMPres*);
 extern  uint32_t zdr_PMAP4BCASTargs (ZDR *, PMAP4BCASTargs*);
 extern  uint32_t zdr_PMAP4BCASTres (ZDR *, PMAP4BCASTres*);
+extern  uint32_t zdr_PMAP4UADDR2TADDRargs (ZDR *, PMAP4UADDR2TADDRargs*);
 extern  uint32_t zdr_PMAP4UADDR2TADDRres (ZDR *, PMAP4UADDR2TADDRres*);
 extern  uint32_t zdr_PMAP4TADDR2UADDRargs (ZDR *, PMAP4TADDR2UADDRargs*);
 extern  uint32_t zdr_PMAP4TADDR2UADDRres (ZDR *, PMAP4TADDR2UADDRres*);
@@ -615,17 +601,15 @@ extern uint32_t zdr_pmap3_mapping ();
 extern uint32_t zdr_pmap3_mapping_list ();
 extern uint32_t zdr_pmap3_dump_result ();
 extern uint32_t zdr_pmap3_call_args ();
-extern uint32_t zdr_pmap3_call_result ();
+extern uint32_t zdr_rpcb_rmtcallres ();
 extern uint32_t zdr_pmap3_netbuf ();
 extern uint32_t zdr_pmap4_string_result ();
 extern uint32_t zdr_pmap4_mapping ();
 extern uint32_t zdr_pmap4_mapping_list ();
 extern uint32_t zdr_pmap4_dump_result ();
 extern uint32_t zdr_pmap4_bcast_args ();
-extern uint32_t zdr_pmap4_bcast_result ();
 extern uint32_t zdr_pmap4_netbuf ();
 extern uint32_t zdr_pmap4_indirect_args ();
-extern uint32_t zdr_pmap4_indirect_result ();
 extern uint32_t zdr_rpcbs_addrlist ();
 extern uint32_t zdr_rpcbs_rmtcalllist ();
 extern uint32_t zdr_rpcbs_proc ();
@@ -649,6 +633,7 @@ extern uint32_t zdr_PMAP3GETADDRres ();
 extern uint32_t zdr_PMAP3DUMPres ();
 extern uint32_t zdr_PMAP3CALLITargs ();
 extern uint32_t zdr_PMAP3CALLITres ();
+extern uint32_t zdr_PMAP3UADDR2TADDRargs ();
 extern uint32_t zdr_PMAP3UADDR2TADDRres ();
 extern uint32_t zdr_PMAP3TADDR2UADDRargs ();
 extern uint32_t zdr_PMAP3TADDR2UADDRres ();
@@ -659,6 +644,7 @@ extern uint32_t zdr_PMAP4GETADDRres ();
 extern uint32_t zdr_PMAP4DUMPres ();
 extern uint32_t zdr_PMAP4BCASTargs ();
 extern uint32_t zdr_PMAP4BCASTres ();
+extern uint32_t zdr_PMAP4UADDR2TADDRargs ();
 extern uint32_t zdr_PMAP4UADDR2TADDRres ();
 extern uint32_t zdr_PMAP4TADDR2UADDRargs ();
 extern uint32_t zdr_PMAP4TADDR2UADDRres ();

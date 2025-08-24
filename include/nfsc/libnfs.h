@@ -2125,4 +2125,26 @@ EXTERN void nfs_mt_service_thread_stop(struct nfs_context *nfs);
 #endif
 
 
+/*
+ * UDP contexts for UDP servers
+ */
+EXTERN int rpc_bind_udp(struct rpc_context *rpc, char *addr, int port);
+EXTERN int rpc_set_udp_destination(struct rpc_context *rpc, char *addr, int port, int is_broadcast);
+EXTERN struct rpc_context *rpc_init_udp_context(void);
+EXTERN int rpc_is_udp_socket(struct rpc_context *rpc);
+
+/* UDP server sockets */
+/* The ip address of the udp client */
+EXTERN struct sockaddr *rpc_get_udp_src_sockaddr(struct rpc_context *rpc);
+#ifdef __linux__
+/* The ip address where we received the udp packet from the client */
+EXTERN struct sockaddr *rpc_get_udp_dst_sockaddr(struct rpc_context *rpc);
+#endif
+
+void rpc_set_resiliency(struct rpc_context *rpc,
+			int num_tcp_reconnect,
+			int timeout,
+			int retrans);
+
+
 #endif /* !_LIBNFS_H_ */

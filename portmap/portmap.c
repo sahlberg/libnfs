@@ -334,7 +334,7 @@ rpc_pmap3_callit_task(struct rpc_context *rpc, int program, int version, int pro
 	struct rpc_pdu *pdu;
 	struct pmap3_call_args ca;
 
-	pdu = rpc_allocate_pdu(rpc, PMAP_PROGRAM, PMAP_V3, PMAP3_CALLIT, cb, private_data, (zdrproc_t)zdr_pmap3_call_result, sizeof(pmap3_call_result));
+	pdu = rpc_allocate_pdu(rpc, PMAP_PROGRAM, PMAP_V3, PMAP3_CALLIT, cb, private_data, (zdrproc_t)zdr_rpcb_rmtcallres, sizeof(rpcb_rmtcallres));
 	if (pdu == NULL) {
 		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu for PORTMAP3/CALLIT call");
 		return NULL;
@@ -551,7 +551,7 @@ rpc_pmap4_bcast_task(struct rpc_context *rpc, int program, int version, int proc
 	struct rpc_pdu *pdu;
 	struct pmap4_bcast_args ca;
 
-	pdu = rpc_allocate_pdu(rpc, PMAP_PROGRAM, PMAP_V4, PMAP4_BCAST, cb, private_data, (zdrproc_t)zdr_pmap4_bcast_result, sizeof(pmap4_bcast_result));
+	pdu = rpc_allocate_pdu(rpc, PMAP_PROGRAM, PMAP_V4, PMAP4_BCAST, cb, private_data, (zdrproc_t)zdr_rpcb_rmtcallres, sizeof(rpcb_rmtcallres));
 	if (pdu == NULL) {
 		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu for PORTMAP4/BCAST call");
 		return NULL;
@@ -658,7 +658,7 @@ rpc_pmap4_indirect_task(struct rpc_context *rpc, int program, int version, int p
 	struct rpc_pdu *pdu;
 	struct pmap4_indirect_args ca;
 
-	pdu = rpc_allocate_pdu(rpc, PMAP_PROGRAM, PMAP_V4, PMAP4_INDIRECT, cb, private_data, (zdrproc_t)zdr_pmap4_indirect_result, sizeof(pmap4_indirect_result));
+	pdu = rpc_allocate_pdu(rpc, PMAP_PROGRAM, PMAP_V4, PMAP4_INDIRECT, cb, private_data, (zdrproc_t)zdr_rpcb_rmtcallres, sizeof(rpcb_rmtcallres));
 	if (pdu == NULL) {
 		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu for PORTMAP4/INDIRECT call");
 		return NULL;

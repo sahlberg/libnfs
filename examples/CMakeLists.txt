@@ -30,7 +30,7 @@ endif()
 
 if(EVENT_LIBARY)
   list(APPEND EXAMPLES nfs4-cat
-                       portmap-server)
+                       rpcbind)
   list(APPEND EXTRA_LIBRARIES ${EVENT_LIBARY})
 endif()
 

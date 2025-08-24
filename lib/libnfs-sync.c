@@ -2499,7 +2499,7 @@ callit_cb(struct rpc_context *rpc, int status, void *data _U_,
 		return;
 	}
 
-	sin = rpc_get_recv_sockaddr(rpc);
+	sin = rpc_get_udp_src_sockaddr(rpc);
 	if (sin == NULL) {
 		rpc_set_error(rpc, "failed to get sockaddr in CALLIT callback");
 		srv_data->status = -1;

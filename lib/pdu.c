@@ -1039,12 +1039,38 @@ static int rpc_process_reply(struct rpc_context *rpc, ZDR *zdr)
 	return 0;
 }
 
+struct _rpc_msg {
+        struct rpc_msg call;
+        struct sockaddr_storage udp_src;
+};
+
+struct rpc_msg *rpc_copy_deferred_call(struct rpc_context *rpc,
+                                       struct rpc_msg *call)
+{
+        struct _rpc_msg *c;
+
+        c = malloc(sizeof(struct _rpc_msg));
+        if (c == NULL) {
+                return NULL;
+        }
+        memcpy(c, container_of(call, struct _rpc_msg, call), sizeof(struct _rpc_msg));
+
+        return &c->call;
+}
+
+void rpc_free_deferred_call(struct rpc_context *rpc,
+                            struct rpc_msg *call)
+{
+        free(container_of(call, struct _rpc_msg, call));
+}
+
 static int rpc_send_error_reply(struct rpc_context *rpc,
                                 struct rpc_msg *call,
                                 enum accept_stat err,
                                 int min_vers, int max_vers)
 {
         struct rpc_pdu *pdu;
+        struct _rpc_msg *c = container_of(call, struct _rpc_msg, call);
         struct rpc_msg res;
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
@@ -1060,7 +1086,7 @@ static int rpc_send_error_reply(struct rpc_context *rpc,
 
         if (rpc->is_udp) {
                 /* send the reply back to the client */
-                memcpy(&rpc->udp_dest, &rpc->udp_src, sizeof(rpc->udp_dest));
+                memcpy(&rpc->udp_dest, &c->udp_src, sizeof(rpc->udp_dest));
         }
 
         pdu  = rpc_allocate_reply_pdu(rpc, &res, 0);
@@ -1079,6 +1105,7 @@ int rpc_send_reply(struct rpc_context *rpc,
                    int alloc_hint)
 {
         struct rpc_pdu *pdu;
+        struct _rpc_msg *c = container_of(call, struct _rpc_msg, call);
         struct rpc_msg res;
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
@@ -1095,7 +1122,7 @@ int rpc_send_reply(struct rpc_context *rpc,
 
         if (rpc->is_udp) {
                 /* send the reply back to the client */
-                memcpy(&rpc->udp_dest, &rpc->udp_src, sizeof(rpc->udp_dest));
+                memcpy(&rpc->udp_dest, &c->udp_src, sizeof(rpc->udp_dest));
         }
 
         pdu  = rpc_allocate_reply_pdu(rpc, &res, alloc_hint);
@@ -1110,20 +1137,23 @@ int rpc_send_reply(struct rpc_context *rpc,
 
 static int rpc_process_call(struct rpc_context *rpc, ZDR *zdr)
 {
-	struct rpc_msg call;
+	struct _rpc_msg c;
         struct rpc_endpoint *endpoint;
         int i, min_version = 0, max_version = 0, found_program = 0;
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
-	memset(&call, 0, sizeof(struct rpc_msg));
-	if (zdr_callmsg(rpc, zdr, &call) == 0) {
+        memset(&c.call, 0, sizeof(struct rpc_msg));
+        if (rpc->is_udp) {
+                memcpy(&c.udp_src, &rpc->udp_src, sizeof(rpc->udp_src));
+        }
+	if (zdr_callmsg(rpc, zdr, &c.call) == 0) {
 		rpc_set_error(rpc, "Failed to decode CALL message. %s",
                               rpc_get_error(rpc));
-                return rpc_send_error_reply(rpc, &call, GARBAGE_ARGS, 0, 0);
+                return rpc_send_error_reply(rpc, &c.call, GARBAGE_ARGS, 0, 0);
         }
         for (endpoint = rpc->endpoints; endpoint; endpoint = endpoint->next) {
-                if (call.body.cbody.prog == endpoint->program) {
+                if (c.call.body.cbody.prog == endpoint->program) {
                         if (!found_program) {
                                 min_version = max_version = endpoint->version;
                         }
@@ -1134,7 +1164,7 @@ static int rpc_process_call(struct rpc_context *rpc, ZDR *zdr)
                                 max_version = endpoint->version;
                         }
                         found_program = 1;
-                        if (call.body.cbody.vers == endpoint->version) {
+                        if (c.call.body.cbody.vers == endpoint->version) {
                                 break;
                         }
                 }
@@ -1142,31 +1172,31 @@ static int rpc_process_call(struct rpc_context *rpc, ZDR *zdr)
         if (endpoint == NULL) {
 		rpc_set_error(rpc, "No endpoint found for CALL "
                               "program:0x%08x version:%d\n",
-                              (int)call.body.cbody.prog,
-                              (int)call.body.cbody.vers);
+                              (int)c.call.body.cbody.prog,
+                              (int)c.call.body.cbody.vers);
                 if (!found_program) {
-                        return rpc_send_error_reply(rpc, &call, PROG_UNAVAIL,
+                        return rpc_send_error_reply(rpc, &c.call, PROG_UNAVAIL,
                                                     0, 0);
                 }
-                return rpc_send_error_reply(rpc, &call, PROG_MISMATCH,
+                return rpc_send_error_reply(rpc, &c.call, PROG_MISMATCH,
                                             min_version, max_version);
         }
         for (i = 0; i < endpoint->num_procs; i++) {
-                if (endpoint->procs[i].proc == call.body.cbody.proc) {
+                if (endpoint->procs[i].proc == c.call.body.cbody.proc) {
                         if (endpoint->procs[i].decode_buf_size) {
-                                call.body.cbody.args = zdr_malloc(zdr, endpoint->procs[i].decode_buf_size);
-                                memset(call.body.cbody.args, 0, endpoint->procs[i].decode_buf_size);
+                                c.call.body.cbody.args = zdr_malloc(zdr, endpoint->procs[i].decode_buf_size);
+                                memset(c.call.body.cbody.args, 0, endpoint->procs[i].decode_buf_size);
                         }
-                        if (!endpoint->procs[i].decode_fn(zdr, call.body.cbody.args)) {
+                        if (!endpoint->procs[i].decode_fn(zdr, c.call.body.cbody.args)) {
                                 rpc_set_error(rpc, "Failed to unmarshall "
                                               "call payload");
-                                return rpc_send_error_reply(rpc, &call, GARBAGE_ARGS, 0 ,0);
+                                return rpc_send_error_reply(rpc, &c.call, GARBAGE_ARGS, 0 ,0);
                         }
-                        return endpoint->procs[i].func(rpc, &call, endpoint->procs[i].opaque);
+                        return endpoint->procs[i].func(rpc, &c.call, endpoint->procs[i].opaque);
                 }
         }
 
-        return rpc_send_error_reply(rpc, &call, PROC_UNAVAIL, 0 ,0);
+        return rpc_send_error_reply(rpc, &c.call, PROC_UNAVAIL, 0 ,0);
 }
 
 struct rpc_pdu *rpc_find_pdu(struct rpc_context *rpc, uint32_t xid)
