@@ -190,6 +190,26 @@ void pmap2_set_cb(struct rpc_context *rpc, int status, void *data, void *private
 	client->is_finished = 1;
 }
 
+void pmap2_get_cb(struct rpc_context *rpc, int status, void *data, void *private_data)
+{
+	struct client *client = private_data;
+	uint32_t res = *(uint32_t *)data;
+
+	if (status == RPC_STATUS_ERROR) {
+		printf("PORTMAP2/GET call failed with \"%s\"\n", (char *)data);
+		exit(10);
+	}
+	if (status != RPC_STATUS_SUCCESS) {
+		printf("PORTMAP2/GET call failed, status:%d\n", status);
+		exit(10);
+	}
+
+	printf("PORTMAP2/GET:\n");
+	printf("	Port:%d\n", res);
+
+	client->is_finished = 1;
+}
+
 void pmap2_unset_cb(struct rpc_context *rpc, int status, void *data, void *private_data)
 {
 	struct client *client = private_data;
@@ -535,6 +555,7 @@ int main(int argc _U_, char *argv[] _U_)
 	int unset2 = 0;
 	int set3 = 0;
 	int unset3 = 0;
+	int getport2 = 0;
 	int getaddr3 = 0;
 	int dump3 = 0;
 	int gettime3 = 0;
@@ -545,6 +566,7 @@ int main(int argc _U_, char *argv[] _U_)
 	int getaddrlist4 = 0;
 	int command_found = 0;
 
+	PMAP2GETPORTargs get2args;
 	int set2prog, set2vers, set2prot, set2port;
 	int unset2prog, unset2vers, unset2prot, unset2port;
 	int set3prog, set3vers;
@@ -588,6 +610,19 @@ int main(int argc _U_, char *argv[] _U_)
 			unset2vers = atoi(argv[++i]);
 			unset2prot = atoi(argv[++i]);
 			unset2port = atoi(argv[++i]);
+			command_found++;
+		} else if (!strcmp(argv[i], "getport2")) {
+			getport2 = 1;
+			get2args.prog = atoi(argv[++i]);
+			get2args.vers = atoi(argv[++i]);
+			i++;
+			if (!strcmp(argv[i], "tcp")) {
+				get2args.prot = 6;
+			} else if (!strcmp(argv[i], "udp")) {
+				get2args.prot = 17;
+			} else {
+				get2args.prot = atoi(argv[i]);
+			}
 			command_found++;
 		} else if (!strcmp(argv[i], "dump3")) {
 			dump3 = 1;
@@ -742,6 +777,13 @@ int main(int argc _U_, char *argv[] _U_)
 	if (unset2) {
 		if (rpc_pmap2_unset_task(rpc, unset2prog, unset2vers, unset2prot, unset2port, pmap2_unset_cb, &client) == NULL) {
 			printf("Failed to send UNSET2 request\n");
+			exit(10);
+		}
+		wait_until_finished(rpc, &client);
+	}
+	if (getport2) {
+		if (rpc_pmap2_getport_task(rpc, get2args.prog, get2args.vers, get2args.prot, pmap2_get_cb, &client) == NULL) {
+			printf("Failed to send GETPORT2 request\n");
 			exit(10);
 		}
 		wait_until_finished(rpc, &client);
