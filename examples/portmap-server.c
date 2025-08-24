@@ -498,7 +498,7 @@ static int pmap2_getport_proc(struct rpc_context *rpc, struct rpc_msg *call, voi
         PMAP2GETPORTargs *args = call->body.cbody.args;
         struct mapping *tmp;
         char *netid;
-        uint32_t port = 0;
+        static uint32_t port = 0;
 
         if (args->prot == IPPROTO_TCP) {
                 netid = "tcp";

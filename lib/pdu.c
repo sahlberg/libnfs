@@ -711,6 +711,18 @@ int rpc_queue_pdu(struct rpc_context *rpc, struct rpc_pdu *pdu)
 	 * TLS handshake is completed and the connection is secure.
 	 * Sending inline here makes the handling simpler in rpc_service().
 	 */
+        if (rpc->is_udp && rpc->is_server_context) {
+                if (sendto(rpc->fd, pdu->zdr.buf, size, MSG_DONTWAIT,
+                           (struct sockaddr *)&rpc->udp_dest,
+                           sizeof(rpc->udp_dest)) < 0) {
+                        rpc_set_error(rpc, "Sendto failed with errno %s", strerror(errno));
+                        rpc_free_pdu(rpc, pdu);
+                        return -1;
+                }
+                rpc_free_pdu(rpc, pdu);
+                return 0;
+        }
+
 	if (rpc->is_udp != 0
 #ifdef HAVE_TLS
 	    || pdu->expect_starttls
