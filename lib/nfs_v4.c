@@ -1237,7 +1237,7 @@ nfs4_lookup_path_2_cb(struct rpc_context *rpc, int status, void *command_data,
         }
 
         sprintf(tmp, "%s/%.*s/%s",
-                path, rlres->READLINK4res_u.resok4.link.utf8string_len,
+                path, (int)rlres->READLINK4res_u.resok4.link.utf8string_len,
                 rlres->READLINK4res_u.resok4.link.utf8string_val, end);
         free(path);
         free(data->path);
@@ -2224,7 +2224,7 @@ nfs4_open_cb(struct rpc_context *rpc, int status, void *command_data,
         aresok = &res->resarray.resarray_val[i].nfs_resop4_u.opaccess.ACCESS4res_u.resok4;
         if (aresok->supported != aresok->access) {
                 nfs_set_error(nfs, "Insufficient ACCESS. Wanted %08x but "
-                              "got %08x.", aresok->access, aresok->supported);
+                              "got %08x.", (int)aresok->access, (int)aresok->supported);
                 data->cb(-EINVAL, nfs, nfs_get_error(nfs), data->private_data);
                 free_nfs4_cb_data(data);
                 return;
@@ -2444,7 +2444,7 @@ nfs4_open_readlink_cb(struct rpc_context *rpc, int status, void *command_data,
                 return;
         }
         sprintf(path, "%s/%.*s", data->path,
-                rlresok->link.utf8string_len, rlresok->link.utf8string_val);
+                (int)rlresok->link.utf8string_len, rlresok->link.utf8string_val);
 
 
         free(data->path);
