@@ -17,7 +17,6 @@
 */
 /*
  * An non-blocking and eventdriven implementation of rpcbind using libnfs.
- * TODO: Store data persistently so we can restore after a restart.
  * TODO: Call NULL periodically and reap dead services from the database.
  */
 
@@ -60,6 +59,7 @@ WSADATA wsaData;
 #include "libnfs-server.h"
 
 
+#define DBFILE "/var/run/rpcbind/rpcbind.libnfs"
 
 /*
  * Portmapper implementation begins here
@@ -81,6 +81,104 @@ struct mapping {
         char *owner;
 };
 struct mapping *map;
+
+
+static void write_db(void)
+{
+        FILE *fd;
+        struct mapping *m;
+
+        fd = fopen(DBFILE, "w");
+        if (fd == NULL) {
+                printf("Failed to open DB file %s\n", DBFILE);
+                return;
+        }
+        for (m = map; m; m = m->next) {
+                fprintf(fd, "%d,%d,%d,%s,%s,%s\n",
+                        m->prog,
+                        m->vers,
+                        m->port,
+                        m->netid,
+                        m->addr,
+                        m->owner);
+        }
+        fclose(fd);
+}
+
+static void read_db(void)
+{
+        FILE *fd;
+        struct mapping *m;
+        char buf[256];
+        
+        fd = fopen(DBFILE, "r");
+        if (fd == NULL) {
+                printf("Failed to open DB file %s\n", DBFILE);
+                return;
+        }
+        while(fgets(buf, sizeof(buf), fd)) {
+                struct mapping *item;
+                char *ptr, *next;
+                int prog, vers, port;
+                char *netid, *addr, *owner;
+                
+                ptr = buf;
+                
+                next = index(ptr, ',');
+                if (next == NULL) {
+                        continue;
+                }
+                *next++ = 0;
+                prog = atoi(ptr);
+                ptr = next;
+                if (prog == 100000) {
+                        continue;
+                }
+                next = index(ptr, ',');
+                if (next == NULL) {
+                        continue;
+                }
+                *next++ = 0;
+                vers = atoi(ptr);
+                ptr = next;
+                
+                next = index(ptr, ',');
+                if (next == NULL) {
+                        continue;
+                }
+                *next++ = 0;
+                port = atoi(ptr);
+                ptr = next;
+
+                netid = next;
+                addr = index(netid, ',');
+                if (addr == NULL) {
+                        continue;
+                }
+                *addr++ = 0;
+                owner = index(addr, ',');
+                if (owner == NULL) {
+                        continue;
+                }
+                *owner++ = 0;
+                owner[strlen(owner) - 1] = 0;
+
+
+                item = malloc(sizeof(struct mapping));
+                if (item == NULL) {
+                        continue;
+                }
+                item->prog  = prog;
+                item->vers  = vers;
+                item->port  = port;
+                item->netid = strdup(netid);
+                item->addr  = strdup(addr);
+                item->owner = strdup(owner);
+                item->next = map;
+                map = item;
+        }
+        fclose(fd);
+}
 
 
 void free_map_item(struct mapping *item)
@@ -474,6 +572,7 @@ static int pmap2_set_proc(struct rpc_context *rpc, struct rpc_msg *call, void *o
                       strdup("<unknown>"));
 
         rpc_send_reply(rpc, call, &response, (zdrproc_t)zdr_uint32_t, sizeof(uint32_t));
+        write_db();
         return 0;
 }
 
@@ -498,6 +597,7 @@ static int pmap2_unset_proc(struct rpc_context *rpc, struct rpc_msg *call, void 
         map_remove(args->prog, args->vers, prot);
 
         rpc_send_reply(rpc, call, &response, (zdrproc_t)zdr_uint32_t, sizeof(uint32_t));
+        write_db();
         return 0;
 }
 
@@ -543,6 +643,7 @@ static int pmap3_set_proc(struct rpc_context *rpc, struct rpc_msg *call, void *o
                       strdup(args->owner));
 
         rpc_send_reply(rpc, call, &response, (zdrproc_t)zdr_uint32_t, sizeof(uint32_t));
+        write_db();
         return 0;
 }
 
@@ -557,6 +658,7 @@ static int pmap3_unset_proc(struct rpc_context *rpc, struct rpc_msg *call, void 
         map_remove(args->prog, args->vers, args->netid);
 
         rpc_send_reply(rpc, call, &response, (zdrproc_t)zdr_uint32_t, sizeof(uint32_t));
+        write_db();
         return 0;
 }
 
@@ -824,6 +926,7 @@ int main(int argc, char *argv[])
         aros_init_socket();
 #endif
 
+        read_db();
         memset(&pmap, 0, sizeof(pmap));
         pmap.base = event_base_new();
         if (pmap.base == NULL) {
