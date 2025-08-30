@@ -1053,7 +1053,7 @@ struct rpc_msg *rpc_copy_deferred_call(struct rpc_context *rpc,
         if (c == NULL) {
                 return NULL;
         }
-        memcpy(c, container_of(call, struct _rpc_msg, call), sizeof(struct _rpc_msg));
+        memcpy(c, call, sizeof(struct _rpc_msg));
 
         return &c->call;
 }
@@ -1061,7 +1061,7 @@ struct rpc_msg *rpc_copy_deferred_call(struct rpc_context *rpc,
 void rpc_free_deferred_call(struct rpc_context *rpc,
                             struct rpc_msg *call)
 {
-        free(container_of(call, struct _rpc_msg, call));
+        free(call);
 }
 
 static int rpc_send_error_reply(struct rpc_context *rpc,
@@ -1070,7 +1070,7 @@ static int rpc_send_error_reply(struct rpc_context *rpc,
                                 int min_vers, int max_vers)
 {
         struct rpc_pdu *pdu;
-        struct _rpc_msg *c = container_of(call, struct _rpc_msg, call);
+        struct _rpc_msg *c = (struct _rpc_msg *)call;
         struct rpc_msg res;
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
@@ -1105,7 +1105,7 @@ int rpc_send_reply(struct rpc_context *rpc,
                    int alloc_hint)
 {
         struct rpc_pdu *pdu;
-        struct _rpc_msg *c = container_of(call, struct _rpc_msg, call);
+        struct _rpc_msg *c = (struct _rpc_msg *)call;
         struct rpc_msg res;
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);

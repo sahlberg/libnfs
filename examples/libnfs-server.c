@@ -15,12 +15,6 @@
    You should have received a copy of the GNU General Public License
    along with this program; if not, see <http://www.gnu.org/licenses/>.
 */
-/*
- * An non-blocking and eventdriven implementation of rpcbind using libnfs.
- * TODO: Add callit so that rpcinfo -b and nfs server discovery will work.
- * TODO: Store data persisntently so we can restore after a restart.
- * TODO: Call NULL periodically and reap dead services from the database.
- */
 
 #define _FILE_OFFSET_BITS 64
 #define _GNU_SOURCE
