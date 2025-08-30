@@ -17,8 +17,7 @@
 */
 /*
  * An non-blocking and eventdriven implementation of rpcbind using libnfs.
- * TODO: Add callit so that rpcinfo -b and nfs server discovery will work.
- * TODO: Store data persisntently so we can restore after a restart.
+ * TODO: Store data persistently so we can restore after a restart.
  * TODO: Call NULL periodically and reap dead services from the database.
  */
 
@@ -90,6 +89,47 @@ void free_map_item(struct mapping *item)
         free(item->addr);
         free(item->owner);
         free(item);
+}
+
+static char *socket_to_str(struct rpc_context *rpc, char *netid)
+{
+        static char addr[64] = {0}, *ptr;
+
+        if (rpc_is_udp_socket(rpc)) {
+                struct sockaddr *sa;
+
+                sa = rpc_get_udp_dst_sockaddr(rpc);
+                inet_ntop(sa->sa_family, &((struct sockaddr_in *)sa)->sin_addr, addr, sizeof(addr));
+        } else {
+                struct sockaddr_storage ss;
+                socklen_t ss_len = sizeof(struct sockaddr_storage);
+
+                /*
+                 * Came in through TCP so whatever is the local address we accept()ed on
+                 * should be good enough.
+                 */
+                if (getsockname(rpc_get_fd(rpc), (struct sockaddr *)&ss, &ss_len)) {
+                        return 0;
+                }
+                inet_ntop(ss.ss_family, &((struct sockaddr_in6 *)&ss)->sin6_addr, addr, sizeof(addr));
+        }
+        ptr = &addr[0];
+        /*
+         * Linux TCP sockets listen to both tcp and tcp6 in this case and the address is either
+         * 1.2.3.4 got ipv4 or ::FFFF:1.2.3.4 for ipv6.
+         * If the client asked for tcp then we need to skip the IPV6-toIPV4 prefix in the address
+         * string.
+         */
+        if (!strcmp(netid, "tcp") || !strcmp(netid, "udp")) {
+                ptr = rindex(ptr, ':');
+                if (ptr) {
+                        ptr++;
+                } else {
+                        ptr = &addr[0];
+                }
+        }
+
+        return ptr;
 }
 
 /*
@@ -246,13 +286,10 @@ static void _callit_cb(struct rpc_context *rpc, int status, void *data, void *pr
         } else {
                 PMAP3CALLITres res3;
                 
-                /* TODO: We really should build a customized addr here based on the ip address of the client
-                 * and not just return <wilcard>.port
-                 */
                 res3.addr = cb_data->addr;
                 res3.results.results_len = 0;
                 res3.results.results_val = NULL;
-                //rpc_send_reply(cb_data->rpc, cb_data->call, &res3, (zdrproc_t)zdr_PMAP3CALLITres, sizeof(PMAP3CALLITres));
+                rpc_send_reply(cb_data->rpc, cb_data->call, &res3, (zdrproc_t)zdr_PMAP3CALLITres, sizeof(PMAP3CALLITres));
         }
         
         free_callit_cb_data(cb_data);
@@ -295,10 +332,11 @@ static int pmapX_callit_proc(struct rpc_context *rpc, struct rpc_msg *call, void
                 goto err;
         }
         cb_data->port = map->port;
-        cb_data->addr = strdup(map->addr);
+        cb_data->addr = strdup(socket_to_str(rpc, "udp"));
         if (cb_data->addr == NULL) {
                 goto err;
         }
+        
         cb_data->timeout_event = event_new(pmap->base, -1, 0, _timeout_cb, cb_data);
         if (cb_data->timeout_event == NULL) {
                 goto err;
@@ -530,48 +568,16 @@ static int pmap3_getaddr_proc(struct rpc_context *rpc, struct rpc_msg *call, voi
         PMAP3GETADDRargs *args = call->body.cbody.args;
         PMAP3GETADDRres res;
         struct mapping *map;
-        char addr[64] = {0}, *ptr;
 
-        if (rpc_is_udp_socket(rpc)) {
-                struct sockaddr *sa;
-
-                sa = rpc_get_udp_dst_sockaddr(rpc);
-                inet_ntop(sa->sa_family, &((struct sockaddr_in *)sa)->sin_addr, addr, sizeof(addr));
-        } else {
-                struct sockaddr_storage ss;
-                socklen_t ss_len = sizeof(struct sockaddr_storage);
-
-                /*
-                 * Came in through TCP so whatever is the local address we accept()ed on
-                 * should be good enough.
-                 */
-                if (getsockname(rpc_get_fd(rpc), (struct sockaddr *)&ss, &ss_len)) {
-                        return 0;
-                }
-                inet_ntop(ss.ss_family, &((struct sockaddr_in6 *)&ss)->sin6_addr, addr, sizeof(addr));
-        }
-        ptr = addr;
-        /*
-         * Linux TCP sockets listen to both tcp and tcp6 in this case and the address is either
-         * 1.2.3.4 got ipv4 or ::FFFF:1.2.3.4 for ipv6.
-         * If the client asked for tcp then we need to skip the IPV6-toIPV4 prefix in the address
-         * string.
-         */
-        if (!strcmp(args->netid, "tcp") || !strcmp(args->netid, "udp")) {
-                ptr = rindex(ptr, ':');
-                if (ptr) {
-                        ptr++;
-                }
-        }
-
+        res.addr = socket_to_str(rpc, args->netid);
+        
         map = map_lookup(args->prog, args->vers, args->netid);
         if (map != NULL) {
-                sprintf(ptr + strlen(ptr), ".%d.%d", map->port >> 8, map->port & 0xff);
+                sprintf(res.addr + strlen(res.addr), ".%d.%d", map->port >> 8, map->port & 0xff);
         } else {
-                addr[0] = 0;
+                return 0;
         }
 
-        res.addr = ptr;
         rpc_send_reply(rpc, call, &res, (zdrproc_t)zdr_PMAP3GETADDRres, sizeof(PMAP3GETADDRres));
         return 0;
 }
@@ -585,7 +591,7 @@ static int pmap3_dump_proc(struct rpc_context *rpc, struct rpc_msg *call, void *
 {
         PMAP3DUMPres reply;
         struct mapping *tmp;
-        char addr[64] = {0}, *ptr;
+        char *ptr;
 
         reply.list = NULL;
         for (tmp = map; tmp; tmp = tmp->next) {
@@ -596,31 +602,8 @@ static int pmap3_dump_proc(struct rpc_context *rpc, struct rpc_msg *call, void *
                 tmp_list->map.vers  = tmp->vers;
                 tmp_list->map.netid = tmp->netid;
                 tmp_list->map.owner = tmp->owner;
-                if (rpc_is_udp_socket(rpc)) {
-                        struct sockaddr *sa;
+                ptr = socket_to_str(rpc, tmp->netid);
 
-                        sa = rpc_get_udp_dst_sockaddr(rpc);
-                        inet_ntop(sa->sa_family, &((struct sockaddr_in *)sa)->sin_addr, addr, sizeof(addr));
-                } else {
-                        struct sockaddr_storage ss;
-                        socklen_t ss_len = sizeof(struct sockaddr_storage);
-
-                        /*
-                         * Came in through TCP so whatever is the local address we accept()ed on
-                         * should be good enough.
-                         */
-                        if (getsockname(rpc_get_fd(rpc), (struct sockaddr *)&ss, &ss_len)) {
-                                return 0;
-                        }
-                        inet_ntop(ss.ss_family, &((struct sockaddr_in6 *)&ss)->sin6_addr, addr, sizeof(addr));
-                }
-                ptr = addr;
-                if (!strcmp(tmp->netid, "tcp") || !strcmp(tmp->netid, "udp")) {
-                        ptr = rindex(ptr, ':');
-                        if (ptr) {
-                                ptr++;
-                        }
-                }
                 tmp_list->map.addr  = strdup(ptr);
                 
                 tmp_list->next = reply.list;
