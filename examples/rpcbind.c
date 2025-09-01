@@ -934,14 +934,13 @@ int main(int argc, char *argv[])
         event_add(pmap.read_event, NULL);
 
 
-
-        
         servers = libnfs_create_server(pmap.base, 111, "libnfs rpcbind", &server_procs[0]);
         if (servers == NULL) {
                 printf("Failed to set set up server\n");
                 goto out;
         }
         printf("Ready to serve\n");
+        daemon(0, 0);
 
         /*
          * Everything is now set up. Start the event loop.
