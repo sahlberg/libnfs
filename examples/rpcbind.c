@@ -16,7 +16,7 @@
    along with this program; if not, see <http://www.gnu.org/licenses/>.
 */
 /*
- * An non-blocking and eventdriven implementation of rpcbind using libnfs.
+ * A non-blocking and eventdriven implementation of rpcbind using libnfs.
  * TODO: Call NULL periodically and reap dead services from the database.
  */
 
@@ -299,31 +299,21 @@ struct mapping *map_lookup(int prog, int vers, char *netid)
  */
 void map_remove(int prog, int vers, char *netid)
 {
-        struct mapping *prev = NULL;
-        struct mapping *tmp;
+        struct mapping *new_map = NULL;
+        struct mapping *tmp, *next;
 
-        for (tmp = map; tmp; prev = tmp, tmp = tmp->next) {
-                if (tmp->prog != prog) {
-                        continue;
+        for (tmp = map; tmp; tmp = next) {
+                next = tmp->next;
+                if (tmp->prog != prog |
+                    tmp->vers != vers ||
+                    (netid && netid[0] && strcmp(tmp->netid, netid))) {
+                            tmp->next = new_map;
+                            new_map = tmp;
+                            continue;
                 }
-                if (tmp->vers != vers) {
-                        continue;
-                }
-                if (strcmp(tmp->netid, netid)) {
-                        continue;
-                }
-                break;
+                free_map_item(tmp);
         }
-        if (tmp == NULL) {
-                return;
-        }
-        if (prev) {
-                prev->next = tmp->next;
-        } else {
-                map = tmp->next;
-        }
-
-        free_map_item(tmp);
+        map = new_map;
         return;
 }
 
@@ -358,7 +348,6 @@ static void _timeout_cb(evutil_socket_t fd, short what, void *arg)
 {
         struct callit_data *cb_data = arg;
 
-        printf("timeout\n");
         free_callit_cb_data(cb_data);
 }
 
@@ -630,8 +619,6 @@ static int pmap3_set_proc(struct rpc_context *rpc, struct rpc_msg *call, void *o
         PMAP3UNSETargs *args = call->body.cbody.args;
         uint32_t response = 1;
 
-        map_remove(args->prog, args->vers, args->netid);
-
         /* Don't update if we already have a mapping */
         if (map_lookup(args->prog, args->vers, args->netid)) {
                 response = 0;
@@ -693,7 +680,6 @@ static int pmap3_dump_proc(struct rpc_context *rpc, struct rpc_msg *call, void *
 {
         PMAP3DUMPres reply;
         struct mapping *tmp;
-        char *ptr;
 
         reply.list = NULL;
         for (tmp = map; tmp; tmp = tmp->next) {
@@ -704,9 +690,7 @@ static int pmap3_dump_proc(struct rpc_context *rpc, struct rpc_msg *call, void *
                 tmp_list->map.vers  = tmp->vers;
                 tmp_list->map.netid = tmp->netid;
                 tmp_list->map.owner = tmp->owner;
-                ptr = socket_to_str(rpc, tmp->netid);
-
-                tmp_list->map.addr  = strdup(ptr);
+                tmp_list->map.addr  = tmp->addr;
                 
                 tmp_list->next = reply.list;
 
@@ -718,7 +702,6 @@ static int pmap3_dump_proc(struct rpc_context *rpc, struct rpc_msg *call, void *
 
         while (reply.list) {
                 struct pmap3_mapping_list *tmp_list = reply.list->next;
-                free(reply.list->map.addr);
                 free(reply.list);
                 reply.list = tmp_list;
         }
@@ -772,7 +755,6 @@ static int pmap3_u2t_proc(struct rpc_context *rpc, struct rpc_msg *call, void *o
         *ptr++ = 0;
         port |= atoi(ptr) << 8;
 
-        printf("args:%s\n", args->addr);
         if (index(args->addr, ':')) {
                 memset(&sin6, 0, sizeof(sin6));
                 sin6.sin6_family = AF_INET6;

@@ -436,9 +436,20 @@ struct libnfs_servers *libnfs_create_server(struct event_base *base,
         }
 #endif        
         asprintf(&tcp4_str, "0.0.0.0.%d.%d", ntohs(in6.sin6_port) >> 8, ntohs(in6.sin6_port) & 0xff);
-        
+
         for (i = 0; servers->server_procs[i].program; i++) {
                 PMAP4SETargs set4args;
+
+                to.num_wait += 1;
+                set4args.prog = servers->server_procs[i].program;
+                set4args.vers = servers->server_procs[i].version;
+                set4args.netid = "";
+                set4args.addr  = "";
+                set4args.owner = "";
+                if (rpc_pmap4_unset_task(rpc, &set4args, _pmap4_set_cb, &to) == NULL) {
+                        printf("Failed to send UNSET4 request\n");
+                        goto err;
+                }
 
                 to.num_wait += 4;
                 set4args.prog = servers->server_procs[i].program;
