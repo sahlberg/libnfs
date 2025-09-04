@@ -35,9 +35,18 @@ AC_SUBST(MAYBE_UTILS)
 
 #option: examples
 AC_ARG_ENABLE([examples],
-              [AS_HELP_STRING([--enabam-examples],[Build example programs])],
+              [AS_HELP_STRING([--enable-examples],[Build example programs])],
 	      [ENABLE_EXAMPLES=$enableval],
 	      [ENABLE_EXAMPLES="no"])
+
+#option: servers
+MAYBE_SERVERS=""
+AC_ARG_ENABLE([servers],
+              [AS_HELP_STRING([--enable-servers],[Build example servers])],
+	      [if test $enableval = yes ; then
+	    	    MAYBE_SERVERS="servers"
+	       fi])
+AC_SUBST(MAYBE_SERVERS)
 
 AC_ARG_WITH([libkrb5],
             [AS_HELP_STRING([--without-libkrb5],
@@ -300,6 +309,7 @@ AC_HEADER_MAJOR
 AC_CONFIG_FILES([Makefile]
                 [doc/Makefile]
                 [examples/Makefile]
+                [servers/Makefile]
                 [include/Makefile]
                 [lib/Makefile]
                 [mount/Makefile]

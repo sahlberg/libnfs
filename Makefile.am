@@ -4,7 +4,7 @@ ACLOCAL_AMFLAGS = -I m4
 if HAVE_TLS
 SUBDIRS += tls
 endif
-SUBDIRS +=  lib include $(MAYBE_UTILS) . $(MAYBE_EXAMPLES)
+SUBDIRS +=  lib include $(MAYBE_UTILS) . $(MAYBE_EXAMPLES) $(MAYBE_SERVERS)
 
 pkgconfigdir = $(libdir)/pkgconfig
 pkgconfig_DATA = libnfs.pc

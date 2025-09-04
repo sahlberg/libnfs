@@ -1,6 +1,6 @@
 noinst_PROGRAMS = nfsclient-async nfsclient-raw nfsclient-sync \
 	nfsclient-bcast nfsclient-listservers nfs-fh nfs-io nfs-ln nfs4-cat \
-	portmap-client rpcbind nfs-writefile nfs-stats-cb \
+	portmap-client nfs-writefile nfs-stats-cb \
 	nfs-nfsstat nfs-cat-preadv
 
 if HAVE_TALLOC_TEVENT
@@ -47,4 +47,3 @@ nfs_pthreads_writefile_LDADD = $(COMMON_LIBS)
 nfs_pthreads_async_writefile_LDADD = $(COMMON_LIBS)
 nfs_stats_cb_LDADD = $(COMMON_LIBS)
 nfs_nfsstat_LDADD = $(COMMON_LIBS)
-rpcbind_LDADD = libnfs-server.o $(COMMON_LIBS) -levent
