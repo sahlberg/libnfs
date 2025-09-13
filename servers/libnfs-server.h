@@ -39,12 +39,11 @@ struct libnfs_servers {
         struct event *listen_event4;
         int listen_6;
         struct event *listen_event6;
-        struct libnfs_server udp_server4;
-        struct libnfs_server udp_server6;
         struct libnfs_server_procs *server_procs;
 };
 
-struct libnfs_servers *libnfs_create_server(struct event_base *base,
+struct libnfs_servers *libnfs_create_server(TALLOC_CTX *ctx,
+                                            struct event_base *base,
                                             int port, char *name,
                                             struct libnfs_server_procs *server_procs);
 

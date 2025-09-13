@@ -45,6 +45,7 @@ WSADATA wsaData;
 #endif
 
 #include <stdlib.h>
+#include <talloc.h>
 #include <event2/event.h>
 
 #include "libnfs.h"
@@ -53,7 +54,7 @@ WSADATA wsaData;
 #include "libnfs-server.h"
 
 
-static void free_server(struct libnfs_server *server)
+static int server_destructor(struct libnfs_server *server)
 {
         if (server->rpc) {
                 rpc_disconnect(server->rpc, NULL);
@@ -66,7 +67,7 @@ static void free_server(struct libnfs_server *server)
                 event_free(server->write_event);
         }
 
-        free(server);
+        return 0;
 }
 
 /*
@@ -118,7 +119,7 @@ static void libnfs_server_io(evutil_socket_t fd, short events, void *private_dat
          * Let libnfs process the event.
          */
         if (rpc_service(server->rpc, revents) < 0) {
-                free_server(server);
+                talloc_free(server);
                 return;
         }
 
@@ -144,14 +145,14 @@ static void do_accept(evutil_socket_t s, short events, void *private_data)
         struct libnfs_server *server;
         int i, fd;
 
-        server = malloc(sizeof(struct libnfs_server));
+        server = talloc(servers, struct libnfs_server);
         if (server == NULL) {
                 return;
         }
-        memset(server, 0, sizeof(*server));
+        talloc_set_destructor(server, server_destructor);
 
         if ((fd = accept(s, (struct sockaddr *)&ss, &len)) < 0) {
-                free_server(server);
+                talloc_free(server);
                 return;
         }
         evutil_make_socket_nonblocking(fd);
@@ -159,7 +160,7 @@ static void do_accept(evutil_socket_t s, short events, void *private_data)
         server->rpc = rpc_init_server_context(fd);
         if (server->rpc == NULL) {
                 close(fd);
-                free_server(server);
+                talloc_free(server);
                 return;
         }
 
@@ -181,20 +182,27 @@ static void do_accept(evutil_socket_t s, short events, void *private_data)
         update_events(server->rpc, server->read_event, server->write_event);
 }
 
-static int _create_udp_server(struct event_base *base,
-                              struct sockaddr *sa, int sa_size,
-                              struct libnfs_server *server,
-                              struct libnfs_servers *servers)
+static char *_create_udp_server(struct event_base *base,
+                                struct sockaddr *sa, socklen_t sa_size,
+                                struct libnfs_servers *servers)
 {
         int i, s = -1;
-        
+        struct libnfs_server *server;
+        struct sockaddr_in *in;
+        struct sockaddr_in6 *in6;
+
+        server = talloc(servers, struct libnfs_server);
+        if (server == NULL) {
+                return NULL;
+        }
+        server->write_event = NULL;
         /*
          * UDP: Create and bind to the socket we want to use for the UDP server.
          */
         s = socket(sa->sa_family, SOCK_DGRAM, 0);
         if (s == -1) {
                 printf("Failed to create udp socket\n");
-                return -1;
+                return NULL;
         }
 #ifdef __linux__        
         int opt;
@@ -238,16 +246,26 @@ static int _create_udp_server(struct event_base *base,
                                        libnfs_server_io, server);
         event_add(server->read_event, NULL);
 
-        return 0;
- err:
-        if (server->rpc) {
-                rpc_destroy_context(server->rpc);
-                server->rpc = NULL;
+        switch (sa->sa_family) {
+        case AF_INET:
+                in = (struct sockaddr_in *)sa;
+                if (getsockname(rpc_get_fd(server->rpc), (struct sockaddr *)in, &sa_size)) {
+                        goto err;
+                }
+                return talloc_asprintf(server, "0.0.0.0.%d.%d", ntohs(in->sin_port) >> 8, ntohs(in->sin_port) & 0xff);
+        case AF_INET6:
+                in6 = (struct sockaddr_in6 *)sa;
+                if (getsockname(rpc_get_fd(server->rpc), (struct sockaddr *)in6, &sa_size)) {
+                        goto err;
+                }
+                return talloc_asprintf(server, "::.%d.%d", ntohs(in6->sin6_port) >> 8, ntohs(in6->sin6_port) & 0xff);
         }
+ err:
+        talloc_free(server);
         if (s != -1) {
                 close(s);
         }
-        return -1;
+        return NULL;
 }
 
 
@@ -347,7 +365,25 @@ static void libnfs_client_io(evutil_socket_t fd, short events, void *private_dat
         }
 }
 
-struct libnfs_servers *libnfs_create_server(struct event_base *base,
+static int servers_destructor(struct libnfs_servers *servers)
+{
+        if (servers->listen_4 != -1) {
+                close(servers->listen_4);
+        }
+        if (servers->listen_6 != -1) {
+                close(servers->listen_6);
+        }
+        if (servers->listen_event4) {
+                event_free(servers->listen_event4);
+        }
+        if (servers->listen_event6) {
+                event_free(servers->listen_event6);
+        }
+        return 0;
+}
+        
+struct libnfs_servers *libnfs_create_server(TALLOC_CTX *ctx,
+                                            struct event_base *base,
                                             int port, char *name,
                                             struct libnfs_server_procs *server_procs)
 {
@@ -355,13 +391,13 @@ struct libnfs_servers *libnfs_create_server(struct event_base *base,
         socklen_t in_len = sizeof(struct sockaddr_in);
         struct sockaddr_in6 in6;
         socklen_t in6_len = sizeof(struct sockaddr_in6);
-        struct libnfs_servers *servers = NULL;
+        struct libnfs_servers *servers;
         struct rpc_context *rpc = NULL;
-        char *udp4_str = NULL, *udp6_str = NULL;
-        char *tcp4_str = NULL, *tcp6_str = NULL;
+        char *udp4_str, *udp6_str, *tcp4_str, *tcp6_str;
         int i;
         struct ev_data to = { base, 0, 0, 0, {0, 0}, NULL};
         struct event *read_event = NULL;
+        TALLOC_CTX *tmp_ctx = talloc_new(NULL);
         
         in.sin_family = AF_INET;
         in.sin_port = htons(port);
@@ -371,20 +407,23 @@ struct libnfs_servers *libnfs_create_server(struct event_base *base,
         in6.sin6_port = htons(port);
         in6.sin6_addr = in6addr_any;
 
-        servers = calloc(1, sizeof(struct libnfs_servers));
+        servers = talloc(ctx, struct libnfs_servers);
         if (servers == NULL) {
                 return NULL;
         }
-
         servers->listen_4 = -1;
         servers->listen_6 = -1;
+        talloc_set_destructor(servers, servers_destructor);
+
         servers->base = base;
         servers->server_procs = server_procs;
 
-        if (_create_udp_server(base, (struct sockaddr *)&in, sizeof(in), &servers->udp_server4, servers)) {
+        udp4_str = _create_udp_server(base, (struct sockaddr *)&in, sizeof(in), servers);
+        if (udp4_str == NULL) {
                 goto err;
         }
-        if (_create_udp_server(base, (struct sockaddr *)&in6, sizeof(in6), &servers->udp_server6, servers)) {
+        udp6_str = _create_udp_server(base, (struct sockaddr *)&in6, sizeof(in6), servers);
+        if (udp6_str == NULL) {
                 goto err;
         }
         if (_create_tcp_server(base, (struct sockaddr *)&in6, sizeof(in6), &servers->listen_6, &servers->listen_event6, servers)) {
@@ -416,26 +455,16 @@ struct libnfs_servers *libnfs_create_server(struct event_base *base,
                                libnfs_client_io, rpc);
         event_add(read_event, NULL);
         
-        if (getsockname(rpc_get_fd(servers->udp_server4.rpc), (struct sockaddr *)&in, &in_len)) {
-                goto err;
-        }
-        asprintf(&udp4_str, "0.0.0.0.%d.%d", ntohs(in.sin_port) >> 8, ntohs(in.sin_port) & 0xff);
-
-        if (getsockname(rpc_get_fd(servers->udp_server6.rpc), (struct sockaddr *)&in6, &in6_len)) {
-                goto err;
-        }
-        asprintf(&udp6_str, "::.%d.%d", ntohs(in6.sin6_port) >> 8, ntohs(in6.sin6_port) & 0xff);
-
         if (getsockname(servers->listen_6, (struct sockaddr *)&in6, &in6_len)) {
                 goto err;
         }
-        asprintf(&tcp6_str, "::.%d.%d", ntohs(in6.sin6_port) >> 8, ntohs(in6.sin6_port) & 0xff);
+        tcp6_str = talloc_asprintf(tmp_ctx, "::.%d.%d", ntohs(in6.sin6_port) >> 8, ntohs(in6.sin6_port) & 0xff);
 #if 0        
         if (getsockname(servers->listen_4, (struct sockaddr *)&in4, &in4_len)) {
                 goto err;
         }
 #endif        
-        asprintf(&tcp4_str, "0.0.0.0.%d.%d", ntohs(in6.sin6_port) >> 8, ntohs(in6.sin6_port) & 0xff);
+        tcp4_str = talloc_asprintf(tmp_ctx, "0.0.0.0.%d.%d", ntohs(in6.sin6_port) >> 8, ntohs(in6.sin6_port) & 0xff);
 
         for (i = 0; servers->server_procs[i].program; i++) {
                 PMAP4SETargs set4args;
@@ -497,40 +526,13 @@ struct libnfs_servers *libnfs_create_server(struct event_base *base,
                 event_del(read_event);
                 event_free(read_event);
         }
-        free(udp4_str);
-        free(udp6_str);
         if (rpc) {
                 rpc_destroy_context(rpc);
         }
+        talloc_free(tmp_ctx);
         return servers;
  err:
-        if (servers) {
-                if (servers->listen_4 != -1) {
-                        close(servers->listen_4);
-                }
-                if (servers->listen_event4) {
-                        event_free(servers->listen_event4);
-                }
-                if (servers->listen_6 != -1) {
-                        close(servers->listen_6);
-                }
-                if (servers->listen_event6) {
-                        event_free(servers->listen_event6);
-                }
-                if (servers->udp_server4.rpc) {
-                        rpc_destroy_context(servers->udp_server4.rpc);
-                }
-                if (servers->udp_server4.read_event) {
-                        event_free(servers->udp_server4.read_event);
-                }
-                if (servers->udp_server6.rpc) {
-                        rpc_destroy_context(servers->udp_server6.rpc);
-                }
-                if (servers->udp_server6.read_event) {
-                        event_free(servers->udp_server6.read_event);
-                }
-                free(servers);
-        }
+        talloc_free(servers);
         servers = NULL;
         goto out;
 }
