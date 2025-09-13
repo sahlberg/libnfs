@@ -50,16 +50,20 @@ WSADATA wsaData;
 #endif
 
 #include <arpa/inet.h>
+#include <fcntl.h>
 #include <event2/event.h>
 #include <stdlib.h>
+#include <sys/stat.h>
 
 #include "libnfs.h"
 #include "libnfs-raw.h"
 #include "libnfs-raw-portmap.h"
 #include "libnfs-server.h"
 
+#include "rpcbind_data.h"
 
-#define DBFILE "/var/run/rpcbind/rpcbind.libnfs"
+#define DBDIR "/var/run/rpcbind"
+#define DBFILE DBDIR "/rpcbind.libnfs"
 
 /*
  * Portmapper implementation begins here
@@ -71,113 +75,119 @@ struct pmap_state {
         struct event *read_event;
 };
 
-struct mapping {
-        struct mapping *next;
-        u_int prog;
-        u_int vers;
-        int port;
-        char *netid;
-        char *addr;
-        char *owner;
-};
-struct mapping *map;
+mapping_ptr map;
 
+
+/*
+ * Add a registration for program,version,netid.
+ */
+struct mapping *pmap_register(int prog, int vers, char *netid, char *addr,
+                              char *owner)
+{
+        struct mapping *item;
+        char *str;
+        int count = 0;
+
+        item = malloc(sizeof(struct mapping));
+        if (item == NULL) {
+                return NULL;
+        }
+        item->prog  = prog;
+        item->vers  = vers;
+        item->netid = netid;
+        item->addr  = addr;
+        item->owner = owner;
+
+        /* The port are the last two dotted decimal fields in the address */
+        for (str = item->addr + strlen(item->addr) - 1; str >= item->addr; str--) {
+                if (*str != '.') {
+                        if (*str < '0' || *str > '9') {
+                                break;
+                        }
+                        continue;
+                }
+
+                count++;
+                if (count == 2) {
+                        int high, low;
+
+                        sscanf(str, ".%d.%d", &high, &low);
+                        item->port = high * 256 + low;
+                        break;
+                }
+        }
+
+        item->next  = map;
+        map = item;
+
+        return item;
+}
 
 static void write_db(void)
 {
-        FILE *fd;
-        struct mapping *m;
+        int f;
+        ZDR zdr;
+        char buf[4096];
 
-        fd = fopen(DBFILE, "w");
-        if (fd == NULL) {
-                printf("Failed to open DB file %s\n", DBFILE);
+	zdrmem_create(&zdr, buf, sizeof(buf), ZDR_ENCODE);
+        if (zdr_mapping_ptr(&zdr, &map) == 0) {
+                zdr_destroy(&zdr);
                 return;
         }
-        for (m = map; m; m = m->next) {
-                fprintf(fd, "%d,%d,%d,%s,%s,%s\n",
-                        m->prog,
-                        m->vers,
-                        m->port,
-                        m->netid,
-                        m->addr,
-                        m->owner);
-        }
-        fclose(fd);
+        
+        f = open(DBFILE, O_RDWR|O_CREAT, 0600);
+        if (f == -1) {
+                zdr_destroy(&zdr);
+                return;
+        }                
+        write(f, zdr_getptr(&zdr), zdr_getpos(&zdr));
+        close(f);
+        zdr_destroy(&zdr);
 }
 
 static void read_db(void)
 {
-        FILE *fd;
-        struct mapping *m;
-        char buf[256];
-        
-        fd = fopen(DBFILE, "r");
-        if (fd == NULL) {
-                printf("Failed to open DB file %s\n", DBFILE);
+        int f;
+        struct stat st;
+        ZDR zdr;
+        char *buf = NULL;
+        mapping_ptr tmpmap;
+
+        f = open(DBFILE, O_RDONLY);
+        if (f == -1) {
                 return;
         }
-        while(fgets(buf, sizeof(buf), fd)) {
-                struct mapping *item;
-                char *ptr, *next;
-                int prog, vers, port;
-                char *netid, *addr, *owner;
-                
-                ptr = buf;
-                
-                next = index(ptr, ',');
-                if (next == NULL) {
-                        continue;
-                }
-                *next++ = 0;
-                prog = atoi(ptr);
-                ptr = next;
-                if (prog == 100000) {
-                        continue;
-                }
-                next = index(ptr, ',');
-                if (next == NULL) {
-                        continue;
-                }
-                *next++ = 0;
-                vers = atoi(ptr);
-                ptr = next;
-                
-                next = index(ptr, ',');
-                if (next == NULL) {
-                        continue;
-                }
-                *next++ = 0;
-                port = atoi(ptr);
-                ptr = next;
-
-                netid = next;
-                addr = index(netid, ',');
-                if (addr == NULL) {
-                        continue;
-                }
-                *addr++ = 0;
-                owner = index(addr, ',');
-                if (owner == NULL) {
-                        continue;
-                }
-                *owner++ = 0;
-                owner[strlen(owner) - 1] = 0;
-
-
-                item = malloc(sizeof(struct mapping));
-                if (item == NULL) {
-                        continue;
-                }
-                item->prog  = prog;
-                item->vers  = vers;
-                item->port  = port;
-                item->netid = strdup(netid);
-                item->addr  = strdup(addr);
-                item->owner = strdup(owner);
-                item->next = map;
-                map = item;
+        if (fstat(f, &st)) {
+                close(f);
+                return;
         }
-        fclose(fd);
+        if (st.st_size == 0) {
+                close(f);
+                return;
+        }
+        buf = malloc(st.st_size);
+        if (buf == NULL) {
+                close(f);
+                return;
+        }
+        read(f, buf, st.st_size);
+        close(f);
+
+	zdrmem_create(&zdr, buf, st.st_size, ZDR_DECODE);
+        if (zdr_mapping_ptr(&zdr, &tmpmap) == 0) {
+                zdr_destroy(&zdr);
+                free(buf);
+                return;
+        }
+        while(tmpmap) {
+                pmap_register(tmpmap->prog, tmpmap->vers,
+                              strdup(tmpmap->netid),
+                              strdup(tmpmap->addr),
+                              strdup(tmpmap->owner));
+                tmpmap = tmpmap->next;
+        }
+        zdr_destroy(&zdr);
+        free(buf);
 }
 
 
@@ -228,46 +238,6 @@ static char *socket_to_str(struct rpc_context *rpc, char *netid)
         }
 
         return ptr;
-}
-
-/*
- * Add a registration for program,version,netid.
- */
-int pmap_register(int prog, int vers, char *netid, char *addr,
-                  char *owner)
-{
-        struct mapping *item;
-        char *str;
-        int count = 0;
-
-        item = malloc(sizeof(struct mapping));
-        item->prog  = prog;
-        item->vers  = vers;
-        item->netid = netid;
-        item->addr  = addr;
-        item->owner = owner;
-
-        /* The port are the last two dotted decimal fields in the address */
-        for (str = item->addr + strlen(item->addr) - 1; str >= item->addr; str--) {
-                if (*str != '.') {
-                        if (*str < '0' || *str > '9') {
-                                break;
-                        }
-                        continue;
-                }
-
-                count++;
-                if (count == 2) {
-                        int high, low;
-
-                        sscanf(str, ".%d.%d", &high, &low);
-                        item->port = high * 256 + low;
-                        break;
-                }
-        }
-
-        item->next  = map;
-        map = item;
 }
 
 /*
@@ -908,6 +878,7 @@ int main(int argc, char *argv[])
         aros_init_socket();
 #endif
 
+        mkdir(DBDIR, 0700);
         read_db();
         memset(&pmap, 0, sizeof(pmap));
         pmap.base = event_base_new();
@@ -940,7 +911,7 @@ int main(int argc, char *argv[])
                 goto out;
         }
         printf("Ready to serve\n");
-        daemon(0, 0);
+        daemon(0, 1);
 
         /*
          * Everything is now set up. Start the event loop.
