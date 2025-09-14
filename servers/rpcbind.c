@@ -23,38 +23,17 @@
 #define _FILE_OFFSET_BITS 64
 #define _GNU_SOURCE
 
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif
-
-#ifdef AROS
-#include "aros_compat.h"
-#endif
-
-
-#ifdef WIN32
-#include <win32/win32_compat.h>
-#pragma comment(lib, "ws2_32.lib")
-WSADATA wsaData;
-#else
-#include <sys/stat.h>
-#include <string.h>
-#endif
- 
-#ifdef HAVE_UNISTD_H
-#include <unistd.h>
-#endif
-
-#ifdef HAVE_POLL_H
-#include <poll.h>
-#endif
 
 #include <arpa/inet.h>
 #include <fcntl.h>
-#include <talloc.h>
-#include <event2/event.h>
+#include <poll.h>
 #include <stdlib.h>
+#include <string.h>
 #include <sys/stat.h>
+#include <talloc.h>
+#include <tevent.h>
+#include <time.h>
+#include <unistd.h>
 
 #include "libnfs.h"
 #include "libnfs-raw.h"
@@ -71,9 +50,9 @@ WSADATA wsaData;
  */
 
 struct pmap_state {
-        struct event_base *base;
+        struct tevent_context *tevent;
         struct rpc_context *rpc;
-        struct event *read_event;
+        struct tevent_fd *read_event;
 };
 
 mapping_ptr map;
@@ -305,7 +284,8 @@ void map_remove(struct pmap_state *pmap, int prog, int vers, char *netid)
 struct callit_data {
         struct rpc_context *rpc;
         struct rpc_msg *call;
-        struct event *timeout_event;
+        struct rpc_pdu *pdu;
+        struct tevent_timer *timeout_event;
         int pmap_vers;
         int port;
         char *addr;
@@ -316,15 +296,14 @@ static int callit_destructor(struct callit_data *cb_data)
         if (cb_data->call) {
                 rpc_free_deferred_call(cb_data->rpc, cb_data->call);
         }
-        if (cb_data->timeout_event) {
-                event_free(cb_data->timeout_event);
-        }
 }
 
-static void _timeout_cb(evutil_socket_t fd, short what, void *arg)
+static void _timeout_cb(struct tevent_context *ev, struct tevent_timer *te,
+                        struct timeval current_time, void *private_data)
 {
-        struct callit_data *cb_data = arg;
+        struct callit_data *cb_data = private_data;
 
+        rpc_cancel_pdu(cb_data->rpc, cb_data->pdu);
         talloc_free(cb_data);
 }
 
@@ -401,15 +380,15 @@ static int pmapX_callit_proc(struct pmap_state *pmap, struct rpc_context *rpc, s
                 goto err;
         }
         
-        cb_data->timeout_event = event_new(pmap->base, -1, 0, _timeout_cb, cb_data);
+        cb_data->timeout_event = tevent_add_timer(pmap->tevent, cb_data, to, _timeout_cb, cb_data);
         if (cb_data->timeout_event == NULL) {
                 goto err;
         }
-        event_add(cb_data->timeout_event, &to);
 
-        if (rpc_null_task(pmap->rpc, args->prog, args->vers,
-                          _callit_cb, cb_data)) {
-                return 0;
+        cb_data->pdu = rpc_null_task(pmap->rpc, args->prog, args->vers,
+                                     _callit_cb, cb_data);
+        if (cb_data->pdu == NULL) {
+                goto err;
         }
 
         return 0;
@@ -797,7 +776,7 @@ static int pmap4_callit_proc(struct rpc_context *rpc, struct rpc_msg *call, void
 }
 
 
-static void _callit_io(evutil_socket_t fd, short events, void *private_data)
+static void _callit_io(struct tevent_context *ev, struct tevent_fd *fde, uint16_t flags, void *private_data)
 {
         struct rpc_context *rpc = private_data;
 
@@ -886,17 +865,6 @@ int main(int argc, char *argv[])
                 { 0, 0, 0, 0}
         };
         
-#ifdef WIN32
-        if (WSAStartup(MAKEWORD(2,2), &wsaData) != 0) {
-                printf("Failed to start Winsock2\n");
-                return 10;
-        }
-#endif
-
-#ifdef AROS
-        aros_init_socket();
-#endif
-
         if (pmap == NULL) {
                 printf("Failed to talloc pmap\n");
                 goto out;
@@ -905,9 +873,9 @@ int main(int argc, char *argv[])
         mkdir(DBDIR, 0700);
         read_db(pmap);
 
-        pmap->base = event_base_new();
-        if (pmap->base == NULL) {
-                printf("Failed create event context\n");
+        pmap->tevent = tevent_context_init(pmap);
+        if (pmap->tevent == NULL) {
+                printf("Failed create tevent context\n");
                 goto out;
         }
         talloc_set_destructor(pmap, pmap_destructor);
@@ -921,16 +889,15 @@ int main(int argc, char *argv[])
                 printf("Failed to bind RPC context\n");
                 goto out;
 	}
-        pmap->read_event = event_new(pmap->base, rpc_get_fd(pmap->rpc), EV_READ|EV_PERSIST,
+
+        pmap->read_event = tevent_add_fd(pmap->tevent, pmap, rpc_get_fd(pmap->rpc), TEVENT_FD_READ,
                                      _callit_io, pmap->rpc);
         if (pmap->read_event == NULL) {
                 printf("Failed to create read event for the callit socket\n");
                 goto out;
 	}
-        event_add(pmap->read_event, NULL);
 
-
-        servers = libnfs_create_server(pmap, pmap->base, 111, "libnfs rpcbind", &server_procs[0]);
+        servers = libnfs_create_server(pmap, pmap->tevent, 111, "libnfs rpcbind", &server_procs[0]);
         if (servers == NULL) {
                 printf("Failed to set set up server\n");
                 goto out;
@@ -941,16 +908,10 @@ int main(int argc, char *argv[])
         /*
          * Everything is now set up. Start the event loop.
          */
-        event_base_dispatch(pmap->base);
+        tevent_loop_wait(pmap->tevent);
 
         rc = 0;
  out:
-        if (pmap->read_event) {
-                event_free(pmap->read_event);
-        }
-        if (pmap->base) {
-                event_base_free(pmap->base);
-        }
         talloc_free(pmap);
         return rc;
 }

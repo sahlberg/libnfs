@@ -18,35 +18,17 @@
 
 #define _FILE_OFFSET_BITS 64
 #define _GNU_SOURCE
-
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif
-
-#ifdef AROS
-#include "aros_compat.h"
-#endif
-
-#ifdef WIN32
-#include <win32/win32_compat.h>
-#pragma comment(lib, "ws2_32.lib")
-WSADATA wsaData;
-#else
-#include <sys/stat.h>
-#include <string.h>
-#endif
  
-#ifdef HAVE_POLL_H
+
+#include <errno.h>
+#include <netinet/in.h>
 #include <poll.h>
-#endif
-
-#ifdef HAVE_UNISTD_H
-#include <unistd.h>
-#endif
-
 #include <stdlib.h>
+#include <string.h>
+#include <sys/socket.h>
 #include <talloc.h>
-#include <event2/event.h>
+#include <tevent.h>
+#include <unistd.h>
 
 #include "libnfs.h"
 #include "libnfs-raw.h"
@@ -60,58 +42,29 @@ static int server_destructor(struct libnfs_server *server)
                 rpc_disconnect(server->rpc, NULL);
                 rpc_destroy_context(server->rpc);
         }
-        if (server->read_event) {
-                event_free(server->read_event);
-        }
-        if (server->write_event) {
-                event_free(server->write_event);
-        }
 
         return 0;
 }
 
-/*
- * Based on the state of libnfs and its context, update libevent
- * accordingly regarding which events we are interested in.
- */
-static void update_events(struct rpc_context *rpc, struct event *read_event,
-                          struct event *write_event)
-{
-        int events = rpc_which_events(rpc);
-
-        if (read_event) {
-                if (events & POLLIN) {
-                        event_add(read_event, NULL);
-                } else {
-                        event_del(read_event);
-                }
-        }
-        if (write_event) {
-                if (events & POLLOUT) {
-                        event_add(write_event, NULL);
-                } else {
-                        event_del(write_event);
-                }
-        }
-}
+static void update_events(struct libnfs_server *server);
 
 /*
  * This callback is invoked from the event system when an event we are waiting
  * for has become active.
  */
-static void libnfs_server_io(evutil_socket_t fd, short events, void *private_data)
+static void libnfs_server_io(struct tevent_context *ev, struct tevent_fd *fde, uint16_t flags, void *private_data)
 {
         struct libnfs_server *server = private_data;
         int revents = 0;
 
         /*
-         * Translate the libevent read/write flags to the corresponding
+         * Translate the tevent read/write flags to the corresponding
          * flags that libnfs uses.
          */
-        if (events & EV_READ) {
+        if (flags & TEVENT_FD_READ) {
                 revents |= POLLIN;
         }
-        if (events & EV_WRITE) {
+        if (flags & TEVENT_FD_WRITE) {
                 revents |= POLLOUT;
         }
 
@@ -128,16 +81,46 @@ static void libnfs_server_io(evutil_socket_t fd, short events, void *private_dat
          * for example if we no longer have any data pending to send
          * we no longer need to wait for the socket to become writeable.
          */
-        update_events(server->rpc, server->read_event, server->write_event);
+        update_events(server);
 }
 
+
+/*
+ * Based on the state of libnfs and its context, update libevent
+ * accordingly regarding which events we are interested in.
+ */
+static void update_events(struct libnfs_server *server)
+{
+        static int last_events = 0;
+        int events = rpc_which_events(server->rpc);
+        int flags = 0;
+        struct libnfs_servers *servers;
+        
+        if (events == last_events) {
+                return;
+        }
+
+        servers = talloc_find_parent_bytype(server, struct libnfs_servers);
+        /*
+         * Create events for read and write for this new server instance.
+         */
+        if (events & POLLIN) {
+                flags |= TEVENT_FD_READ;
+        }
+        if (events & POLLOUT) {
+                flags |= TEVENT_FD_WRITE;
+        }
+        talloc_free(server->tfd);
+        server->tfd = tevent_add_fd(servers->tevent, server, rpc_get_fd(server->rpc), flags,
+                                    libnfs_server_io, server);
+}
 
 
 /*
  * This callback is invoked when we have a client connecting to our TCP
  * port.
  */
-static void do_accept(evutil_socket_t s, short events, void *private_data)
+static void do_accept(struct tevent_context *ev, struct tevent_fd *fde, uint16_t flags, void *private_data)
 {
         struct libnfs_servers *servers = private_data;
         struct sockaddr_storage ss;
@@ -150,12 +133,13 @@ static void do_accept(evutil_socket_t s, short events, void *private_data)
                 return;
         }
         talloc_set_destructor(server, server_destructor);
+        server->tfd = NULL;
 
-        if ((fd = accept(s, (struct sockaddr *)&ss, &len)) < 0) {
+        if ((fd = accept4(servers->listen_fd, (struct sockaddr *)&ss, &len, SOCK_NONBLOCK | SOCK_CLOEXEC)) < 0) {
+                printf("Failed to accept incoming connection\n");
                 talloc_free(server);
                 return;
         }
-        evutil_make_socket_nonblocking(fd);
 
         server->rpc = rpc_init_server_context(fd);
         if (server->rpc == NULL) {
@@ -172,21 +156,14 @@ static void do_accept(evutil_socket_t s, short events, void *private_data)
                                      servers->server_procs[i].num_procs);
         }
 
-        /*
-         * Create events for read and write for this new server instance.
-         */
-        server->read_event = event_new(servers->base, fd, EV_READ|EV_PERSIST,
-                                       libnfs_server_io, server);
-        server->write_event = event_new(servers->base, fd, EV_WRITE|EV_PERSIST,
-                                        libnfs_server_io, server);
-        update_events(server->rpc, server->read_event, server->write_event);
+        update_events(server);
 }
 
-static char *_create_udp_server(struct event_base *base,
-                                struct sockaddr *sa, socklen_t sa_size,
-                                struct libnfs_servers *servers)
+static char *_create_udp_server(struct libnfs_servers *servers,
+                                struct sockaddr *sa, socklen_t sa_size)
 {
-        int i, s = -1;
+        struct tevent_fd *tfd;
+        int i, s = -1, opt;
         struct libnfs_server *server;
         struct sockaddr_in *in;
         struct sockaddr_in6 *in6;
@@ -195,7 +172,9 @@ static char *_create_udp_server(struct event_base *base,
         if (server == NULL) {
                 return NULL;
         }
-        server->write_event = NULL;
+
+        server->tfd = NULL;
+        
         /*
          * UDP: Create and bind to the socket we want to use for the UDP server.
          */
@@ -204,8 +183,7 @@ static char *_create_udp_server(struct event_base *base,
                 printf("Failed to create udp socket\n");
                 return NULL;
         }
-#ifdef __linux__        
-        int opt;
+        
         if (sa->sa_family == AF_INET) {
                 opt = 1;
                 setsockopt(s, IPPROTO_IP, IP_PKTINFO, &opt, sizeof(opt));
@@ -213,10 +191,8 @@ static char *_create_udp_server(struct event_base *base,
                 opt = 1;
                 setsockopt(s, IPPROTO_IPV6, IPV6_PKTINFO, &opt, sizeof(opt));
         }
-#endif
-        evutil_make_socket_nonblocking(s);
-        evutil_make_listen_socket_reuseable(s);
-        evutil_make_socket_closeonexec(s);
+        opt = 1;
+        setsockopt(s, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
 
         if (bind(s, sa, sa_size) < 0) {
                 printf("Failed to bind udp socket\n");
@@ -240,11 +216,9 @@ static char *_create_udp_server(struct event_base *base,
                                      servers->server_procs[i].num_procs);
         }
 
-        server->read_event = event_new(base,
-                                       s,
-                                       EV_READ|EV_PERSIST,
-                                       libnfs_server_io, server);
-        event_add(server->read_event, NULL);
+        tfd = tevent_add_fd(servers->tevent, server, rpc_get_fd(server->rpc), TEVENT_FD_READ,
+                            libnfs_server_io, server);
+        tevent_fd_set_auto_close(tfd);
 
         switch (sa->sa_family) {
         case AF_INET:
@@ -262,64 +236,76 @@ static char *_create_udp_server(struct event_base *base,
         }
  err:
         talloc_free(server);
-        if (s != -1) {
-                close(s);
-        }
         return NULL;
 }
 
 
-static int _create_tcp_server(struct event_base *base,
-                              struct sockaddr *sa, int sa_size,
-                              int *s, struct event **listen_event,
-                              struct libnfs_servers *servers)
+static char *_create_tcp_server(struct libnfs_servers *servers,
+                                struct sockaddr *sa, socklen_t sa_size)
 {
-        int i;
+        struct tevent_fd *tfd;
+        int i, opt;
+        struct sockaddr_in *in;
+        struct sockaddr_in6 *in6;
+
+        if (sa->sa_family == AF_INET) {
+                goto mkstr;
+        }
         
         /*
          * TCP: Set up a listening socket for incoming TCP connections.
          * Once clients connect, inside do_accept() we will create a proper
          * libnfs server context for each connection.
          */
-        *s = socket(sa->sa_family, SOCK_STREAM, 0);
-        if (*s == -1) {
+        servers->listen_fd = socket(sa->sa_family, SOCK_STREAM, 0);
+        if (servers->listen_fd == -1) {
                 printf("Failed to create listening socket\n");
-                return -1;
+                return NULL;
         }
-        evutil_make_socket_nonblocking(*s);
-        evutil_make_listen_socket_reuseable(*s);
-        evutil_make_socket_closeonexec(*s);
+        opt = 1;
+        setsockopt(servers->listen_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
 
-        if (bind(*s, sa, sa_size) < 0) {
+        if (bind(servers->listen_fd, sa, sa_size) < 0) {
                 printf("Failed to bind listening socket %s\n", strerror(errno));
                 goto err;
         }
-        if (listen(*s, 16) < 0) {
+        if (listen(servers->listen_fd, 16) < 0) {
                 printf("failed to listen to socket\n");
                 goto err;
         }
-        *listen_event = event_new(base,
-                                  *s,
-                                  EV_READ|EV_PERSIST,
-                                  do_accept, servers);
-        event_add(*listen_event, NULL);
-        
-        return 0;
- err:
-        if (*s != -1) {
-                close(*s);
-                *s = -1;
+        tfd = tevent_add_fd(servers->tevent, servers, servers->listen_fd, TEVENT_FD_READ,
+                            do_accept, servers);
+        if (tfd == NULL) {
+                printf("failed to add listening fd\n");
+                goto err;
         }
-        return -1;
+        tevent_fd_set_auto_close(tfd);
+ mkstr:
+        switch (sa->sa_family) {
+        case AF_INET:
+                in = (struct sockaddr_in *)sa;
+                if (getsockname(servers->listen_fd, (struct sockaddr *)in, &sa_size)) {
+                        goto err;
+                }
+                return talloc_asprintf(servers, "0.0.0.0.%d.%d", ntohs(in->sin_port) >> 8, ntohs(in->sin_port) & 0xff);
+        case AF_INET6:
+                in6 = (struct sockaddr_in6 *)sa;
+                if (getsockname(servers->listen_fd, (struct sockaddr *)in6, &sa_size)) {
+                        goto err;
+                }
+                return talloc_asprintf(servers, "::.%d.%d", ntohs(in6->sin6_port) >> 8, ntohs(in6->sin6_port) & 0xff);
+        }
+
+ err:
+        return NULL;
 }
 
 struct ev_data {
-        struct event_base *base;
+        struct tevent_context *tevent;
         int stage;
         int status;
         int num_wait;
         struct timeval to;
-        struct event *timer;
 };
 
 static void _pmap4_set_cb(struct rpc_context *rpc, int status, void *data, void *private_data)
@@ -330,30 +316,19 @@ static void _pmap4_set_cb(struct rpc_context *rpc, int status, void *data, void 
         if (status != RPC_STATUS_SUCCESS) {
                 evd->status = -1;
         }
-        if (--evd->num_wait == 0) {
-                event_base_loopbreak(evd->base);
-        }
+        evd->num_wait--;
 }
 
-static void _timeout_cb(evutil_socket_t fd, short what, void *arg)
+static void _timeout_cb(struct tevent_context *ev, struct tevent_timer *te,
+                        struct timeval current_time, void *private_data)
 {
-        struct ev_data *evd = arg;
+        struct ev_data *evd = private_data;
 
-        if (evd->stage == 0) {
-                evd->stage++;
-                evd->to.tv_sec = 5;
-                evd->to.tv_usec = 0;
-                event_add(evd->timer, &evd->to);
-
-                /* create rpc context to local pormapper and send SET */
-                /* getsockname() to find which port was bound to */
-                return;
-        }
         evd->status = -1;
-        event_base_loopbreak(evd->base);
+        evd->num_wait = 0;
 }
 
-static void libnfs_client_io(evutil_socket_t fd, short events, void *private_data)
+static void libnfs_client_io(struct tevent_context *ev, struct tevent_fd *fde, uint16_t flags, void *private_data)
 {
         struct rpc_context *rpc = private_data;
 
@@ -367,23 +342,11 @@ static void libnfs_client_io(evutil_socket_t fd, short events, void *private_dat
 
 static int servers_destructor(struct libnfs_servers *servers)
 {
-        if (servers->listen_4 != -1) {
-                close(servers->listen_4);
-        }
-        if (servers->listen_6 != -1) {
-                close(servers->listen_6);
-        }
-        if (servers->listen_event4) {
-                event_free(servers->listen_event4);
-        }
-        if (servers->listen_event6) {
-                event_free(servers->listen_event6);
-        }
         return 0;
 }
         
 struct libnfs_servers *libnfs_create_server(TALLOC_CTX *ctx,
-                                            struct event_base *base,
+                                            struct tevent_context *tevent,
                                             int port, char *name,
                                             struct libnfs_server_procs *server_procs)
 {
@@ -395,8 +358,7 @@ struct libnfs_servers *libnfs_create_server(TALLOC_CTX *ctx,
         struct rpc_context *rpc = NULL;
         char *udp4_str, *udp6_str, *tcp4_str, *tcp6_str;
         int i;
-        struct ev_data to = { base, 0, 0, 0, {0, 0}, NULL};
-        struct event *read_event = NULL;
+        struct ev_data *to;
         TALLOC_CTX *tmp_ctx = talloc_new(NULL);
         
         in.sin_family = AF_INET;
@@ -411,32 +373,27 @@ struct libnfs_servers *libnfs_create_server(TALLOC_CTX *ctx,
         if (servers == NULL) {
                 return NULL;
         }
-        servers->listen_4 = -1;
-        servers->listen_6 = -1;
+        servers->tevent = tevent;
         talloc_set_destructor(servers, servers_destructor);
 
-        servers->base = base;
         servers->server_procs = server_procs;
 
-        udp4_str = _create_udp_server(base, (struct sockaddr *)&in, sizeof(in), servers);
+        udp4_str = _create_udp_server(servers, (struct sockaddr *)&in, sizeof(in));
         if (udp4_str == NULL) {
                 goto err;
         }
-        udp6_str = _create_udp_server(base, (struct sockaddr *)&in6, sizeof(in6), servers);
+        udp6_str = _create_udp_server(servers, (struct sockaddr *)&in6, sizeof(in6));
         if (udp6_str == NULL) {
                 goto err;
         }
-        if (_create_tcp_server(base, (struct sockaddr *)&in6, sizeof(in6), &servers->listen_6, &servers->listen_event6, servers)) {
+        tcp6_str = _create_tcp_server(servers, (struct sockaddr *)&in6, sizeof(in6));
+        if (tcp6_str == NULL) {
                 goto err;
         }
-#if 0
-        /* Listening to in6addr_any above binds to both tcp and tcp6 on Linux so this will fail
-         * TODO: only make this call if we either do not have ipv6 support or no Linux
-         */
-        if (_create_tcp_server(base, (struct sockaddr *)&in, sizeof(in), &servers->listen_4, servers)) {
+        tcp4_str = _create_tcp_server(servers, (struct sockaddr *)&in, sizeof(in));
+        if (tcp4_str == NULL) {
                 goto err;
         }
-#endif
 
         rpc = rpc_init_udp_context();
         if (rpc == NULL) {
@@ -451,81 +408,69 @@ struct libnfs_servers *libnfs_create_server(TALLOC_CTX *ctx,
                 printf("Failed to set udp destination\n");
                 goto err;
         }
-        read_event = event_new(base, rpc_get_fd(rpc), EV_READ|EV_PERSIST,
-                               libnfs_client_io, rpc);
-        event_add(read_event, NULL);
-        
-        if (getsockname(servers->listen_6, (struct sockaddr *)&in6, &in6_len)) {
-                goto err;
-        }
-        tcp6_str = talloc_asprintf(tmp_ctx, "::.%d.%d", ntohs(in6.sin6_port) >> 8, ntohs(in6.sin6_port) & 0xff);
-#if 0        
-        if (getsockname(servers->listen_4, (struct sockaddr *)&in4, &in4_len)) {
-                goto err;
-        }
-#endif        
-        tcp4_str = talloc_asprintf(tmp_ctx, "0.0.0.0.%d.%d", ntohs(in6.sin6_port) >> 8, ntohs(in6.sin6_port) & 0xff);
+        to = talloc(tmp_ctx, struct ev_data);
+        to->tevent = tevent;
+        to->stage = 0;
+        to->status = 0;
+        to->num_wait = 0;
+        gettimeofday(&to->to, NULL);
+        to->to.tv_sec += 5;
+        tevent_add_fd(servers->tevent, tmp_ctx, rpc_get_fd(rpc), TEVENT_FD_READ,
+                      libnfs_client_io, rpc);
 
         for (i = 0; servers->server_procs[i].program; i++) {
                 PMAP4SETargs set4args;
 
-                to.num_wait += 1;
+                to->num_wait += 1;
                 set4args.prog = servers->server_procs[i].program;
                 set4args.vers = servers->server_procs[i].version;
                 set4args.netid = "";
                 set4args.addr  = "";
                 set4args.owner = "";
-                if (rpc_pmap4_unset_task(rpc, &set4args, _pmap4_set_cb, &to) == NULL) {
+                if (rpc_pmap4_unset_task(rpc, &set4args, _pmap4_set_cb, to) == NULL) {
                         printf("Failed to send UNSET4 request\n");
                         goto err;
                 }
 
-                to.num_wait += 4;
+                to->num_wait += 4;
                 set4args.prog = servers->server_procs[i].program;
                 set4args.vers = servers->server_procs[i].version;
                 set4args.netid = "udp";
                 set4args.addr  = udp4_str;
                 set4args.owner = name;
-		if (rpc_pmap4_set_task(rpc, &set4args, _pmap4_set_cb, &to) == NULL) {
+		if (rpc_pmap4_set_task(rpc, &set4args, _pmap4_set_cb, to) == NULL) {
 			printf("Failed to send SET4 request\n");
                         goto err;
 		}
                 set4args.netid = "udp6";
                 set4args.addr  = udp6_str;
-		if (rpc_pmap4_set_task(rpc, &set4args, _pmap4_set_cb, &to) == NULL) {
+		if (rpc_pmap4_set_task(rpc, &set4args, _pmap4_set_cb, to) == NULL) {
 			printf("Failed to send SET4 request\n");
                         goto err;
 		}
                 set4args.netid = "tcp";
                 set4args.addr  = tcp4_str;
-		if (rpc_pmap4_set_task(rpc, &set4args, _pmap4_set_cb, &to) == NULL) {
+		if (rpc_pmap4_set_task(rpc, &set4args, _pmap4_set_cb, to) == NULL) {
 			printf("Failed to send SET4 request\n");
                         goto err;
 		}
                 set4args.netid = "tcp6";
                 set4args.addr  = tcp6_str;
-		if (rpc_pmap4_set_task(rpc, &set4args, _pmap4_set_cb, &to) == NULL) {
+		if (rpc_pmap4_set_task(rpc, &set4args, _pmap4_set_cb, to) == NULL) {
 			printf("Failed to send SET4 request\n");
                         goto err;
 		}
         }
-        to.timer = event_new(base, -1, 0, _timeout_cb, &to);
-        event_add(to.timer, &to.to);
-        event_base_dispatch(base);
-        if (to.status) {
+        tevent_add_timer(tevent, tmp_ctx, to->to, _timeout_cb, to);
+        while (to->num_wait > 0) {
+                tevent_loop_once(to->tevent);
+        }
+        if (to->status) {
                 printf("timed out registering with portmapper\n");
                 goto err;
         }
 
  out:
-        if (to.timer) {
-                event_del(to.timer);
-                event_free(to.timer);
-        }
-        if (read_event) {
-                event_del(read_event);
-                event_free(read_event);
-        }
         if (rpc) {
                 rpc_destroy_context(rpc);
         }

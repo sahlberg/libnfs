@@ -18,12 +18,11 @@
 #ifndef _LIBNFS_SERVER_H_
 #define _LIBNFS_SERVER_H_
 
-#include <event2/event.h>
+#include <tevent.h>
 
 struct libnfs_server {
         struct rpc_context *rpc;
-        struct event *read_event;
-        struct event *write_event;
+        struct tevent_fd *tfd;
 };
 
 struct libnfs_server_procs {
@@ -34,16 +33,13 @@ struct libnfs_server_procs {
 };
 
 struct libnfs_servers {
-        struct event_base *base;
-        int listen_4;
-        struct event *listen_event4;
-        int listen_6;
-        struct event *listen_event6;
+        struct tevent_context *tevent;
         struct libnfs_server_procs *server_procs;
+        int listen_fd;
 };
 
 struct libnfs_servers *libnfs_create_server(TALLOC_CTX *ctx,
-                                            struct event_base *base,
+                                            struct tevent_context *tevent,
                                             int port, char *name,
                                             struct libnfs_server_procs *server_procs);
 

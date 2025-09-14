@@ -17,7 +17,7 @@ if HAVE_TLS
 COMMON_LIBS += -lgnutls
 endif
 
-rpcbind_LDADD = libnfs-server.o rpcbind_data.o $(COMMON_LIBS) -ltalloc -levent
+rpcbind_LDADD = libnfs-server.o rpcbind_data.o $(COMMON_LIBS) -ltalloc -ltevent
 
 compile_rpc:	
 	cat rpcbind_data.x | head -1 >rpcbind_data.h
