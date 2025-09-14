@@ -868,6 +868,7 @@ int main(int argc, char *argv[])
                 printf("Failed to talloc pmap\n");
                 goto out;
         }
+        pmap->rpc = NULL;
 
         mkdir(DBDIR, 0700);
         read_db(pmap);
