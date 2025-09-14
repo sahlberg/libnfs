@@ -18,6 +18,7 @@
 #ifndef _LIBNFS_SERVER_H_
 #define _LIBNFS_SERVER_H_
 
+#include <talloc.h>
 #include <tevent.h>
 
 struct libnfs_server_procs {
