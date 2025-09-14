@@ -20,11 +20,6 @@
 
 #include <tevent.h>
 
-struct libnfs_server {
-        struct rpc_context *rpc;
-        struct tevent_fd *tfd;
-};
-
 struct libnfs_server_procs {
         uint32_t program;
         uint32_t version;
@@ -32,11 +27,7 @@ struct libnfs_server_procs {
         int num_procs;
 };
 
-struct libnfs_servers {
-        struct tevent_context *tevent;
-        struct libnfs_server_procs *server_procs;
-        int listen_fd;
-};
+struct libnfs_servers;
 
 struct libnfs_servers *libnfs_create_server(TALLOC_CTX *ctx,
                                             struct tevent_context *tevent,

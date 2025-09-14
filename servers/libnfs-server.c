@@ -35,6 +35,16 @@
 #include "libnfs-raw-portmap.h"
 #include "libnfs-server.h"
 
+struct libnfs_server {
+        struct rpc_context *rpc;
+        struct tevent_fd *tfd;
+};
+
+struct libnfs_servers {
+        struct tevent_context *tevent;
+        struct libnfs_server_procs *server_procs;
+        int listen_fd;
+};
 
 static int server_destructor(struct libnfs_server *server)
 {

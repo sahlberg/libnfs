@@ -38,7 +38,7 @@
 #include "libnfs.h"
 #include "libnfs-raw.h"
 #include "libnfs-raw-portmap.h"
-#include "libnfs-server.h"
+#include "../libnfs-server.h"
 
 #include "rpcbind_data.h"
 
@@ -52,7 +52,6 @@
 struct pmap_state {
         struct tevent_context *tevent;
         struct rpc_context *rpc;
-        struct tevent_fd *read_event;
 };
 
 mapping_ptr map;
@@ -890,9 +889,8 @@ int main(int argc, char *argv[])
                 goto out;
 	}
 
-        pmap->read_event = tevent_add_fd(pmap->tevent, pmap, rpc_get_fd(pmap->rpc), TEVENT_FD_READ,
-                                     _callit_io, pmap->rpc);
-        if (pmap->read_event == NULL) {
+        if (tevent_add_fd(pmap->tevent, pmap, rpc_get_fd(pmap->rpc), TEVENT_FD_READ,
+                          _callit_io, pmap->rpc) == NULL) {
                 printf("Failed to create read event for the callit socket\n");
                 goto out;
 	}
