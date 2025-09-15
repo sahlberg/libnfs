@@ -9,4 +9,4 @@ if HAVE_TLS
 COMMON_LIBS += -lgnutls
 endif
 
-SUBDIRS = rpcbind statd
+SUBDIRS = nfsd rpcbind statd

@@ -1,0 +1,195 @@
+/* -*-  mode:c; tab-width:8; c-basic-offset:8; indent-tabs-mode:nil;  -*- */
+/* 
+   Copyright (C) by Ronnie Sahlberg <ronniesahlberg@gmail.com> 2025
+   
+   This program is free software; you can redistribute it and/or modify
+   it under the terms of the GNU General Public License as published by
+   the Free Software Foundation; either version 3 of the License, or
+   (at your option) any later version.
+   
+   This program is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+   GNU General Public License for more details.
+   
+   You should have received a copy of the GNU General Public License
+   along with this program; if not, see <http://www.gnu.org/licenses/>.
+*/
+/*
+ * A non-blocking and eventdriven implementation of rpcbind using libnfs.
+ * TODO: Call NULL periodically and reap dead services from the database.
+ */
+
+#define _FILE_OFFSET_BITS 64
+#define _GNU_SOURCE
+
+
+#include <arpa/inet.h>
+#include <fcntl.h>
+#include <poll.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/stat.h>
+#include <talloc.h>
+#include <tevent.h>
+#include <time.h>
+#include <unistd.h>
+
+#include "libnfs.h"
+#include "libnfs-raw.h"
+#include "libnfs-raw-mount.h"
+#include "libnfs-raw-nfs.h"
+#include "../libnfs-server.h"
+
+
+struct nfsd_state {
+        struct tevent_context *tevent;
+        struct rpc_context *rpc;
+};
+
+static int mount3_null_proc(struct rpc_context *rpc, struct rpc_msg *call, void *opaque)
+{
+        rpc_send_reply(rpc, call, NULL, (zdrproc_t)zdr_void, 0);
+
+        return 0;
+}
+
+static int nfs3_null_proc(struct rpc_context *rpc, struct rpc_msg *call, void *opaque)
+{
+        rpc_send_reply(rpc, call, NULL, (zdrproc_t)zdr_void, 0);
+
+        return 0;
+}
+
+static int nfsd_destructor(struct nfsd_state *nfsd)
+{
+        if (nfsd->rpc) {
+                rpc_destroy_context(nfsd->rpc);
+        }
+        return 0;
+}
+
+int main(int argc, char *argv[])
+{
+        struct nfsd_state *nfsd = talloc(NULL, struct nfsd_state);
+        struct libnfs_servers *servers;
+        int rc = 1;
+
+        struct service_proc nfs3_pt[] = {
+                {NFS3_NULL, nfs3_null_proc,
+                 (zdrproc_t)zdr_void, 0, nfsd},
+#if 0
+                {NFS3_GETATTR, nfs3_getattr_proc,
+                 (zdrproc_t)zdr_NFS3_GETATTRargs, sizeof(NFS3_GETATTRargs), nfsd},
+                {NFS3_SETATTR, nfs3_setattr_proc,
+                 (zdrproc_t)zdr_NFS3_SETATTRargs, sizeof(NFS3_SETATTRargs), nfsd},
+                {NFS3_LOOKUP, nfs3_lookup_proc,
+                 (zdrproc_t)zdr_NFS3_LOOKUPargs, sizeof(NFS3_LOOKUPargs), nfsd},
+                {NFS3_ACCESS, nfs3_access_proc,
+                 (zdrproc_t)zdr_NFS3_ACCESSargs, sizeof(NFS3_ACCESSargs), nfsd},
+                {NFS3_READLINK, nfs3_readlink_proc,
+                 (zdrproc_t)zdr_NFS3_READLINKargs, sizeof(NFS3_READLINKargs), nfsd},
+                {NFS3_READ, nfs3_read_proc,
+                 (zdrproc_t)zdr_NFS3_READargs, sizeof(NFS3_READargs), nfsd},
+                {NFS3_WRITE, nfs3_write_proc,
+                 (zdrproc_t)zdr_NFS3_WRITEargs, sizeof(NFS3_WRITEargs), nfsd},
+                {NFS3_CREATE, nfs3_create_proc,
+                 (zdrproc_t)zdr_NFS3_CREATEargs, sizeof(NFS3_CREATEargs), nfsd},
+                {NFS3_MKDIR, nfs3_mkdir_proc,
+                 (zdrproc_t)zdr_NFS3_MKDIRargs, sizeof(NFS3_MKDIRargs), nfsd},
+                {NFS3_SYMLINK, nfs3_symlink_proc,
+                 (zdrproc_t)zdr_NFS3_SYMLINKargs, sizeof(NFS3_SYMLINKargs), nfsd},
+                {NFS3_MKNOD, nfs3_mknod_proc,
+                 (zdrproc_t)zdr_NFS3_MKNODargs, sizeof(NFS3_MKNODargs), nfsd},
+                {NFS3_REMOVE, nfs3_remove_proc,
+                 (zdrproc_t)zdr_NFS3_REMOVEargs, sizeof(NFS3_REMOVEargs), nfsd},
+                {NFS3_RMDIR, nfs3_rmdir_proc,
+                 (zdrproc_t)zdr_NFS3_RMDIRargs, sizeof(NFS3_RMDIRargs), nfsd},
+                {NFS3_RENAME, nfs3_rename_proc,
+                 (zdrproc_t)zdr_NFS3_RENAMEargs, sizeof(NFS3_RENAMEargs), nfsd},
+                {NFS3_LINK, nfs3_link_proc,
+                 (zdrproc_t)zdr_NFS3_LINKargs, sizeof(NFS3_LINKargs), nfsd},
+                {NFS3_READDIR, nfs3_readdir_proc,
+                 (zdrproc_t)zdr_NFS3_READDIRargs, sizeof(NFS3_READDIRargs), nfsd},
+                {NFS3_READDIRPLUS, nfs3_readdirplus_proc,
+                 (zdrproc_t)zdr_NFS3_READDIRPLUSargs, sizeof(NFS3_READDIRPLUSargs), nfsd},
+                {NFS3_FSSTAT, nfs3_fsstat_proc,
+                 (zdrproc_t)zdr_NFS3_FSSTATargs, sizeof(NFS3_FSSTATargs), nfsd},
+                {NFS3_FSINFO, nfs3_fsinfo_proc,
+                 (zdrproc_t)zdr_NFS3_FSINFOargs, sizeof(NFS3_FSINFOargs), nfsd},
+                {NFS3_PATHCONF, nfs3_pathconf_proc,
+                 (zdrproc_t)zdr_NFS3_PATHCONFargs, sizeof(NFS3_PATHCONFargs), nfsd},
+                {NFS3_COMMIT, nfs3_commit_proc,
+                 (zdrproc_t)zdr_NFS3_COMMITargs, sizeof(NFS3_COMMITargs), nfsd},
+#endif
+        };
+        struct service_proc mount3_pt[] = {
+                {MOUNT3_NULL, mount3_null_proc,
+                 (zdrproc_t)zdr_void, 0, nfsd},
+#if 0
+                {MOUNT3_MNT, mount3_mnt_proc,
+                 (zdrproc_t)zdr_MOUNT3_MNTargs, sizeof(MOUNT3_MNTargs), nfsd},
+                {MOUNT3_DUMP, mount3_dump_proc,
+                 (zdrproc_t)zdr_MOUNT3_DUMPargs, sizeof(MOUNT3_DUMPargs), nfsd},
+                {MOUNT3_UMNT, mount3_umnt_proc,
+                 (zdrproc_t)zdr_MOUNT3_UMNTargs, sizeof(MOUNT3_UMNTargs), nfsd},
+                {MOUNT3_UMNTALL, mount3_umntall_proc,
+                 (zdrproc_t)zdr_MOUNT3_UMNTALLargs, sizeof(MOUNT3_UMNTALLargs), nfsd},
+                {MOUNT3_EXPORT, mount3_export_proc,
+                 (zdrproc_t)zdr_MOUNT3_EXPORTargs, sizeof(MOUNT3_EXPORTargs), nfsd},
+#endif
+        };
+        struct libnfs_server_procs server_procs[] = {
+                { MOUNT_PROGRAM, MOUNT_V3, mount3_pt, sizeof(mount3_pt) / sizeof(mount3_pt[0]) },
+                { NFS_PROGRAM, NFS_V3, nfs3_pt, sizeof(nfs3_pt) / sizeof(nfs3_pt[0]) },
+                { 0, 0, 0, 0}
+        };
+        
+        if (nfsd == NULL) {
+                printf("Failed to talloc nfsd\n");
+                goto out;
+        }
+        nfsd->rpc = NULL;
+        nfsd->tevent = tevent_context_init(nfsd);
+        if (nfsd->tevent == NULL) {
+                printf("Failed create tevent context\n");
+                goto out;
+        }
+        talloc_set_destructor(nfsd, nfsd_destructor);
+
+#if 0
+        nfsd->rpc = rpc_init_udp_context();
+        if (nfsd->rpc == NULL) {
+                printf("Failed to create RPC context for outgoing nfsd calls\n");
+                goto out;
+        }
+	if (rpc_bind_udp(nfsd->rpc, "0.0.0.0", 0) < 0) {
+                printf("Failed to bind RPC context\n");
+                goto out;
+	}
+
+        if (tevent_add_fd(nfsd->tevent, nfsd, rpc_get_fd(nfsd->rpc), TEVENT_FD_READ,
+                          _callit_io, nfsd->rpc) == NULL) {
+                printf("Failed to create read event for outgoing socket\n");
+                goto out;
+	}
+#endif
+
+        servers = libnfs_create_server(nfsd, nfsd->tevent, 2049, "libnfs nfsd", &server_procs[0]);
+        if (servers == NULL) {
+                printf("Failed to set set up server\n");
+                goto out;
+        }
+        printf("Ready to serve\n");
+        //qqq daemon(0, 1);
+
+        /*
+         * Everything is now set up. Start the event loop.
+         */
+        tevent_loop_wait(nfsd->tevent);
+
+        rc = 0;
+ out:
+        talloc_free(nfsd);
+        return rc;
+}
