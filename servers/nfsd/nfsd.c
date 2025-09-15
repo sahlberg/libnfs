@@ -39,6 +39,7 @@
 #include "libnfs-raw.h"
 #include "libnfs-raw-mount.h"
 #include "libnfs-raw-nfs.h"
+#include "libnfs-raw-nlm.h"
 #include "../libnfs-server.h"
 
 
@@ -55,6 +56,13 @@ static int mount3_null_proc(struct rpc_context *rpc, struct rpc_msg *call, void 
 }
 
 static int nfs3_null_proc(struct rpc_context *rpc, struct rpc_msg *call, void *opaque)
+{
+        rpc_send_reply(rpc, call, NULL, (zdrproc_t)zdr_void, 0);
+
+        return 0;
+}
+
+static int nlm4_null_proc(struct rpc_context *rpc, struct rpc_msg *call, void *opaque)
 {
         rpc_send_reply(rpc, call, NULL, (zdrproc_t)zdr_void, 0);
 
@@ -139,8 +147,30 @@ int main(int argc, char *argv[])
                  (zdrproc_t)zdr_MOUNT3_EXPORTargs, sizeof(MOUNT3_EXPORTargs), nfsd},
 #endif
         };
+        struct service_proc nlm4_pt[] = {
+                {NLM4_NULL, nlm4_null_proc,
+                 (zdrproc_t)zdr_void, 0, nfsd},
+#if 0
+                {NLM4_TEST, nlm4_test_proc,
+                 (zdrproc_t)zdr_NLM4_TESTargs, sizeof(NLM4_TESTargs), nfsd},
+                {NLM4_LOCK, nlm4_lock_proc,
+                 (zdrproc_t)zdr_NLM4_LOCKargs, sizeof(NLM4_LOCKargs), nfsd},
+                {NLM4_UNLOCK, nlm4_unlock_proc,
+                 (zdrproc_t)zdr_NLM4_UNLOCKargs, sizeof(NLM4_UNLOCKargs), nfsd},
+                /* _GRANTED is sent from a server back to the client when a pending
+                 * lock has been fulfilled. No need to implement this in a server.
+                 */
+                {NLM4_GRANTED, nlm4_granted_proc,
+                 (zdrproc_t)zdr_NLM4_GRANTEDargs, sizeof(NLM4_GRANTEDargs), nfsd},
+                /* The other functions are all fo special clients, like _MSG/_RES are
+                 * async versions of the protocol, used for example by HP-UX ...
+                 * So we don't need to care about them for now.
+                 */
+#endif
+        };
         struct libnfs_server_procs server_procs[] = {
                 { MOUNT_PROGRAM, MOUNT_V3, mount3_pt, sizeof(mount3_pt) / sizeof(mount3_pt[0]) },
+                { NLM_PROGRAM, NLM_V4, nlm4_pt, sizeof(nlm4_pt) / sizeof(nlm4_pt[0]) },
                 { NFS_PROGRAM, NFS_V3, nfs3_pt, sizeof(nfs3_pt) / sizeof(nfs3_pt[0]) },
                 { 0, 0, 0, 0}
         };
@@ -157,23 +187,6 @@ int main(int argc, char *argv[])
         }
         talloc_set_destructor(nfsd, nfsd_destructor);
 
-#if 0
-        nfsd->rpc = rpc_init_udp_context();
-        if (nfsd->rpc == NULL) {
-                printf("Failed to create RPC context for outgoing nfsd calls\n");
-                goto out;
-        }
-	if (rpc_bind_udp(nfsd->rpc, "0.0.0.0", 0) < 0) {
-                printf("Failed to bind RPC context\n");
-                goto out;
-	}
-
-        if (tevent_add_fd(nfsd->tevent, nfsd, rpc_get_fd(nfsd->rpc), TEVENT_FD_READ,
-                          _callit_io, nfsd->rpc) == NULL) {
-                printf("Failed to create read event for outgoing socket\n");
-                goto out;
-	}
-#endif
 
         servers = libnfs_create_server(nfsd, nfsd->tevent, 2049, "libnfs nfsd", &server_procs[0]);
         if (servers == NULL) {
