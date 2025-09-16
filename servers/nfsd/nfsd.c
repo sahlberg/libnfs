@@ -50,23 +50,17 @@ struct nfsd_state {
 
 static int mount3_null_proc(struct rpc_context *rpc, struct rpc_msg *call, void *opaque)
 {
-        rpc_send_reply(rpc, call, NULL, (zdrproc_t)zdr_void, 0);
-
-        return 0;
+        return rpc_send_reply(rpc, call, NULL, (zdrproc_t)zdr_void, 0);
 }
 
 static int nfs3_null_proc(struct rpc_context *rpc, struct rpc_msg *call, void *opaque)
 {
-        rpc_send_reply(rpc, call, NULL, (zdrproc_t)zdr_void, 0);
-
-        return 0;
+        return rpc_send_reply(rpc, call, NULL, (zdrproc_t)zdr_void, 0);
 }
 
 static int nlm4_null_proc(struct rpc_context *rpc, struct rpc_msg *call, void *opaque)
 {
-        rpc_send_reply(rpc, call, NULL, (zdrproc_t)zdr_void, 0);
-
-        return 0;
+        return rpc_send_reply(rpc, call, NULL, (zdrproc_t)zdr_void, 0);
 }
 
 static int nfsd_destructor(struct nfsd_state *nfsd)
