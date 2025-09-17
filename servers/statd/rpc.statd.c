@@ -120,7 +120,9 @@ int main(int argc, char *argv[])
 	}
 #endif
 
-        servers = libnfs_create_server(statd, statd->tevent, 0, "libnfs rpc.statd", &server_procs[0]);
+        servers = libnfs_create_server(statd, statd->tevent, 0, "libnfs rpc.statd",
+                                       TRANSPORT_TCP | TRANSPORT_TCP6 | TRANSPORT_UDP | TRANSPORT_UDP6,
+                                       &server_procs[0]);
         if (servers == NULL) {
                 printf("Failed to set set up server\n");
                 goto out;

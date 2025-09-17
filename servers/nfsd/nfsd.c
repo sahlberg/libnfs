@@ -182,7 +182,9 @@ int main(int argc, char *argv[])
         talloc_set_destructor(nfsd, nfsd_destructor);
 
 
-        servers = libnfs_create_server(nfsd, nfsd->tevent, 2049, "libnfs nfsd", &server_procs[0]);
+        servers = libnfs_create_server(nfsd, nfsd->tevent, 2049, "libnfs nfsd",
+                                       TRANSPORT_TCP | TRANSPORT_TCP6,
+                                       &server_procs[0]);
         if (servers == NULL) {
                 printf("Failed to set set up server\n");
                 goto out;

@@ -30,9 +30,15 @@ struct libnfs_server_procs {
 
 struct libnfs_servers;
 
+#define TRANSPORT_TCP  1
+#define TRANSPORT_UDP  2
+#define TRANSPORT_TCP6 3
+#define TRANSPORT_UDP6 4
+
 struct libnfs_servers *libnfs_create_server(TALLOC_CTX *ctx,
                                             struct tevent_context *tevent,
                                             int port, char *name,
+                                            int transports,
                                             struct libnfs_server_procs *server_procs);
 
 

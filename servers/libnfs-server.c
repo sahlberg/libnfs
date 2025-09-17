@@ -32,7 +32,7 @@
 
 #include "libnfs.h"
 #include "libnfs-raw.h"
-#include "libnfs-raw-portmap.h"
+#include "../portmap/libnfs-raw-portmap.h"
 #include "libnfs-server.h"
 
 struct libnfs_server {
@@ -357,7 +357,7 @@ static int servers_destructor(struct libnfs_servers *servers)
         
 struct libnfs_servers *libnfs_create_server(TALLOC_CTX *ctx,
                                             struct tevent_context *tevent,
-                                            int port, char *name,
+                                            int port, char *name, int transports,
                                             struct libnfs_server_procs *server_procs)
 {
         struct sockaddr_in in;
@@ -388,21 +388,29 @@ struct libnfs_servers *libnfs_create_server(TALLOC_CTX *ctx,
 
         servers->server_procs = server_procs;
 
-        udp4_str = _create_udp_server(servers, (struct sockaddr *)&in, sizeof(in));
-        if (udp4_str == NULL) {
-                goto err;
+        if (transports & TRANSPORT_UDP) {
+                udp4_str = _create_udp_server(servers, (struct sockaddr *)&in, sizeof(in));
+                if (udp4_str == NULL) {
+                        goto err;
+                }
         }
-        udp6_str = _create_udp_server(servers, (struct sockaddr *)&in6, sizeof(in6));
-        if (udp6_str == NULL) {
-                goto err;
+        if (transports & TRANSPORT_UDP6) {
+                udp6_str = _create_udp_server(servers, (struct sockaddr *)&in6, sizeof(in6));
+                if (udp6_str == NULL) {
+                        goto err;
+                }
         }
-        tcp6_str = _create_tcp_server(servers, (struct sockaddr *)&in6, sizeof(in6));
-        if (tcp6_str == NULL) {
-                goto err;
+        if (transports & TRANSPORT_TCP6) {
+                tcp6_str = _create_tcp_server(servers, (struct sockaddr *)&in6, sizeof(in6));
+                if (tcp6_str == NULL) {
+                        goto err;
+                }
         }
-        tcp4_str = _create_tcp_server(servers, (struct sockaddr *)&in, sizeof(in));
-        if (tcp4_str == NULL) {
-                goto err;
+        if (transports & TRANSPORT_TCP) {
+                tcp4_str = _create_tcp_server(servers, (struct sockaddr *)&in, sizeof(in));
+                if (tcp4_str == NULL) {
+                        goto err;
+                }
         }
 
         rpc = rpc_init_udp_context();

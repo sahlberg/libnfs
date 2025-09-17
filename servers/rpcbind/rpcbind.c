@@ -896,7 +896,9 @@ int main(int argc, char *argv[])
                 goto out;
 	}
 
-        servers = libnfs_create_server(pmap, pmap->tevent, 111, "libnfs rpcbind", &server_procs[0]);
+        servers = libnfs_create_server(pmap, pmap->tevent, 111, "libnfs rpcbind",
+                                       TRANSPORT_TCP | TRANSPORT_TCP6 | TRANSPORT_UDP | TRANSPORT_UDP6,
+                                       &server_procs[0]);
         if (servers == NULL) {
                 printf("Failed to set set up server\n");
                 goto out;
