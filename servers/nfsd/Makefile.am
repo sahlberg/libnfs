@@ -13,4 +13,4 @@ if HAVE_TLS
 COMMON_LIBS += -lgnutls
 endif
 
-nfsd_LDADD = ../libnfs-server.o $(COMMON_LIBS) -ltalloc -ltevent
+nfsd_LDADD = ../libnfs-server.o mountd.o $(COMMON_LIBS) -ltalloc -ltevent

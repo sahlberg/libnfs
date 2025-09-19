@@ -35,6 +35,8 @@
 #include <time.h>
 #include <unistd.h>
 
+#include "mountd.h"
+
 #include "libnfs.h"
 #include "libnfs-raw.h"
 #include "libnfs-raw-mount.h"
@@ -42,78 +44,10 @@
 #include "libnfs-raw-nlm.h"
 #include "../libnfs-server.h"
 
-struct nfsd_export {
-        struct nfsd_export *next;
-        char *path;
-        struct nfs_fh3 fh;
-};
-        
 struct nfsd_state {
         struct tevent_context *tevent;
         struct rpc_context *rpc;
-        struct nfsd_export *exports;
 };
-
-struct nfsd_export *nfsd_add_export(struct nfsd_state *nfsd, char *path, int fh_len, char *fh)
-{
-        struct nfsd_export *export;
-
-        export = talloc(nfsd, struct nfsd_export);
-        if (export == NULL) {
-                return NULL;
-        }
-        export->path = talloc_strdup(export, path);
-        if (export->path == NULL) {
-                talloc_free(export);
-                return NULL;
-        }
-        export->fh.data.data_len = fh_len;
-        export->fh.data.data_val = talloc_size(export, fh_len);
-        if (export->fh.data.data_val == NULL) {
-                talloc_free(export);
-                return NULL;
-        }
-        memcpy(export->fh.data.data_val, fh, fh_len);
-        export->next = nfsd->exports;
-        nfsd->exports = export;
-        return export;
-}
-
-static int mount3_null_proc(struct rpc_context *rpc, struct rpc_msg *call, void *opaque)
-{
-        return rpc_send_reply(rpc, call, NULL, (zdrproc_t)zdr_void, 0);
-}
-
-static int mount3_export_proc(struct rpc_context *rpc, struct rpc_msg *call, void *opaque)
-{
-        struct nfsd_state *nfsd = (struct nfsd_state *)opaque;
-        struct nfsd_export *e;
-        TALLOC_CTX *tmp_ctx;
-        MOUNT3EXPORTres *res = NULL, *tmp;
-        int rc = -1;
-
-        tmp_ctx = talloc_new(NULL);
-        if (tmp_ctx == NULL) {
-                goto err;
-        }
-        for(e = nfsd->exports; e; e = e->next) {
-                tmp = talloc(tmp_ctx, MOUNT3EXPORTres);
-                if (tmp == NULL) {
-                        goto err;
-                }
-                tmp->ex_dir = e->path;
-                tmp->ex_groups = NULL;
-                tmp->ex_next = res;
-                res = tmp;
-        }
-        /* The response is "a pointer to MOUNT3EXPORTres", but in zdr we have to pass
-         * a pointer to the response we want to send, hence the &
-         */
-        rc = rpc_send_reply(rpc, call, &res, (zdrproc_t)zdr_MOUNT3EXPORTres_ptr, 0);
- err:        
-        talloc_free(tmp_ctx);
-        return rc;
-}
 
 static int nfs3_null_proc(struct rpc_context *rpc, struct rpc_msg *call, void *opaque)
 {
@@ -135,7 +69,9 @@ static int nfsd_destructor(struct nfsd_state *nfsd)
 
 int main(int argc, char *argv[])
 {
+        TALLOC_CTX *ctx = talloc_new(NULL);
         struct nfsd_state *nfsd = talloc(NULL, struct nfsd_state);
+        struct mountd_state *mountd;
         struct libnfs_servers *servers;
         int rc = 1;
 
@@ -187,22 +123,6 @@ int main(int argc, char *argv[])
                  (zdrproc_t)zdr_NFS3_COMMITargs, sizeof(NFS3_COMMITargs), nfsd},
 #endif
         };
-        struct service_proc mount3_pt[] = {
-                {MOUNT3_NULL, mount3_null_proc,
-                 (zdrproc_t)zdr_void, 0, nfsd},
-#if 0
-                {MOUNT3_MNT, mount3_mnt_proc,
-                 (zdrproc_t)zdr_MOUNT3_MNTargs, sizeof(MOUNT3_MNTargs), nfsd},
-                {MOUNT3_DUMP, mount3_dump_proc,
-                 (zdrproc_t)zdr_MOUNT3_DUMPargs, sizeof(MOUNT3_DUMPargs), nfsd},
-                {MOUNT3_UMNT, mount3_umnt_proc,
-                 (zdrproc_t)zdr_MOUNT3_UMNTargs, sizeof(MOUNT3_UMNTargs), nfsd},
-                {MOUNT3_UMNTALL, mount3_umntall_proc,
-                 (zdrproc_t)zdr_MOUNT3_UMNTALLargs, sizeof(MOUNT3_UMNTALLargs), nfsd},
-#endif
-                {MOUNT3_EXPORT, mount3_export_proc,
-                 (zdrproc_t)zdr_void, 0, nfsd},
-        };
         struct service_proc nlm4_pt[] = {
                 {NLM4_NULL, nlm4_null_proc,
                  (zdrproc_t)zdr_void, 0, nfsd},
@@ -225,7 +145,6 @@ int main(int argc, char *argv[])
 #endif
         };
         struct libnfs_server_procs server_procs[] = {
-                { MOUNT_PROGRAM, MOUNT_V3, mount3_pt, sizeof(mount3_pt) / sizeof(mount3_pt[0]) },
                 { NLM_PROGRAM, NLM_V4, nlm4_pt, sizeof(nlm4_pt) / sizeof(nlm4_pt[0]) },
                 { NFS_PROGRAM, NFS_V3, nfs3_pt, sizeof(nfs3_pt) / sizeof(nfs3_pt[0]) },
                 { 0, 0, 0, 0}
@@ -237,16 +156,11 @@ int main(int argc, char *argv[])
         }
         nfsd->rpc = NULL;
         nfsd->tevent = tevent_context_init(nfsd);
-        nfsd->exports = NULL;
         if (nfsd->tevent == NULL) {
                 printf("Failed create tevent context\n");
                 goto out;
         }
         talloc_set_destructor(nfsd, nfsd_destructor);
-
-        /* Add a dummy export */
-        char data_handle[8] = {0,1,2,3,4,5,6,7};
-        nfsd_add_export(nfsd, "/data", sizeof(data_handle), &data_handle[0]); 
 
         servers = libnfs_create_server(nfsd, nfsd->tevent, 2049, "libnfs nfsd",
                                        TRANSPORT_UDP | TRANSPORT_UDP6 |
@@ -256,6 +170,17 @@ int main(int argc, char *argv[])
                 printf("Failed to set set up server\n");
                 goto out;
         }
+
+        mountd = mountd_init(ctx, nfsd->tevent);
+        if (mountd == NULL) {
+                printf("Failed to set set up mountd\n");
+                goto out;
+        }
+        /* Add a dummy export */
+        char data_handle[8] = {0,1,2,3,4,5,6,7};
+        mountd_add_export(mountd, "/data", sizeof(data_handle), &data_handle[0]); 
+
+        
         printf("Ready to serve\n");
         //qqq daemon(0, 1);
 
@@ -267,5 +192,6 @@ int main(int argc, char *argv[])
         rc = 0;
  out:
         talloc_free(nfsd);
+        talloc_free(ctx);
         return rc;
 }
