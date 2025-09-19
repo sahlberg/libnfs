@@ -73,11 +73,6 @@ struct exportnode {
 	exports  ex_next;
 };
 
-typedef struct exportnode MOUNT1EXPORTres;
-typedef struct exportnode *MOUNT1EXPORTres_ptr;
-typedef struct exportnode MOUNT3EXPORTres;
-typedef struct exportnode *MOUNT3EXPORTres_ptr;
-
 struct mountres3_ok {
 	fhandle3   fhandle;
 	int        auth_flavors<>;
@@ -118,43 +113,57 @@ union mountres1 switch (mountstat1 fhs_status) {
 		void;
 };
 
+typedef dirpath MOUNT1MNTargs;
+typedef mountres1 MOUNT1MNTres;
+typedef mountlist MOUNT1DUMPargs;
+typedef dirpath MOUNT1UMNTargs;
+typedef struct exportnode MOUNT1EXPORTres;
+typedef struct exportnode *MOUNT1EXPORTres_ptr;
+
+typedef dirpath MOUNT3MNTargs;
+typedef mountres3 MOUNT3MNTres;
+typedef mountlist MOUNT3DUMPargs;
+typedef dirpath MOUNT3UMNTargs;
+typedef struct exportnode MOUNT3EXPORTres;
+typedef struct exportnode *MOUNT3EXPORTres_ptr;
+
 program MOUNT_PROGRAM {
 	version MOUNT_V1 {
 		void
-		MOUNT1_NULL(void)    = 0;
+		MOUNT1_NULL(void)           = 0;
 
-		mountres1
-		MOUNT1_MNT(dirpath)  = 1;
+		MOUNT1MNTres
+		MOUNT1_MNT(MOUNT1MNTargs)   = 1;
 
-		mountlist
-		MOUNT1_DUMP(void)    = 2;
-
-		void
-		MOUNT1_UMNT(dirpath) = 3;
+		MOUNT1DUMPargs
+		MOUNT1_DUMP(void)           = 2;
 
 		void
-		MOUNT1_UMNTALL(void) = 4;
+		MOUNT1_UMNT(MOUNT1UMNTargs) = 3;
+
+		void
+		MOUNT1_UMNTALL(void)        = 4;
 
 		MOUNT1EXPORTres
-		MOUNT1_EXPORT(void)  = 5;
+		MOUNT1_EXPORT(void)         = 5;
 	} = 1;
 	version MOUNT_V3 {
 		void
-		MOUNT3_NULL(void)    = 0;
+		MOUNT3_NULL(void)          = 0;
 
-		mountres3
-		MOUNT3_MNT(dirpath)  = 1;
+		MOUNT3MNTres
+		MOUNT3_MNT(MOUNT3MNTargs)  = 1;
 
-		mountlist
-		MOUNT3_DUMP(void)    = 2;
-
-		void
-		MOUNT3_UMNT(dirpath) = 3;
+		MOUNT3DUMPargs
+		MOUNT3_DUMP(void)          = 2;
 
 		void
-		MOUNT3_UMNTALL(void) = 4;
+		MOUNT3_UMNT(MOUNT3MNTargs) = 3;
+
+		void
+		MOUNT3_UMNTALL(void)       = 4;
 
 		MOUNT3EXPORTres
-		MOUNT3_EXPORT(void)  = 5;
+		MOUNT3_EXPORT(void)        = 5;
 	} = 3;
 } = 100005;

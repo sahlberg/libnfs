@@ -34,10 +34,17 @@ struct mountd_export {
         struct nfs_fh3 fh;
 };
         
+struct mountd_client {
+        struct mountd_client *next;
+        char *client;
+        char *path;
+};
+
 struct mountd_state {
         struct tevent_context *tevent;
         struct rpc_context *rpc;
         struct mountd_export *exports;
+        struct mountd_client *clients;
 };
 
 struct mountd_state *mountd_init(TALLOC_CTX *ctx, struct tevent_context *tevent);

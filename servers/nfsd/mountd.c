@@ -25,6 +25,7 @@
 
 
 #include <arpa/inet.h>
+#include <errno.h>
 #include <fcntl.h>
 #include <poll.h>
 #include <stdlib.h>
@@ -43,18 +44,6 @@
 #include "libnfs-raw-nfs.h"
 #include "libnfs-raw-nlm.h"
 #include "../libnfs-server.h"
-
-struct mountd_export {
-        struct mountd_export *next;
-        char *path;
-        struct nfs_fh3 fh;
-};
-        
-struct mountd_state {
-        struct tevent_context *tevent;
-        struct rpc_context *rpc;
-        struct mountd_export *exports;
-};
 
 struct mountd_export *mountd_add_export(struct mountd_state *mountd, char *path, int fh_len, char *fh)
 {
@@ -117,6 +106,82 @@ static int mount3_export_proc(struct rpc_context *rpc, struct rpc_msg *call, voi
         return rc;
 }
 
+static int mount3_mnt_proc(struct rpc_context *rpc, struct rpc_msg *call, void *opaque)
+{
+        struct mountd_state *mountd = (struct mountd_state *)opaque;
+        MOUNT3MNTargs *args = call->body.cbody.args;
+        MOUNT3MNTres res;
+        struct mountd_client *client;
+        struct mountd_export *e;
+        static char addr[64] = {0};
+        struct sockaddr_storage *ss, tcp_ss;
+        int rc;
+        uint32_t auth_flavors[] = { AUTH_UNIX };
+        memset(&res, 0, sizeof(res));
+
+        client = talloc(mountd, struct mountd_client);
+        if (client == NULL) {
+                res.fhs_status = MNT3ERR_SERVERFAULT;
+                goto out;
+        }
+
+        for(e = mountd->exports; e; e = e->next) {
+                if (!strcmp(e->path, *args)) {
+                        break;
+                }
+        }
+        if (e == NULL) {
+                res.fhs_status = MNT3ERR_NOENT;
+                goto out;
+        }
+
+        if (rpc_is_udp_socket(rpc)) {
+                ss = (struct sockaddr_storage *)rpc_get_udp_src_sockaddr(rpc);
+        } else {
+                socklen_t ss_len;
+
+                if (getpeername(rpc_get_fd(rpc), (struct sockaddr *)&tcp_ss, &ss_len)) {
+                        res.fhs_status = MNT3ERR_SERVERFAULT;
+                        goto out;
+                }
+                ss = &tcp_ss;
+        }
+        switch (ss->ss_family) {
+        case AF_INET:
+                inet_ntop(ss->ss_family, &((struct sockaddr_in *)ss)->sin_addr, addr, sizeof(addr));
+                break;
+        case AF_INET6:
+                inet_ntop(ss->ss_family, &((struct sockaddr_in6 *)ss)->sin6_addr, addr, sizeof(addr));
+                break;
+        }
+
+        client->client = talloc_strdup(client, addr);
+        if (client->client == NULL) {
+                res.fhs_status = MNT3ERR_SERVERFAULT;
+                goto out;
+        }
+        client->path = talloc_strdup(client, e->path);
+        if (client->path == NULL) {
+                res.fhs_status = MNT3ERR_SERVERFAULT;
+                goto out;
+        }
+
+        client->next = mountd->clients;
+        mountd->clients = client;
+        client = NULL;
+        res.fhs_status = MNT3_OK;
+        res.mountres3_u.mountinfo.fhandle.fhandle3_len = e->fh.data.data_len;
+        res.mountres3_u.mountinfo.fhandle.fhandle3_val = e->fh.data.data_val;
+        res.mountres3_u.mountinfo.auth_flavors.auth_flavors_len = sizeof(auth_flavors) / sizeof(auth_flavors[0]);
+        res.mountres3_u.mountinfo.auth_flavors.auth_flavors_val = &auth_flavors[0];
+        
+ out:
+        rc = rpc_send_reply(rpc, call, &res, (zdrproc_t)zdr_MOUNT3MNTres, 0);
+        talloc_free(client);
+        return rc;
+}
+
+
 struct mountd_state *mountd_init(TALLOC_CTX *ctx, struct tevent_context *tevent)
 {
         struct mountd_state *mountd;
@@ -126,13 +191,13 @@ struct mountd_state *mountd_init(TALLOC_CTX *ctx, struct tevent_context *tevent)
         static struct service_proc mount3_pt[] = {
                 {MOUNT3_NULL, mount3_null_proc,
                  (zdrproc_t)zdr_void, 0, NULL},
-#if 0
                 {MOUNT3_MNT, mount3_mnt_proc,
-                 (zdrproc_t)zdr_MOUNT3_MNTargs, sizeof(MOUNT3_MNTargs), NULL},
+                 (zdrproc_t)zdr_MOUNT3MNTargs, sizeof(MOUNT3MNTargs), NULL},
+#if 0
                 {MOUNT3_DUMP, mount3_dump_proc,
-                 (zdrproc_t)zdr_MOUNT3_DUMPargs, sizeof(MOUNT3_DUMPargs), NULL},
+                 (zdrproc_t)zdr_MOUNT3DUMPargs, sizeof(MOUNT3DUMPargs), NULL},
                 {MOUNT3_UMNT, mount3_umnt_proc,
-                 (zdrproc_t)zdr_MOUNT3_UMNTargs, sizeof(MOUNT3_UMNTargs), NULL},
+                 (zdrproc_t)zdr_MOUNT3UMNTargs, sizeof(MOUNT3UMNTargs), NULL},
                 {MOUNT3_UMNTALL, mount3_umntall_proc,
                  (zdrproc_t)zdr_MOUNT3_UMNTALLargs, sizeof(MOUNT3_UMNTALLargs), NULL},
 #endif
