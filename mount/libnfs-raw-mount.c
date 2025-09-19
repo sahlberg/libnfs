@@ -6,7 +6,7 @@ Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
 
 1. Redistributions of source code must retain the above copyright notice, this
-   list of conditions and the following disclaimer.
+   list of conditions and the following disclaimer. 
 2. Redistributions in binary form must reproduce the above copyright notice,
    this list of conditions and the following disclaimer in the documentation
    and/or other materials provided with the distribution.
@@ -23,7 +23,7 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 The views and conclusions contained in the software and documentation are those
-of the authors and should not be interpreted as representing official policies,
+of the authors and should not be interpreted as representing official policies, 
 either expressed or implied, of the FreeBSD Project.
 */
 
@@ -38,7 +38,10 @@ either expressed or implied, of the FreeBSD Project.
 uint32_t
 zdr_fhandle3 (ZDR *zdrs, fhandle3 *objp)
 {
-	 if (!zdr_bytes (zdrs, (char **)&objp->fhandle3_val, (uint32_t *) &objp->fhandle3_len, FHSIZE3))
+	register int32_t *buf;
+	buf = NULL;
+
+	 if (!zdr_bytes (zdrs, (char **)&objp->fhandle3_val, (u_int *) &objp->fhandle3_len, FHSIZE3))
 		 return FALSE;
 	return TRUE;
 }
@@ -46,6 +49,9 @@ zdr_fhandle3 (ZDR *zdrs, fhandle3 *objp)
 uint32_t
 zdr_dirpath (ZDR *zdrs, dirpath *objp)
 {
+	register int32_t *buf;
+	buf = NULL;
+
 	 if (!zdr_string (zdrs, objp, MNTPATHLEN))
 		 return FALSE;
 	return TRUE;
@@ -54,6 +60,9 @@ zdr_dirpath (ZDR *zdrs, dirpath *objp)
 uint32_t
 zdr_name (ZDR *zdrs, name *objp)
 {
+	register int32_t *buf;
+	buf = NULL;
+
 	 if (!zdr_string (zdrs, objp, MNTNAMLEN))
 		 return FALSE;
 	return TRUE;
@@ -62,6 +71,9 @@ zdr_name (ZDR *zdrs, name *objp)
 uint32_t
 zdr_mountstat3 (ZDR *zdrs, mountstat3 *objp)
 {
+	register int32_t *buf;
+	buf = NULL;
+
 	 if (!zdr_enum (zdrs, (enum_t *) objp))
 		 return FALSE;
 	return TRUE;
@@ -70,6 +82,9 @@ zdr_mountstat3 (ZDR *zdrs, mountstat3 *objp)
 uint32_t
 zdr_mountlist (ZDR *zdrs, mountlist *objp)
 {
+	register int32_t *buf;
+	buf = NULL;
+
 	 if (!zdr_pointer (zdrs, (char **)objp, sizeof (struct mountbody), (zdrproc_t) zdr_mountbody))
 		 return FALSE;
 	return TRUE;
@@ -78,6 +93,9 @@ zdr_mountlist (ZDR *zdrs, mountlist *objp)
 uint32_t
 zdr_mountbody (ZDR *zdrs, mountbody *objp)
 {
+	register int32_t *buf;
+	buf = NULL;
+
 	 if (!zdr_name (zdrs, &objp->ml_hostname))
 		 return FALSE;
 	 if (!zdr_dirpath (zdrs, &objp->ml_directory))
@@ -90,6 +108,9 @@ zdr_mountbody (ZDR *zdrs, mountbody *objp)
 uint32_t
 zdr_groups (ZDR *zdrs, groups *objp)
 {
+	register int32_t *buf;
+	buf = NULL;
+
 	 if (!zdr_pointer (zdrs, (char **)objp, sizeof (struct groupnode), (zdrproc_t) zdr_groupnode))
 		 return FALSE;
 	return TRUE;
@@ -98,6 +119,9 @@ zdr_groups (ZDR *zdrs, groups *objp)
 uint32_t
 zdr_groupnode (ZDR *zdrs, groupnode *objp)
 {
+	register int32_t *buf;
+	buf = NULL;
+
 	 if (!zdr_name (zdrs, &objp->gr_name))
 		 return FALSE;
 	 if (!zdr_groups (zdrs, &objp->gr_next))
@@ -108,6 +132,9 @@ zdr_groupnode (ZDR *zdrs, groupnode *objp)
 uint32_t
 zdr_exports (ZDR *zdrs, exports *objp)
 {
+	register int32_t *buf;
+	buf = NULL;
+
 	 if (!zdr_pointer (zdrs, (char **)objp, sizeof (struct exportnode), (zdrproc_t) zdr_exportnode))
 		 return FALSE;
 	return TRUE;
@@ -138,6 +165,9 @@ zdr_MOUNT3EXPORTres_ptr (ZDR *zdrs, MOUNT3EXPORTres_ptr *objp)
 uint32_t
 zdr_exportnode (ZDR *zdrs, exportnode *objp)
 {
+	register int32_t *buf;
+	buf = NULL;
+
 	 if (!zdr_dirpath (zdrs, &objp->ex_dir))
 		 return FALSE;
 	 if (!zdr_groups (zdrs, &objp->ex_groups))
@@ -150,9 +180,12 @@ zdr_exportnode (ZDR *zdrs, exportnode *objp)
 uint32_t
 zdr_mountres3_ok (ZDR *zdrs, mountres3_ok *objp)
 {
+	register int32_t *buf;
+	buf = NULL;
+
 	 if (!zdr_fhandle3 (zdrs, &objp->fhandle))
 		 return FALSE;
-	 if (!zdr_array (zdrs, (char **)&objp->auth_flavors.auth_flavors_val, (uint32_t *) &objp->auth_flavors.auth_flavors_len, ~0,
+	 if (!zdr_array (zdrs, (char **)&objp->auth_flavors.auth_flavors_val, (u_int *) &objp->auth_flavors.auth_flavors_len, ~0,
 		sizeof (int), (zdrproc_t) zdr_int))
 		 return FALSE;
 	return TRUE;
@@ -161,6 +194,9 @@ zdr_mountres3_ok (ZDR *zdrs, mountres3_ok *objp)
 uint32_t
 zdr_mountres3 (ZDR *zdrs, mountres3 *objp)
 {
+	register int32_t *buf;
+	buf = NULL;
+
 	 if (!zdr_mountstat3 (zdrs, &objp->fhs_status))
 		 return FALSE;
 	switch (objp->fhs_status) {
@@ -177,6 +213,9 @@ zdr_mountres3 (ZDR *zdrs, mountres3 *objp)
 uint32_t
 zdr_mountstat1 (ZDR *zdrs, mountstat1 *objp)
 {
+	register int32_t *buf;
+	buf = NULL;
+
 	 if (!zdr_enum (zdrs, (enum_t *) objp))
 		 return FALSE;
 	return TRUE;
@@ -185,6 +224,9 @@ zdr_mountstat1 (ZDR *zdrs, mountstat1 *objp)
 uint32_t
 zdr_fhandle1 (ZDR *zdrs, fhandle1 objp)
 {
+	register int32_t *buf;
+	buf = NULL;
+
 	 if (!zdr_opaque (zdrs, objp, FHSIZE))
 		 return FALSE;
 	return TRUE;
@@ -193,6 +235,9 @@ zdr_fhandle1 (ZDR *zdrs, fhandle1 objp)
 uint32_t
 zdr_mountres1_ok (ZDR *zdrs, mountres1_ok *objp)
 {
+	register int32_t *buf;
+	buf = NULL;
+
 	 if (!zdr_fhandle1 (zdrs, objp->fhandle))
 		 return FALSE;
 	return TRUE;
@@ -201,6 +246,9 @@ zdr_mountres1_ok (ZDR *zdrs, mountres1_ok *objp)
 uint32_t
 zdr_mountres1 (ZDR *zdrs, mountres1 *objp)
 {
+	register int32_t *buf;
+	buf = NULL;
+
 	 if (!zdr_mountstat1 (zdrs, &objp->fhs_status))
 		 return FALSE;
 	switch (objp->fhs_status) {

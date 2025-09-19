@@ -47,7 +47,7 @@ extern "C" {
 #define FHSIZE3 64
 
 typedef struct {
-	uint32_t fhandle3_len;
+	u_int fhandle3_len;
 	char *fhandle3_val;
 } fhandle3;
 
@@ -102,7 +102,7 @@ typedef struct exportnode exportnode;
 struct mountres3_ok {
 	fhandle3 fhandle;
 	struct {
-		uint32_t auth_flavors_len;
+		u_int auth_flavors_len;
 		int *auth_flavors_val;
 	} auth_flavors;
 };
