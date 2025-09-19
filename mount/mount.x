@@ -67,6 +67,8 @@ struct groupnode {
 
 
 typedef struct exportnode *exports;
+typedef struct exportnode MOUNT3EXPORTres;
+typedef struct exportnode *MOUNT3EXPORTres_ptr;
 
 struct exportnode {
 	dirpath  ex_dir;

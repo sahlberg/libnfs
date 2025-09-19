@@ -88,6 +88,10 @@ typedef struct groupnode groupnode;
 
 typedef struct exportnode *exports;
 
+typedef struct exportnode MOUNT3EXPORTres;
+
+typedef struct exportnode *MOUNT3EXPORTres_ptr;
+
 struct exportnode {
 	dirpath ex_dir;
 	groups ex_groups;
@@ -244,6 +248,8 @@ extern  uint32_t zdr_mountbody (ZDR *, mountbody*);
 extern  uint32_t zdr_groups (ZDR *, groups*);
 extern  uint32_t zdr_groupnode (ZDR *, groupnode*);
 extern  uint32_t zdr_exports (ZDR *, exports*);
+extern  uint32_t zdr_MOUNT3EXPORTres (ZDR *, MOUNT3EXPORTres*);
+extern  uint32_t zdr_MOUNT3EXPORTres_ptr (ZDR *, MOUNT3EXPORTres_ptr*);
 extern  uint32_t zdr_exportnode (ZDR *, exportnode*);
 extern  uint32_t zdr_mountres3_ok (ZDR *, mountres3_ok*);
 extern  uint32_t zdr_mountres3 (ZDR *, mountres3*);
@@ -262,6 +268,8 @@ extern uint32_t zdr_mountbody ();
 extern uint32_t zdr_groups ();
 extern uint32_t zdr_groupnode ();
 extern uint32_t zdr_exports ();
+extern uint32_t zdr_MOUNT3EXPORTres ();
+extern uint32_t zdr_MOUNT3EXPORTres_ptr ();
 extern uint32_t zdr_exportnode ();
 extern uint32_t zdr_mountres3_ok ();
 extern uint32_t zdr_mountres3 ();
