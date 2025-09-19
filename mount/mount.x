@@ -115,14 +115,16 @@ union mountres1 switch (mountstat1 fhs_status) {
 
 typedef dirpath MOUNT1MNTargs;
 typedef mountres1 MOUNT1MNTres;
-typedef mountlist MOUNT1DUMPargs;
+typedef mountbody MOUNT1DUMPres;
+typedef mountlist MOUNT1DUMPres_ptr;
 typedef dirpath MOUNT1UMNTargs;
 typedef struct exportnode MOUNT1EXPORTres;
 typedef struct exportnode *MOUNT1EXPORTres_ptr;
 
 typedef dirpath MOUNT3MNTargs;
 typedef mountres3 MOUNT3MNTres;
-typedef mountlist MOUNT3DUMPargs;
+typedef mountbody MOUNT3DUMPres;
+typedef mountlist MOUNT3DUMPres_ptr;
 typedef dirpath MOUNT3UMNTargs;
 typedef struct exportnode MOUNT3EXPORTres;
 typedef struct exportnode *MOUNT3EXPORTres_ptr;
@@ -135,7 +137,7 @@ program MOUNT_PROGRAM {
 		MOUNT1MNTres
 		MOUNT1_MNT(MOUNT1MNTargs)   = 1;
 
-		MOUNT1DUMPargs
+		MOUNT1DUMPres
 		MOUNT1_DUMP(void)           = 2;
 
 		void
@@ -154,7 +156,7 @@ program MOUNT_PROGRAM {
 		MOUNT3MNTres
 		MOUNT3_MNT(MOUNT3MNTargs)  = 1;
 
-		MOUNT3DUMPargs
+		MOUNT3DUMPres
 		MOUNT3_DUMP(void)          = 2;
 
 		void

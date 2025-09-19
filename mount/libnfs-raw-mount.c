@@ -263,7 +263,18 @@ zdr_MOUNT1MNTres (ZDR *zdrs, MOUNT1MNTres *objp)
 }
 
 uint32_t
-zdr_MOUNT1DUMPargs (ZDR *zdrs, MOUNT1DUMPargs *objp)
+zdr_MOUNT1DUMPres (ZDR *zdrs, MOUNT1DUMPres *objp)
+{
+	register int32_t *buf;
+	buf = NULL;
+
+	 if (!zdr_mountbody (zdrs, objp))
+		 return FALSE;
+	return TRUE;
+}
+
+uint32_t
+zdr_MOUNT1DUMPres_ptr (ZDR *zdrs, MOUNT1DUMPres_ptr *objp)
 {
 	register int32_t *buf;
 	buf = NULL;
@@ -329,7 +340,18 @@ zdr_MOUNT3MNTres (ZDR *zdrs, MOUNT3MNTres *objp)
 }
 
 uint32_t
-zdr_MOUNT3DUMPargs (ZDR *zdrs, MOUNT3DUMPargs *objp)
+zdr_MOUNT3DUMPres (ZDR *zdrs, MOUNT3DUMPres *objp)
+{
+	register int32_t *buf;
+	buf = NULL;
+
+	 if (!zdr_mountbody (zdrs, objp))
+		 return FALSE;
+	return TRUE;
+}
+
+uint32_t
+zdr_MOUNT3DUMPres_ptr (ZDR *zdrs, MOUNT3DUMPres_ptr *objp)
 {
 	register int32_t *buf;
 	buf = NULL;

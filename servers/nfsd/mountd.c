@@ -186,6 +186,35 @@ static int mount3_mnt_proc(struct rpc_context *rpc, struct rpc_msg *call, void *
 }
 
 
+static int mount3_dump_proc(struct rpc_context *rpc, struct rpc_msg *call, void *opaque)
+{
+        struct mountd_state *mountd = (struct mountd_state *)opaque;
+        TALLOC_CTX *tmp_ctx;
+        MOUNT3DUMPres *res = NULL, *tmp;
+        struct mountd_client *c;
+        int rc;
+
+        tmp_ctx = talloc_new(NULL);
+        if (tmp_ctx == NULL) {
+                goto err;
+        }
+
+        for (c = mountd->clients; c; c = c->next) {
+                tmp = talloc(tmp_ctx, MOUNT3DUMPres);
+                if (tmp == NULL) {
+                        goto err;
+                }
+                tmp->ml_hostname = c->client;
+                tmp->ml_directory = c->path;
+                tmp->ml_next = res;
+                res = tmp;
+        }
+        rc = rpc_send_reply(rpc, call, &res, (zdrproc_t)zdr_MOUNT3DUMPres_ptr, 0);
+ err:        
+        talloc_free(tmp_ctx);
+        return rc;
+}
+ 
 struct mountd_state *mountd_init(TALLOC_CTX *ctx, struct tevent_context *tevent)
 {
         struct mountd_state *mountd;
@@ -197,9 +226,9 @@ struct mountd_state *mountd_init(TALLOC_CTX *ctx, struct tevent_context *tevent)
                  (zdrproc_t)zdr_void, 0, NULL},
                 {MOUNT3_MNT, mount3_mnt_proc,
                  (zdrproc_t)zdr_MOUNT3MNTargs, sizeof(MOUNT3MNTargs), NULL},
-#if 0
                 {MOUNT3_DUMP, mount3_dump_proc,
-                 (zdrproc_t)zdr_MOUNT3DUMPargs, sizeof(MOUNT3DUMPargs), NULL},
+                 (zdrproc_t)zdr_void, 0, NULL},
+#if 0
                 {MOUNT3_UMNT, mount3_umnt_proc,
                  (zdrproc_t)zdr_MOUNT3UMNTargs, sizeof(MOUNT3UMNTargs), NULL},
                 {MOUNT3_UMNTALL, mount3_umntall_proc,
@@ -224,6 +253,7 @@ struct mountd_state *mountd_init(TALLOC_CTX *ctx, struct tevent_context *tevent)
         mountd->rpc = NULL;
         mountd->tevent = tevent;
         mountd->exports = NULL;
+        mountd->clients = NULL;
 
         servers = libnfs_create_server(mountd, tevent, 0, "libnfs mountd",
                                        TRANSPORT_UDP | TRANSPORT_UDP6 |
