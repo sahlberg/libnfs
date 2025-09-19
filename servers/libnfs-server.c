@@ -439,22 +439,16 @@ struct libnfs_servers *libnfs_create_server(TALLOC_CTX *ctx,
         for (i = 0; servers->server_procs[i].program; i++) {
                 PMAP4SETargs set4args;
 
-                to->num_wait += 1;
-                set4args.prog = servers->server_procs[i].program;
-                set4args.vers = servers->server_procs[i].version;
-                set4args.netid = "";
-                set4args.addr  = "";
-                set4args.owner = "";
-                if (rpc_pmap4_unset_task(rpc, &set4args, _pmap4_set_cb, to) == NULL) {
-                        printf("Failed to send UNSET4 request\n");
-                        goto err;
-                }
-
                 set4args.prog = servers->server_procs[i].program;
                 set4args.vers = servers->server_procs[i].version;
                 if (transports & TRANSPORT_UDP) {
-                        to->num_wait++;
+                        to->num_wait += 2;
                         set4args.netid = "udp";
+                        set4args.addr  = "";
+                        if (rpc_pmap4_unset_task(rpc, &set4args, _pmap4_set_cb, to) == NULL) {
+                                printf("Failed to send UNSET4 request\n");
+                                goto err;
+                        }
                         set4args.addr  = udp4_str;
                         set4args.owner = name;
                         if (rpc_pmap4_set_task(rpc, &set4args, _pmap4_set_cb, to) == NULL) {
@@ -463,8 +457,13 @@ struct libnfs_servers *libnfs_create_server(TALLOC_CTX *ctx,
                         }
 		}
                 if (transports & TRANSPORT_UDP6) {
-                        to->num_wait++;
+                        to->num_wait += 2;
                         set4args.netid = "udp6";
+                        set4args.addr  = "";
+                        if (rpc_pmap4_unset_task(rpc, &set4args, _pmap4_set_cb, to) == NULL) {
+                                printf("Failed to send UNSET4 request\n");
+                                goto err;
+                        }
                         set4args.addr  = udp6_str;
                         if (rpc_pmap4_set_task(rpc, &set4args, _pmap4_set_cb, to) == NULL) {
                                 printf("Failed to send SET4 request\n");
@@ -472,8 +471,13 @@ struct libnfs_servers *libnfs_create_server(TALLOC_CTX *ctx,
                         }
                 }
                 if (transports & TRANSPORT_UDP) {
-                        to->num_wait++;
+                        to->num_wait += 2;
                         set4args.netid = "tcp";
+                        set4args.addr  = "";
+                        if (rpc_pmap4_unset_task(rpc, &set4args, _pmap4_set_cb, to) == NULL) {
+                                printf("Failed to send UNSET4 request\n");
+                                goto err;
+                        }
                         set4args.addr  = tcp4_str;
                         if (rpc_pmap4_set_task(rpc, &set4args, _pmap4_set_cb, to) == NULL) {
                                 printf("Failed to send SET4 request\n");
@@ -481,8 +485,13 @@ struct libnfs_servers *libnfs_create_server(TALLOC_CTX *ctx,
                         }
                 }
                 if (transports & TRANSPORT_UDP) {
-                        to->num_wait++;
+                        to->num_wait += 2;
                         set4args.netid = "tcp6";
+                        set4args.addr  = "";
+                        if (rpc_pmap4_unset_task(rpc, &set4args, _pmap4_set_cb, to) == NULL) {
+                                printf("Failed to send UNSET4 request\n");
+                                goto err;
+                        }
                         set4args.addr  = tcp6_str;
                         if (rpc_pmap4_set_task(rpc, &set4args, _pmap4_set_cb, to) == NULL) {
                                 printf("Failed to send SET4 request\n");
