@@ -88,16 +88,20 @@ typedef struct groupnode groupnode;
 
 typedef struct exportnode *exports;
 
-typedef struct exportnode MOUNT3EXPORTres;
-
-typedef struct exportnode *MOUNT3EXPORTres_ptr;
-
 struct exportnode {
 	dirpath ex_dir;
 	groups ex_groups;
 	exports ex_next;
 };
 typedef struct exportnode exportnode;
+
+typedef exportnode MOUNT1EXPORTres;
+
+typedef exportnode *MOUNT1EXPORTres_ptr;
+
+typedef exportnode MOUNT3EXPORTres;
+
+typedef exportnode *MOUNT3EXPORTres_ptr;
 
 struct mountres3_ok {
 	fhandle3 fhandle;
@@ -166,8 +170,8 @@ extern  void * mount1_umnt_1_svc(dirpath *, struct svc_req *);
 extern  void * mount1_umntall_1(void *, void *);
 extern  void * mount1_umntall_1_svc(void *, struct svc_req *);
 #define MOUNT1_EXPORT 5
-extern  exports * mount1_export_1(void *, void *);
-extern  exports * mount1_export_1_svc(void *, struct svc_req *);
+extern  MOUNT1EXPORTres * mount1_export_1(void *, void *);
+extern  MOUNT1EXPORTres * mount1_export_1_svc(void *, struct svc_req *);
 extern int mount_program_1_freeresult (void *, zdrproc_t, caddr_t);
 
 #else /* K&R C */
@@ -187,8 +191,8 @@ extern  void * mount1_umnt_1_svc();
 extern  void * mount1_umntall_1();
 extern  void * mount1_umntall_1_svc();
 #define MOUNT1_EXPORT 5
-extern  exports * mount1_export_1();
-extern  exports * mount1_export_1_svc();
+extern  MOUNT1EXPORTres * mount1_export_1();
+extern  MOUNT1EXPORTres * mount1_export_1_svc();
 extern int mount_program_1_freeresult ();
 #endif /* K&R C */
 #define MOUNT_V3 3
@@ -210,8 +214,8 @@ extern  void * mount3_umnt_3_svc(dirpath *, struct svc_req *);
 extern  void * mount3_umntall_3(void *, void *);
 extern  void * mount3_umntall_3_svc(void *, struct svc_req *);
 #define MOUNT3_EXPORT 5
-extern  exports * mount3_export_3(void *, void *);
-extern  exports * mount3_export_3_svc(void *, struct svc_req *);
+extern  MOUNT3EXPORTres * mount3_export_3(void *, void *);
+extern  MOUNT3EXPORTres * mount3_export_3_svc(void *, struct svc_req *);
 extern int mount_program_3_freeresult (void *, zdrproc_t, caddr_t);
 
 #else /* K&R C */
@@ -231,8 +235,8 @@ extern  void * mount3_umnt_3_svc();
 extern  void * mount3_umntall_3();
 extern  void * mount3_umntall_3_svc();
 #define MOUNT3_EXPORT 5
-extern  exports * mount3_export_3();
-extern  exports * mount3_export_3_svc();
+extern  MOUNT3EXPORTres * mount3_export_3();
+extern  MOUNT3EXPORTres * mount3_export_3_svc();
 extern int mount_program_3_freeresult ();
 #endif /* K&R C */
 
@@ -248,9 +252,11 @@ extern  uint32_t zdr_mountbody (ZDR *, mountbody*);
 extern  uint32_t zdr_groups (ZDR *, groups*);
 extern  uint32_t zdr_groupnode (ZDR *, groupnode*);
 extern  uint32_t zdr_exports (ZDR *, exports*);
+extern  uint32_t zdr_exportnode (ZDR *, exportnode*);
+extern  uint32_t zdr_MOUNT1EXPORTres (ZDR *, MOUNT1EXPORTres*);
+extern  uint32_t zdr_MOUNT1EXPORTres_ptr (ZDR *, MOUNT1EXPORTres_ptr*);
 extern  uint32_t zdr_MOUNT3EXPORTres (ZDR *, MOUNT3EXPORTres*);
 extern  uint32_t zdr_MOUNT3EXPORTres_ptr (ZDR *, MOUNT3EXPORTres_ptr*);
-extern  uint32_t zdr_exportnode (ZDR *, exportnode*);
 extern  uint32_t zdr_mountres3_ok (ZDR *, mountres3_ok*);
 extern  uint32_t zdr_mountres3 (ZDR *, mountres3*);
 extern  uint32_t zdr_mountstat1 (ZDR *, mountstat1*);
@@ -268,9 +274,11 @@ extern uint32_t zdr_mountbody ();
 extern uint32_t zdr_groups ();
 extern uint32_t zdr_groupnode ();
 extern uint32_t zdr_exports ();
+extern uint32_t zdr_exportnode ();
+extern uint32_t zdr_MOUNT1EXPORTres ();
+extern uint32_t zdr_MOUNT1EXPORTres_ptr ();
 extern uint32_t zdr_MOUNT3EXPORTres ();
 extern uint32_t zdr_MOUNT3EXPORTres_ptr ();
-extern uint32_t zdr_exportnode ();
 extern uint32_t zdr_mountres3_ok ();
 extern uint32_t zdr_mountres3 ();
 extern uint32_t zdr_mountstat1 ();

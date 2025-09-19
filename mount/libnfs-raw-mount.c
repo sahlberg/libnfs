@@ -141,6 +141,43 @@ zdr_exports (ZDR *zdrs, exports *objp)
 }
 
 uint32_t
+zdr_exportnode (ZDR *zdrs, exportnode *objp)
+{
+	register int32_t *buf;
+	buf = NULL;
+
+	 if (!zdr_dirpath (zdrs, &objp->ex_dir))
+		 return FALSE;
+	 if (!zdr_groups (zdrs, &objp->ex_groups))
+		 return FALSE;
+	 if (!zdr_exports (zdrs, &objp->ex_next))
+		 return FALSE;
+	return TRUE;
+}
+
+uint32_t
+zdr_MOUNT1EXPORTres (ZDR *zdrs, MOUNT1EXPORTres *objp)
+{
+	register int32_t *buf;
+	buf = NULL;
+
+	 if (!zdr_exportnode (zdrs, objp))
+		 return FALSE;
+	return TRUE;
+}
+
+uint32_t
+zdr_MOUNT1EXPORTres_ptr (ZDR *zdrs, MOUNT1EXPORTres_ptr *objp)
+{
+	register int32_t *buf;
+	buf = NULL;
+
+	 if (!zdr_pointer (zdrs, (char **)objp, sizeof (exportnode), (zdrproc_t) zdr_exportnode))
+		 return FALSE;
+	return TRUE;
+}
+
+uint32_t
 zdr_MOUNT3EXPORTres (ZDR *zdrs, MOUNT3EXPORTres *objp)
 {
 	register int32_t *buf;
@@ -157,22 +194,7 @@ zdr_MOUNT3EXPORTres_ptr (ZDR *zdrs, MOUNT3EXPORTres_ptr *objp)
 	register int32_t *buf;
 	buf = NULL;
 
-	 if (!zdr_pointer (zdrs, (char **)objp, sizeof (struct exportnode), (zdrproc_t) zdr_exportnode))
-		 return FALSE;
-	return TRUE;
-}
-
-uint32_t
-zdr_exportnode (ZDR *zdrs, exportnode *objp)
-{
-	register int32_t *buf;
-	buf = NULL;
-
-	 if (!zdr_dirpath (zdrs, &objp->ex_dir))
-		 return FALSE;
-	 if (!zdr_groups (zdrs, &objp->ex_groups))
-		 return FALSE;
-	 if (!zdr_exports (zdrs, &objp->ex_next))
+	 if (!zdr_pointer (zdrs, (char **)objp, sizeof (exportnode), (zdrproc_t) zdr_exportnode))
 		 return FALSE;
 	return TRUE;
 }

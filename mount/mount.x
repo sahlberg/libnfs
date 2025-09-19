@@ -65,16 +65,18 @@ struct groupnode {
 	groups   gr_next;
 };
 
-
 typedef struct exportnode *exports;
-typedef struct exportnode MOUNT3EXPORTres;
-typedef struct exportnode *MOUNT3EXPORTres_ptr;
 
 struct exportnode {
 	dirpath  ex_dir;
 	groups   ex_groups;
 	exports  ex_next;
 };
+
+typedef struct exportnode MOUNT1EXPORTres;
+typedef struct exportnode *MOUNT1EXPORTres_ptr;
+typedef struct exportnode MOUNT3EXPORTres;
+typedef struct exportnode *MOUNT3EXPORTres_ptr;
 
 struct mountres3_ok {
 	fhandle3   fhandle;
@@ -118,19 +120,41 @@ union mountres1 switch (mountstat1 fhs_status) {
 
 program MOUNT_PROGRAM {
 	version MOUNT_V1 {
-	void      MOUNT1_NULL(void)    = 0;
-	mountres1 MOUNT1_MNT(dirpath)  = 1;
-	mountlist MOUNT1_DUMP(void)    = 2;
-	void      MOUNT1_UMNT(dirpath) = 3;
-	void      MOUNT1_UMNTALL(void) = 4;
-	exports   MOUNT1_EXPORT(void)  = 5;
+		void
+		MOUNT1_NULL(void)    = 0;
+
+		mountres1
+		MOUNT1_MNT(dirpath)  = 1;
+
+		mountlist
+		MOUNT1_DUMP(void)    = 2;
+
+		void
+		MOUNT1_UMNT(dirpath) = 3;
+
+		void
+		MOUNT1_UMNTALL(void) = 4;
+
+		MOUNT1EXPORTres
+		MOUNT1_EXPORT(void)  = 5;
 	} = 1;
 	version MOUNT_V3 {
-	void      MOUNT3_NULL(void)    = 0;
-	mountres3 MOUNT3_MNT(dirpath)  = 1;
-	mountlist MOUNT3_DUMP(void)    = 2;
-	void      MOUNT3_UMNT(dirpath) = 3;
-	void      MOUNT3_UMNTALL(void) = 4;
-	exports   MOUNT3_EXPORT(void)  = 5;
+		void
+		MOUNT3_NULL(void)    = 0;
+
+		mountres3
+		MOUNT3_MNT(dirpath)  = 1;
+
+		mountlist
+		MOUNT3_DUMP(void)    = 2;
+
+		void
+		MOUNT3_UMNT(dirpath) = 3;
+
+		void
+		MOUNT3_UMNTALL(void) = 4;
+
+		MOUNT3EXPORTres
+		MOUNT3_EXPORT(void)  = 5;
 	} = 3;
 } = 100005;
