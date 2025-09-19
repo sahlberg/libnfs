@@ -42,15 +42,77 @@
 #include "libnfs-raw-nlm.h"
 #include "../libnfs-server.h"
 
-
+struct nfsd_export {
+        struct nfsd_export *next;
+        char *path;
+        struct nfs_fh3 fh;
+};
+        
 struct nfsd_state {
         struct tevent_context *tevent;
         struct rpc_context *rpc;
+        struct nfsd_export *exports;
 };
+
+struct nfsd_export *nfsd_add_export(struct nfsd_state *nfsd, char *path, int fh_len, char *fh)
+{
+        struct nfsd_export *export;
+
+        export = talloc(nfsd, struct nfsd_export);
+        if (export == NULL) {
+                return NULL;
+        }
+        export->path = talloc_strdup(export, path);
+        if (export->path == NULL) {
+                talloc_free(export);
+                return NULL;
+        }
+        export->fh.data.data_len = fh_len;
+        export->fh.data.data_val = talloc_size(export, fh_len);
+        if (export->fh.data.data_val == NULL) {
+                talloc_free(export);
+                return NULL;
+        }
+        memcpy(export->fh.data.data_val, fh, fh_len);
+        export->next = nfsd->exports;
+        nfsd->exports = export;
+        return export;
+}
 
 static int mount3_null_proc(struct rpc_context *rpc, struct rpc_msg *call, void *opaque)
 {
         return rpc_send_reply(rpc, call, NULL, (zdrproc_t)zdr_void, 0);
+}
+
+static int mount3_export_proc(struct rpc_context *rpc, struct rpc_msg *call, void *opaque)
+{
+        struct nfsd_state *nfsd = (struct nfsd_state *)opaque;
+        struct nfsd_export *e;
+        TALLOC_CTX *tmp_ctx;
+        MOUNT3EXPORTres *res = NULL, *tmp;
+        int rc = -1;
+
+        tmp_ctx = talloc_new(NULL);
+        if (tmp_ctx == NULL) {
+                goto err;
+        }
+        for(e = nfsd->exports; e; e = e->next) {
+                tmp = talloc(tmp_ctx, MOUNT3EXPORTres);
+                if (tmp == NULL) {
+                        goto err;
+                }
+                tmp->ex_dir = e->path;
+                tmp->ex_groups = NULL;
+                tmp->ex_next = res;
+                res = tmp;
+        }
+        /* The response is "a pointer to MOUNT3EXPORTres", but in zdr we have to pass
+         * a pointer to the response we want to send, hence the &
+         */
+        rc = rpc_send_reply(rpc, call, &res, (zdrproc_t)zdr_MOUNT3EXPORTres_ptr, 0);
+ err:        
+        talloc_free(tmp_ctx);
+        return rc;
 }
 
 static int nfs3_null_proc(struct rpc_context *rpc, struct rpc_msg *call, void *opaque)
@@ -137,9 +199,9 @@ int main(int argc, char *argv[])
                  (zdrproc_t)zdr_MOUNT3_UMNTargs, sizeof(MOUNT3_UMNTargs), nfsd},
                 {MOUNT3_UMNTALL, mount3_umntall_proc,
                  (zdrproc_t)zdr_MOUNT3_UMNTALLargs, sizeof(MOUNT3_UMNTALLargs), nfsd},
-                {MOUNT3_EXPORT, mount3_export_proc,
-                 (zdrproc_t)zdr_MOUNT3_EXPORTargs, sizeof(MOUNT3_EXPORTargs), nfsd},
 #endif
+                {MOUNT3_EXPORT, mount3_export_proc,
+                 (zdrproc_t)zdr_void, 0, nfsd},
         };
         struct service_proc nlm4_pt[] = {
                 {NLM4_NULL, nlm4_null_proc,
@@ -175,14 +237,19 @@ int main(int argc, char *argv[])
         }
         nfsd->rpc = NULL;
         nfsd->tevent = tevent_context_init(nfsd);
+        nfsd->exports = NULL;
         if (nfsd->tevent == NULL) {
                 printf("Failed create tevent context\n");
                 goto out;
         }
         talloc_set_destructor(nfsd, nfsd_destructor);
 
+        /* Add a dummy export */
+        char data_handle[8] = {0,1,2,3,4,5,6,7};
+        nfsd_add_export(nfsd, "/data", sizeof(data_handle), &data_handle[0]); 
 
         servers = libnfs_create_server(nfsd, nfsd->tevent, 2049, "libnfs nfsd",
+                                       TRANSPORT_UDP | TRANSPORT_UDP6 |
                                        TRANSPORT_TCP | TRANSPORT_TCP6,
                                        &server_procs[0]);
         if (servers == NULL) {
