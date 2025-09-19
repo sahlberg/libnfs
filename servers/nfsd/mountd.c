@@ -45,6 +45,12 @@
 #include "libnfs-raw-nlm.h"
 #include "../libnfs-server.h"
 
+#define LIST_ADD(list, item, nxt)                               \
+        do {                                                    \
+                (item)->nxt = (*list);                          \
+                (*list) = (item);                               \
+        } while (0);
+
 struct mountd_export *mountd_add_export(struct mountd_state *mountd, char *path, int fh_len, char *fh)
 {
         struct mountd_export *export;
@@ -65,8 +71,7 @@ struct mountd_export *mountd_add_export(struct mountd_state *mountd, char *path,
                 return NULL;
         }
         memcpy(export->fh.data.data_val, fh, fh_len);
-        export->next = mountd->exports;
-        mountd->exports = export;
+        LIST_ADD(&mountd->exports, export, next);
         return export;
 }
 
@@ -166,8 +171,7 @@ static int mount3_mnt_proc(struct rpc_context *rpc, struct rpc_msg *call, void *
                 goto out;
         }
 
-        client->next = mountd->clients;
-        mountd->clients = client;
+        LIST_ADD(&mountd->clients, client, next);
         client = NULL;
         res.fhs_status = MNT3_OK;
         res.mountres3_u.mountinfo.fhandle.fhandle3_len = e->fh.data.data_len;
