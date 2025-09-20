@@ -51,6 +51,19 @@
                 (*list) = (item);                               \
         } while (0);
 
+#define LIST_REMOVE(list, item, nxt)                            \
+	if ((*list) == (item)) { 				\
+	   (*list) = (item)->nxt;				\
+	} else {						\
+	   void *head = (*list);				\
+	   while ((*list)->nxt && (*list)->nxt != (item))       \
+	     (*list) = (*list)->nxt;				\
+	   if ((*list)->nxt != NULL) {		    	    	\
+	      (*list)->nxt = (*list)->nxt->nxt;		        \
+	   }  		      					\
+	   (*list) = head;					\
+	}
+
 struct mountd_export *mountd_add_export(struct mountd_state *mountd, char *path, int fh_len, char *fh)
 {
         struct mountd_export *export;
@@ -111,6 +124,33 @@ static int mount3_export_proc(struct rpc_context *rpc, struct rpc_msg *call, voi
         return rc;
 }
 
+static char *client_address(struct rpc_context *rpc)
+{
+        struct sockaddr_storage *ss, tcp_ss;
+        static char addr[64] = {0};
+
+        if (rpc_is_udp_socket(rpc)) {
+                ss = (struct sockaddr_storage *)rpc_get_udp_src_sockaddr(rpc);
+        } else {
+                socklen_t ss_len;
+
+                if (getpeername(rpc_get_fd(rpc), (struct sockaddr *)&tcp_ss, &ss_len)) {
+                        return NULL;
+                }
+                ss = &tcp_ss;
+        }
+        switch (ss->ss_family) {
+        case AF_INET:
+                inet_ntop(ss->ss_family, &((struct sockaddr_in *)ss)->sin_addr, addr, sizeof(addr));
+                break;
+        case AF_INET6:
+                inet_ntop(ss->ss_family, &((struct sockaddr_in6 *)ss)->sin6_addr, addr, sizeof(addr));
+                break;
+        }
+
+        return addr;
+}
+
 static int mount3_mnt_proc(struct rpc_context *rpc, struct rpc_msg *call, void *opaque)
 {
         struct mountd_state *mountd = (struct mountd_state *)opaque;
@@ -118,11 +158,10 @@ static int mount3_mnt_proc(struct rpc_context *rpc, struct rpc_msg *call, void *
         MOUNT3MNTres res;
         struct mountd_client *client;
         struct mountd_export *e;
-        static char addr[64] = {0};
-        struct sockaddr_storage *ss, tcp_ss;
         int rc;
         uint32_t auth_flavors[] = { AUTH_UNIX };
         memset(&res, 0, sizeof(res));
+        char *addr;
 
         client = talloc(mountd, struct mountd_client);
         if (client == NULL) {
@@ -140,24 +179,10 @@ static int mount3_mnt_proc(struct rpc_context *rpc, struct rpc_msg *call, void *
                 goto out;
         }
 
-        if (rpc_is_udp_socket(rpc)) {
-                ss = (struct sockaddr_storage *)rpc_get_udp_src_sockaddr(rpc);
-        } else {
-                socklen_t ss_len;
-
-                if (getpeername(rpc_get_fd(rpc), (struct sockaddr *)&tcp_ss, &ss_len)) {
-                        res.fhs_status = MNT3ERR_SERVERFAULT;
-                        goto out;
-                }
-                ss = &tcp_ss;
-        }
-        switch (ss->ss_family) {
-        case AF_INET:
-                inet_ntop(ss->ss_family, &((struct sockaddr_in *)ss)->sin_addr, addr, sizeof(addr));
-                break;
-        case AF_INET6:
-                inet_ntop(ss->ss_family, &((struct sockaddr_in6 *)ss)->sin6_addr, addr, sizeof(addr));
-                break;
+        addr = client_address(rpc);
+        if (addr == NULL) {
+                res.fhs_status = MNT3ERR_SERVERFAULT;
+                goto out;
         }
 
         client->client = talloc_strdup(client, addr);
@@ -183,6 +208,53 @@ static int mount3_mnt_proc(struct rpc_context *rpc, struct rpc_msg *call, void *
         rc = rpc_send_reply(rpc, call, &res, (zdrproc_t)zdr_MOUNT3MNTres, 0);
         talloc_free(client);
         return rc;
+}
+
+
+static int mount3_umnt_proc(struct rpc_context *rpc, struct rpc_msg *call, void *opaque)
+{
+        struct mountd_state *mountd = (struct mountd_state *)opaque;
+        MOUNT3UMNTargs *args = call->body.cbody.args;
+        struct mountd_client *c;
+        char *addr;
+        int rc;
+        
+        addr = client_address(rpc);
+        if (addr == NULL) {
+                return rpc_send_reply(rpc, call, NULL, (zdrproc_t)zdr_void, 0);
+        }
+        
+        for (c = mountd->clients; c; c = c->next) {
+                if (!strcmp(c->client, addr) && !strcmp(c->path, *args)) {
+                        LIST_REMOVE(&mountd->clients, c, next);
+                        talloc_free(c);
+                        return rpc_send_reply(rpc, call, NULL, (zdrproc_t)zdr_void, 0);
+                }
+        }
+        return rpc_send_reply(rpc, call, NULL, (zdrproc_t)zdr_void, 0);
+}
+
+static int mount3_umntall_proc(struct rpc_context *rpc, struct rpc_msg *call, void *opaque)
+{
+        struct mountd_state *mountd = (struct mountd_state *)opaque;
+        struct mountd_client *c, *nl = NULL;
+        char *addr;
+        int rc;
+        
+        addr = client_address(rpc);
+        if (addr == NULL) {
+                return rpc_send_reply(rpc, call, NULL, (zdrproc_t)zdr_void, 0);
+        }
+        
+        for (c = mountd->clients; c; c = c->next) {
+                LIST_REMOVE(&mountd->clients, c, next);
+                if (!strcmp(c->client, addr)) {
+                        talloc_free(c);
+                }
+                LIST_ADD(&nl, c, next);
+        }
+        mountd->clients = nl;
+        return rpc_send_reply(rpc, call, NULL, (zdrproc_t)zdr_void, 0);
 }
 
 
@@ -228,12 +300,10 @@ struct mountd_state *mountd_init(TALLOC_CTX *ctx, struct tevent_context *tevent)
                  (zdrproc_t)zdr_MOUNT3MNTargs, sizeof(MOUNT3MNTargs), NULL},
                 {MOUNT3_DUMP, mount3_dump_proc,
                  (zdrproc_t)zdr_void, 0, NULL},
-#if 0
                 {MOUNT3_UMNT, mount3_umnt_proc,
                  (zdrproc_t)zdr_MOUNT3UMNTargs, sizeof(MOUNT3UMNTargs), NULL},
                 {MOUNT3_UMNTALL, mount3_umntall_proc,
-                 (zdrproc_t)zdr_MOUNT3_UMNTALLargs, sizeof(MOUNT3_UMNTALLargs), NULL},
-#endif
+                 (zdrproc_t)zdr_void, 0, NULL},
                 {MOUNT3_EXPORT, mount3_export_proc,
                  (zdrproc_t)zdr_void, 0, NULL},
         };
