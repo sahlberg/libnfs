@@ -15,19 +15,15 @@
    You should have received a copy of the GNU General Public License
    along with this program; if not, see <http://www.gnu.org/licenses/>.
 */
-/*
- * A non-blocking and eventdriven implementation of rpcbind using libnfs.
- * TODO: Call NULL periodically and reap dead services from the database.
- */
 
 #define _FILE_OFFSET_BITS 64
 #define _GNU_SOURCE
 
 
 #include <arpa/inet.h>
-#include <errno.h>
 #include <fcntl.h>
 #include <poll.h>
+#include <pthread.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
@@ -196,7 +192,9 @@ static int mount3_mnt_proc(struct rpc_context *rpc, struct rpc_msg *call, void *
                 goto out;
         }
 
+        pthread_mutex_lock(&mountd->clients_mutex);
         LIST_ADD(&mountd->clients, client, next);
+        pthread_mutex_unlock(&mountd->clients_mutex);
         client = NULL;
         res.fhs_status = MNT3_OK;
         res.mountres3_u.mountinfo.fhandle.fhandle3_len = e->fh.data.data_len;
@@ -226,7 +224,9 @@ static int mount3_umnt_proc(struct rpc_context *rpc, struct rpc_msg *call, void 
         
         for (c = mountd->clients; c; c = c->next) {
                 if (!strcmp(c->client, addr) && !strcmp(c->path, *args)) {
+                        pthread_mutex_lock(&mountd->clients_mutex);
                         LIST_REMOVE(&mountd->clients, c, next);
+                        pthread_mutex_unlock(&mountd->clients_mutex);
                         talloc_free(c);
                         return rpc_send_reply(rpc, call, NULL, (zdrproc_t)zdr_void, 0);
                 }
@@ -246,13 +246,16 @@ static int mount3_umntall_proc(struct rpc_context *rpc, struct rpc_msg *call, vo
                 return rpc_send_reply(rpc, call, NULL, (zdrproc_t)zdr_void, 0);
         }
         
+        pthread_mutex_lock(&mountd->clients_mutex);
         for (c = mountd->clients; c; c = c->next) {
                 LIST_REMOVE(&mountd->clients, c, next);
                 if (!strcmp(c->client, addr)) {
                         talloc_free(c);
+                        continue;
                 }
                 LIST_ADD(&nl, c, next);
         }
+        pthread_mutex_unlock(&mountd->clients_mutex);
         mountd->clients = nl;
         return rpc_send_reply(rpc, call, NULL, (zdrproc_t)zdr_void, 0);
 }
@@ -286,7 +289,13 @@ static int mount3_dump_proc(struct rpc_context *rpc, struct rpc_msg *call, void 
         talloc_free(tmp_ctx);
         return rc;
 }
- 
+
+static int mountd_destructor(struct mountd_state *mountd)
+{
+        pthread_mutex_destroy(&mountd->clients_mutex);
+        return 0;
+}
+
 struct mountd_state *mountd_init(TALLOC_CTX *ctx, struct tevent_context *tevent)
 {
         struct mountd_state *mountd;
@@ -317,13 +326,14 @@ struct mountd_state *mountd_init(TALLOC_CTX *ctx, struct tevent_context *tevent)
                 printf("Failed to talloc mountd\n");
                 goto err;
         }
+        talloc_set_destructor(mountd, mountd_destructor);
         for (i = 0; i < sizeof(mount3_pt) / sizeof(mount3_pt[0]); i++) {
                 mount3_pt[i].opaque = mountd;
         }
-        mountd->rpc = NULL;
         mountd->tevent = tevent;
         mountd->exports = NULL;
         mountd->clients = NULL;
+        pthread_mutex_init(&mountd->clients_mutex, NULL);
 
         servers = libnfs_create_server(mountd, tevent, 0, "libnfs mountd",
                                        TRANSPORT_UDP | TRANSPORT_UDP6 |

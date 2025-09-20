@@ -15,10 +15,6 @@
    You should have received a copy of the GNU General Public License
    along with this program; if not, see <http://www.gnu.org/licenses/>.
 */
-/*
- * A non-blocking and eventdriven implementation of rpcbind using libnfs.
- * TODO: Call NULL periodically and reap dead services from the database.
- */
 
 #ifndef _MOUNT_H_
 #define _MOUNT_H_
@@ -42,9 +38,9 @@ struct mountd_client {
 
 struct mountd_state {
         struct tevent_context *tevent;
-        struct rpc_context *rpc;
         struct mountd_export *exports;
         struct mountd_client *clients;
+        pthread_mutex_t clients_mutex;
 };
 
 struct mountd_state *mountd_init(TALLOC_CTX *ctx, struct tevent_context *tevent);
