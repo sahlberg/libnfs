@@ -222,15 +222,16 @@ static int mount3_umnt_proc(struct rpc_context *rpc, struct rpc_msg *call, void 
                 return rpc_send_reply(rpc, call, NULL, (zdrproc_t)zdr_void, 0);
         }
         
+        pthread_mutex_lock(&mountd->clients_mutex);
         for (c = mountd->clients; c; c = c->next) {
                 if (!strcmp(c->client, addr) && !strcmp(c->path, *args)) {
-                        pthread_mutex_lock(&mountd->clients_mutex);
                         LIST_REMOVE(&mountd->clients, c, next);
                         pthread_mutex_unlock(&mountd->clients_mutex);
                         talloc_free(c);
                         return rpc_send_reply(rpc, call, NULL, (zdrproc_t)zdr_void, 0);
                 }
         }
+        pthread_mutex_unlock(&mountd->clients_mutex);
         return rpc_send_reply(rpc, call, NULL, (zdrproc_t)zdr_void, 0);
 }
 
