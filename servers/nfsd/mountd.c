@@ -275,9 +275,11 @@ static int mount3_dump_proc(struct rpc_context *rpc, struct rpc_msg *call, void 
                 goto err;
         }
 
+        pthread_mutex_lock(&mountd->clients_mutex);
         for (c = mountd->clients; c; c = c->next) {
                 tmp = talloc(tmp_ctx, MOUNT3DUMPres);
                 if (tmp == NULL) {
+                        pthread_mutex_unlock(&mountd->clients_mutex);
                         goto err;
                 }
                 tmp->ml_hostname = c->client;
@@ -285,6 +287,7 @@ static int mount3_dump_proc(struct rpc_context *rpc, struct rpc_msg *call, void 
                 tmp->ml_next = res;
                 res = tmp;
         }
+        pthread_mutex_unlock(&mountd->clients_mutex);
         rc = rpc_send_reply(rpc, call, &res, (zdrproc_t)zdr_MOUNT3DUMPres_ptr, 0);
  err:        
         talloc_free(tmp_ctx);
