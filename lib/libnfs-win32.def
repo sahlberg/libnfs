@@ -144,6 +144,7 @@ rpc_destroy_context
 rpc_disconnect
 rpc_get_error
 rpc_get_fd
+rpc_get_timeout
 rpc_init_context
 rpc_init_server_context
 rpc_pmap2_null_task
@@ -255,5 +256,6 @@ rpc_service
 rpc_set_fd
 rpc_set_gid
 rpc_set_hash_size
+rpc_set_timeout
 rpc_set_uid
 rpc_which_events

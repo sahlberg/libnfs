@@ -655,8 +655,6 @@ void rpc_set_mountport(struct rpc_context *rpc, int port);
 int rpc_get_mountport(struct rpc_context *rpc);
 void rpc_set_poll_timeout(struct rpc_context *rpc, int poll_timeout);
 int rpc_get_poll_timeout(struct rpc_context *rpc);
-void rpc_set_timeout(struct rpc_context *rpc, int timeout);
-int rpc_get_timeout(struct rpc_context *rpc);
 int rpc_add_fragment(struct rpc_context *rpc, char *data, uint32_t size);
 void rpc_free_all_fragments(struct rpc_context *rpc);
 uint64_t rpc_current_time(void);

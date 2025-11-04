@@ -270,6 +270,28 @@ EXTERN void rpc_set_auxiliary_gids(struct rpc_context *rpc, uint32_t len, uint32
  */
 EXTERN int rpc_set_username(struct rpc_context *rpc, const char *username);
 
+
+/*
+ * sync rpc_set_timeout()
+ * This function sets the timeout used for this rpc context.
+ *
+ * Function returns nothing.
+ *
+ * int milliseconds : timeout to be applied in milliseconds (-1 no timeout)
+ *                    timeouts must currently be set in whole seconds,
+ *                    i.e. units of 1000
+ */
+EXTERN void rpc_set_timeout(struct rpc_context *rpc, int timeout);
+/*
+ * sync rpc_get_timeout()
+ * This function gets the timeout used for rpc context.
+ *
+ * Function returns
+ *    -1 : No timeout applied
+ *   > 0 : Timeout in milliseconds
+ */
+EXTERN int rpc_get_timeout(struct rpc_context *rpc);
+        
 /*
  * Create a server context.
  */
