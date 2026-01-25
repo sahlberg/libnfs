@@ -316,9 +316,8 @@ nfs_set_context_args(struct nfs_context *nfs, const char *arg, const char *val)
 	} else if (!strcmp(arg, "wsize")) {
 		nfs_set_writemax(nfs, atoi(val));
 	} else if (!strcmp(arg, "readdir-buffer")) {
-		char *strp = strchr(val, ',');
+		const char *strp = strchr(val, ',');
 		if (strp) {
-			*strp = 0;
 			strp++;
 			nfs_set_readdir_max_buffer_size(nfs, atoi(val), atoi(strp));
 		} else {
