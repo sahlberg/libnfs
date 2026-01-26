@@ -3244,7 +3244,7 @@ int
 nfs3_mknod_async(struct nfs_context *nfs, const char *path, int mode, int dev,
                  nfs_cb cb, void *private_data)
 {
-	char *ptr;
+	const char *ptr;
 	struct mknod_cb_data *cb_data;
 
 	cb_data = malloc(sizeof(struct mknod_cb_data));
@@ -3262,8 +3262,8 @@ nfs3_mknod_async(struct nfs_context *nfs, const char *path, int mode, int dev,
                                       "buffer for mknod path");
                         return -1;
                 }
-                ptr = strrchr(cb_data->path, '/');
-                *ptr = 0;
+                char *ptr2 = strrchr(cb_data->path, '/');
+                *ptr2 = 0;
         } else {
                 cb_data->path = malloc(strlen(path) + 2);
                 if (cb_data->path == NULL) {
@@ -3353,7 +3353,7 @@ nfs3_unlink_async(struct nfs_context *nfs, const char *path, nfs_cb cb,
                   void *private_data)
 {
 	char *new_path;
-	char *ptr;
+	const char *ptr;
 
         ptr = strrchr(path, '/');
         if (ptr) {
@@ -3363,8 +3363,8 @@ nfs3_unlink_async(struct nfs_context *nfs, const char *path, nfs_cb cb,
                                       "buffer for unlink path");
                         return -1;
                 }
-                ptr = strrchr(new_path, '/');
-                *ptr = 0;
+                char *ptr2 = strrchr(new_path, '/');
+                *ptr2 = 0;
         } else {
                 new_path = malloc(strlen(path) + 2);
                 if (new_path == NULL) {
@@ -3464,7 +3464,7 @@ nfs3_rmdir_async(struct nfs_context *nfs, const char *path, nfs_cb cb,
                  void *private_data)
 {
 	char *new_path;
-	char *ptr;
+	const char *ptr;
 
         ptr = strrchr(path, '/');
         if (ptr) {
@@ -3474,8 +3474,8 @@ nfs3_rmdir_async(struct nfs_context *nfs, const char *path, nfs_cb cb,
                                       "buffer for rmdir path");
                         return -1;
                 }
-                ptr = strrchr(new_path, '/');
-                *ptr = 0;
+                char *ptr2 = strrchr(new_path, '/');
+                *ptr2 = 0;
         } else {
                 new_path = malloc(strlen(path) + 2);
                 if (new_path == NULL) {
@@ -3566,7 +3566,7 @@ nfs3_mkdir2_async(struct nfs_context *nfs, const char *path, int mode,
                  nfs_cb cb, void *private_data)
 {
 	char *new_path;
-	char *ptr;
+	const char *ptr;
 
         ptr = strrchr(path, '/');
         if (ptr) {
@@ -3576,8 +3576,8 @@ nfs3_mkdir2_async(struct nfs_context *nfs, const char *path, int mode,
                                       "buffer for mkdir path");
                         return -1;
                 }
-                ptr = strrchr(new_path, '/');
-                *ptr = 0;
+                char *ptr2 = strrchr(new_path, '/');
+                *ptr2 = 0;
         } else {
                 new_path = malloc(strlen(path) + 2);
                 if (new_path == NULL) {
