@@ -93,6 +93,10 @@ static bool tls_is_ktls_enabled(gnutls_session_t session _U_, bool read _U_)
 }
 #endif
 
+#ifndef TLS_RX
+#define TLS_RX 2
+#endif
+
 static int ktls_setsockopt(int sock, bool read, const void *info, socklen_t infolen)
 {
 	const int ret = setsockopt(sock, SOL_TLS, read ? TLS_RX : TLS_TX, info, infolen);
