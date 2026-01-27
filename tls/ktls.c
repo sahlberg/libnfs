@@ -93,6 +93,10 @@ static bool tls_is_ktls_enabled(gnutls_session_t session _U_, bool read _U_)
 }
 #endif
 
+#ifndef TLS_RX
+#define TLS_RX 2
+#endif
+
 static int ktls_setsockopt(int sock, bool read, const void *info, socklen_t infolen)
 {
 	const int ret = setsockopt(sock, SOL_TLS, read ? TLS_RX : TLS_TX, info, infolen);
@@ -125,16 +129,28 @@ static int ktls_setsockopt(int sock, bool read, const void *info, socklen_t info
 #define tls12_crypto_info_AES_CCM_128 		tls12_crypto_info_aes_ccm_128
 #define tls12_crypto_info_CHACHA20_POLY1305	tls12_crypto_info_chacha20_poly1305
 
-#define GENERATE_SET_CRYPTO_INFO(CIPHER) 				\
-static int ktls_set_##CIPHER##_info(gnutls_session_t session) 		\
-{ 									\
+#ifdef TLS_1_3_VERSION
+#define GENERATE_TLS_INFO(CIPHER) 				\
 	const bool is_tls12 = 						\
 		(gnutls_protocol_get_version(session) == GNUTLS_TLS1_2);\
 	struct tls12_crypto_info_##CIPHER info = { 			\
 		.info.version           = (is_tls12 ? TLS_1_2_VERSION	\
 						    : TLS_1_3_VERSION), \
 		.info.cipher_type       = TLS_CIPHER_##CIPHER, 		\
-	}; 								\
+	};
+#else /* !TLS_1_3_VERSION */
+#define GENERATE_TLS_INFO(CIPHER) 				\
+	const bool is_tls12 =  1;\
+	struct tls12_crypto_info_##CIPHER info = { 			\
+		.info.version           = TLS_1_2_VERSION, \
+		.info.cipher_type       = TLS_CIPHER_##CIPHER, 		\
+	};
+#endif /* !TLS_1_3_VERSION */
+
+#define GENERATE_SET_CRYPTO_INFO(CIPHER) 				\
+static int ktls_set_##CIPHER##_info(gnutls_session_t session) 		\
+{ 									\
+	GENERATE_TLS_INFO(CIPHER) \	
 	unsigned char seq_number[12]; 					\
 	gnutls_datum_t cipher_key; 					\
 	gnutls_datum_t mac_key; 					\
