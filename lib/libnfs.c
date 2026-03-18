@@ -668,7 +668,7 @@ nfs_init_context(void)
 		return NULL;
 	}
 #ifdef HAVE_LIBKRB5
-	login = getlogin();
+	login = getenv("USER");
 #if defined(HAVE_PWD_H) && defined(HAVE_UNISTD_H)
 	if (login == NULL) {
 		euid_passwd = getpwuid(geteuid());
