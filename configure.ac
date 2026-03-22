@@ -110,6 +110,19 @@ fi
 fi
 AM_CONDITIONAL([HAVE_PTHREAD], [test x$libnfs_cv_HAVE_PTHREAD = xyes])
 
+# check for libpthread
+if test "$libnfs_cv_HAVE_PTHREAD" = yes; then
+  ac_save_LIBS=$LIBS
+  AC_CHECK_LIB([pthread], [pthread_spin_lock], [])
+  LIBS="$ac_save_LIBS"
+  if test "$ac_cv_lib_pthread_pthread_spin_lock" = yes; then
+    LIBS_PRIVATE="-lpthread"
+    LIBPTHREAD="-lpthread"
+  fi
+fi
+AC_SUBST(LIBS_PRIVATE)
+AC_SUBST([LIBPTHREAD])
+
 AC_MSG_CHECKING(whether SO_BINDTODEVICE is available)
 AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[#include <net/if.h>]], [[
         int i = SO_BINDTODEVICE;

@@ -61,6 +61,10 @@ if(WIN32 AND BUILD_SHARED_LIBS)
   add_definitions(-Dlibnfs_EXPORTS)
 endif()
 
+if(ENABLE_MULTITHREADING AND PTHREAD_LIBRARY)
+    list(APPEND SYSTEM_LIBRARIES pthread)
+endif()
+
 if(CMAKE_SYSTEM_NAME STREQUAL Linux)
   add_definitions("-D_U_=__attribute__((unused))")
   #

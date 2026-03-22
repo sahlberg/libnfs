@@ -10,5 +10,6 @@ Description: libnfs is a client library for accessing NFS shares over a network.
 Version: @PROJECT_VERSION@
 Requires:
 Conflicts:
-Libs: -L${libdir} -lnfs @PKG_LIBLIST@
+Libs: -L${libdir} -lnfs
+Libs.private: @PKG_LIBLIST@
 Cflags: -I${includedir}
