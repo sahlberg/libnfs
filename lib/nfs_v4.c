@@ -2381,7 +2381,7 @@ nfs4_populate_open(struct nfs4_cb_data *data, nfs_argop4 *op)
                 fa = &ch->createhow4_u.createattrs;
 
                 oargs->openhow.opentype = OPEN4_CREATE;
-                if (data->filler.flags|O_EXCL) {
+                if (data->filler.flags & O_EXCL) {
                         ch->mode = EXCLUSIVE4;
 
                         nfs4_init_random_verifier(&verifier[0]);
