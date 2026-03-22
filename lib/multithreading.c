@@ -174,12 +174,27 @@ int nfs_mt_sem_wait(libnfs_sem_t* sem)
 
 #include <unistd.h>
 #include <sys/syscall.h>
+#if defined(__FreeBSD__) || defined(__DragonFly__)
+#include <pthread_np.h>
+#endif
+#if defined(__NetBSD__)
+#include <lwp.h>
+#endif
 
 nfs_tid_t nfs_mt_get_tid(void)
 {
 #ifdef HAVE_PTHREAD_THREADID_NP
         nfs_tid_t tid;
         pthread_threadid_np(NULL, &tid);
+        return tid;
+#elif defined(__FreeBSD__) || defined(__DragonFly__)
+        int tid = pthread_getthreadid_np();
+        return tid;
+#elif defined(__OpenBSD__)
+        pid_t tid = getthrid();
+        return tid;
+#elif defined(__NetBSD__)
+        lwpid_t tid = _lwp_self();
         return tid;
 #elif defined(SYS_gettid)
         pid_t tid = syscall(SYS_gettid);
