@@ -44,7 +44,8 @@ libnfs_la_LIBADD = \
 	../nsm/libnsm.la \
 	../portmap/libportmap.la \
 	../rquota/librquota.la \
-	$(LIBSOCKET)
+	$(LIBSOCKET) \
+	$(LIBPTHREAD)
 
 if HAVE_TLS
 libnfs_la_CPPFLAGS += -I$(abs_top_srcdir)/tls

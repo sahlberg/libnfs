@@ -11,4 +11,5 @@ Version: @VERSION@
 Requires:
 Conflicts:
 Libs: -L${libdir} -lnfs
+Libs.private: @LIBS_PRIVATE@
 Cflags: -I${includedir}

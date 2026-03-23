@@ -103,6 +103,10 @@ check_c_source_compiles("#include <pthread.h>
                          }"
                         HAVE_PTHREAD)
 
+if(HAVE_PTHREAD)
+find_library(PTHREAD_LIBRARY pthread)
+endif()
+
 if(NOT NO_LFS_REQUIRED)
   check_c_source_compiles("#include <sys/types.h>
                            #define _FILE_OFFSET_BITS 64
