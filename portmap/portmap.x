@@ -31,21 +31,21 @@ either expressed or implied, of the FreeBSD Project.
 const PMAP_PORT = 111;      /* portmapper port number */
 
 struct pmap2_mapping {
-       unsigned int prog;
-       unsigned int vers;
-       unsigned int prot;
-       unsigned int port;
+       uint32_t prog;
+       uint32_t vers;
+       uint32_t prot;
+       uint32_t port;
 };
 
 struct pmap2_call_args {
-       unsigned int prog;
-       unsigned int vers;
-       unsigned int proc;
+       uint32_t prog;
+       uint32_t vers;
+       uint32_t proc;
        opaque args<>;
 };
 
 struct pmap2_call_result {
-	unsigned int port;
+	uint32_t port;
 	opaque res<>;
 };
 
@@ -63,8 +63,8 @@ struct pmap3_string_result {
 };
 
 struct pmap3_mapping {
-       unsigned int prog;
-       unsigned int vers;
+       uint32_t prog;
+       uint32_t vers;
        string netid<>;
        string addr<>;
        string owner<>;
@@ -80,9 +80,9 @@ struct pmap3_dump_result {
 };
 
 struct pmap3_call_args {
-       unsigned int prog;
-       unsigned int vers;
-       unsigned int proc;
+       uint32_t prog;
+       uint32_t vers;
+       uint32_t proc;
        opaque args<>;
 };
 
@@ -92,7 +92,7 @@ struct rpcb_rmtcallres {
 };
 
 struct pmap3_netbuf {
-	unsigned int maxlen;
+	uint32_t maxlen;
 	/* This pretty much contains a sockaddr_storage.
 	 * Beware differences in endianess for ss_family
 	 * and whether or not ss_len exists.
@@ -105,8 +105,8 @@ struct pmap4_string_result {
 };
 
 struct pmap4_mapping {
-       unsigned int prog;
-       unsigned int vers;
+       uint32_t prog;
+       uint32_t vers;
        string netid<>;
        string addr<>;
        string owner<>;
@@ -122,14 +122,14 @@ struct pmap4_dump_result {
 };
 
 struct pmap4_bcast_args {
-       unsigned int prog;
-       unsigned int vers;
-       unsigned int proc;
+       uint32_t prog;
+       uint32_t vers;
+       uint32_t proc;
        opaque args<>;
 };
 
 struct pmap4_netbuf {
-	unsigned int maxlen;
+	uint32_t maxlen;
 	/* This pretty much contains a sockaddr_storage.
 	 * Beware differences in endianess for ss_family
 	 * and whether or not ss_len exists.
@@ -138,9 +138,9 @@ struct pmap4_netbuf {
 };
 
 struct pmap4_indirect_args {
-       unsigned int prog;
-       unsigned int vers;
-       unsigned int proc;
+       uint32_t prog;
+       uint32_t vers;
+       uint32_t proc;
        opaque args<>;
 };
 
@@ -151,21 +151,21 @@ const RPCBVERS_3_STAT   = 1;
 const RPCBVERS_2_STAT   = 0;
 
 struct rpcbs_addrlist {
-	unsigned int prog;
-	unsigned int vers;
-	int success;
-	int failure;
+	uint32_t prog;
+	uint32_t vers;
+	int32_t success;
+	int32_t failure;
 	string netid<>;
 	struct rpcbs_addrlist *next;
 };
 
 struct rpcbs_rmtcalllist {
-	unsigned int prog;
-	unsigned int vers;
-	unsigned int proc;
-	int success;
-	int failure;
-	int indirect;    /* whether callit or indirect */
+	uint32_t prog;
+	uint32_t vers;
+	uint32_t proc;
+	int32_t success;
+	int32_t failure;
+	int32_t indirect;    /* whether callit or indirect */
 	string netid<>;
 	struct rpcbs_rmtcalllist *next;
 };
@@ -176,8 +176,8 @@ typedef rpcbs_rmtcalllist *rpcbs_rmtcalllist_ptr;
 
 struct rpcb_stat {
 	rpcbs_proc              info;
-	int                     setinfo;
-	int                     unsetinfo;
+	int32_t                 setinfo;
+	int32_t                 unsetinfo;
 	rpcbs_addrlist_ptr      addrinfo;
 	rpcbs_rmtcalllist_ptr   rmtinfo;
 };
@@ -193,7 +193,7 @@ const NC_TPI_RAW      = 4;
 struct rpcb_entry {
 	string          r_maddr<>;            /* merged address of service */
 	string          r_nc_netid<>;         /* netid field */
-	unsigned int    r_nc_semantics;       /* semantics of transport */
+	uint32_t        r_nc_semantics;       /* semantics of transport */
 	string          r_nc_protofmly<>;     /* protocol family */
 	string          r_nc_proto<>;         /* protocol name */
 };

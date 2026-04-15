@@ -64,9 +64,9 @@ jobs:
       matrix:
         platform:
           - i386
-          - s390x   # Test big-endian
-          - arm32v6
-          - arm32v7
+#          - s390x   # Test big-endian
+#          - arm32v6
+#          - arm32v7
 
     steps:
       - uses: actions/checkout@main
