@@ -40,54 +40,13 @@ zdr_pmap2_mapping (ZDR *zdrs, pmap2_mapping *objp)
 {
 	
 
-
-	if (zdrs->x_op == ZDR_ENCODE) {
-		int32_t *buf;
-		buf = ZDR_INLINE (zdrs, 4 * BYTES_PER_ZDR_UNIT);
-		if (buf == NULL) {
-			 if (!zdr_u_int (zdrs, &objp->prog))
-				 return FALSE;
-			 if (!zdr_u_int (zdrs, &objp->vers))
-				 return FALSE;
-			 if (!zdr_u_int (zdrs, &objp->prot))
-				 return FALSE;
-			 if (!zdr_u_int (zdrs, &objp->port))
-				 return FALSE;
-		} else {
-			IZDR_PUT_U_LONG(buf, objp->prog);
-			IZDR_PUT_U_LONG(buf, objp->vers);
-			IZDR_PUT_U_LONG(buf, objp->prot);
-			IZDR_PUT_U_LONG(buf, objp->port);
-		}
-		return TRUE;
-	} else if (zdrs->x_op == ZDR_DECODE) {
-		int32_t *buf;
-		buf = ZDR_INLINE (zdrs, 4 * BYTES_PER_ZDR_UNIT);
-		if (buf == NULL) {
-			 if (!zdr_u_int (zdrs, &objp->prog))
-				 return FALSE;
-			 if (!zdr_u_int (zdrs, &objp->vers))
-				 return FALSE;
-			 if (!zdr_u_int (zdrs, &objp->prot))
-				 return FALSE;
-			 if (!zdr_u_int (zdrs, &objp->port))
-				 return FALSE;
-		} else {
-			objp->prog = IZDR_GET_U_LONG(buf);
-			objp->vers = IZDR_GET_U_LONG(buf);
-			objp->prot = IZDR_GET_U_LONG(buf);
-			objp->port = IZDR_GET_U_LONG(buf);
-		}
-	 return TRUE;
-	}
-
-	 if (!zdr_u_int (zdrs, &objp->prog))
+	 if (!zdr_uint32_t (zdrs, &objp->prog))
 		 return FALSE;
-	 if (!zdr_u_int (zdrs, &objp->vers))
+	 if (!zdr_uint32_t (zdrs, &objp->vers))
 		 return FALSE;
-	 if (!zdr_u_int (zdrs, &objp->prot))
+	 if (!zdr_uint32_t (zdrs, &objp->prot))
 		 return FALSE;
-	 if (!zdr_u_int (zdrs, &objp->port))
+	 if (!zdr_uint32_t (zdrs, &objp->port))
 		 return FALSE;
 	return TRUE;
 }
@@ -97,52 +56,11 @@ zdr_pmap2_call_args (ZDR *zdrs, pmap2_call_args *objp)
 {
 	
 
-
-	if (zdrs->x_op == ZDR_ENCODE) {
-		int32_t *buf;
-		buf = ZDR_INLINE (zdrs, 3 * BYTES_PER_ZDR_UNIT);
-		if (buf == NULL) {
-			 if (!zdr_u_int (zdrs, &objp->prog))
-				 return FALSE;
-			 if (!zdr_u_int (zdrs, &objp->vers))
-				 return FALSE;
-			 if (!zdr_u_int (zdrs, &objp->proc))
-				 return FALSE;
-
-		} else {
-		IZDR_PUT_U_LONG(buf, objp->prog);
-		IZDR_PUT_U_LONG(buf, objp->vers);
-		IZDR_PUT_U_LONG(buf, objp->proc);
-		}
-		 if (!zdr_bytes (zdrs, (char **)&objp->args.args_val, (uint32_t *) &objp->args.args_len, ~0))
-			 return FALSE;
-		return TRUE;
-	} else if (zdrs->x_op == ZDR_DECODE) {
-		int32_t *buf;
-		buf = ZDR_INLINE (zdrs, 3 * BYTES_PER_ZDR_UNIT);
-		if (buf == NULL) {
-			 if (!zdr_u_int (zdrs, &objp->prog))
-				 return FALSE;
-			 if (!zdr_u_int (zdrs, &objp->vers))
-				 return FALSE;
-			 if (!zdr_u_int (zdrs, &objp->proc))
-				 return FALSE;
-
-		} else {
-		objp->prog = IZDR_GET_U_LONG(buf);
-		objp->vers = IZDR_GET_U_LONG(buf);
-		objp->proc = IZDR_GET_U_LONG(buf);
-		}
-		 if (!zdr_bytes (zdrs, (char **)&objp->args.args_val, (uint32_t *) &objp->args.args_len, ~0))
-			 return FALSE;
-	 return TRUE;
-	}
-
-	 if (!zdr_u_int (zdrs, &objp->prog))
+	 if (!zdr_uint32_t (zdrs, &objp->prog))
 		 return FALSE;
-	 if (!zdr_u_int (zdrs, &objp->vers))
+	 if (!zdr_uint32_t (zdrs, &objp->vers))
 		 return FALSE;
-	 if (!zdr_u_int (zdrs, &objp->proc))
+	 if (!zdr_uint32_t (zdrs, &objp->proc))
 		 return FALSE;
 	 if (!zdr_bytes (zdrs, (char **)&objp->args.args_val, (uint32_t *) &objp->args.args_len, ~0))
 		 return FALSE;
@@ -154,7 +72,7 @@ zdr_pmap2_call_result (ZDR *zdrs, pmap2_call_result *objp)
 {
 	
 
-	 if (!zdr_u_int (zdrs, &objp->port))
+	 if (!zdr_uint32_t (zdrs, &objp->port))
 		 return FALSE;
 	 if (!zdr_bytes (zdrs, (char **)&objp->res.res_val, (uint32_t *) &objp->res.res_len, ~0))
 		 return FALSE;
@@ -198,9 +116,9 @@ zdr_pmap3_mapping (ZDR *zdrs, pmap3_mapping *objp)
 {
 	
 
-	 if (!zdr_u_int (zdrs, &objp->prog))
+	 if (!zdr_uint32_t (zdrs, &objp->prog))
 		 return FALSE;
-	 if (!zdr_u_int (zdrs, &objp->vers))
+	 if (!zdr_uint32_t (zdrs, &objp->vers))
 		 return FALSE;
 	 if (!zdr_string (zdrs, &objp->netid, ~0))
 		 return FALSE;
@@ -238,52 +156,11 @@ zdr_pmap3_call_args (ZDR *zdrs, pmap3_call_args *objp)
 {
 	
 
-
-	if (zdrs->x_op == ZDR_ENCODE) {
-		int32_t *buf;
-		buf = ZDR_INLINE (zdrs, 3 * BYTES_PER_ZDR_UNIT);
-		if (buf == NULL) {
-			 if (!zdr_u_int (zdrs, &objp->prog))
-				 return FALSE;
-			 if (!zdr_u_int (zdrs, &objp->vers))
-				 return FALSE;
-			 if (!zdr_u_int (zdrs, &objp->proc))
-				 return FALSE;
-
-		} else {
-		IZDR_PUT_U_LONG(buf, objp->prog);
-		IZDR_PUT_U_LONG(buf, objp->vers);
-		IZDR_PUT_U_LONG(buf, objp->proc);
-		}
-		 if (!zdr_bytes (zdrs, (char **)&objp->args.args_val, (uint32_t *) &objp->args.args_len, ~0))
-			 return FALSE;
-		return TRUE;
-	} else if (zdrs->x_op == ZDR_DECODE) {
-		int32_t *buf;
-		buf = ZDR_INLINE (zdrs, 3 * BYTES_PER_ZDR_UNIT);
-		if (buf == NULL) {
-			 if (!zdr_u_int (zdrs, &objp->prog))
-				 return FALSE;
-			 if (!zdr_u_int (zdrs, &objp->vers))
-				 return FALSE;
-			 if (!zdr_u_int (zdrs, &objp->proc))
-				 return FALSE;
-
-		} else {
-		objp->prog = IZDR_GET_U_LONG(buf);
-		objp->vers = IZDR_GET_U_LONG(buf);
-		objp->proc = IZDR_GET_U_LONG(buf);
-		}
-		 if (!zdr_bytes (zdrs, (char **)&objp->args.args_val, (uint32_t *) &objp->args.args_len, ~0))
-			 return FALSE;
-	 return TRUE;
-	}
-
-	 if (!zdr_u_int (zdrs, &objp->prog))
+	 if (!zdr_uint32_t (zdrs, &objp->prog))
 		 return FALSE;
-	 if (!zdr_u_int (zdrs, &objp->vers))
+	 if (!zdr_uint32_t (zdrs, &objp->vers))
 		 return FALSE;
-	 if (!zdr_u_int (zdrs, &objp->proc))
+	 if (!zdr_uint32_t (zdrs, &objp->proc))
 		 return FALSE;
 	 if (!zdr_bytes (zdrs, (char **)&objp->args.args_val, (uint32_t *) &objp->args.args_len, ~0))
 		 return FALSE;
@@ -307,7 +184,7 @@ zdr_pmap3_netbuf (ZDR *zdrs, pmap3_netbuf *objp)
 {
 	
 
-	 if (!zdr_u_int (zdrs, &objp->maxlen))
+	 if (!zdr_uint32_t (zdrs, &objp->maxlen))
 		 return FALSE;
 	 if (!zdr_bytes (zdrs, (char **)&objp->buf.buf_val, (uint32_t *) &objp->buf.buf_len, ~0))
 		 return FALSE;
@@ -329,9 +206,9 @@ zdr_pmap4_mapping (ZDR *zdrs, pmap4_mapping *objp)
 {
 	
 
-	 if (!zdr_u_int (zdrs, &objp->prog))
+	 if (!zdr_uint32_t (zdrs, &objp->prog))
 		 return FALSE;
-	 if (!zdr_u_int (zdrs, &objp->vers))
+	 if (!zdr_uint32_t (zdrs, &objp->vers))
 		 return FALSE;
 	 if (!zdr_string (zdrs, &objp->netid, ~0))
 		 return FALSE;
@@ -369,52 +246,11 @@ zdr_pmap4_bcast_args (ZDR *zdrs, pmap4_bcast_args *objp)
 {
 	
 
-
-	if (zdrs->x_op == ZDR_ENCODE) {
-		int32_t *buf;
-		buf = ZDR_INLINE (zdrs, 3 * BYTES_PER_ZDR_UNIT);
-		if (buf == NULL) {
-			 if (!zdr_u_int (zdrs, &objp->prog))
-				 return FALSE;
-			 if (!zdr_u_int (zdrs, &objp->vers))
-				 return FALSE;
-			 if (!zdr_u_int (zdrs, &objp->proc))
-				 return FALSE;
-
-		} else {
-		IZDR_PUT_U_LONG(buf, objp->prog);
-		IZDR_PUT_U_LONG(buf, objp->vers);
-		IZDR_PUT_U_LONG(buf, objp->proc);
-		}
-		 if (!zdr_bytes (zdrs, (char **)&objp->args.args_val, (uint32_t *) &objp->args.args_len, ~0))
-			 return FALSE;
-		return TRUE;
-	} else if (zdrs->x_op == ZDR_DECODE) {
-		int32_t *buf;
-		buf = ZDR_INLINE (zdrs, 3 * BYTES_PER_ZDR_UNIT);
-		if (buf == NULL) {
-			 if (!zdr_u_int (zdrs, &objp->prog))
-				 return FALSE;
-			 if (!zdr_u_int (zdrs, &objp->vers))
-				 return FALSE;
-			 if (!zdr_u_int (zdrs, &objp->proc))
-				 return FALSE;
-
-		} else {
-		objp->prog = IZDR_GET_U_LONG(buf);
-		objp->vers = IZDR_GET_U_LONG(buf);
-		objp->proc = IZDR_GET_U_LONG(buf);
-		}
-		 if (!zdr_bytes (zdrs, (char **)&objp->args.args_val, (uint32_t *) &objp->args.args_len, ~0))
-			 return FALSE;
-	 return TRUE;
-	}
-
-	 if (!zdr_u_int (zdrs, &objp->prog))
+	 if (!zdr_uint32_t (zdrs, &objp->prog))
 		 return FALSE;
-	 if (!zdr_u_int (zdrs, &objp->vers))
+	 if (!zdr_uint32_t (zdrs, &objp->vers))
 		 return FALSE;
-	 if (!zdr_u_int (zdrs, &objp->proc))
+	 if (!zdr_uint32_t (zdrs, &objp->proc))
 		 return FALSE;
 	 if (!zdr_bytes (zdrs, (char **)&objp->args.args_val, (uint32_t *) &objp->args.args_len, ~0))
 		 return FALSE;
@@ -426,7 +262,7 @@ zdr_pmap4_netbuf (ZDR *zdrs, pmap4_netbuf *objp)
 {
 	
 
-	 if (!zdr_u_int (zdrs, &objp->maxlen))
+	 if (!zdr_uint32_t (zdrs, &objp->maxlen))
 		 return FALSE;
 	 if (!zdr_bytes (zdrs, (char **)&objp->buf.buf_val, (uint32_t *) &objp->buf.buf_len, ~0))
 		 return FALSE;
@@ -438,52 +274,11 @@ zdr_pmap4_indirect_args (ZDR *zdrs, pmap4_indirect_args *objp)
 {
 	
 
-
-	if (zdrs->x_op == ZDR_ENCODE) {
-		int32_t *buf;
-		buf = ZDR_INLINE (zdrs, 3 * BYTES_PER_ZDR_UNIT);
-		if (buf == NULL) {
-			 if (!zdr_u_int (zdrs, &objp->prog))
-				 return FALSE;
-			 if (!zdr_u_int (zdrs, &objp->vers))
-				 return FALSE;
-			 if (!zdr_u_int (zdrs, &objp->proc))
-				 return FALSE;
-
-		} else {
-		IZDR_PUT_U_LONG(buf, objp->prog);
-		IZDR_PUT_U_LONG(buf, objp->vers);
-		IZDR_PUT_U_LONG(buf, objp->proc);
-		}
-		 if (!zdr_bytes (zdrs, (char **)&objp->args.args_val, (uint32_t *) &objp->args.args_len, ~0))
-			 return FALSE;
-		return TRUE;
-	} else if (zdrs->x_op == ZDR_DECODE) {
-		int32_t *buf;
-		buf = ZDR_INLINE (zdrs, 3 * BYTES_PER_ZDR_UNIT);
-		if (buf == NULL) {
-			 if (!zdr_u_int (zdrs, &objp->prog))
-				 return FALSE;
-			 if (!zdr_u_int (zdrs, &objp->vers))
-				 return FALSE;
-			 if (!zdr_u_int (zdrs, &objp->proc))
-				 return FALSE;
-
-		} else {
-		objp->prog = IZDR_GET_U_LONG(buf);
-		objp->vers = IZDR_GET_U_LONG(buf);
-		objp->proc = IZDR_GET_U_LONG(buf);
-		}
-		 if (!zdr_bytes (zdrs, (char **)&objp->args.args_val, (uint32_t *) &objp->args.args_len, ~0))
-			 return FALSE;
-	 return TRUE;
-	}
-
-	 if (!zdr_u_int (zdrs, &objp->prog))
+	 if (!zdr_uint32_t (zdrs, &objp->prog))
 		 return FALSE;
-	 if (!zdr_u_int (zdrs, &objp->vers))
+	 if (!zdr_uint32_t (zdrs, &objp->vers))
 		 return FALSE;
-	 if (!zdr_u_int (zdrs, &objp->proc))
+	 if (!zdr_uint32_t (zdrs, &objp->proc))
 		 return FALSE;
 	 if (!zdr_bytes (zdrs, (char **)&objp->args.args_val, (uint32_t *) &objp->args.args_len, ~0))
 		 return FALSE;
@@ -495,64 +290,13 @@ zdr_rpcbs_addrlist (ZDR *zdrs, rpcbs_addrlist *objp)
 {
 	
 
-
-	if (zdrs->x_op == ZDR_ENCODE) {
-		int32_t *buf;
-		buf = ZDR_INLINE (zdrs, 4 * BYTES_PER_ZDR_UNIT);
-		if (buf == NULL) {
-			 if (!zdr_u_int (zdrs, &objp->prog))
-				 return FALSE;
-			 if (!zdr_u_int (zdrs, &objp->vers))
-				 return FALSE;
-			 if (!zdr_int (zdrs, &objp->success))
-				 return FALSE;
-			 if (!zdr_int (zdrs, &objp->failure))
-				 return FALSE;
-
-		} else {
-		IZDR_PUT_U_LONG(buf, objp->prog);
-		IZDR_PUT_U_LONG(buf, objp->vers);
-		IZDR_PUT_LONG(buf, objp->success);
-		IZDR_PUT_LONG(buf, objp->failure);
-		}
-		 if (!zdr_string (zdrs, &objp->netid, ~0))
-			 return FALSE;
-		 if (!zdr_pointer (zdrs, (char **)&objp->next, sizeof (rpcbs_addrlist), (zdrproc_t) zdr_rpcbs_addrlist))
-			 return FALSE;
-		return TRUE;
-	} else if (zdrs->x_op == ZDR_DECODE) {
-		int32_t *buf;
-		buf = ZDR_INLINE (zdrs, 4 * BYTES_PER_ZDR_UNIT);
-		if (buf == NULL) {
-			 if (!zdr_u_int (zdrs, &objp->prog))
-				 return FALSE;
-			 if (!zdr_u_int (zdrs, &objp->vers))
-				 return FALSE;
-			 if (!zdr_int (zdrs, &objp->success))
-				 return FALSE;
-			 if (!zdr_int (zdrs, &objp->failure))
-				 return FALSE;
-
-		} else {
-		objp->prog = IZDR_GET_U_LONG(buf);
-		objp->vers = IZDR_GET_U_LONG(buf);
-		objp->success = IZDR_GET_LONG(buf);
-		objp->failure = IZDR_GET_LONG(buf);
-		}
-		 if (!zdr_string (zdrs, &objp->netid, ~0))
-			 return FALSE;
-		 if (!zdr_pointer (zdrs, (char **)&objp->next, sizeof (rpcbs_addrlist), (zdrproc_t) zdr_rpcbs_addrlist))
-			 return FALSE;
-	 return TRUE;
-	}
-
-	 if (!zdr_u_int (zdrs, &objp->prog))
+	 if (!zdr_uint32_t (zdrs, &objp->prog))
 		 return FALSE;
-	 if (!zdr_u_int (zdrs, &objp->vers))
+	 if (!zdr_uint32_t (zdrs, &objp->vers))
 		 return FALSE;
-	 if (!zdr_int (zdrs, &objp->success))
+	 if (!zdr_int32_t (zdrs, &objp->success))
 		 return FALSE;
-	 if (!zdr_int (zdrs, &objp->failure))
+	 if (!zdr_int32_t (zdrs, &objp->failure))
 		 return FALSE;
 	 if (!zdr_string (zdrs, &objp->netid, ~0))
 		 return FALSE;
@@ -566,80 +310,17 @@ zdr_rpcbs_rmtcalllist (ZDR *zdrs, rpcbs_rmtcalllist *objp)
 {
 	
 
-
-	if (zdrs->x_op == ZDR_ENCODE) {
-		int32_t *buf;
-		buf = ZDR_INLINE (zdrs, 6 * BYTES_PER_ZDR_UNIT);
-		if (buf == NULL) {
-			 if (!zdr_u_int (zdrs, &objp->prog))
-				 return FALSE;
-			 if (!zdr_u_int (zdrs, &objp->vers))
-				 return FALSE;
-			 if (!zdr_u_int (zdrs, &objp->proc))
-				 return FALSE;
-			 if (!zdr_int (zdrs, &objp->success))
-				 return FALSE;
-			 if (!zdr_int (zdrs, &objp->failure))
-				 return FALSE;
-			 if (!zdr_int (zdrs, &objp->indirect))
-				 return FALSE;
-
-		} else {
-		IZDR_PUT_U_LONG(buf, objp->prog);
-		IZDR_PUT_U_LONG(buf, objp->vers);
-		IZDR_PUT_U_LONG(buf, objp->proc);
-		IZDR_PUT_LONG(buf, objp->success);
-		IZDR_PUT_LONG(buf, objp->failure);
-		IZDR_PUT_LONG(buf, objp->indirect);
-		}
-		 if (!zdr_string (zdrs, &objp->netid, ~0))
-			 return FALSE;
-		 if (!zdr_pointer (zdrs, (char **)&objp->next, sizeof (rpcbs_rmtcalllist), (zdrproc_t) zdr_rpcbs_rmtcalllist))
-			 return FALSE;
-		return TRUE;
-	} else if (zdrs->x_op == ZDR_DECODE) {
-		int32_t *buf;
-		buf = ZDR_INLINE (zdrs, 6 * BYTES_PER_ZDR_UNIT);
-		if (buf == NULL) {
-			 if (!zdr_u_int (zdrs, &objp->prog))
-				 return FALSE;
-			 if (!zdr_u_int (zdrs, &objp->vers))
-				 return FALSE;
-			 if (!zdr_u_int (zdrs, &objp->proc))
-				 return FALSE;
-			 if (!zdr_int (zdrs, &objp->success))
-				 return FALSE;
-			 if (!zdr_int (zdrs, &objp->failure))
-				 return FALSE;
-			 if (!zdr_int (zdrs, &objp->indirect))
-				 return FALSE;
-
-		} else {
-		objp->prog = IZDR_GET_U_LONG(buf);
-		objp->vers = IZDR_GET_U_LONG(buf);
-		objp->proc = IZDR_GET_U_LONG(buf);
-		objp->success = IZDR_GET_LONG(buf);
-		objp->failure = IZDR_GET_LONG(buf);
-		objp->indirect = IZDR_GET_LONG(buf);
-		}
-		 if (!zdr_string (zdrs, &objp->netid, ~0))
-			 return FALSE;
-		 if (!zdr_pointer (zdrs, (char **)&objp->next, sizeof (rpcbs_rmtcalllist), (zdrproc_t) zdr_rpcbs_rmtcalllist))
-			 return FALSE;
-	 return TRUE;
-	}
-
-	 if (!zdr_u_int (zdrs, &objp->prog))
+	 if (!zdr_uint32_t (zdrs, &objp->prog))
 		 return FALSE;
-	 if (!zdr_u_int (zdrs, &objp->vers))
+	 if (!zdr_uint32_t (zdrs, &objp->vers))
 		 return FALSE;
-	 if (!zdr_u_int (zdrs, &objp->proc))
+	 if (!zdr_uint32_t (zdrs, &objp->proc))
 		 return FALSE;
-	 if (!zdr_int (zdrs, &objp->success))
+	 if (!zdr_int32_t (zdrs, &objp->success))
 		 return FALSE;
-	 if (!zdr_int (zdrs, &objp->failure))
+	 if (!zdr_int32_t (zdrs, &objp->failure))
 		 return FALSE;
-	 if (!zdr_int (zdrs, &objp->indirect))
+	 if (!zdr_int32_t (zdrs, &objp->indirect))
 		 return FALSE;
 	 if (!zdr_string (zdrs, &objp->netid, ~0))
 		 return FALSE;
@@ -686,9 +367,9 @@ zdr_rpcb_stat (ZDR *zdrs, rpcb_stat *objp)
 
 	 if (!zdr_rpcbs_proc (zdrs, objp->info))
 		 return FALSE;
-	 if (!zdr_int (zdrs, &objp->setinfo))
+	 if (!zdr_int32_t (zdrs, &objp->setinfo))
 		 return FALSE;
-	 if (!zdr_int (zdrs, &objp->unsetinfo))
+	 if (!zdr_int32_t (zdrs, &objp->unsetinfo))
 		 return FALSE;
 	 if (!zdr_rpcbs_addrlist_ptr (zdrs, &objp->addrinfo))
 		 return FALSE;
@@ -717,7 +398,7 @@ zdr_rpcb_entry (ZDR *zdrs, rpcb_entry *objp)
 		 return FALSE;
 	 if (!zdr_string (zdrs, &objp->r_nc_netid, ~0))
 		 return FALSE;
-	 if (!zdr_u_int (zdrs, &objp->r_nc_semantics))
+	 if (!zdr_uint32_t (zdrs, &objp->r_nc_semantics))
 		 return FALSE;
 	 if (!zdr_string (zdrs, &objp->r_nc_protofmly, ~0))
 		 return FALSE;
