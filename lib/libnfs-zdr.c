@@ -197,6 +197,11 @@ bool_t libnfs_zdr_bytes(ZDR *zdrs, char **bufp, uint32_t *size, uint32_t maxsize
 		return FALSE;
 	}
 
+        /* Clamp max size we handle to 1GB */
+        if (*size > 1024 * 1024 * 1024) {
+		return FALSE;
+        }
+
 	if (zdrs->pos + (int)*size > zdrs->size) {
 		return FALSE;
 	}
