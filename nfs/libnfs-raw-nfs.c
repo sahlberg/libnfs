@@ -1562,14 +1562,22 @@ zdr_READDIR3args (ZDR *zdrs, READDIR3args *objp)
 uint32_t
 zdr_entry3 (ZDR *zdrs, entry3 *objp)
 {
+	bool_t more_data;
+
+ one_more:
 	 if (!zdr_fileid3 (zdrs, &objp->fileid))
 		 return FALSE;
 	 if (!zdr_filename3 (zdrs, &objp->name))
 		 return FALSE;
 	 if (!zdr_cookie3 (zdrs, &objp->cookie))
 		 return FALSE;
-	 if (!zdr_pointer (zdrs, (char **)&objp->nextentry, sizeof (entry3), (zdrproc_t) zdr_entry3))
-		 return FALSE;
+
+	if (!libnfs_zdr_bool(zdrs, &more_data)) {
+		return FALSE;
+	}
+	if (more_data) {
+		goto one_more;
+	}
 	return TRUE;
 }
 
