@@ -113,8 +113,16 @@ void *zdr_malloc(ZDR *zdrs, uint32_t size)
 	struct zdr_mem *mem;
 	int mem_size;
 
+        /* Clamp max size we handle to 1GB */
+        if (size > 1024 * 1024 * 1024) {
+		return NULL;
+        }
+
 	mem_size = offsetof(struct zdr_mem, buf) + size;
 	mem = malloc(mem_size);
+        if (mem == NULL) {
+                return NULL;
+        }
 
 	mem->next = zdrs->mem;
 	mem->size = size;
