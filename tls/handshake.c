@@ -258,6 +258,9 @@ int tls_global_init(struct rpc_context *rpc)
 	} else {
 		TLS_LOG(2, "tls_global_init: Client cert and key not specified, mtls "
 			"cannot be used");
+                if (rpc->wanted_xprtsec == RPC_XPRTSEC_MTLS) {
+                        goto failed;
+                }
 	}
 
 	tls_global_init_done = TRUE;
