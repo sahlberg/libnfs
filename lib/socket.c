@@ -980,6 +980,9 @@ rpc_read_from_socket(struct rpc_context *rpc)
                                 break;
                         case READ_IOVEC:
                                 rpc->pdu->read_count -= rpc->pdu_size;
+                                if (rpc->rm_xid[0] < rpc->pdu_size) {
+                                        return -1;
+                                }
                                 rpc->rm_xid[0] -= rpc->pdu_size;
                                 if (!rpc->rm_xid[0]) {
                                         rpc_finished_pdu(rpc);
