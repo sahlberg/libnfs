@@ -318,7 +318,9 @@ bool_t libnfs_zdr_string(ZDR *zdrs, char **strp, uint32_t maxsize)
 	if (!libnfs_zdr_u_int(zdrs, &size)) {
 		return FALSE;
 	}
-
+	if (size > zdrs->size) {
+		return FALSE;
+	}
 	if (zdrs->pos + (int)size > zdrs->size) {
 		return FALSE;
 	}
