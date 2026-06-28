@@ -53,27 +53,29 @@ int win32_inet_pton(int af, const char * src, void * dst)
   size_t strLen = strlen(src) + 1;
 #ifdef UNICODE
   wchar_t *srcNonConst = (wchar_t *)malloc(strLen*sizeof(wchar_t));
-  memset(srcNonConst, 0, strLen);
+  if (srcNonConst == NULL) {
+    return -1;
+  }
+  memset(srcNonConst, 0, strLen*sizeof(wchar_t));
   MultiByteToWideChar(CP_ACP, 0, src, -1, srcNonConst, strLen);
 #else
   char *srcNonConst = (char *)malloc(strLen);
+  if (srcNonConst == NULL) {
+    return -1;
+  }
   memset(srcNonConst, 0, strLen);
   strncpy(srcNonConst, src, strLen);
 #endif
 
-  if( WSAStringToAddress(srcNonConst,af,NULL,(LPSOCKADDR)&sa,&len) == 0 )
-  {
+  if (WSAStringToAddress(srcNonConst,af,NULL,(LPSOCKADDR)&sa,&len) == 0) {
 	  ret = 1;
-  }
-  else
-  {
-    if(	WSAGetLastError() == WSAEINVAL )
-    {
-	    ret = -1;
+	  memcpy(dst, &sa.sin_addr, sizeof(struct in_addr));
+  } else {
+    if(	WSAGetLastError() == WSAEINVAL ) {
+	  ret = -1;
     }
   }
   free(srcNonConst);
-  memcpy(dst, &sa.sin_addr, sizeof(struct in_addr));
   return ret;
 }
 

@@ -113,8 +113,16 @@ void *zdr_malloc(ZDR *zdrs, uint32_t size)
 	struct zdr_mem *mem;
 	int mem_size;
 
+        /* Clamp max size we handle to 1GB */
+        if (size > 1024 * 1024 * 1024) {
+		return NULL;
+        }
+
 	mem_size = offsetof(struct zdr_mem, buf) + size;
 	mem = malloc(mem_size);
+        if (mem == NULL) {
+                return NULL;
+        }
 
 	mem->next = zdrs->mem;
 	mem->size = size;
@@ -196,6 +204,11 @@ bool_t libnfs_zdr_bytes(ZDR *zdrs, char **bufp, uint32_t *size, uint32_t maxsize
 	if (!libnfs_zdr_u_int(zdrs, size)) {
 		return FALSE;
 	}
+
+        /* Clamp max size we handle to 1GB */
+        if (*size > 1024 * 1024 * 1024) {
+		return FALSE;
+        }
 
 	if (zdrs->pos + (int)*size > zdrs->size) {
 		return FALSE;
@@ -305,7 +318,9 @@ bool_t libnfs_zdr_string(ZDR *zdrs, char **strp, uint32_t maxsize)
 	if (!libnfs_zdr_u_int(zdrs, &size)) {
 		return FALSE;
 	}
-
+	if (size > zdrs->size) {
+		return FALSE;
+	}
 	if (zdrs->pos + (int)size > zdrs->size) {
 		return FALSE;
 	}

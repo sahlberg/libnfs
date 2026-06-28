@@ -545,6 +545,9 @@ nfs_parse_attributes(struct nfs_context *nfs, struct nfs4_cb_data *data,
         /* Owner */
         CHECK_GETATTR_BUF_SPACE(len, 4);
         slen = ntohl(*(uint32_t *)(void *)buf);
+        if (slen < 0) {
+                return -1;
+        }
         buf += 4;
         len -= 4;
         pad = (4 - (slen & 0x03)) & 0x03;
@@ -557,6 +560,9 @@ nfs_parse_attributes(struct nfs_context *nfs, struct nfs4_cb_data *data,
         /* Group */
         CHECK_GETATTR_BUF_SPACE(len, 4);
         slen = ntohl(*(uint32_t *)(void *)buf);
+        if (slen < 0) {
+                return -1;
+        }
         buf += 4;
         len -= 4;
         pad = (4 - (slen & 0x03)) & 0x03;
