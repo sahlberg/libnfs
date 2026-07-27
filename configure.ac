@@ -306,6 +306,8 @@ AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
 [[const char *v = GNUTLS_VERSION;]])],[libnfs_cv_HAVE_TLS=yes],[libnfs_cv_HAVE_TLS=no])])
 if test x"$libnfs_cv_HAVE_TLS" = x"yes"; then
     AC_DEFINE(HAVE_TLS,1,[Whether we have linux tls support])
+    # tell pkg-config that gnutls needs to be linked also
+    AC_SUBST(tls_library,"-lgnutls")
 fi
 AM_CONDITIONAL([HAVE_TLS], [test $libnfs_cv_HAVE_TLS = yes])
 
