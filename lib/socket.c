@@ -654,6 +654,18 @@ rpc_read_from_socket(struct rpc_context *rpc)
 	}
 
         while (1){
+                /*
+                 * A reply callback may disconnect the current endpoint and
+                 * start a new asynchronous connection. For example, the
+                 * portmapper callback replaces the connected portmapper
+                 * socket with a mountd socket that is still connecting.
+                 * Leave the read loop and let poll() finish that connection
+                 * before attempting to read from the replacement socket.
+                 */
+                if (!rpc->is_server_context && !rpc->is_connected) {
+                        return 0;
+                }
+
                 if (rpc->inpos == 0) {
                         switch (rpc->state) {
                         case READ_RM:
