@@ -554,6 +554,7 @@ nfs_parse_attributes(struct nfs_context *nfs, struct nfs4_cb_data *data,
         CHECK_GETATTR_BUF_SPACE(len, slen);
         st->nfs_uid = nfs_get_ugid(nfs, buf, slen, 1);
         buf += slen;
+        len -= slen;
         CHECK_GETATTR_BUF_SPACE(len, pad);
         buf += pad;
         len -= pad;
@@ -569,6 +570,7 @@ nfs_parse_attributes(struct nfs_context *nfs, struct nfs4_cb_data *data,
         CHECK_GETATTR_BUF_SPACE(len, slen);
         st->nfs_gid = nfs_get_ugid(nfs, buf, slen, 0);
         buf += slen;
+        len -= slen;
         CHECK_GETATTR_BUF_SPACE(len, pad);
         buf += pad;
         len -= pad;
