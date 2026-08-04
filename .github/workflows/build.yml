@@ -90,13 +90,14 @@ jobs:
     runs-on: windows-latest
 
     steps:
-    - uses: actions/checkout@v1
+    - uses: actions/checkout@main
     - name: Cmake configure
-      run: |
-        cmake -G "Visual Studio 17 2022" .
+      # Do not hardcode a VS year/generator: windows-latest now ships VS 2026
+      # (generator "Visual Studio 18 2026"). Let CMake pick the default.
+      run: cmake -B build
     - name: Build (MSVC)
-      run: |
-        cmake --build .
+      run: cmake --build build --config Release
+
 
   Cygwin:
     runs-on: windows-latest
