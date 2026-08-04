@@ -570,6 +570,8 @@ rpc_read_from_socket(struct rpc_context *rpc)
 	ssize_t count;
         int pos;
         uint32_t inbuf_size;
+        int saved_fd = rpc->fd;
+        int saved_is_connected = rpc->is_connected;
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
         if (rpc->socket_disabled) {
@@ -903,6 +905,12 @@ rpc_read_from_socket(struct rpc_context *rpc)
                                                       " received from server. "
                                                       "Closing socket");
                                         return -1;
+                                }
+                                if (rpc->fd != saved_fd ||
+                                    rpc->is_connected != saved_is_connected) {
+                                        rpc->inpos = 0;
+                                        rpc->state = READ_RM;
+                                        return 0;
                                 }
 #ifdef HAVE_LIBKRB5
                                 /*
