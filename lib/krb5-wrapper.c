@@ -128,13 +128,16 @@ display_status(int type, uint32_t err)
                 tmp = NULL;
                 if (msg) {
                         tmp = msg;
-                        min = asprintf(&msg, "%s, %*s", msg,
+                        min = asprintf(&msg, "%s, %.*s", msg,
                                        (int)text.length, (char *)text.value);
                 } else {
-                        min = asprintf(&msg, "%*s", (int)text.length,
+                        min = asprintf(&msg, "%.*s", (int)text.length,
                                        (char *)text.value);
                 }
-                if (min == -1) return tmp;
+                if (min == -1) {
+                        gss_release_buffer(&min, &text);
+                        return tmp;
+                }
                 free(tmp);
                 gss_release_buffer(&min, &text);
         } while (msg_ctx != 0);
