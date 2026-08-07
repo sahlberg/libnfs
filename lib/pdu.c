@@ -70,6 +70,7 @@ void rpc_reset_queue(struct rpc_queue *q)
 {
 	q->head = NULL;
 	q->tail = NULL;
+	q->tailp = NULL;
 }
 
 /*
@@ -90,28 +91,113 @@ void rpc_enqueue(struct rpc_queue *q, struct rpc_pdu *pdu)
 }
 
 /*
+ * Add pdu to the head of outqueue.
+ * If the pdu currently at the head has been partially written to the socket
+ * we cannot displace it, as that would interleave bytes from two different
+ * PDUs on the wire, so in that case we add pdu right after the head.
+ */
+void rpc_add_to_outqueue_head(struct rpc_context *rpc, struct rpc_pdu *pdu)
+{
+        if (rpc->outqueue.head == NULL) {
+                assert(rpc->outqueue.tail == NULL);
+                assert(rpc->outqueue.tailp == NULL);
+                assert(rpc->stats.outqueue_len == 0);
+
+                rpc->outqueue.head = rpc->outqueue.tail = pdu;
+                pdu->next = NULL;
+                if (pdu->is_high_prio) {
+                        rpc->outqueue.tailp = pdu;
+                }
+        } else {
+                assert(rpc->stats.outqueue_len > 0);
+                assert(rpc->outqueue.tail->next == NULL);
+                assert(pdu != rpc->outqueue.head);
+                assert(pdu != rpc->outqueue.tail);
+                assert(pdu != rpc->outqueue.tailp);
+
+                if (rpc->outqueue.head->out.num_done == 0) {
+                        /*
+                         * Head is untouched, safe to displace it. A high prio
+                         * pdu placed at the head starts the high prio run, so
+                         * it becomes tailp only if there is no high prio run
+                         * yet.
+                         */
+                        pdu->next = rpc->outqueue.head;
+                        rpc->outqueue.head = pdu;
+                        if (pdu->is_high_prio && rpc->outqueue.tailp == NULL) {
+                                rpc->outqueue.tailp = pdu;
+                        }
+                } else {
+                        /*
+                         * Head is partially sent, add right after it. If the
+                         * high prio run was empty or ended at the head, pdu
+                         * now terminates it.
+                         */
+                        if (pdu->is_high_prio &&
+                            (rpc->outqueue.tailp == NULL ||
+                             rpc->outqueue.tailp == rpc->outqueue.head)) {
+                                rpc->outqueue.tailp = pdu;
+                        }
+                        pdu->next = rpc->outqueue.head->next;
+                        rpc->outqueue.head->next = pdu;
+                }
+
+                if (pdu->next == NULL) {
+                        rpc->outqueue.tail = pdu;
+                }
+        }
+
+        rpc->stats.outqueue_len++;
+}
+
+/*
+ * High priority pdus are added right after tailp, i.e., behind the already
+ * queued high priority pdus but ahead of every low priority pdu.
+ */
+void rpc_add_to_outqueue_highp(struct rpc_context *rpc, struct rpc_pdu *pdu)
+{
+        pdu->is_high_prio = TRUE;
+
+        if (rpc->outqueue.tailp == NULL) {
+                /* First high priority pdu, add to the head. */
+                rpc_add_to_outqueue_head(rpc, pdu);
+                assert(rpc->outqueue.tailp != NULL);
+        } else {
+                assert(rpc->outqueue.head != NULL);
+                assert(rpc->outqueue.tail != NULL);
+                assert(rpc->stats.outqueue_len > 0);
+                assert(pdu != rpc->outqueue.head);
+                assert(pdu != rpc->outqueue.tail);
+                assert(pdu != rpc->outqueue.tailp);
+
+                pdu->next = rpc->outqueue.tailp->next;
+                rpc->outqueue.tailp->next = pdu;
+                if (rpc->outqueue.tail == rpc->outqueue.tailp) {
+                        rpc->outqueue.tail = pdu;
+                }
+                rpc->outqueue.tailp = pdu;
+                rpc->stats.outqueue_len++;
+        }
+}
+
+/*
+ * Low priority pdus are added to the tail.
+ */
+void rpc_add_to_outqueue_lowp(struct rpc_context *rpc, struct rpc_pdu *pdu)
+{
+        pdu->is_high_prio = FALSE;
+        rpc_enqueue(&rpc->outqueue, pdu);
+        rpc->stats.outqueue_len++;
+}
+
+/*
  * Return pdu to outqueue to be retransmitted.
- * If there are more than one PDUs already in outqueue, this adds it right
- * after the head, not at the head. The idea is that the PDU at the head
- * may be half-sent, so it's not safe to replace the head. Also since we
- * usually want this pdu to be sent immediately we don't want to add it to
- * the end.
- * Even when it's safe to add to head (from rpc_reconnect_requeue()), it's ok
- * to add after head.
+ * It adds the pdu to the head of outqueue, unless the head pdu is partially
+ * sent, in which case it adds it right after the head pdu.
  */
 void rpc_return_to_outqueue(struct rpc_context *rpc, struct rpc_pdu *pdu)
 {
-        if (rpc->outqueue.head == NULL) {
-                rpc->outqueue.head = rpc->outqueue.tail = pdu;
-                pdu->next = NULL;
-        } else if (rpc->outqueue.head == rpc->outqueue.tail) {
-                rpc->outqueue.head->next = pdu;
-                rpc->outqueue.tail = pdu;
-                pdu->next = NULL;
-        } else {
-                pdu->next = rpc->outqueue.head->next;
-                rpc->outqueue.head->next = pdu;
-        }
+        rpc_add_to_outqueue_head(rpc, pdu);
 
         /*
          * Only already transmitted PDUs are added back to outqueue, so sending
@@ -148,9 +234,19 @@ int rpc_remove_pdu_from_queue(struct rpc_queue *q, struct rpc_pdu *remove_pdu)
                  */
                 if (q->head == remove_pdu) {
                         q->head = remove_pdu->next;
+
+                        /*
+                         * If tailp pointed at the head it was the only high
+                         * priority pdu, so the high priority run is now empty.
+                         */
+                        if (q->tailp == remove_pdu) {
+                                q->tailp = NULL;
+                        }
+
                         if (q->tail == remove_pdu) {
                                 assert(remove_pdu->next == NULL);
                                 q->tail = NULL;
+                                assert(q->tailp == NULL);
                                 assert(q->head == NULL);
                         } else {
                                 assert(q->head != NULL);
@@ -180,11 +276,22 @@ int rpc_remove_pdu_from_queue(struct rpc_queue *q, struct rpc_pdu *remove_pdu)
                         q->tail = pdu;
                 }
 
+                /*
+                 * remove_pdu terminated the high priority run, so the run now
+                 * ends at its predecessor, if that is itself high priority,
+                 * else the run is empty.
+                 */
+                if (q->tailp == remove_pdu) {
+                        assert(remove_pdu->is_high_prio);
+                        q->tailp = pdu->is_high_prio ? pdu : NULL;
+                }
+
                 remove_pdu->next = NULL;
 
                 return 1;
         } else {
                 assert(q->tail == NULL);
+                assert(q->tailp == NULL);
                 /* not found */
                 return 0;
         }
@@ -579,15 +686,39 @@ void pdu_set_timeout(struct rpc_context *rpc, struct rpc_pdu *pdu, uint64_t now_
         }
 }
 
-int rpc_queue_pdu(struct rpc_context *rpc, struct rpc_pdu *pdu)
+/*
+ * Queue pdu to rpc->outqueue.
+ * The PDU is queued at the tail of outqueue unless prio is PDU_Q_PRIO_HI, in
+ * which case it is queued ahead of all the low priority PDUs already queued
+ * (but behind the high priority ones, so high priority PDUs keep their
+ * relative order).
+ *
+ * High priority queueing is useful for non-bulk RPCs so that they can be
+ * promptly sent out instead of waiting behind a possibly large number of
+ * queued WRITE RPCs. A backlog of WRITEs can take a very long time to drain,
+ * making commands like stat/ls/find appear to hang.
+ *
+ * Note that this only reorders PDUs that have not been sent yet. Callers that
+ * depend on ordering between two RPCs must wait for the first to complete
+ * before issuing the second, exactly as before.
+ */
+int rpc_queue_pdu2(struct rpc_context *rpc, struct rpc_pdu *pdu, int prio)
 {
 	int i, size = 0, pos;
         uint32_t recordmarker;
+        /*
+         * A PDU that lands at the head of the outqueue can be sent inline
+         * from here, there is no partially sent PDU ahead of it to interleave
+         * with.
+         */
+        bool_t send_now;
 #ifdef HAVE_LIBKRB5
         uint32_t maj, min, val, len;
         gss_buffer_desc message_buffer, output_token;
         char *buf;
 #endif /* HAVE_LIBKRB5 */
+
+        assert(prio == PDU_Q_PRIO_LOW || prio == PDU_Q_PRIO_HI);
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
@@ -817,17 +948,33 @@ int rpc_queue_pdu(struct rpc_context *rpc, struct rpc_pdu *pdu)
 #endif /* HAVE_MULTITHREADING */
         /* Fresh PDU being queued to outqueue, num_done must be 0 */
         assert(pdu->out.num_done == 0);
-        rpc_enqueue(&rpc->outqueue, pdu);
+
+        if (prio == PDU_Q_PRIO_HI) {
+                rpc_add_to_outqueue_highp(rpc, pdu);
+        } else {
+                rpc_add_to_outqueue_lowp(rpc, pdu);
+        }
+
+        /*
+         * Sample this under the lock, another thread may queue ahead of us
+         * as soon as we drop it.
+         */
+        send_now = (rpc->outqueue.head == pdu);
 #ifdef HAVE_MULTITHREADING
         if (rpc->multithreading_enabled) {
                 nfs_mt_mutex_unlock(&rpc->rpc_mutex);
         }
 #endif /* HAVE_MULTITHREADING */
-        if (rpc->outqueue.head == pdu) {
+        if (send_now) {
                 rpc_write_to_socket(rpc);
         }
 
 	return 0;
+}
+
+int rpc_queue_pdu(struct rpc_context *rpc, struct rpc_pdu *pdu)
+{
+        return rpc_queue_pdu2(rpc, pdu, PDU_Q_PRIO_LOW);
 }
 
 static int rpc_process_reply(struct rpc_context *rpc, ZDR *zdr)
@@ -1235,8 +1382,18 @@ struct rpc_pdu *rpc_find_pdu(struct rpc_context *rpc, uint32_t xid)
 				q->head = pdu->next;
 			if (pdu == q->tail)
 				q->tail = prev_pdu;
+			/*
+			 * tailp terminates the high priority run, so once it
+			 * goes the run ends at its predecessor, if that is
+			 * itself high priority.
+			 */
+			if (pdu == q->tailp)
+				q->tailp = (prev_pdu && prev_pdu->is_high_prio) ?
+					prev_pdu : NULL;
 			if (prev_pdu != NULL)
 				prev_pdu->next = pdu->next;
+			assert(rpc->stats.outqueue_len > 0);
+			rpc->stats.outqueue_len--;
 		}
                 break;
         }

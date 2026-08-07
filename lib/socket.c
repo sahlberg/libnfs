@@ -272,10 +272,31 @@ rpc_get_fd(struct rpc_context *rpc)
 	return rpc->fd;
 }
 
-static int
-rpc_has_queue(struct rpc_queue *q)
+/*
+ * Does rpc->outqueue have one or more PDUs waiting to be sent out?
+ * Takes rpc_mutex, so it must not be called with the mutex already held.
+ */
+static bool_t
+rpc_outqueue_present(struct rpc_context *rpc)
 {
-	return q->head != NULL;
+        bool_t present;
+
+#ifdef HAVE_MULTITHREADING
+        if (rpc->multithreading_enabled) {
+                nfs_mt_mutex_lock(&rpc->rpc_mutex);
+        }
+#endif /* HAVE_MULTITHREADING */
+
+        present = (rpc->outqueue.head != NULL);
+        assert(present == (rpc->stats.outqueue_len != 0));
+
+#ifdef HAVE_MULTITHREADING
+        if (rpc->multithreading_enabled) {
+                nfs_mt_mutex_unlock(&rpc->rpc_mutex);
+        }
+#endif /* HAVE_MULTITHREADING */
+
+        return present;
 }
 
 int
@@ -292,19 +313,10 @@ rpc_which_events(struct rpc_context *rpc)
 		return POLLIN;
 	}
 
-#ifdef HAVE_MULTITHREADING
-        if (rpc->multithreading_enabled) {
-                nfs_mt_mutex_lock(&rpc->rpc_mutex);
-        }
-#endif /* HAVE_MULTITHREADING */
-	if (rpc_has_queue(&rpc->outqueue)) {
+	if (rpc_outqueue_present(rpc)) {
 		events |= POLLOUT;
 	}
-#ifdef HAVE_MULTITHREADING
-        if (rpc->multithreading_enabled) {
-                nfs_mt_mutex_unlock(&rpc->rpc_mutex);
-        }
-#endif /* HAVE_MULTITHREADING */
+
 	return events;
 }
 
@@ -439,6 +451,16 @@ rpc_write_to_socket(struct rpc_context *rpc)
                                 rpc->outqueue.head = pdu->next;
                                 if (rpc->outqueue.head == NULL)
                                         rpc->outqueue.tail = NULL;
+
+                                /*
+                                 * We just dequeued the last high priority pdu,
+                                 * the high priority run is now empty.
+                                 */
+                                if (rpc->outqueue.tailp == pdu)
+                                        rpc->outqueue.tailp = NULL;
+
+                                assert(rpc->stats.outqueue_len > 0);
+                                rpc->stats.outqueue_len--;
 
                                 /* RPC sent, original or retransmit */
                                 INC_STATS(rpc, num_req_sent);
@@ -1126,7 +1148,10 @@ rpc_timeout_scan(struct rpc_context *rpc)
                         RPC_LOG(rpc, 2, "[pdu %p] Request timed out in outqueue, "
                                 "will send when connection allows!", pdu);
                 } else {
-		        rpc_remove_pdu_from_queue(&rpc->outqueue, pdu);
+		        if (rpc_remove_pdu_from_queue(&rpc->outqueue, pdu)) {
+                                assert(rpc->stats.outqueue_len > 0);
+                                rpc->stats.outqueue_len--;
+                        }
 			rpc_set_error_locked(rpc, "command timed out");
                         if (pdu->cb) {
                                 pdu->cb(rpc, RPC_STATUS_TIMEOUT,
@@ -1383,7 +1408,7 @@ rpc_service(struct rpc_context *rpc, int revents)
         }
 #endif
 
-	if (revents & POLLOUT && rpc_has_queue(&rpc->outqueue)) {
+	if ((revents & POLLOUT) && rpc_outqueue_present(rpc)) {
 		if (rpc_write_to_socket(rpc) != 0) {
                         if (rpc->is_server_context) {
                                 return -1;
@@ -2000,19 +2025,19 @@ int
 rpc_queue_length(struct rpc_context *rpc)
 {
 	int i = 0;
-	struct rpc_pdu *pdu;
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
-
-	for(pdu = rpc->outqueue.head; pdu; pdu = pdu->next) {
-		i++;
-	}
 
 #ifdef HAVE_MULTITHREADING
         if (rpc->multithreading_enabled) {
                 nfs_mt_mutex_lock(&rpc->rpc_mutex);
         }
 #endif /* HAVE_MULTITHREADING */
+	/*
+	 * outqueue_len replaces the open coded walk of rpc->outqueue, and
+	 * unlike that walk it is read under the lock.
+	 */
+	i += rpc->stats.outqueue_len;
 	i += rpc->waitpdu_len;
 #ifdef HAVE_MULTITHREADING
         if (rpc->multithreading_enabled) {

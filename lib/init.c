@@ -422,6 +422,11 @@ void rpc_get_stats(struct rpc_context *rpc, struct rpc_stats *stats)
         }
 #endif /* HAVE_MULTITHREADING */
 
+        /*
+         * outqueue_len is maintained as the queue changes, waitpdu_len is
+         * only mirrored into the stats when the caller asks for them.
+         */
+        rpc->stats.waitpdu_len = rpc->waitpdu_len;
         *stats = rpc->stats;
 
 #ifdef HAVE_MULTITHREADING
@@ -456,6 +461,7 @@ static void rpc_purge_all_pdus(struct rpc_context *rpc, int status, const char *
 	outqueue = rpc->outqueue;
 
 	rpc_reset_queue(&rpc->outqueue);
+	rpc->stats.outqueue_len = 0;
 	while ((pdu = outqueue.head) != NULL) {
 		outqueue.head = pdu->next;
                 pdu->next = NULL;

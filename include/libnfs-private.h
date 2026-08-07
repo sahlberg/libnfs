@@ -136,10 +136,15 @@ struct rpc_fragment {
 #define RPC_PARAM_UNDEFINED -1
 
 /*
- * Queue is singly-linked but we hold on to the tail
+ * Queue is singly-linked but we hold on to the tail.
+ * Using tailp this can be used to queue high and low priority pdus where high
+ * priority pdus are at the head of the queue while low priority pdus are
+ * queued behind the high priority pdus. tailp is the tail of the high priority
+ * pdus, after which the low priority pdus start. It is NULL when the queue
+ * holds no high priority pdus.
  */
 struct rpc_queue {
-	struct rpc_pdu *head, *tail;
+	struct rpc_pdu *head, *tail, *tailp;
 };
 
 #define DEFAULT_HASHES 4
@@ -475,6 +480,22 @@ struct rpc_pdu {
         int free_zdr;
         int free_pdu;
 
+        /*
+         * Queueing priority that can be passed to rpc_queue_pdu2().
+         * PDU_Q_PRIO_LOW - queue at outqueue.tail, behind all queued PDUs.
+         * PDU_Q_PRIO_HI  - queue at outqueue.tailp, i.e. after the already
+         *                  queued high priority PDUs but ahead of all the low
+         *                  priority ones. is_high_prio is set for these.
+         */
+        #define PDU_Q_PRIO_LOW  0
+        #define PDU_Q_PRIO_HI   1
+
+        /*
+         * Is this a high priority pdu, i.e., was it queued with
+         * PDU_Q_PRIO_HI? Used to maintain rpc_queue->tailp.
+         */
+        bool_t is_high_prio;
+
 	struct rpc_data outdata;
 
         /* For sending/receiving
@@ -636,6 +657,9 @@ rpc_cb cb;
 
 void rpc_reset_queue(struct rpc_queue *q);
 void rpc_enqueue(struct rpc_queue *q, struct rpc_pdu *pdu);
+void rpc_add_to_outqueue_head(struct rpc_context *rpc, struct rpc_pdu *pdu);
+void rpc_add_to_outqueue_highp(struct rpc_context *rpc, struct rpc_pdu *pdu);
+void rpc_add_to_outqueue_lowp(struct rpc_context *rpc, struct rpc_pdu *pdu);
 void rpc_return_to_outqueue(struct rpc_context *rpc, struct rpc_pdu *pdu);
 int rpc_remove_pdu_from_queue(struct rpc_queue *q, struct rpc_pdu *remove_pdu);
 unsigned int rpc_hash_xid(struct rpc_context *rpc, uint32_t xid);
@@ -645,6 +669,7 @@ void pdu_set_timeout(struct rpc_context *rpc, struct rpc_pdu *pdu, uint64_t now_
 
 void rpc_free_pdu(struct rpc_context *rpc, struct rpc_pdu *pdu);
 int rpc_queue_pdu(struct rpc_context *rpc, struct rpc_pdu *pdu);
+int rpc_queue_pdu2(struct rpc_context *rpc, struct rpc_pdu *pdu, int prio);
 int rpc_process_pdu(struct rpc_context *rpc, char *buf, int size);
 struct rpc_pdu *rpc_find_pdu(struct rpc_context *rpc, uint32_t xid);
 void rpc_error_all_pdus(struct rpc_context *rpc, const char *error);

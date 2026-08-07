@@ -115,6 +115,18 @@ struct rpc_stats {
          * - Major timeout was observed.
          */
         uint64_t num_reconnects;
+
+        /*
+         * Current length of rpc->outqueue, i.e. the number of PDUs queued
+         * for sending but not yet fully written to the socket.
+         */
+        uint32_t outqueue_len;
+
+        /*
+         * Current value of rpc->waitpdu_len, i.e. the number of PDUs sent
+         * to the server and awaiting a response.
+         */
+        uint32_t waitpdu_len;
 };
 
 struct rpc_context;
