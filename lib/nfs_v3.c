@@ -2768,7 +2768,11 @@ nfs3_opendir_2_cb(struct rpc_context *rpc, int status, void *command_data,
 	struct nfsdir *nfsdir = data->continue_data;
 	struct nfsdirent *nfsdirent;
 	struct entry3 *entry;
-	uint64_t cookie = 0;
+	/*
+	 * Start from the cookie this reply is answering, so that a reply
+	 * carrying no entries leaves it unchanged and is caught below.
+	 */
+	uint64_t cookie = nfsdir->last_cookie;
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
@@ -2825,6 +2829,26 @@ nfs3_opendir_2_cb(struct rpc_context *rpc, int status, void *command_data,
 	if (res->READDIR3res_u.resok.reply.eof == 0) {
 		READDIR3args args;
 
+		/*
+		 * The server says there is more to come, so the next request
+		 * must ask for something different from the last one. A reply
+		 * that leaves the cookie where it was, either by returning no
+		 * entries at all or by repeating the one we sent, would have
+		 * us reissue an identical request forever.
+		 */
+		if (cookie == nfsdir->last_cookie) {
+			nfs_set_error(nfs, "NFS: server did not advance the "
+                                      "readdir cookie for %s, giving up to "
+                                      "avoid looping", data->saved_path);
+			data->cb(-EIO, nfs, nfs_get_error(nfs),
+                                 data->private_data);
+			nfs_free_nfsdir(nfsdir);
+			data->continue_data = NULL;
+			free_nfs_cb_data(data);
+			return;
+		}
+		nfsdir->last_cookie = cookie;
+
 		args.dir.data.data_len = data->fh.len;
 		args.dir.data.data_val = data->fh.val;
 		args.cookie = cookie;
@@ -2869,7 +2893,11 @@ nfs3_opendir_cb(struct rpc_context *rpc, int status, void *command_data,
 	struct nfs_context *nfs = data->nfs;
 	struct nfsdir *nfsdir = data->continue_data;
 	struct entryplus3 *entry;
-	uint64_t cookie = 0;
+	/*
+	 * Start from the cookie this reply is answering, so that a reply
+	 * carrying no entries leaves it unchanged and is caught below.
+	 */
+	uint64_t cookie = nfsdir->last_cookie;
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
@@ -3017,6 +3045,27 @@ nfs3_opendir_cb(struct rpc_context *rpc, int status, void *command_data,
 
 	if (res->READDIRPLUS3res_u.resok.reply.eof == 0) {
 		READDIRPLUS3args args;
+
+		/*
+		 * The server says there is more to come, so the next request
+		 * must ask for something different from the last one. A reply
+		 * that leaves the cookie where it was, either by returning no
+		 * entries at all or by repeating the one we sent, would have
+		 * us reissue an identical request forever.
+		 */
+		if (cookie == nfsdir->last_cookie) {
+			nfs_set_error(nfs, "NFS: server did not advance the "
+                                      "readdir cookie for %s, giving up to "
+                                      "avoid looping", data->saved_path);
+			data->cb(-EIO, nfs, nfs_get_error(nfs),
+                                 data->private_data);
+			nfs_free_nfsdir(nfsdir);
+			data->continue_data = NULL;
+			free_nfs_cb_data(data);
+			return;
+		}
+		nfsdir->last_cookie = cookie;
+
 
 		args.dir.data.data_len = data->fh.len;
 		args.dir.data.data_val = data->fh.val;

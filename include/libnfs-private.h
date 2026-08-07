@@ -1004,6 +1004,14 @@ struct nfsdir {
 
        struct nfsdirent *entries;
        struct nfsdirent *current;
+
+       /*
+        * Cookie sent in the READDIR/READDIRPLUS request we are currently
+        * awaiting. A reply that does not move it on means the next request
+        * would be identical to the last, so the enumeration is not making
+        * progress and has to be failed rather than repeated forever.
+        */
+       uint64_t last_cookie;
 };
 
 struct stateid {
