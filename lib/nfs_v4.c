@@ -3801,7 +3801,15 @@ nfs4_parse_readdir(struct nfs_context *nfs, struct nfs4_cb_data *data,
                         free_nfs4_cb_data(data);
                         return;
                 }
-		nfsdirent->name = strdup(e->name.utf8string_val);
+		/*
+		 * component4 is decoded with zdr_bytes, so the value points
+		 * into the receive buffer with a separate length and no
+		 * terminator. strdup() would run on into whatever follows the
+		 * name in the reply. Every other user of a utf8string in this
+		 * tree already respects the length; this one did not.
+		 */
+		nfsdirent->name = strndup(e->name.utf8string_val,
+		                          e->name.utf8string_len);
 		if (nfsdirent->name == NULL) {
                         nfs_set_error(nfs, "Out of memory.");
                         data->cb(-ENOMEM, nfs, nfs_get_error(nfs),
