@@ -1422,7 +1422,7 @@ struct rpc_pdu *rpc_find_pdu(struct rpc_context *rpc, uint32_t xid)
         }
 
 	/* Look up the transaction in a hash table of our requests */
-	hash = rpc_hash_xid(rpc, rpc->rm_xid[1]);
+	hash = rpc_hash_xid(rpc, xid);
 	q = &rpc->waitpdu[hash];
 
 	/* Follow the hash chain.  Linear traverse singly-linked list,
