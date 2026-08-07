@@ -1694,7 +1694,18 @@ nfs4_mount_2_cb(struct rpc_context *rpc, int status, void *command_data,
                 return;
         }
 
-        scidresok = &res->resarray.resarray_val[0].nfs_resop4_u.opsetclientid.SETCLIENTID4res_u.resok4;
+        /*
+         * A reply can carry NFS4_OK with an empty resarray, and
+         * check_nfs4_error() only looks at the status, so indexing element 0
+         * blind would read off the end of the decoded array. Locate the op
+         * the same way every other result in this file is located.
+         */
+        if ((i = nfs4_find_op(nfs, data, res, OP_SETCLIENTID,
+                              "SETCLIENTID")) < 0) {
+                return;
+        }
+
+        scidresok = &res->resarray.resarray_val[i].nfs_resop4_u.opsetclientid.SETCLIENTID4res_u.resok4;
         nfs->nfsi->clientid = scidresok->clientid;
         memcpy(nfs->nfsi->setclientid_confirm,
                scidresok->setclientid_confirm,
