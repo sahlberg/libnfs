@@ -127,6 +127,25 @@ struct rpc_stats {
          * to the server and awaiting a response.
          */
         uint32_t waitpdu_len;
+
+        /*
+         * How many bytes we managed to write to the socket since the last
+         * time writev() returned EAGAIN. This is an indication of the receive
+         * window advertised by the peer, and hence of how much TCP
+         * back-pressure we are under.
+         *
+         * last_ is the run in progress, tot_ is the sum of all completed runs
+         * and num_write_eagain the number of runs, so tot_ / num_ is the
+         * average number of bytes written before blocking.
+         *
+         * Only runs that wrote at least one byte are counted. A connection
+         * that never fills the socket send buffer produces no samples at all,
+         * so callers must guard against num_write_eagain being zero before
+         * dividing by it.
+         */
+        uint64_t last_write_bytes_before_eagain;
+        uint64_t tot_write_bytes_before_eagain;
+        uint64_t num_write_eagain;
 };
 
 struct rpc_context;

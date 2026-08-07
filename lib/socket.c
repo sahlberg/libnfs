@@ -437,9 +437,27 @@ rpc_write_to_socket(struct rpc_context *rpc)
                 count = writev(rpc->fd, iov, niov);
                 if (count == -1) {
                         if (errno == EAGAIN || errno == EWOULDBLOCK) {
-                                ret = 0;
-                                 goto finished;
+                                /*
+                                 * The socket send buffer is full. Close out
+                                 * the current run of bytes written, we will
+                                 * not write again until poll() reports
+                                 * POLLOUT.
+                                 *
+                                 * Only a run that actually wrote something is
+                                 * a sample. Once the buffer is full every
+                                 * further attempt returns EAGAIN having
+                                 * written nothing, and counting those empty
+                                 * runs would drag the average to zero.
+                                 */
+                                if (rpc->stats.last_write_bytes_before_eagain) {
+                                        rpc->stats.tot_write_bytes_before_eagain +=
+                                                rpc->stats.last_write_bytes_before_eagain;
+                                        rpc->stats.last_write_bytes_before_eagain = 0;
+                                        INC_STATS(rpc, num_write_eagain);
+                                }
 
+                                ret = 0;
+                                goto finished;
                         }
                         rpc_set_error_locked(rpc, "Error when writing to "
 					     "socket :%d %s", errno,
@@ -447,6 +465,8 @@ rpc_write_to_socket(struct rpc_context *rpc)
                         ret = -1;
                         goto finished;
                 }
+
+                rpc->stats.last_write_bytes_before_eagain += count;
 
                 /* Check how many pdu we completed */
                 while (count > 0 && (pdu = rpc->outqueue.head) != NULL) {
@@ -1946,6 +1966,14 @@ rpc_reconnect_requeue(struct rpc_context *rpc)
 	}
 	rpc->fd  = -1;
 	rpc->is_connected = 0;
+
+	/*
+	 * The run of bytes written so far belongs to the socket we just
+	 * dropped, and it was cut short by the disconnect rather than by the
+	 * peer's receive window. Discard it instead of letting it run on into
+	 * the next connection and bias the average downwards.
+	 */
+	rpc->stats.last_write_bytes_before_eagain = 0;
 
 	if (rpc->outqueue.head) {
 		rpc->outqueue.head->out.num_done = 0;
