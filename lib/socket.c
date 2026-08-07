@@ -1007,8 +1007,26 @@ rpc_read_from_socket(struct rpc_context *rpc)
                                 }
                                 if (rpc->fd != saved_fd ||
                                     rpc->is_connected != saved_is_connected) {
-                                        rpc->inpos = 0;
-                                        rpc->state = READ_RM;
+                                        /*
+                                         * A callback replaced the connection
+                                         * under us, so we must not carry on
+                                         * reading with state that belongs to
+                                         * the old one. The reply we just
+                                         * processed still has to be released,
+                                         * or every reconnect driven from a
+                                         * callback leaks its PDU, which is
+                                         * what the mount sequence does at each
+                                         * step as it moves between portmap,
+                                         * mountd and nfsd.
+                                         *
+                                         * Finishing here cannot invoke a
+                                         * callback twice: free_pdu is only set
+                                         * on the zero-copy read path, and that
+                                         * path breaks out before running any
+                                         * callback, so it cannot be what
+                                         * changed the connection.
+                                         */
+                                        rpc_finished_pdu(rpc);
                                         return 0;
                                 }
 #ifdef HAVE_LIBKRB5
