@@ -114,6 +114,34 @@ Utility programs for LibNFS
 %{_mandir}/man1/nfs-ls.1.gz
 
 %changelog
+* Sat Aug 08 2026 : Version 7.0.0
+- SONAME bumped to 17. struct rpc_stats grew, so this release is not
+  ABI compatible with 6.x and dependent packages must be rebuilt
+- Security: fix a remotely triggerable crash from a forged AUTH_GSS
+  reply verifier
+- Security: bound the ZDR array element count and string/opaque
+  padding so a short reply cannot drive a huge allocation or read
+  outside the receive buffer
+- Security: implement RPC record fragment reassembly
+- Security: fix several heap over-reads where a length delimited XDR
+  string was used as a NUL terminated C string
+- Security: fix a one byte overflow in nfs_readlink()
+- Security: fix an infinite readdir loop against a server that never
+  advances the cookie
+- Fix a PDU leak of ~14KB on every mount
+- New API: [p]readv[_async], nfs_readv, rpc_set_timeout is now public
+- New "readonly" URL argument, and mountport support in the URL
+- NFSv4: read rdev/nfs_dev, honour the server's readmax/writemax,
+  and fix O_EXCL handling on create
+- RPC: high/low priority send queue, eventfd based service thread
+  wakeups, PDU telemetry, and a 100MB maximum transfer size
+- TLS: fail mtls when credentials are unavailable rather than
+  silently downgrading, and support kernels without TLS_1_3_VERSION
+- New optional servers/ directory containing rpcbind, rpc.statd and
+  an NFSv3 server skeleton, all under the MIT license
+- portmapper v4 support, including GETADDRLIST
+- Many portability fixes for Windows/MSVC, macOS, PS2, arm32 and
+  riscv64, and the cmake build now builds the examples
 * Sat Dec 14 2024 : Version 6.0.2
 - Fix compile issue on 32 bit platforms
 - Fix windows build
@@ -125,7 +153,7 @@ Utility programs for LibNFS
 - TLS support
 - READ3/4 Zero-Copy
 - New API that breaks some signatures. Check LIBNFS_API_V2
-* sun Feb 11 2024 : Version 5.0.3
+* Sun Feb 11 2024 : Version 5.0.3
 - drop *BSD support from github workflows
 - workflow: indicate that the linux workflow also runs the tests
 - Add workflow to build PS2
