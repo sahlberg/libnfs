@@ -558,6 +558,7 @@ void rpc_free_all_fragments(struct rpc_context *rpc)
 	      rpc->fragments = fragment->next;
 	      rpc_free_fragment(fragment);
 	}
+	rpc->fragments_size = 0;
 }
 
 int rpc_add_fragment(struct rpc_context *rpc, char *data, uint32_t size)
@@ -580,6 +581,7 @@ int rpc_add_fragment(struct rpc_context *rpc, char *data, uint32_t size)
 
 	memcpy(fragment->data, data, fragment->size);
 	LIBNFS_LIST_ADD_END(&rpc->fragments, fragment);
+	rpc->fragments_size += size;
 	return 0;
 }
 

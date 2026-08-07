@@ -439,6 +439,20 @@ struct rpc_context {
 
 	/* fragment reassembly */
 	struct rpc_fragment *fragments;
+	/*
+	 * Bytes queued in fragments[] for the record being reassembled. A
+	 * record may be split into any number of fragments, so the per
+	 * fragment limit alone leaves the total unbounded; this is what the
+	 * whole record is checked against.
+	 */
+	uint32_t fragments_size;
+	/*
+	 * How many bytes of the current fragment are already sitting in inbuf
+	 * when we start reading its payload. The first fragment of a record
+	 * arrives together with the 4 bytes following the marker, which we
+	 * stash; continuation fragments have no such prefix.
+	 */
+	uint32_t rm_prefetch;
 
 	/* parameters passable via URL */
 	int tcp_syncnt;

@@ -696,7 +696,14 @@ rpc_read_from_socket(struct rpc_context *rpc)
                 for (struct cmsghdr *cmsg = CMSG_FIRSTHDR(&mh);
                      cmsg != NULL;
                      cmsg = CMSG_NXTHDR(&mh, cmsg)) {
-                        if (cmsg->cmsg_type != IP_PKTINFO) {
+                        /*
+                         * IPv6 packet info arrives as IPV6_PKTINFO, which is
+                         * a different value from IP_PKTINFO, so testing only
+                         * the latter discarded every IPv6 cmsg and left
+                         * udp_dst unset for IPv6.
+                         */
+                        if (cmsg->cmsg_type != IP_PKTINFO &&
+                            cmsg->cmsg_type != IPV6_PKTINFO) {
                                 continue;
                         }
                         switch (cmsg->cmsg_level) {
@@ -766,6 +773,19 @@ rpc_read_from_socket(struct rpc_context *rpc)
                 if (rpc->inpos == 0) {
                         switch (rpc->state) {
                         case READ_RM:
+                                if (rpc->fragments) {
+                                        /*
+                                         * Continuation fragment of a record we
+                                         * are already reassembling. Only the 4
+                                         * byte marker follows; the 4 bytes
+                                         * after it are payload, not an xid.
+                                         * rpc->pdu was resolved from the first
+                                         * fragment and must survive.
+                                         */
+                                        rpc->pdu_size = 4;
+                                        rpc->buf = (char *)&rpc->rm_xid[0];
+                                        break;
+                                }
                                 /*
                                  * Read record marker,
                                  * And if this is a cleint context read the next 4 bytes
@@ -776,8 +796,8 @@ rpc_read_from_socket(struct rpc_context *rpc)
                                 rpc->pdu = NULL;
                                 break;
                         case READ_PAYLOAD:
-                                /* we already read 4 bytes into the buffer */
-                                rpc->inpos = 4;
+                                /* the marker read may have prefetched 4 bytes */
+                                rpc->inpos = rpc->rm_prefetch;
                                 rpc->pdu_size = rpc->rm_xid[0];
                                 rpc->buf = rpc->inbuf + rpc->inpos;
 
@@ -798,14 +818,15 @@ rpc_read_from_socket(struct rpc_context *rpc)
                                  */
                                 if (rpc->sec != RPC_SEC_KRB5P)
 #endif /* HAVE_LIBKRB5 */
-                                        if (rpc->pdu && rpc->pdu->in.base && rpc->pdu_size > ZCRP) {
+                                        if (rpc->pdu && rpc->pdu->in.base &&
+                                            !rpc->fragments && rpc->pdu_size > ZCRP) {
                                                 rpc->pdu_size = ZCRP;
                                         }
                                 break;
                         case READ_UNKNOWN:
                         case READ_FRAGMENT:
-                                /* we already read 4 bytes into the buffer */
-                                rpc->inpos = 4;
+                                /* the marker read may have prefetched 4 bytes */
+                                rpc->inpos = rpc->rm_prefetch;
                                 rpc->pdu_size = rpc->rm_xid[0];
                                 rpc->buf = rpc->inbuf + rpc->inpos;
                                 assert(rpc->pdu_size <= rpc->inbuf_size);
@@ -885,14 +906,54 @@ rpc_read_from_socket(struct rpc_context *rpc)
                         case READ_RM:
                                 /* We have just read the record marker */
                                 rpc->rm_xid[0] = ntohl(rpc->rm_xid[0]);
-                                if (rpc->rm_xid[0] & 0x80000000) {
-                                        rpc->state = READ_PAYLOAD;
-                                } else {
-                                        rpc_set_error(rpc, "Fragment support not yet working");
-                                        rpc->state = READ_FRAGMENT;
-                                        return -1;
-                                }
+
+                                /*
+                                 * The top bit marks the last fragment of the
+                                 * record. Anything else is a continuation and
+                                 * has to be stashed until the record is whole.
+                                 */
+                                rpc->state = (rpc->rm_xid[0] & 0x80000000) ?
+                                        READ_PAYLOAD : READ_FRAGMENT;
                                 rpc->rm_xid[0] &= 0x7fffffff;
+
+                                if (rpc->fragments) {
+                                        /*
+                                         * Continuation fragment. No xid to
+                                         * parse, and no minimum size: only the
+                                         * first fragment has to be big enough
+                                         * to hold one. Reject an empty one
+                                         * though, we would read 0 bytes below
+                                         * and mistake that for a closed
+                                         * connection.
+                                         */
+                                        if (rpc->rm_xid[0] == 0 ||
+                                            rpc->rm_xid[0] > MAX_FRAGMENT_SIZE) {
+                                                rpc_set_error(rpc, "Invalid recordmarker size");
+                                                return -1;
+                                        }
+                                        /*
+                                         * Bound the record, not just each
+                                         * fragment, or a peer can chain
+                                         * fragments until we run out of
+                                         * memory.
+                                         */
+                                        if (rpc->rm_xid[0] >
+                                            MAX_FRAGMENT_SIZE - rpc->fragments_size) {
+                                                rpc_set_error(rpc, "Reassembled record "
+                                                              "exceeds limit of %d bytes",
+                                                              MAX_FRAGMENT_SIZE);
+                                                return -1;
+                                        }
+                                        if (adjust_inbuf(rpc, rpc->rm_xid[0]) != 0) {
+                                                rpc_set_error(rpc, "adjust_inbuf failed "
+                                                              "for socket fd %d", rpc->fd);
+                                                return -1;
+                                        }
+                                        rpc->rm_prefetch = 0;
+                                        rpc->inpos = 0;
+                                        continue;
+                                }
+
                                 if (rpc->rm_xid[0] < 8 || rpc->rm_xid[0] > MAX_FRAGMENT_SIZE) {
                                         rpc_set_error(rpc, "Invalid recordmarker size");
                                         return -1;
@@ -918,7 +979,9 @@ rpc_read_from_socket(struct rpc_context *rpc)
 #ifdef HAVE_LIBKRB5
                                         if (rpc->sec != RPC_SEC_KRB5P)
 #endif /* HAVE_LIBKRB5 */
-                                                if (rpc->state != READ_FRAGMENT && rpc->pdu && rpc->pdu->in.base) {
+                                                if (rpc->state != READ_FRAGMENT &&
+                                                    !rpc->fragments &&
+                                                    rpc->pdu && rpc->pdu->in.base) {
                                                         inbuf_size = ZCRP;
                                                 }
                                 }
@@ -962,6 +1025,7 @@ rpc_read_from_socket(struct rpc_context *rpc)
                                  * that we have already read these 4 bytes in
                                  * PAYLOAD and FRAGMENT
                                  */
+                                rpc->rm_prefetch = 4;
                                 rpc->inpos = 0;   
 
                                 if (!rpc->is_server_context) {
