@@ -9,6 +9,8 @@ set(EXAMPLES nfsclient-async
             nfsclient-sync
             nfsclient-bcast
             nfsclient-listservers
+            nfs-cat-preadv
+            nfs-fh
             nfs-io
             nfs-ln
             nfs-writefile
@@ -17,7 +19,9 @@ set(EXAMPLES nfsclient-async
             portmap-client)
 
 if (ENABLE_MULTITHREADING)
-  list(APPEND EXAMPLES nfs-pthreads-writefile
+  list(APPEND EXAMPLES nfs-pthreads-example
+                       nfs-pthreads-fstat
+                       nfs-pthreads-writefile
                        nfs-pthreads-async-writefile
                        nfs-pthreads-async-readfile)
 endif()
@@ -28,8 +32,8 @@ if(HAVE_TALLOC_TEVENT)
 endif()
 
 if(EVENT_LIBARY)
-  list(APPEND EXAMPLES nfs4-cat
-                       rpcbind)
+  # rpcbind moved to servers/rpcbind in f63eaca8 and is built from there.
+  list(APPEND EXAMPLES nfs4-cat)
   list(APPEND EXTRA_LIBRARIES ${EVENT_LIBARY})
 endif()
 

@@ -51,6 +51,13 @@ check_c_source_compiles("#include <net/if.h>
                          }"
                         HAVE_SO_BINDTODEVICE)
 
+# The probe calls into both libraries, so it has to link them or it fails
+# for want of symbols even where talloc and tevent are perfectly available.
+find_library(TALLOC_LIBRARY talloc)
+find_library(TALLOC_EVENT_LIBRARY tevent)
+if(TALLOC_LIBRARY AND TALLOC_EVENT_LIBRARY)
+  set(CMAKE_REQUIRED_LIBRARIES ${TALLOC_LIBRARY} ${TALLOC_EVENT_LIBRARY})
+endif()
 check_c_source_compiles("#include <talloc.h>
                          #include <tevent.h>
                          int main(void)
@@ -59,6 +66,7 @@ check_c_source_compiles("#include <talloc.h>
                            int major = talloc_version_major();
                          }"
                         HAVE_TALLOC_TEVENT)
+unset(CMAKE_REQUIRED_LIBRARIES)
 
 check_c_source_compiles("#include <time.h>
                          int main(void)
