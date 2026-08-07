@@ -189,6 +189,13 @@ int main(int argc, char *argv[])
 			free_file_context(nf);
 			return 10;
 		}
+		if (count == 0) {
+			/* Short file. The size we got from fstat is stale,
+			 * for example because the file was truncated by
+			 * someone else after we opened it.
+			 */
+			break;
+		}
 		fwrite(buf, count, 1, stdout);
 		off += count;
 	}

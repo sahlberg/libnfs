@@ -153,6 +153,7 @@ char *get_access_bits(int mode)
 				+ 2*!!(mode & S_ISVTX)
 #endif
 			       ];
+	access_bits[10] = '\0';
 	return access_bits;
 }
 

@@ -31,7 +31,9 @@
 #include <win32/win32_compat.h>
 #pragma comment(lib, "ws2_32.lib")
 WSADATA wsaData;
+#define PRId64 "ll"
 #else
+#include <inttypes.h>
 #include <sys/stat.h>
 #include <string.h>
 #endif
@@ -272,8 +274,15 @@ int main(int argc, char *argv[])
 			free_file_context(dst);
 			return 10;
 		}
+		if (count == 0) {
+			/* Short file. The size we got from fstat is stale,
+			 * for example because the file was truncated by
+			 * someone else after we opened it.
+			 */
+			break;
+		}
 		count = file_pwrite(dst, buf, count, off);
-		if (count < 0) {
+		if (count <= 0) {
 			fprintf(stderr, "Failed to write to dest file (%s)\n",
 				dst->is_nfs ? nfs_get_error(dst->nfs) : strerror(errno));
 			free_file_context(src);
@@ -283,7 +292,7 @@ int main(int argc, char *argv[])
 
 		off += count;
 	}
-	printf("copied %d bytes\n", (int)off);
+	printf("copied %" PRId64 " bytes\n", (int64_t)off);
 
 	free_file_context(src);
 	free_file_context(dst);
