@@ -1598,9 +1598,14 @@ readlink_cb(int status, struct nfs_context *nfs, void *data, void *private_data)
                 goto finished;
 	}
 
-	if (strlen(data) > (size_t)cb_data->return_int) {
+	/*
+	 * The copy below includes the terminator, so the target has to be
+	 * shorter than the buffer, not merely no longer than it. Allowing
+	 * equality wrote the NUL one byte past the caller's buffer.
+	 */
+	if (strlen(data) + 1 > (size_t)cb_data->return_int) {
 		nfs_set_error(nfs, "Too small buffer for readlink");
-		cb_data->status = -ENAMETOOLONG;
+		status = -ENAMETOOLONG;
                 goto finished;
 	}
 
@@ -1649,7 +1654,7 @@ readlink2_cb(int status, struct nfs_context *nfs, void *data, void *private_data
 
 	buf = strdup(data);
 	if (buf == NULL) {
-		cb_data->status = errno ? -errno : -ENOMEM;
+		status = errno ? -errno : -ENOMEM;
                 goto finished;
 	}
 
@@ -2304,7 +2309,7 @@ nfs4_getacl_cb(int status, struct nfs_context *nfs, void *data, void *private_da
         dst->fattr4_acl_len = src->fattr4_acl_len;
         dst->fattr4_acl_val = calloc(dst->fattr4_acl_len, sizeof(nfsace4));
         if (dst->fattr4_acl_val == NULL) {
-                cb_data->status = -ENOMEM;
+                status = -ENOMEM;
 		nfs_set_error(nfs, "Failed to allocate fattr4_acl_val");
                 goto finished;
         }                
@@ -2315,7 +2320,7 @@ nfs4_getacl_cb(int status, struct nfs_context *nfs, void *data, void *private_da
                 dst->fattr4_acl_val[i].who.utf8string_len = src->fattr4_acl_val[i].who.utf8string_len;
                 dst->fattr4_acl_val[i].who.utf8string_val = calloc(dst->fattr4_acl_val[i].who.utf8string_len + 1, 1);
                 if (dst->fattr4_acl_val[i].who.utf8string_val == NULL) {
-                        cb_data->status = -ENOMEM;
+                        status = -ENOMEM;
                         nfs4_acl_free(dst);
                         nfs_set_error(nfs, "Failed to allocate acl name");
                         goto finished;
