@@ -160,8 +160,31 @@ struct rpc_queue {
 #define DEFAULT_HASHES 4
 #define NFS_RA_TIMEOUT 5
 #define NFS_MIN_XFER_SIZE NFSMAXDATA2
-#define NFS_MAX_XFER_SIZE (4 * 1024 * 1024)
+/*
+ * Largest single RPC transfer we will negotiate. A WRITE can use all of it:
+ * libnfs sends that PDU from the caller's own buffers and the reply is small,
+ * so the size costs us nothing to receive. Servers backed by object storage
+ * want this large enough to write a whole block in one RPC.
+ */
+#define NFS_MAX_XFER_SIZE (100 * 1024 * 1024)
 #define NFS_DEF_XFER_SIZE (1 * 1024 * 1024)
+
+/*
+ * Largest inbound RPC record we will accept and buffer. This bounds how much
+ * memory a broken or hostile server can make us allocate per connection, so
+ * it deliberately does not track NFS_MAX_XFER_SIZE.
+ */
+#define MAX_FRAGMENT_SIZE (8 * 1024 * 1024)
+
+/*
+ * Ceiling for anything whose size lands in a reply: rsize, and the READDIR
+ * dircount/maxcount. Negotiating beyond what we are willing to read would
+ * leave us rejecting the server's reply with "Invalid recordmarker size" and
+ * dropping the connection, so these stay under MAX_FRAGMENT_SIZE with room
+ * for the RPC and NFS headers that ride along with the data.
+ */
+#define NFS_MAX_RECV_XFER_SIZE \
+        MIN(NFS_MAX_XFER_SIZE, MAX_FRAGMENT_SIZE - 4096)
 #define ZDR_ENCODE_OVERHEAD 1024
 #define ZDR_ENCODEBUF_MINSIZE 4096
 

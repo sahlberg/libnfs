@@ -2481,7 +2481,7 @@ nfs_set_readmax(struct nfs_context *nfs, size_t readmax)
 {
         size_t readmax_adjusted = readmax;
 
-        readmax_adjusted = MIN(readmax_adjusted, NFS_MAX_XFER_SIZE);
+        readmax_adjusted = MIN(readmax_adjusted, NFS_MAX_RECV_XFER_SIZE);
         readmax_adjusted = MAX(readmax_adjusted, NFS_MIN_XFER_SIZE);
         readmax_adjusted = (readmax_adjusted / 4096) * 4096;
 
@@ -2616,11 +2616,11 @@ nfs_set_readdir_max_buffer_size(struct nfs_context *nfs,
         size_t dircount_adjusted = dircount;
         size_t maxcount_adjusted = maxcount;
 
-        dircount_adjusted = MIN(dircount_adjusted, NFS_MAX_XFER_SIZE);
+        dircount_adjusted = MIN(dircount_adjusted, NFS_MAX_RECV_XFER_SIZE);
         dircount_adjusted = MAX(dircount_adjusted, NFS_MIN_XFER_SIZE);
         dircount_adjusted = (dircount_adjusted / 4096) * 4096;
 
-        maxcount_adjusted = MIN(maxcount_adjusted, NFS_MAX_XFER_SIZE);
+        maxcount_adjusted = MIN(maxcount_adjusted, NFS_MAX_RECV_XFER_SIZE);
         maxcount_adjusted = MAX(maxcount_adjusted, NFS_MIN_XFER_SIZE);
         maxcount_adjusted = (maxcount_adjusted / 4096) * 4096;
 

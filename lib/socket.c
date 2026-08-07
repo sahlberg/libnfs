@@ -573,9 +573,14 @@ static int adjust_inbuf(struct rpc_context *rpc, uint32_t pdu_size)
         char *buf;
 
         if (rpc->inbuf_size < pdu_size) {
-                if (pdu_size > NFS_MAX_XFER_SIZE + 4096) {
+                /*
+                 * Bound on what a server can make us allocate. This tracks
+                 * the inbound record limit rather than NFS_MAX_XFER_SIZE,
+                 * which covers outbound WRITE payloads too and is far larger.
+                 */
+                if (pdu_size > MAX_FRAGMENT_SIZE + 4096) {
                         rpc_set_error(rpc, "Incoming PDU exceeds limit of %d "
-                                      "bytes.", NFS_MAX_XFER_SIZE + 4096);
+                                      "bytes.", MAX_FRAGMENT_SIZE + 4096);
                         return -1;
                 }
                 buf = realloc(rpc->inbuf, pdu_size);
@@ -651,7 +656,6 @@ static void rpc_finished_pdu(struct rpc_context *rpc)
 #define ZCRP 1024
 
 #define MAX_UDP_SIZE 65536
-#define MAX_FRAGMENT_SIZE 8*1024*1024
 static int
 rpc_read_from_socket(struct rpc_context *rpc)
 {
