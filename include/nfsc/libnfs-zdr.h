@@ -299,6 +299,12 @@ char *libnfs_zdr_getptr(ZDR *zdrs);
 #define zdr_free libnfs_zdr_free
 void libnfs_zdr_free(zdrproc_t proc, char *objp);
 
+/*
+ * Allocate memory owned by the ZDR, released by zdr_destroy(). Used by the
+ * decoders that have to build linked structures.
+ */
+void *zdr_malloc(ZDR *zdrs, uint32_t size);
+
 struct rpc_context;
 
 #define zdr_callmsg libnfs_zdr_callmsg
