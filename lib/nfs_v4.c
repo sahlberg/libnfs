@@ -440,16 +440,45 @@ nfs_pntoh64(const uint32_t *buf)
 static int
 nfs_get_ugid(struct nfs_context *nfs, const char *buf, int slen, int is_user)
 {
-        int ugid = 0;
-        const char *name = buf;
+        uint64_t ugid = 0;
+        int i;
 
-        while (slen) {
-                if (isdigit(*buf)) {
-                        ugid *= 10;
-                        ugid += *buf - '0';
-                } else {
+        for (i = 0; i < slen; i++) {
+                /*
+                 * isdigit() takes an unsigned char value or EOF; a plain char
+                 * is signed on most platforms and anything above 0x7f would
+                 * be passed as negative.
+                 */
+                if (!isdigit((unsigned char)buf[i])) {
+                        break;
+                }
+                /* Stop accumulating rather than overflowing on a long run. */
+                if (ugid > (UINT32_MAX - 9) / 10) {
+                        break;
+                }
+                ugid = ugid * 10 + (uint64_t)(buf[i] - '0');
+        }
+
+        if (i == slen) {
+                /* Wholly numeric, so it is the id itself. */
+                return (int)ugid;
+        }
+
 #ifdef HAVE_GETPWNAM
-                        struct passwd *pwd = getpwnam(name);
+        /*
+         * It is a name and has to be looked up. buf points into the fattr4
+         * inside the receive buffer and carries its length separately, with
+         * no terminator, so it cannot be handed to getpwnam() directly: that
+         * would read on past the name and through whatever the server sent
+         * after it.
+         */
+        {
+                char *name = strndup(buf, slen);
+                struct passwd *pwd;
+
+                if (name != NULL) {
+                        pwd = getpwnam(name);
+                        free(name);
                         if (pwd) {
                                 if (is_user) {
                                         return pwd->pw_uid;
@@ -457,15 +486,10 @@ nfs_get_ugid(struct nfs_context *nfs, const char *buf, int slen, int is_user)
                                         return pwd->pw_gid;
                                 }
                         }
-#else
-			(void) name; // Let the compiler know that this variable is intentionally unused, build would fail with -Werror=unused-variable otherwise
-#endif
-                        return 65534;
                 }
-                buf++;
-                slen--;
         }
-        return ugid;
+#endif
+        return 65534;
 }
 
 #define CHECK_GETATTR_BUF_SPACE(len, size)                              \
