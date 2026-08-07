@@ -112,6 +112,16 @@ static int
 rpc_reconnect_requeue(struct rpc_context *rpc);
 
 static int
+rpc_set_sockaddr(struct rpc_context *rpc, const char *server, int port);
+
+/*
+ * How hard rpc_set_sockaddr() tries when the resolver reports a transient
+ * failure. This runs on the caller's event loop thread, so keep it short.
+ */
+#define RESOLVE_RETRIES      3
+#define RESOLVE_RETRY_NSECS  (100 * 1000 * 1000)
+
+static int
 create_socket(int domain, int type, int protocol)
 {
 #ifdef SOCK_CLOEXEC
@@ -1473,10 +1483,43 @@ rpc_connect_sockaddr_async(struct rpc_context *rpc)
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
+	/*
+	 * The user asked for the server name to be resolved afresh on every
+	 * reconnect, rather than reusing the address we resolved on the
+	 * initial connect. rpc_reconnect_requeue() sets resolve_server.
+	 */
+	if (rpc->resolve_server) {
+		int ret;
+
+		if (rpc->server == NULL) {
+			rpc->resolve_server = 0;
+			rpc_set_error(rpc, "Cannot resolve on reconnect, "
+				      "server name is not known");
+			return -1;
+		}
+
+		RPC_LOG(rpc, 2, "Resolving server %s on reconnect (port %d)",
+			rpc->server, rpc->port);
+
+		/*
+		 * Left set across the call, rpc_set_sockaddr() uses it to
+		 * decide whether to report an address change.
+		 */
+		ret = rpc_set_sockaddr(rpc, rpc->server, rpc->port);
+		rpc->resolve_server = 0;
+		if (ret != 0) {
+			return -1;
+		}
+	}
+
 	switch (s->ss_family) {
 	case AF_INET:
 		socksize = sizeof(struct sockaddr_in);
 		rpc->fd = create_socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+		if (rpc->fd == -1) {
+			/* Report the socket error, not a bogus bind error */
+			break;
+		}
 		if (set_bind_device(rpc->fd, rpc->ifname) != 0) {
 			rpc_set_error (rpc, "Failed to bind to interface");
 			return -1;
@@ -1491,6 +1534,10 @@ rpc_connect_sockaddr_async(struct rpc_context *rpc)
 	case AF_INET6:
 		socksize = sizeof(struct sockaddr_in6);
 		rpc->fd = create_socket(AF_INET6, SOCK_STREAM, IPPROTO_TCP);
+		if (rpc->fd == -1) {
+			/* Report the socket error, not a bogus bind error */
+			break;
+		}
 		if (set_bind_device(rpc->fd, rpc->ifname) != 0) {
 			rpc_set_error (rpc, "Failed to bind to interface");
 			return -1;
@@ -1508,7 +1555,7 @@ rpc_connect_sockaddr_async(struct rpc_context *rpc)
 	}
 
 	if (rpc->fd == -1) {
-		rpc_set_error(rpc, "Failed to open socket");
+		rpc_set_error(rpc, "Failed to open socket: %s", strerror(errno));
 		return -1;
 	}
 
@@ -1639,15 +1686,61 @@ static int
 rpc_set_sockaddr(struct rpc_context *rpc, const char *server, int port)
 {
 	struct addrinfo *ai = NULL;
+	int err, i;
 
-	if (getaddrinfo(server, NULL, NULL, &ai) != 0) {
+	/*
+	 * A resolver hiccup should not tear the mount down, so retry a
+	 * transient failure a few times. Keep the bound small, this runs on
+	 * the caller's event loop thread.
+	 */
+	for (i = 0, err = 0; i < RESOLVE_RETRIES; i++) {
+		if (i) {
+			RPC_LOG(rpc, 2, "rpc_set_sockaddr: getaddrinfo(%s) failed "
+				"temporarily (%d), retrying", server, err);
+#if defined(WIN32)
+			Sleep(RESOLVE_RETRY_NSECS / 1000000);
+#else
+			{
+				struct timespec ts = {0, RESOLVE_RETRY_NSECS};
+				nanosleep(&ts, NULL);
+			}
+#endif
+		}
+		err = getaddrinfo(server, NULL, NULL, &ai);
+#ifdef EAI_AGAIN
+		/* Only a transient failure is worth another try. */
+		if (err != EAI_AGAIN)
+			break;
+#else
+		break;
+#endif
+	}
+
+	if (err != 0) {
 		rpc_set_error(rpc, "Invalid address:%s. "
-			      "Can not resolv into IPv4/v6 structure.", server);
+			      "Can not resolv into IPv4/v6 structure. "
+			      "getaddrinfo error %d", server, err);
 		return -1;
  	}
 
 	switch (ai->ai_family) {
 	case AF_INET:
+		if (rpc->resolve_server &&
+		    ((struct sockaddr_in *)&rpc->s)->sin_family == AF_INET) {
+			const uint32_t o =
+				ntohl(((struct sockaddr_in *)&rpc->s)->sin_addr.s_addr);
+			const uint32_t n =
+				ntohl(((struct sockaddr_in *)(void *)(ai->ai_addr))->sin_addr.s_addr);
+
+			if (o != n) {
+				RPC_LOG(rpc, 1, "rpc_set_sockaddr (%s): IPv4 address "
+					"changed from %u.%u.%u.%u -> %u.%u.%u.%u",
+					server,
+					o >> 24, (o >> 16) & 0xff, (o >> 8) & 0xff, o & 0xff,
+					n >> 24, (n >> 16) & 0xff, (n >> 8) & 0xff, n & 0xff);
+			}
+		}
+
 		((struct sockaddr_in *)&rpc->s)->sin_family = ai->ai_family;
 		((struct sockaddr_in *)&rpc->s)->sin_port = htons(port);
 		((struct sockaddr_in *)&rpc->s)->sin_addr =
@@ -1671,6 +1764,9 @@ rpc_set_sockaddr(struct rpc_context *rpc, const char *server, int port)
 #endif
 	}
 	freeaddrinfo(ai);
+
+	/* Remember the port so a re-resolve on reconnect can reuse it. */
+	rpc->port = port;
 
         return 0;
 }
@@ -1899,7 +1995,13 @@ rpc_reconnect_requeue(struct rpc_context *rpc)
 	if (rpc->auto_reconnect < 0 || rpc->num_retries > 0) {
 		rpc->num_retries--;
 		rpc->connect_cb  = reconnect_cb;
-		RPC_LOG(rpc, 1, "reconnect initiated");
+		RPC_LOG(rpc, 1, "reconnect initiated to %s",
+			rpc->server ? rpc->server : "<last address>");
+		/*
+		 * Tell rpc_connect_sockaddr_async() to re-resolve the server
+		 * name first, if the user asked for that behaviour.
+		 */
+		rpc->resolve_server = rpc->resolve_on_reconnect;
 		if (rpc_connect_sockaddr_async(rpc) != 0) {
 			rpc_error_all_pdus(rpc, "RPC ERROR: Failed to "
                                            "reconnect async");
@@ -2066,6 +2168,14 @@ rpc_set_fd(struct rpc_context *rpc, int fd)
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
 	rpc->fd = fd;
+}
+
+void
+rpc_set_resolve_on_reconnect(struct rpc_context *rpc, int enabled)
+{
+	assert(rpc->magic == RPC_CONTEXT_MAGIC);
+
+	rpc->resolve_on_reconnect = !!enabled;
 }
 
 int

@@ -214,6 +214,12 @@ nfs_queue_length(struct nfs_context *nfs)
 	return rpc_queue_length(nfs->rpc);
 }
 
+void
+nfs_set_resolve_on_reconnect(struct nfs_context *nfs, int enabled)
+{
+	rpc_set_resolve_on_reconnect(nfs->rpc, enabled);
+}
+
 int
 nfs_which_events(struct nfs_context *nfs)
 {

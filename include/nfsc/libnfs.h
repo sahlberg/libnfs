@@ -134,6 +134,13 @@ EXTERN int nfs_service(struct nfs_context *nfs, int revents);
 EXTERN int nfs_queue_length(struct nfs_context *nfs);
 
 /*
+ * Enable or disable resolving the server name afresh before every reconnect.
+ * The default is disabled, i.e. reconnect to the address that was resolved on
+ * the initial connect.
+ */
+EXTERN void nfs_set_resolve_on_reconnect(struct nfs_context *nfs, int enabled);
+
+/*
  * Used if you need different credentials than the default for the current user.
  */
 struct AUTH;

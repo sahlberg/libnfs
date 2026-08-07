@@ -296,6 +296,15 @@ EXTERN uint64_t rpc_pdu_get_dispatch_usecs(struct rpc_pdu *pdu);
 EXTERN int rpc_queue_length(struct rpc_context *rpc);
 
 /*
+ * Enable or disable resolving the server name afresh before every reconnect.
+ * The default is disabled, i.e. reconnect to the address that was resolved on
+ * the initial connect.
+ * Enable this when the server may move to a different address, for example
+ * when it sits behind a load balancer or a floating address.
+ */
+EXTERN void rpc_set_resolve_on_reconnect(struct rpc_context *rpc, int enabled);
+
+/*
  * Returns the number of commands awaiting from the server.
  * Can be used by the application to check if there are any
  * more responses we are awaiting from the server
