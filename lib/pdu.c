@@ -1094,7 +1094,17 @@ static int rpc_process_reply(struct rpc_context *rpc, ZDR *zdr)
 #endif /* HAVE_TLS */
 
 #ifdef HAVE_LIBKRB5
-                if (msg.body.rbody.reply.areply.verf.oa_flavor == AUTH_GSS) {
+                /*
+                 * The verifier flavor is chosen by the server, so on its own
+                 * it says nothing about how this reply should be read. Only
+                 * act on it once we know the connection actually negotiated
+                 * GSS; otherwise a server could steer the reply to an
+                 * ordinary AUTH_UNIX request down the GSS path below. On a
+                 * non-GSS connection the verifier is simply not interesting,
+                 * so ignore it rather than failing the RPC.
+                 */
+                if (rpc->sec != RPC_SEC_UNDEFINED &&
+                    msg.body.rbody.reply.areply.verf.oa_flavor == AUTH_GSS) {
                         uint32_t maj, min;
                         gss_buffer_desc message_buffer, token_buffer;
                         uint32_t seqno;
@@ -1103,7 +1113,27 @@ static int rpc_process_reply(struct rpc_context *rpc, ZDR *zdr)
                          * that finished authentication.
                          */
                         if (pdu->gss_seqno == 0) {
-                                struct rpc_gss_init_res *gir = (struct rpc_gss_init_res *)(void *)pdu->zdr_decode_buf;
+                                struct rpc_gss_init_res *gir;
+
+                                /*
+                                 * Only the GSS init NULL RPC decodes into an
+                                 * rpc_gss_init_res. Any other PDU reaching
+                                 * here would have us reinterpret an unrelated
+                                 * decoded result as one, and dereference
+                                 * handle_val, a pointer read out of whatever
+                                 * that result happens to contain.
+                                 */
+                                if (pdu->zdr_decode_buf == NULL ||
+                                    pdu->zdr_decode_fn !=
+                                    (zdrproc_t)zdr_rpc_gss_init_res) {
+                                        status = RPC_STATUS_ERROR;
+                                        data = "Server sent an AUTH_GSS "
+                                               "verifier for a reply that is "
+                                               "not a GSS init response";
+                                        break;
+                                }
+
+                                gir = (struct rpc_gss_init_res *)(void *)pdu->zdr_decode_buf;
 
                                 rpc->context_len = gir->handle.handle_len;
                                 free(rpc->context);
