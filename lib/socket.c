@@ -291,6 +291,7 @@ rpc_get_evfd(struct rpc_context *rpc)
 void
 rpc_wakeup_service_thread(struct rpc_context *rpc)
 {
+#ifdef LIBNFS_EVENTFD_WAKEUP
         uint64_t val = 1;
         ssize_t cnt;
 
@@ -308,6 +309,13 @@ rpc_wakeup_service_thread(struct rpc_context *rpc)
                 RPC_LOG(rpc, 2, "Failed to signal service thread on evfd %d: %s",
                         rpc->evfd, strerror(errno));
         }
+#else
+        /*
+         * No wakeup fd on this build, so nothing to poke and no reference to
+         * write(), which MSVC does not declare.
+         */
+        (void)rpc;
+#endif
 }
 
 /*

@@ -370,8 +370,12 @@ struct rpc_context {
          * nfs_mt_get_tid(). Set when the service thread starts, 0 otherwise.
          * Queryable with nfs_get_tid(), useful for correlating libnfs work
          * with per-thread OS statistics.
+         *
+         * Plain int rather than pid_t: MSVC has no pid_t, and nfs_get_tid()
+         * returns int regardless, so nothing is lost that was not already
+         * being truncated on the platforms whose nfs_tid_t is wider.
          */
-        pid_t tid;
+        int tid;
 
 #ifdef HAVE_MULTITHREADING
         int multithreading_enabled;
