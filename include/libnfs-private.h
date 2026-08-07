@@ -503,7 +503,57 @@ struct rpc_pdu {
                                         * Used to clamp long reads.
                                         */
 
-	rpc_cb cb;
+	
+        /*
+         * Was this PDU retransmitted?
+         * libnfs lets its users know if a PDU that completed was retransmitted
+         * or was it only sent to the server once. Users can use this info to
+         * do useful things, f.e., one of the thing they can do is work around
+         * the weakly consistent nature of NFS by treating an NFS3ERR_NOENT
+         * returned by a REMOVE/RMDIR call as NFS3_OK since it may have been
+         * deleted the first time it was sent and the subsequent retransmit
+         * may have gone to another node (which doesn't share the DRC cache)
+         * and hence it failed it with NFS3ERR_NOENT.
+         * Note that most applications will handle an unlink() call succeeding
+         * for a non-existent file better than unlink() call failing with
+         * NOENT for a file that was actually present.
+         */
+        bool_t is_retransmitted;
+
+        /*
+         * Total request bytes sent out for this PDU.
+         * This includes RPC header + NFS header + optional data (for WRITE).
+         * This can be queried using rpc_pdu_get_req_size(pdu) after the
+         * rpc_<protocol>_  API returns the to-be-sent PDU.
+         * This can be used by applications that want to provide mountstats
+         * style "avg bytes sent" telemetry.
+         */
+        uint32_t req_size;
+
+        /*
+         * Total response bytes received for this PDU.
+         * This includes RPC header + NFS header + optional data (for READ).
+         * This can be queried using rpc_pdu_get_resp_size(rpc_get_pdu(rpc))
+         * inside the rpc_<protocol>_  callback.
+         * This can be used by applications that want to provide mountstats
+         * style "avg bytes received" telemetry.
+         */
+        uint32_t resp_size;
+
+#ifdef HAVE_CLOCK_GETTIME
+        /*
+         * Microseconds since epoch when this PDU was completely written to
+         * the socket. Note that due to TCP connection b/w and sndbuf size
+         * limitations this time can be very different from the time the PDU
+         * was queued to rpc->outqueue for sending, using rpc_queue_pdu().
+         * Applications can use this to find the "rtt taken by the server to
+         * execute this RPC" by diff'ing this with the time when the callback
+         * is called.
+         */
+        uint64_t dispatch_usecs;
+#endif
+
+rpc_cb cb;
 	void *private_data;
 
 	/* function to decode the zdr reply data and buffer to decode into */
@@ -659,6 +709,9 @@ int rpc_add_fragment(struct rpc_context *rpc, char *data, uint32_t size);
 void rpc_free_all_fragments(struct rpc_context *rpc);
 uint64_t rpc_current_time(void);
 uint64_t rpc_current_time_us(void);
+#ifdef HAVE_CLOCK_GETTIME
+uint64_t rpc_wallclock_time(void);
+#endif
 
 void *zdr_malloc(ZDR *zdrs, uint32_t size);
 

@@ -118,6 +118,7 @@ void rpc_return_to_outqueue(struct rpc_context *rpc, struct rpc_pdu *pdu)
          * it out will entail a retransmit.
          */
         INC_STATS(rpc, num_retransmitted);
+        pdu->is_retransmitted = 1;
 
         /*
          * Reset output and input cursors as we have to re-send the whole pdu
@@ -259,6 +260,9 @@ static struct rpc_pdu *rpc_allocate_reply_pdu(struct rpc_context *rpc,
         /* Add an iovector for the header */
         rpc_add_iovector(rpc, &pdu->out, &pdu->outdata.data[4],
                          zdr_getpos(&pdu->zdr), NULL);
+
+        /* Freshly allocated PDU cannot be retransmitted */
+        assert(!pdu->is_retransmitted);
 
 	return pdu;
 }
@@ -466,6 +470,9 @@ struct rpc_pdu *rpc_allocate_pdu2(struct rpc_context *rpc, int program, int vers
         /* Add an iovector for the header */
         rpc_add_iovector(rpc, &pdu->out, &pdu->outdata.data[4],
                          zdr_getpos(&pdu->zdr), NULL);
+
+        /* Freshly allocated PDU cannot be retransmitted */
+        assert(!pdu->is_retransmitted);
 
 	return pdu;
  failed:
@@ -698,7 +705,10 @@ int rpc_queue_pdu(struct rpc_context *rpc, struct rpc_pdu *pdu)
         pdu->pdu_stats.vers = pdu->msg.body.cbody.vers;
         pdu->pdu_stats.proc = pdu->msg.body.cbody.proc;
         pdu->pdu_stats.response_time = 0;
-        
+
+        /* 4 bytes for the recordmarker */
+        pdu->req_size = size + 4;
+
 	/*
 	 * For udp we dont queue, we just send it straight away.
 	 *
@@ -1333,3 +1343,26 @@ int rpc_process_pdu(struct rpc_context *rpc, char *buf, int size)
         return 0;
 }
 
+bool_t rpc_pdu_is_retransmitted(struct rpc_pdu *pdu)
+{
+        return pdu->is_retransmitted;
+}
+
+uint32_t rpc_pdu_get_req_size(struct rpc_pdu *pdu)
+{
+        return pdu->req_size;
+}
+
+uint32_t rpc_pdu_get_resp_size(struct rpc_pdu *pdu)
+{
+        return pdu->resp_size;
+}
+
+uint64_t rpc_pdu_get_dispatch_usecs(struct rpc_pdu *pdu)
+{
+#ifdef HAVE_CLOCK_GETTIME
+        return pdu->dispatch_usecs;
+#else
+        return 0;
+#endif
+}
