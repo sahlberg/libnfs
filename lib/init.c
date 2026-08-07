@@ -389,6 +389,7 @@ void rpc_set_error(struct rpc_context *rpc, const char *error_string, ...)
 	rpc->error_string = malloc(1024);
         if (rpc->error_string == NULL) {
                 rpc->error_string = discard_const(oom);
+                va_end(ap);
                 goto finished;
         }
 	vsnprintf(rpc->error_string, 1024, error_string, ap);
@@ -415,8 +416,15 @@ void rpc_set_error_locked(struct rpc_context *rpc, const char *error_string, ...
 	va_start(ap, error_string);
 	rpc->error_string = malloc(1024);
         if (rpc->error_string == NULL) {
-                free(old_error_string);
+                /*
+                 * old_error_string may already be the static oom string from
+                 * an earlier failure here, and that must not be freed.
+                 */
+                if (old_error_string && old_error_string != oom) {
+                        free(old_error_string);
+                }
                 rpc->error_string = discard_const(oom);
+                va_end(ap);
                 return;
         }
 	vsnprintf(rpc->error_string, 1024, error_string, ap);
