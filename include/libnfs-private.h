@@ -82,6 +82,16 @@
 #define ATOMIC_DEC(rpc, x) x--
 #endif /* HAVE_MULTITHREADING */
 
+/*
+ * The service thread wakeup needs eventfd(), which is a Linux extension, and
+ * only has a thread to wake when multithreading is compiled in. Everywhere
+ * else libnfs falls back to the poll timeout, exactly as it did before the
+ * wakeup existed.
+ */
+#if defined(HAVE_MULTITHREADING) && defined(HAVE_SYS_EVENTFD_H)
+#define LIBNFS_EVENTFD_WAKEUP 1
+#endif
+
 #include "libnfs-multithreading.h"
 #include "libnfs-zdr.h"
 #include "../nfs/libnfs-raw-nfs.h"
@@ -283,6 +293,15 @@ struct rpc_context {
 	int fd;
         int socket_disabled; /* Do not allow read/write to the socket */
 	int old_fd;
+	/*
+	 * eventfd used to wake the multithreading service thread out of poll()
+	 * as soon as a PDU is queued, instead of waiting for the poll timeout.
+	 * -1 when the wakeup is unavailable, which is the case on any build
+	 * without LIBNFS_EVENTFD_WAKEUP and for every server context. The
+	 * wakeup is purely a latency optimisation: the service thread also
+	 * wakes on rpc->poll_timeout, so -1 costs latency, never correctness.
+	 */
+	int evfd;
 	int is_connected;
 	int is_nonblocking;
 
@@ -322,6 +341,14 @@ struct rpc_context {
 	struct rpc_queue *waitpdu;
 	uint32_t waitpdu_len;
 	uint32_t max_waitpdu_len;
+
+        /*
+         * Thread id of the libnfs service thread, as returned by
+         * nfs_mt_get_tid(). Set when the service thread starts, 0 otherwise.
+         * Queryable with nfs_get_tid(), useful for correlating libnfs work
+         * with per-thread OS statistics.
+         */
+        pid_t tid;
 
 #ifdef HAVE_MULTITHREADING
         int multithreading_enabled;
@@ -693,6 +720,14 @@ void pdu_set_timeout(struct rpc_context *rpc, struct rpc_pdu *pdu, uint64_t now_
 void rpc_free_pdu(struct rpc_context *rpc, struct rpc_pdu *pdu);
 int rpc_queue_pdu(struct rpc_context *rpc, struct rpc_pdu *pdu);
 int rpc_queue_pdu2(struct rpc_context *rpc, struct rpc_pdu *pdu, int prio);
+
+/*
+ * Nudge the multithreading service thread so it re-runs poll() now rather
+ * than after rpc->poll_timeout. A no-op when there is no wakeup fd, and it
+ * never fails the caller: the worst outcome is the added latency we would
+ * have had anyway.
+ */
+void rpc_wakeup_service_thread(struct rpc_context *rpc);
 int rpc_process_pdu(struct rpc_context *rpc, char *buf, int size);
 struct rpc_pdu *rpc_find_pdu(struct rpc_context *rpc, uint32_t xid);
 void rpc_error_all_pdus(struct rpc_context *rpc, const char *error);
@@ -729,6 +764,21 @@ void nfs_set_error_locked(struct nfs_context *nfs, char *error_string, ...)
  __attribute__((format(printf, 2, 3)))
 #endif
 ;
+
+/*
+ * Use LOG() for logging from code that has no rpc_context, and therefore no
+ * log callback and no debug level to compare against. It logs unconditionally
+ * to stderr, so use it sparingly and only for conditions that cannot be
+ * reported to the caller by any better means.
+ */
+#if defined(PS2_EE)
+#define LOG(format, ...) ;
+#else
+#define LOG(format, ...) \
+	do { \
+		fprintf(stderr, "libnfs: " format "\n", ## __VA_ARGS__); \
+	} while (0)
+#endif
 
 #if defined(PS2_EE)
 #define RPC_LOG(rpc, level, format, ...) ;

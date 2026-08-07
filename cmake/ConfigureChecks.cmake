@@ -9,6 +9,7 @@ check_include_file("memory.h" HAVE_MEMORY_H)
 check_include_file("netdb.h" HAVE_NETDB_H)
 check_include_file("netinet/in.h" HAVE_NETINET_IN_H)
 check_include_file("netinet/tcp.h" HAVE_NETINET_TCP_H)
+check_include_file("sys/eventfd.h" HAVE_SYS_EVENTFD_H)
 check_include_file("sys/socket.h" HAVE_SYS_SOCKET_H)
 # On MacOS 10.8 and earlier, sys/socket.h must be included before net/if.h
 if(HAVE_SYS_SOCKET_H)

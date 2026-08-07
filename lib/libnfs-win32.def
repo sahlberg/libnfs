@@ -34,6 +34,8 @@ nfs_ftruncate
 nfs_ftruncate_async
 nfs_get_error
 nfs_get_fd
+nfs_get_evfd
+nfs_get_tid
 nfs_get_readmax
 nfs_get_writemax
 nfs_getcwd
@@ -55,6 +57,7 @@ nfs_mknod_async
 nfs_mount
 nfs_mount_async
 nfs_mt_service_thread_start
+nfs_mt_service_thread_start_ss
 nfs_mt_service_thread_stop
 nfs_open
 nfs_open_async
@@ -146,6 +149,7 @@ rpc_destroy_context
 rpc_disconnect
 rpc_get_error
 rpc_get_fd
+rpc_get_evfd
 rpc_get_timeout
 rpc_init_context
 rpc_init_server_context

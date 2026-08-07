@@ -147,7 +147,17 @@ void rpc_add_to_outqueue_head(struct rpc_context *rpc, struct rpc_pdu *pdu)
                 }
         }
 
-        rpc->stats.outqueue_len++;
+        assert(rpc->outqueue.tail->next == NULL);
+        assert(rpc->outqueue.tail->is_high_prio ==
+                (rpc->outqueue.tailp == rpc->outqueue.tail));
+
+        if (rpc->stats.outqueue_len++ == 0) {
+                /*
+                 * First pdu on a previously empty outqueue, so the service
+                 * thread may be sitting in poll(). Nudge it.
+                 */
+                rpc_wakeup_service_thread(rpc);
+        }
 }
 
 /*
@@ -187,7 +197,17 @@ void rpc_add_to_outqueue_lowp(struct rpc_context *rpc, struct rpc_pdu *pdu)
 {
         pdu->is_high_prio = FALSE;
         rpc_enqueue(&rpc->outqueue, pdu);
-        rpc->stats.outqueue_len++;
+        if (rpc->stats.outqueue_len++ == 0) {
+                /*
+                 * First pdu on a previously empty outqueue, so the service
+                 * thread may be sitting in poll(). Nudge it.
+                 */
+                rpc_wakeup_service_thread(rpc);
+        }
+
+        assert(rpc->outqueue.head != NULL);
+        assert(rpc->outqueue.tail != NULL);
+        assert(pdu->next == NULL);
 }
 
 /*

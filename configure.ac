@@ -315,6 +315,8 @@ AC_CHECK_MEMBERS([struct stat.st_mtim.tv_nsec])
 
 AC_CHECK_HEADERS(dispatch/dispatch.h)
 
+AC_CHECK_HEADERS(sys/eventfd.h)
+
 AC_CHECK_FUNCS(pthread_threadid_np)
 
 # check where makedev is defined

@@ -282,6 +282,34 @@ rpc_get_fd(struct rpc_context *rpc)
 	return rpc->fd;
 }
 
+int
+rpc_get_evfd(struct rpc_context *rpc)
+{
+        return rpc->evfd;
+}
+
+void
+rpc_wakeup_service_thread(struct rpc_context *rpc)
+{
+        uint64_t val = 1;
+        ssize_t cnt;
+
+        if (rpc->evfd == -1) {
+                return;
+        }
+
+        cnt = write(rpc->evfd, &val, sizeof(val));
+        if (cnt != (ssize_t)sizeof(val)) {
+                /*
+                 * Losing a wakeup only costs us up to rpc->poll_timeout of
+                 * latency, so log it and carry on rather than failing the
+                 * caller, who is usually mid-enqueue and holding rpc_mutex.
+                 */
+                RPC_LOG(rpc, 2, "Failed to signal service thread on evfd %d: %s",
+                        rpc->evfd, strerror(errno));
+        }
+}
+
 /*
  * Does rpc->outqueue have one or more PDUs waiting to be sent out?
  * Takes rpc_mutex, so it must not be called with the mutex already held.

@@ -47,6 +47,7 @@
 #include <sys/time.h>
 #endif
 
+#include <errno.h>
 #include <string.h>
 #include "libnfs.h"
 #include "libnfs-raw.h"
@@ -105,7 +106,13 @@ static DWORD WINAPI service_thread_init(LPVOID lpParam)
 
 int nfs_mt_service_thread_start(struct nfs_context* nfs)
 {
-    nfs->nfsi->service_thread = CreateThread(NULL, 1024*1024, service_thread_init, nfs, 0, NULL);
+    return nfs_mt_service_thread_start_ss(nfs, 0);
+}
+
+int nfs_mt_service_thread_start_ss(struct nfs_context* nfs, size_t stack_bytes)
+{
+    SIZE_T stack = stack_bytes ? (SIZE_T)stack_bytes : (SIZE_T)(1024*1024);
+    nfs->nfsi->service_thread = CreateThread(NULL, stack, service_thread_init, nfs, 0, NULL);
     if (nfs->nfsi->service_thread == NULL) {
         nfs_set_error(nfs, "Failed to start service thread");
         return -1;
@@ -207,37 +214,110 @@ nfs_tid_t nfs_mt_get_tid(void)
 static void *nfs_mt_service_thread(void *arg)
 {
         struct nfs_context *nfs = (struct nfs_context *)arg;
-	struct pollfd pfd;
-	int revents;
-	int ret;
+        struct pollfd pfd[2];
+        const int evfd = nfs_get_evfd(nfs);
+        int nfds;
+        int revents;
+        int ret;
 
+        /*
+         * Publish the tid before the flag the starter is waiting on. Note
+         * this is a plain store racing with a plain load in
+         * nfs_mt_service_thread_start_ss(), as it always has been, so a
+         * caller that reads nfs_get_tid() immediately after start returns may
+         * still see 0.
+         */
+        nfs->rpc->tid = nfs_mt_get_tid();
         nfs->rpc->multithreading_enabled = 1;
 
-	while (nfs->rpc->multithreading_enabled) {
-		pfd.fd = nfs_get_fd(nfs);
-		pfd.events = nfs_which_events(nfs);
-		pfd.revents = 0;
-        
-		ret = poll(&pfd, 1, nfs->rpc->poll_timeout);
-		if (ret < 0) {
-			nfs_set_error(nfs, "Poll failed");
-			revents = -1;
-		} else {
-			revents = pfd.revents;
-		}
-		if (nfs_service(nfs, revents) < 0) {
-			if (revents != -1)
-				nfs_set_error(nfs, "nfs_service failed");
-		}
-	}
+        while (nfs->rpc->multithreading_enabled) {
+                nfds = 0;
+                if (evfd != -1) {
+                        pfd[nfds].fd = evfd;
+                        pfd[nfds].events = POLLIN;
+                        pfd[nfds].revents = 0;
+                        nfds++;
+                }
+                pfd[nfds].fd = nfs_get_fd(nfs);
+                pfd[nfds].events = nfs_which_events(nfs);
+                pfd[nfds].revents = 0;
+                nfds++;
+
+                ret = poll(pfd, nfds, nfs->rpc->poll_timeout);
+                if (ret < 0) {
+                        nfs_set_error(nfs, "Poll failed: %s", strerror(errno));
+                        revents = -1;
+                } else {
+                        if (evfd != -1 && pfd[0].revents != 0) {
+                                uint64_t evread;
+
+                                /*
+                                 * Drain the counter. The wakeup carries no
+                                 * information beyond "look again", so any
+                                 * failure here just means we re-poll.
+                                 */
+                                if (read(evfd, &evread, sizeof(evread)) < 0) {
+                                        RPC_LOG(nfs->rpc, 2, "read from evfd %d "
+                                                "failed: %s", evfd, strerror(errno));
+                                }
+                        }
+
+                        /* The socket is always the last entry. */
+                        revents = pfd[nfds - 1].revents;
+                }
+
+                /*
+                 * nfs_service() failing is an unusual condition, take a pause
+                 * before retrying.
+                 */
+                if (nfs_service(nfs, revents) < 0) {
+                        nfs_set_error(nfs, "nfs_service failed, revents=0x%x",
+                                      revents);
+                        RPC_LOG(nfs->rpc, 2, "Sleeping 5 secs, before retrying!");
+                        sleep(5);
+                }
+        }
         return NULL;
 }
 
 int nfs_mt_service_thread_start(struct nfs_context *nfs)
 {
-        if (pthread_create(&nfs->nfsi->service_thread, NULL,
-                           &nfs_mt_service_thread, nfs)) {
-                nfs_set_error(nfs, "Failed to start service thread");
+        return nfs_mt_service_thread_start_ss(nfs, 0);
+}
+
+int nfs_mt_service_thread_start_ss(struct nfs_context *nfs, size_t stack_bytes)
+{
+        pthread_attr_t attr;
+        int ret;
+
+        ret = pthread_attr_init(&attr);
+        if (ret != 0) {
+                nfs_set_error(nfs, "pthread_attr_init failed: %s", strerror(ret));
+                return -1;
+        }
+
+        if (stack_bytes != 0) {
+                /*
+                 * Report a rejected size rather than silently handing back a
+                 * default stack, since the caller asked for a bigger one to
+                 * survive deeply recursive zdr decoding.
+                 */
+                ret = pthread_attr_setstacksize(&attr, stack_bytes);
+                if (ret != 0) {
+                        nfs_set_error(nfs, "Failed to set service thread stack "
+                                      "size to %zu bytes: %s",
+                                      stack_bytes, strerror(ret));
+                        pthread_attr_destroy(&attr);
+                        return -1;
+                }
+        }
+
+        ret = pthread_create(&nfs->nfsi->service_thread, &attr,
+                             &nfs_mt_service_thread, nfs);
+        pthread_attr_destroy(&attr);
+        if (ret != 0) {
+                nfs_set_error(nfs, "Failed to start service thread: %s",
+                              strerror(ret));
                 return -1;
         }
         while (nfs->rpc->multithreading_enabled == 0) {
@@ -249,10 +329,15 @@ int nfs_mt_service_thread_start(struct nfs_context *nfs)
 
 void nfs_mt_service_thread_stop(struct nfs_context *nfs)
 {
+        /*
+         * Signal the service thread to stop, then poke the wakeup fd so it
+         * notices now instead of after its poll timeout.
+         */
         nfs->rpc->multithreading_enabled = 0;
+        rpc_wakeup_service_thread(nfs->rpc);
         pthread_join(nfs->nfsi->service_thread, NULL);
 }
-        
+
 /*
  * If this is enabled we check for the following locking violations, at the
  * (slight) cost of performance:
@@ -268,44 +353,64 @@ void nfs_mt_service_thread_stop(struct nfs_context *nfs)
 
 int nfs_mt_mutex_init(libnfs_mutex_t *mutex)
 {
-	int ret;
+        int ret;
 #ifdef DEBUG_PTHREAD_LOCKING_VIOLATIONS
-	pthread_mutexattr_t attr;
+        pthread_mutexattr_t attr;
 
-	ret = pthread_mutexattr_init(&attr);
-	if (ret != 0) {
-		return ret;
-	}
+        ret = pthread_mutexattr_init(&attr);
+        if (ret != 0) {
+                LOG("pthread_mutexattr_init() failed: %d (%s)", ret, strerror(ret));
+                assert(0);
+                return ret;
+        }
 
-	ret = pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_ERRORCHECK);
-	if (ret != 0) {
-		return ret;
-	}
+        ret = pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_ERRORCHECK);
+        if (ret != 0) {
+                LOG("pthread_mutexattr_settype() failed: %d (%s)", ret, strerror(ret));
+                assert(0);
+                return ret;
+        }
 
-	ret = pthread_mutex_init(mutex, &attr);
-	if (ret != 0) {
-		return ret;
-	}
+        ret = pthread_mutex_init(mutex, &attr);
+        if (ret != 0) {
+                LOG("pthread_mutex_init() failed: %d (%s)", ret, strerror(ret));
+                assert(0);
+                return ret;
+        }
 #else
-	ret = pthread_mutex_init(mutex, NULL);
-	assert(ret == 0);
+        ret = pthread_mutex_init(mutex, NULL);
+        assert(ret == 0);
 #endif
-	return ret;
+        return ret;
 }
 
 int nfs_mt_mutex_destroy(libnfs_mutex_t *mutex)
 {
-	return pthread_mutex_destroy(mutex);
+        return pthread_mutex_destroy(mutex);
 }
 
 int nfs_mt_mutex_lock(libnfs_mutex_t *mutex)
 {
-	return pthread_mutex_lock(mutex);
+        const int ret = pthread_mutex_lock(mutex);
+
+        if (ret != 0) {
+                LOG("pthread_mutex_lock() failed: %d (%s)", ret, strerror(ret));
+                assert(0);
+        }
+
+        return ret;
 }
 
 int nfs_mt_mutex_unlock(libnfs_mutex_t *mutex)
 {
-	return pthread_mutex_unlock(mutex);
+        const int ret = pthread_mutex_unlock(mutex);
+
+        if (ret != 0) {
+                LOG("pthread_mutex_unlock() failed: %d (%s)", ret, strerror(ret));
+                assert(0);
+        }
+
+        return ret;
 }
 
 #if defined(__APPLE__) && defined(HAVE_DISPATCH_DISPATCH_H)

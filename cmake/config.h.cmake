@@ -82,6 +82,7 @@
 #cmakedefine HAVE_SYS_IOCTL_H
 
 /* Define to 1 if you have the <sys/socket.h> header file. */
+#cmakedefine HAVE_SYS_EVENTFD_H
 #cmakedefine HAVE_SYS_SOCKET_H
 
 /* Define to 1 if you have the <sys/sockio.h> header file. */

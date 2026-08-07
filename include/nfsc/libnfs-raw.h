@@ -256,6 +256,12 @@ EXTERN void rpc_set_auth(struct rpc_context *rpc, struct AUTH *auth);
  * want to ensure that libnfs will never do i/o to the socket.
  */
 EXTERN int rpc_get_fd(struct rpc_context *rpc);
+/*
+ * Returns a file descriptor that becomes readable when libnfs has queued work
+ * for its service thread, or -1 when the build or the context has none (for
+ * example every server context). -1 is not an error.
+ */
+EXTERN int rpc_get_evfd(struct rpc_context *rpc);
 EXTERN int rpc_which_events(struct rpc_context *rpc);
 EXTERN int rpc_service(struct rpc_context *rpc, int revents);
 EXTERN void rpc_disable_socket(struct rpc_context *rpc, int val);

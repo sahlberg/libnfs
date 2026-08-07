@@ -98,6 +98,9 @@ struct utimbuf {
  * Used for interfacing the async version of the api into an external
  * eventsystem.
  *
+ * nfs_get_tid() returns the Linux tid of the libnfs thread processing
+ * requests for this nfs_context.
+ *
  * nfs_get_fd() returns the file descriptor for the context we need to
  * listen for events from.
  *
@@ -122,7 +125,14 @@ struct utimbuf {
  * You only need this for the async interface. The sync interface already
  * do this in their built-in event loops.
  */
+EXTERN int nfs_get_tid(struct nfs_context *nfs);
 EXTERN int nfs_get_fd(struct nfs_context *nfs);
+/*
+ * Returns a file descriptor that becomes readable when libnfs has queued work
+ * for its service thread, or -1 on builds where no such descriptor exists.
+ * Callers must treat -1 as "no wakeup available" and not as an error.
+ */
+EXTERN int nfs_get_evfd(struct nfs_context *nfs);
 EXTERN int nfs_which_events(struct nfs_context *nfs);
 EXTERN int nfs_service(struct nfs_context *nfs, int revents);
 
@@ -2120,13 +2130,20 @@ EXTERN void nfs4_set_verifier(struct nfs_context *nfs, const char *verifier);
  * This function starts a separate service thread for multithreading support.
  * When multithreading is enabled the eventdriven async API is no longer
  * supported and you can only use the synchronous API.
+ *
+ * nfs_mt_service_thread_start_ss() is same as nfs_mt_service_thread_start()
+ * but allows caller to set the stack size of the libnfs service thread.
+ * Default 8MB stack size is not sufficient for very large readdir/readdirplus
+ * responses as the zdr decoder is recursive.
  */
 EXTERN int nfs_mt_service_thread_start(struct nfs_context *nfs);
+EXTERN int nfs_mt_service_thread_start_ss(struct nfs_context *nfs, size_t stack_bytes);
+
 /*
  * Shutdown multithreading support.
  */
 EXTERN void nfs_mt_service_thread_stop(struct nfs_context *nfs);
-        
+
 #ifdef __cplusplus
 }
 #endif

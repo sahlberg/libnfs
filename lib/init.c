@@ -50,10 +50,15 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <string.h>
+#include <errno.h>
 #include <stdlib.h>
 #include <assert.h>
 #include <fcntl.h>
 #include <time.h>
+#ifdef HAVE_SYS_EVENTFD_H
+#include <sys/eventfd.h>
+#endif
+
 #include "slist.h"
 #include "libnfs-zdr.h"
 #include "libnfs.h"
@@ -162,8 +167,28 @@ struct rpc_context *rpc_init_context(void)
 #endif
 #endif /* HAVE_MULTITHREADING */
 
+        /*
+         * eventfd used to tell the service thread that a PDU is waiting to be
+         * sent. Only useful where we have both eventfd() and a service thread
+         * to wake; elsewhere evfd stays -1 and we rely on the poll timeout.
+         */
+        rpc->evfd = -1;
+#ifdef LIBNFS_EVENTFD_WAKEUP
+        rpc->evfd = eventfd(0, EFD_NONBLOCK);
+        if (rpc->evfd == -1) {
+                /*
+                 * Not fatal. Without it the service thread still picks work up
+                 * on its poll timeout, so degrade instead of failing the
+                 * context.
+                 */
+                LOG("eventfd() failed: %s, service thread wakeups disabled",
+                    strerror(errno));
+        }
+#endif
+
  	rpc->auth = authunix_create_default();
 	if (rpc->auth == NULL) {
+	        close(rpc->evfd);
 		free(rpc->waitpdu);
 		free(rpc);
 		return NULL;
@@ -232,6 +257,12 @@ struct rpc_context *rpc_init_server_context(int s)
 
 	rpc->is_server_context = 1;
 	rpc->fd = s;
+	/*
+	 * Server contexts have no service thread to wake. Without this the
+	 * calloc() above would leave evfd at 0, i.e. stdin, and we would both
+	 * write wakeups into it and close it in rpc_destroy_context().
+	 */
+	rpc->evfd = -1;
 	rpc->is_connected = 1;
 
 	rpc->is_nonblocking = is_nonblocking(s);
@@ -568,6 +599,10 @@ void rpc_destroy_context(struct rpc_context *rpc)
 	if (rpc->fd != -1) {
  		close(rpc->fd);
 	}
+
+	if (rpc->evfd != -1) {
+		close(rpc->evfd);
+        }
 
 	if (rpc->error_string && rpc->error_string != oom) {
 		free(rpc->error_string);
