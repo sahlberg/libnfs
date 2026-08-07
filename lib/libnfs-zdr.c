@@ -99,6 +99,23 @@ char *libnfs_zdr_getptr(ZDR *zdrs)
         return zdrs->buf;
 }
 
+/*
+ * Step over the padding that aligns a variable length field to four bytes.
+ *
+ * A truncated or malformed message can leave the field ending flush with the
+ * end of the buffer, in which case rounding up moves pos past size. Callers
+ * work out how much data is left as size - pos, and both are unsigned, so
+ * letting that happen turns an empty buffer into a ~4GB one. Clamp instead.
+ * Reads stay correct either way: they check pos + n > size and fail.
+ */
+static void libnfs_zdr_pad4(ZDR *zdrs)
+{
+        zdrs->pos = (zdrs->pos + 3) & ~3;
+        if (zdrs->pos > zdrs->size) {
+                zdrs->pos = zdrs->size;
+        }
+}
+
 void libnfs_zdrmem_create(ZDR *zdrs, const caddr_t addr, uint32_t size, enum zdr_op xop)
 {
 	zdrs->x_op = xop;
@@ -233,7 +250,7 @@ bool_t libnfs_zdr_bytes(ZDR *zdrs, char **bufp, uint32_t *size, uint32_t maxsize
 			*bufp = &zdrs->buf[zdrs->pos];
 		}
 		zdrs->pos += *size;
-		zdrs->pos = (zdrs->pos + 3) & ~3;
+		libnfs_zdr_pad4(zdrs);
 		return TRUE;
 	}
 
@@ -303,7 +320,7 @@ bool_t libnfs_zdr_opaque(ZDR *zdrs, char *objp, uint32_t size)
                 }
 		memcpy(objp, &zdrs->buf[zdrs->pos], size);
 		zdrs->pos += size;
-		zdrs->pos = (zdrs->pos + 3) & ~3;
+		libnfs_zdr_pad4(zdrs);
 		return TRUE;
 	}
 
@@ -339,7 +356,7 @@ bool_t libnfs_zdr_string(ZDR *zdrs, char **strp, uint32_t maxsize)
 			*strp = &zdrs->buf[zdrs->pos];
 			(*strp)[size] = 0;
 			zdrs->pos += size;
-			zdrs->pos = (zdrs->pos + 3) & ~3;
+			libnfs_zdr_pad4(zdrs);
 			return TRUE;
 		}
 
@@ -369,6 +386,18 @@ bool_t libnfs_zdr_array(ZDR *zdrs, char **arrp, uint32_t *size, uint32_t maxsize
         if (*size > UINT32_MAX/elsize) {
                 return FALSE;
         }
+
+        /*
+         * Nothing encodes in fewer than four bytes, so a count larger than
+         * the bytes still in the buffer cannot be honest. Reject it before
+         * allocating: otherwise a four byte count in a short reply has us
+         * malloc and zero as much as zdr_malloc will hand out, which is 1GB.
+         */
+        if (zdrs->x_op == ZDR_DECODE &&
+            *size > (zdrs->size - zdrs->pos) / 4) {
+                return FALSE;
+        }
+
         s = *size * elsize;
 
 	if (zdrs->x_op == ZDR_DECODE) {
