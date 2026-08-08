@@ -1624,17 +1624,29 @@ _nfs_pread_async(struct nfs_context *nfs, struct nfsfh *nfsfh,
 {
         struct rw_data *rw_data;
         size_t cnt;
+        size_t readmax = nfs_get_readmax(nfs);
 
-
-        if (count < nfs_get_readmax(nfs)) {
-                return __nfs_pread_async(nfs, nfsfh, buf, count, offset, cb, private_data, update_pos);
+        /*
+         * Single-RPC fast path when the request fits in one READ.
+         * Use <= so a full-sized transfer (common: count == readmax)
+         * still advances nfsfh->offset when update_pos is set.
+         */
+        if (!readmax || count <= readmax) {
+                return __nfs_pread_async(nfs, nfsfh, buf, count, offset,
+                                         cb, private_data, update_pos);
         }
 
         rw_data = malloc(sizeof(struct rw_data));
         if (rw_data == NULL) {
                 return -ENOMEM;
         }
-        rw_data->update_pos = 0;
+        /*
+         * Must preserve update_pos from nfs_read_async (1) vs
+         * nfs_pread_async (0). Forcing it to 0 left the file offset
+         * unchanged after large sequential nfs_read() calls, so a
+         * typical read-until-EOF loop never saw a 0 return.
+         */
+        rw_data->update_pos = update_pos;
         rw_data->nfsfh = nfsfh;
         rw_data->buf = buf;
         rw_data->count = count;
@@ -1644,10 +1656,12 @@ _nfs_pread_async(struct nfs_context *nfs, struct nfsfh *nfsfh,
         rw_data->private_data = private_data;
 
         cnt = count;
-        if (nfs_get_readmax(nfs) && cnt > nfs_get_readmax(nfs)) {
-                cnt = nfs_get_readmax(nfs);
+        if (cnt > readmax) {
+                cnt = readmax;
         }
-        return __nfs_pread_async(nfs, rw_data->nfsfh, rw_data->buf, cnt, rw_data->offset, r_cb, rw_data, rw_data->update_pos);
+        return __nfs_pread_async(nfs, rw_data->nfsfh, rw_data->buf, cnt,
+                                 rw_data->offset, r_cb, rw_data,
+                                 rw_data->update_pos);
 }
         
 int
