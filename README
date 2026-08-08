@@ -201,6 +201,30 @@ platforms. Please drop me an email if your os of choice has something similar
 and I can add it to the README.
 
 
+BUILDING WITH TLS
+=================
+RPC-with-TLS support is only built if the build host has everything we need for
+it, that is:
+
+- GnuTLS >= 3.4.6, headers and library.
+- Linux kernel TLS (kTLS), i.e. <linux/tls.h> and the kTLS socket options
+  TCP_ULP, SOL_TLS and TLS_TX in the kernel headers we build against.
+
+Both build systems probe for this at configure time and simply build without
+TLS support if anything is missing, so libnfs builds fine on a host that has no
+gnutls or a kernel without kTLS.
+
+With autoconf:
+  ./configure               # build TLS support only if available (default)
+  ./configure --enable-tls  # fail the configure if TLS support is not available
+  ./configure --disable-tls # never build TLS support
+
+With cmake:
+  cmake -DENABLE_TLS=AUTO ..  # build TLS support only if available (default)
+  cmake -DENABLE_TLS=ON ..    # fail the configure if TLS support is not available
+  cmake -DENABLE_TLS=OFF ..   # never build TLS support
+
+
 CERTIFICATES
 ============
 libnfs reads CA certs from the following places, so make sure your server's CA

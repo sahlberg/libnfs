@@ -9,7 +9,7 @@ AM_CPPFLAGS = \
 COMMON_LIBS = ../../lib/libnfs.la -lpopt
 
 if HAVE_TLS
-COMMON_LIBS += -lgnutls
+COMMON_LIBS += $(TLS_LIBS)
 endif
 
-rpc_statd_LDADD = ../libnfs-server.o $(COMMON_LIBS) -ltalloc -ltevent
+rpc_statd_LDADD = ../libnfs-server.la $(COMMON_LIBS) -ltalloc -ltevent

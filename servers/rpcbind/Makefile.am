@@ -1,4 +1,5 @@
 noinst_PROGRAMS = rpcbind
+rpcbind_SOURCES = rpcbind.c rpcbind_data.c rpcbind_data.h
 
 AM_CPPFLAGS = \
 	-I$(abs_top_srcdir)/include/nfsc \
@@ -8,10 +9,10 @@ AM_CPPFLAGS = \
 COMMON_LIBS = ../../lib/libnfs.la -lpopt
 
 if HAVE_TLS
-COMMON_LIBS += -lgnutls
+COMMON_LIBS += $(TLS_LIBS)
 endif
 
-rpcbind_LDADD = ../libnfs-server.o rpcbind_data.o $(COMMON_LIBS) -ltalloc -ltevent
+rpcbind_LDADD = ../libnfs-server.la $(COMMON_LIBS) -ltalloc -ltevent
 
 compile_rpc:	
 	cat rpcbind_data.x | head -1 >rpcbind_data.h

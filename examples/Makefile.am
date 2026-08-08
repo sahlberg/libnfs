@@ -26,7 +26,7 @@ AM_CPPFLAGS = \
 
 COMMON_LIBS = ../lib/libnfs.la -lpopt
 if HAVE_TLS
-COMMON_LIBS += -lgnutls
+COMMON_LIBS += $(TLS_LIBS)
 endif
 nfs_writefile_LDADD = $(COMMON_LIBS)
 nfsclient_async_LDADD = $(COMMON_LIBS)

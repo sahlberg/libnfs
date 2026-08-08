@@ -32,7 +32,7 @@
 #endif
 
 #ifdef HAVE_LIBKRB5
-#include "lib/krb5-wrapper.h"
+#include "../lib/krb5-wrapper.h"
 #endif
 
 #ifdef HAVE_TLS

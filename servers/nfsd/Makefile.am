@@ -1,4 +1,5 @@
 noinst_PROGRAMS = nfsd
+nfsd_SOURCES = nfsd.c mountd.c mountd.h
 
 AM_CPPFLAGS = \
 	-I$(abs_top_srcdir)/include/nfsc \
@@ -10,7 +11,7 @@ AM_CPPFLAGS = \
 COMMON_LIBS = ../../lib/libnfs.la -lpopt
 
 if HAVE_TLS
-COMMON_LIBS += -lgnutls
+COMMON_LIBS += $(TLS_LIBS)
 endif
 
-nfsd_LDADD = ../libnfs-server.o mountd.o $(COMMON_LIBS) -ltalloc -ltevent
+nfsd_LDADD = ../libnfs-server.la $(COMMON_LIBS) -ltalloc -ltevent

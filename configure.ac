@@ -298,18 +298,104 @@ if test x"$libnfs_cv_HAVE_TALLOC_TEVENT" = x"yes"; then
 fi
 AM_CONDITIONAL([HAVE_TALLOC_TEVENT], [test $libnfs_cv_HAVE_TALLOC_TEVENT = yes])
 
-# check for linux tls
-AC_CACHE_CHECK([for linux tls support],libnfs_cv_HAVE_TLS,[
-AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
+#option: tls
+#
+# RPC-with-TLS needs two things:
+#  - GnuTLS >= 3.4.6 (headers and library), and
+#  - Linux kTLS, i.e. <linux/tls.h> plus the kTLS socket options
+#    (TCP_ULP, SOL_TLS, TLS_TX) in the kernel headers we build against.
+# If either is missing we simply build without TLS support, unless the user
+# explicitly asked for it with --enable-tls in which case we fail loudly.
+#
+AC_ARG_ENABLE([tls],
+              [AS_HELP_STRING([--enable-tls],[Build with RPC-with-TLS support (default: auto)])],
+	      [ENABLE_TLS=$enableval],
+	      [ENABLE_TLS="auto"])
+
+libnfs_cv_HAVE_TLS=no
+TLS_CFLAGS=""
+TLS_LIBS=""
+tls_library=""
+
+if test x"$ENABLE_TLS" != x"no"; then
+  #
+  # Locate gnutls. Prefer pkg-config but fall back to a plain -lgnutls in case
+  # there is no gnutls.pc installed.
+  #
+  PKG_CHECK_MODULES([GNUTLS], [gnutls >= 3.4.6],
+                    [],
+                    [GNUTLS_CFLAGS=""
+                     GNUTLS_LIBS="-lgnutls"])
+
+  save_CPPFLAGS="$CPPFLAGS"
+  save_LIBS="$LIBS"
+  CPPFLAGS="$CPPFLAGS $GNUTLS_CFLAGS"
+  LIBS="$GNUTLS_LIBS $LIBS"
+
+  # gnutls headers and library, new enough for everything we use
+  AC_CACHE_CHECK([for usable gnutls headers and library],libnfs_cv_HAVE_GNUTLS,[
+  AC_LINK_IFELSE([AC_LANG_PROGRAM([[
 #include <gnutls/gnutls.h>
-#include <linux/tls.h>]],
-[[const char *v = GNUTLS_VERSION;]])],[libnfs_cv_HAVE_TLS=yes],[libnfs_cv_HAVE_TLS=no])])
+#include <gnutls/socket.h>
+#if !defined(GNUTLS_VERSION_NUMBER) || GNUTLS_VERSION_NUMBER < 0x030406
+#error gnutls is too old
+#endif
+]],
+[[gnutls_session_t session;
+ gnutls_global_init();
+ gnutls_init(&session, GNUTLS_CLIENT);]])],[libnfs_cv_HAVE_GNUTLS=yes],[libnfs_cv_HAVE_GNUTLS=no])])
+
+  # kernel TLS headers and the socket options we need to install the keys
+  AC_CACHE_CHECK([for linux kTLS support],libnfs_cv_HAVE_KTLS,[
+  AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
+#include <sys/socket.h>
+#include <netinet/tcp.h>
+#include <linux/tls.h>
+]],
+[[struct tls12_crypto_info_aes_gcm_128 info;
+ info.info.version = TLS_1_2_VERSION;
+ info.info.cipher_type = TLS_CIPHER_AES_GCM_128;
+ (void)setsockopt(0, SOL_TCP, TCP_ULP, "tls", sizeof("tls"));
+ (void)setsockopt(0, SOL_TLS, TLS_TX, &info, sizeof(info));]])],[libnfs_cv_HAVE_KTLS=yes],[libnfs_cv_HAVE_KTLS=no])])
+
+  if test x"$libnfs_cv_HAVE_GNUTLS" = x"yes"; then
+    if test x"$libnfs_cv_HAVE_KTLS" = x"yes"; then
+      libnfs_cv_HAVE_TLS=yes
+      # Older gnutls versions have no kTLS support and don't export this
+      AC_CHECK_FUNCS([gnutls_transport_is_ktls_enabled])
+    fi
+  fi
+
+  CPPFLAGS="$save_CPPFLAGS"
+  LIBS="$save_LIBS"
+
+  if test x"$libnfs_cv_HAVE_TLS" = x"no"; then
+    if test x"$libnfs_cv_HAVE_GNUTLS" = x"no"; then
+      tls_missing="gnutls >= 3.4.6 development files are missing"
+    else
+      tls_missing="linux kTLS support (linux/tls.h, TCP_ULP, SOL_TLS) is missing"
+    fi
+    if test x"$ENABLE_TLS" = x"yes"; then
+      AC_MSG_ERROR([--enable-tls was given but $tls_missing])
+    fi
+    AC_MSG_NOTICE([$tls_missing])
+  fi
+fi
+
 if test x"$libnfs_cv_HAVE_TLS" = x"yes"; then
     AC_DEFINE(HAVE_TLS,1,[Whether we have linux tls support])
+    TLS_CFLAGS="$GNUTLS_CFLAGS"
+    TLS_LIBS="$GNUTLS_LIBS"
     # tell pkg-config that gnutls needs to be linked also
-    AC_SUBST(tls_library,"-lgnutls")
+    tls_library="$GNUTLS_LIBS"
+    AC_MSG_NOTICE([Build with RPC-with-TLS support])
+else
+    AC_MSG_NOTICE([Build WITHOUT RPC-with-TLS support])
 fi
-AM_CONDITIONAL([HAVE_TLS], [test $libnfs_cv_HAVE_TLS = yes])
+AC_SUBST(TLS_CFLAGS)
+AC_SUBST(TLS_LIBS)
+AC_SUBST(tls_library)
+AM_CONDITIONAL([HAVE_TLS], [test x$libnfs_cv_HAVE_TLS = xyes])
 
 AC_CHECK_MEMBERS([struct stat.st_mtim.tv_nsec])
 

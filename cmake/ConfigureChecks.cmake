@@ -87,15 +87,18 @@ check_c_source_compiles("#include <sys/types.h>
 #
 # Find out if gnutls exports the function gnutls_transport_is_ktls_enabled().
 # This tells whether the gnutls library has kTLS support.
+# Only relevant if we are going to build TLS support at all, see ENABLE_TLS.
 #
-set(CMAKE_REQUIRED_LIBRARIES gnutls)
-check_c_source_compiles("#include <gnutls/socket.h>
-                         int main()
-                         {
-                                gnutls_session_t session;
-                                gnutls_transport_is_ktls_enabled(session);
-                         }"
-                        HAVE_GNUTLS_TRANSPORT_IS_KTLS_ENABLED)
+if(ENABLE_TLS)
+  set(CMAKE_REQUIRED_LIBRARIES gnutls)
+  check_c_source_compiles("#include <gnutls/socket.h>
+                           int main()
+                           {
+                                  gnutls_session_t session;
+                                  gnutls_transport_is_ktls_enabled(session);
+                           }"
+                          HAVE_GNUTLS_TRANSPORT_IS_KTLS_ENABLED)
+endif()
 
 #
 # Test for pthread availability.

@@ -6,6 +6,13 @@ SUBDIRS += tls
 endif
 SUBDIRS +=  lib include $(MAYBE_UTILS) . $(MAYBE_EXAMPLES) $(MAYBE_SERVERS)
 
+#
+# What SUBDIRS holds depends on the configure options used, so list every
+# subdirectory here to make sure "make dist" always ships a complete tree.
+#
+DIST_SUBDIRS = doc mount nfs nfs4 nlm nsm portmap rquota tls lib include \
+	utils . examples servers tests
+
 pkgconfigdir = $(libdir)/pkgconfig
 pkgconfig_DATA = libnfs.pc
 
@@ -15,7 +22,6 @@ EXTRA_DIST = \
 	LICENCE-BSD.txt \
 	LICENCE-GPL-3.txt \
 	LICENCE-LGPL-2.1.txt \
-	examples \
 	libnfs.pc.in
 
 test: $(SUBDIRS)

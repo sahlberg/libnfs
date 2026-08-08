@@ -21,6 +21,8 @@ option(ENABLE_DOCUMENTATION "Build Documentation" OFF)
 option(ENABLE_UTILS "Build util programs" OFF)
 option(ENABLE_EXAMPLES "Build example programs" OFF)
 option(ENABLE_MULTITHREADING "Enable multithreading support" OFF)
+set(ENABLE_TLS "AUTO" CACHE STRING "Build RPC-with-TLS support: ON, OFF or AUTO (only if gnutls and kTLS are available)")
+set_property(CACHE ENABLE_TLS PROPERTY STRINGS AUTO ON OFF)
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
   set(CMAKE_INSTALL_RPATH "${INSTALL_LIB_DIR}")
@@ -73,22 +75,68 @@ if(CMAKE_SYSTEM_NAME STREQUAL Linux)
   #
   # TODO: BSD also has kTLS support, but that will need separate validation.
   #
-  find_package(GnuTLS "3.4.6")
-  if(GNUTLS_FOUND)
-    #
-    # Make sure the two most important header files are present before we enable TLS support,
-    # to avoid running into issues later during build. GnuTLS package found but gnutls/gnutls.h
-    # not found is a serious issue while if linux/tls.h is not found it would likely mean that
-    # user is using a kernel not supporting kTLS so we simply don't turn on TLS support.
-    #
-    check_include_file("gnutls/gnutls.h" HAVE_GNUTLS_H)
-    if(NOT HAVE_GNUTLS_H EQUAL "1")
-      message(FATAL_ERROR "GnuTLS found but gnutls/gnutls.h not found, GNUTLS_INCLUDE_DIR is ${GNUTLS_INCLUDE_DIR}")
+  # ENABLE_TLS=AUTO (the default) builds TLS support only if gnutls and the kernel kTLS
+  # headers/definitions are all available, ENABLE_TLS=ON fails the configure step if they
+  # are not and ENABLE_TLS=OFF never builds TLS support.
+  #
+  if(ENABLE_TLS)
+    include(CheckSymbolExists)
+    include(CheckCSourceCompiles)
+
+    find_package(GnuTLS "3.4.6")
+    if(NOT GNUTLS_FOUND)
+      set(TLS_MISSING "gnutls >= 3.4.6 not found")
+    else()
+      #
+      # Make sure the headers and the kernel definitions we use are all present before we
+      # enable TLS support, to avoid running into issues later during build. GnuTLS package
+      # found but gnutls/gnutls.h not found is a serious issue while if the kTLS bits are
+      # missing it would likely mean that user is using a kernel not supporting kTLS so we
+      # simply don't turn on TLS support.
+      #
+      set(CMAKE_REQUIRED_INCLUDES ${GNUTLS_INCLUDE_DIR})
+      set(CMAKE_REQUIRED_LIBRARIES ${GNUTLS_LIBRARIES})
+
+      check_include_file("gnutls/gnutls.h" HAVE_GNUTLS_H)
+      if(NOT HAVE_GNUTLS_H EQUAL "1")
+        message(FATAL_ERROR "GnuTLS found but gnutls/gnutls.h not found, GNUTLS_INCLUDE_DIR is ${GNUTLS_INCLUDE_DIR}")
+      endif()
+
+      check_include_file("linux/tls.h" HAVE_LINUX_TLS_H)
+      if(NOT HAVE_LINUX_TLS_H EQUAL "1")
+        set(TLS_MISSING "linux/tls.h not found, likely a kernel w/o kTLS support")
+      else()
+        #
+        # linux/tls.h alone is not enough, we also need the socket options used to switch a
+        # socket to the TLS ULP and to install the keys, and the crypto info struct.
+        #
+        check_c_source_compiles("
+          #include <sys/socket.h>
+          #include <netinet/tcp.h>
+          #include <linux/tls.h>
+          int main(void) {
+            struct tls12_crypto_info_aes_gcm_128 info;
+            info.info.version = TLS_1_2_VERSION;
+            info.info.cipher_type = TLS_CIPHER_AES_GCM_128;
+            (void)setsockopt(0, SOL_TCP, TCP_ULP, \"tls\", sizeof(\"tls\"));
+            (void)setsockopt(0, SOL_TLS, TLS_TX, &info, sizeof(info));
+            return 0;
+          }" HAVE_KTLS)
+        if(NOT HAVE_KTLS)
+          set(TLS_MISSING "kTLS definitions (TCP_ULP, SOL_TLS, TLS_TX) not found in the kernel headers")
+        endif()
+      endif()
+
+      unset(CMAKE_REQUIRED_INCLUDES)
+      unset(CMAKE_REQUIRED_LIBRARIES)
     endif()
 
-    check_include_file("linux/tls.h" HAVE_LINUX_TLS_H)
-    if(NOT HAVE_LINUX_TLS_H EQUAL "1")
-      message(STATUS "GnuTLS found but linux/tls.h not found, likely a kernel w/o kTLS support, can't enable TLS support")
+    if(TLS_MISSING)
+      if(ENABLE_TLS STREQUAL "AUTO")
+        message(STATUS "Building without RPC-with-TLS support: ${TLS_MISSING}")
+      else()
+        message(FATAL_ERROR "ENABLE_TLS is on but ${TLS_MISSING}")
+      endif()
     else()
       message(STATUS "Using ${GNUTLS_LIBRARIES}")
       add_definitions(-DHAVE_TLS)

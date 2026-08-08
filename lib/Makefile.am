@@ -14,6 +14,10 @@ libnfs_la_CPPFLAGS = -I$(abs_top_srcdir)/include \
 		     -I$(abs_top_srcdir)/win32 \
 		     "-D_U_=__attribute__((unused))"
 
+noinst_HEADERS = krb5-wrapper.h
+
+EXTRA_DIST = libnfs-win32.def ../win32/win32_errnowrapper.h
+
 libnfs_la_SOURCES = \
 	init.c \
 	krb5-wrapper.c \
@@ -48,6 +52,6 @@ libnfs_la_LIBADD = \
 	$(LIBPTHREAD)
 
 if HAVE_TLS
-libnfs_la_CPPFLAGS += -I$(abs_top_srcdir)/tls
-libnfs_la_LIBADD += ../tls/libtls.la -lgnutls
+libnfs_la_CPPFLAGS += -I$(abs_top_srcdir)/tls $(TLS_CFLAGS)
+libnfs_la_LIBADD += ../tls/libtls.la $(TLS_LIBS)
 endif

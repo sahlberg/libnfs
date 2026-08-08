@@ -8,7 +8,8 @@ CLEANFILES = $(nfs_GENERATED) tls-stamp
 
 libtls_la_CPPFLAGS = -I$(abs_top_srcdir)/include \
 		      -I$(abs_top_srcdir)/include/nfsc \
-		      -I$(abs_top_srcdir)/win32
+		      -I$(abs_top_srcdir)/win32 \
+		      $(TLS_CFLAGS)
 
 libtls_la_SOURCES = \
 	$(tls_SOURCES_GENERATED) \

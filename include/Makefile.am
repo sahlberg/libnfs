@@ -13,5 +13,6 @@ dist_nfsc_HEADERS = \
 
 dist_noinst_HEADERS = \
 	win32/win32_compat.h \
+        libnfs-multithreading.h \
         libnfs-private.h \
         slist.h
