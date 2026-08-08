@@ -170,9 +170,7 @@ add_subdirectory(portmap)
 add_subdirectory(rquota)
 add_subdirectory(lib)   # this has to be last (it links all static libs mentioned in CORE_LIBRARIES)
 
-if(ENABLE_DOCUMENTATION)
-  add_subdirectory(doc)
-endif()
+add_subdirectory(doc)
 
 if(ENABLE_EXAMPLES)
   add_subdirectory(examples)
