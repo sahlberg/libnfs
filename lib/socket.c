@@ -718,12 +718,12 @@ rpc_read_from_socket(struct rpc_context *rpc)
                         case IPPROTO_IP:
                                 sin = (struct sockaddr_in *)&rpc->udp_dst;
                                 sin->sin_family = AF_INET;
-                                sin->sin_addr.s_addr = ((struct in_pktinfo *)CMSG_DATA(cmsg))->ipi_addr.s_addr;
+                                sin->sin_addr.s_addr = ((struct in_pktinfo *)(void *)CMSG_DATA(cmsg))->ipi_addr.s_addr;
                                 break;
                         case IPPROTO_IPV6:
                                 sin6 = (struct sockaddr_in6 *)&rpc->udp_dst;
                                 sin6->sin6_family = AF_INET6;
-                                memcpy(&sin6->sin6_addr.s6_addr[0], &((struct in6_pktinfo *)CMSG_DATA(cmsg))->ipi6_addr.s6_addr[0], 16);
+                                memcpy(&sin6->sin6_addr.s6_addr[0], &((struct in6_pktinfo *)(void *)CMSG_DATA(cmsg))->ipi6_addr.s6_addr[0], 16);
                                 break;
                         }
                         break;

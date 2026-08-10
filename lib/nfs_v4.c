@@ -523,7 +523,7 @@ nfs_parse_attributes(struct nfs_context *nfs, struct nfs4_cb_data *data,
         len -= 8;
         /* FSID */
         CHECK_GETATTR_BUF_SPACE(len, 16);
-        st->nfs_dev = ((uint64_t *)buf)[0] ^ ((uint64_t *)buf)[1];
+        st->nfs_dev = ((uint64_t *)(void *)buf)[0] ^ ((uint64_t *)(void *)buf)[1];
         buf += 16;
         len -= 16;
         /* Inode */
@@ -600,7 +600,7 @@ nfs_parse_attributes(struct nfs_context *nfs, struct nfs4_cb_data *data,
         len -= pad;
         /* raw device */
         CHECK_GETATTR_BUF_SPACE(len, 8);
-        st->nfs_rdev = specdata4_to_rdev((uint32_t *)buf);
+        st->nfs_rdev = specdata4_to_rdev((uint32_t *)(void *)buf);
         buf += 8;
         len -= 8;
         /* Space Used */
