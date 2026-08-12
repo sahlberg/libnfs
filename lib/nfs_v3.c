@@ -938,16 +938,13 @@ nfs3_mount_3_cb(struct rpc_context *rpc, int status, void *command_data,
 		free_nfs_cb_data(data);
 		return;
 	}
-	res = *(exports *)command_data;
-	while (res) {
+	for (res = *(exports *)command_data; res; res = res->ex_next) {
 		struct mount_discovery_item_cb *md_item_cb;
 
 		if (strncmp(nfs_get_export(nfs), res->ex_dir, len)) {
-			res = res->ex_next;
 			continue;
 		}
 		if (res->ex_dir[len - 1] != '/' && res->ex_dir[len] != '/') {
-			res = res->ex_next;
 			continue;
 		}
 
@@ -996,8 +993,6 @@ nfs3_mount_3_cb(struct rpc_context *rpc, int status, void *command_data,
 			continue;
 		}
 		md_cb->wait_count++;
-
-		res = res->ex_next;
 	}
 
 	if (md_cb)
