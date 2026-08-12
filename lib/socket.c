@@ -1944,6 +1944,7 @@ rpc_connect_async(struct rpc_context *rpc, const char *server, int port,
 	rpc->connect_data = private_data;
 
 	if (rpc_connect_sockaddr_async(rpc) != 0) {
+		rpc->connect_cb = NULL;
 		return -1;
 	}
 
@@ -2156,6 +2157,7 @@ rpc_reconnect_requeue(struct rpc_context *rpc)
 		 */
 		rpc->resolve_server = rpc->resolve_on_reconnect;
 		if (rpc_connect_sockaddr_async(rpc) != 0) {
+			rpc->connect_cb = NULL;
 			rpc_error_all_pdus(rpc, "RPC ERROR: Failed to "
                                            "reconnect async");
 			return -1;
