@@ -1962,6 +1962,9 @@ rpc_disconnect(struct rpc_context *rpc, const char *error)
 
 	/* Do not re-disconnect if we are already disconnected */
 	if (!rpc->is_connected) {
+		/* but a connect still in flight must be cancelled */
+		rpc_set_resiliency(rpc, 0, rpc->timeout, 0);
+		maybe_call_connect_cb(rpc, RPC_STATUS_CANCEL);
 		return 0;
 	}
 
