@@ -897,6 +897,8 @@ finished:
                         free_nfs_cb_data(data);
                         return;
                 }
+
+                free(md_cb);
                 return;
         }
 
