@@ -2566,6 +2566,7 @@ nfs4_open_readlink(struct rpc_context *rpc, COMPOUND4res *res,
                                       "open(O_NOFOLLOW)");
                         data->cb(-ELOOP, nfs, nfs_get_error(nfs),
                                  data->private_data);
+                        free_nfs4_cb_data(data);
                         return -1;
                 }
 
