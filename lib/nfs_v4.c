@@ -1490,7 +1490,7 @@ nfs4_lookup_path_async(struct nfs_context *nfs,
         if (rpc_nfs4_compound_task(nfs->rpc, nfs4_lookup_path_1_cb, &args,
                                    data) == NULL) {
                 nfs_set_error(nfs, "Failed to queue LOOKUP command. %s",
-                              nfs_get_error(nfs));
+                              rpc_get_error(nfs->rpc));
                 free(path);
                 free(op);
                 return -1;
@@ -1636,7 +1636,7 @@ nfs4_mount_4_cb(struct rpc_context *rpc, int status, void *command_data,
         if (rpc_nfs4_compound_task(rpc, nfs4_mount_5_cb, &args,
                                    private_data) == NULL) {
                 nfs_set_error(nfs, "Failed to queue GETATTR rwmax. %s",
-                              nfs_get_error(nfs));
+                              rpc_get_error(rpc));
                 data->cb(-ENOMEM, nfs, nfs_get_error(nfs), data->private_data);
                 free_nfs4_cb_data(data);
                 return;
@@ -1723,7 +1723,7 @@ nfs4_mount_2_cb(struct rpc_context *rpc, int status, void *command_data,
         if (rpc_nfs4_compound_task(rpc, nfs4_mount_3_cb, &args,
                                    private_data) == NULL) {
                 nfs_set_error(nfs, "Failed to queue SETCLIENTID_CONFIRM. %s",
-                              nfs_get_error(nfs));
+                              rpc_get_error(rpc));
                 data->cb(-ENOMEM, nfs, nfs_get_error(nfs), data->private_data);
                 free_nfs4_cb_data(data);
                 return;
@@ -1756,7 +1756,7 @@ nfs4_mount_1_cb(struct rpc_context *rpc, int status, void *command_data,
 
         if (rpc_nfs4_compound_task(rpc, nfs4_mount_2_cb, &args, data) == NULL) {
                 nfs_set_error(nfs, "Failed to queue SETCLIENTID. %s",
-                              nfs_get_error(nfs));
+                              rpc_get_error(rpc));
                 data->cb(-ENOMEM, nfs, nfs_get_error(nfs), data->private_data);
                 free_nfs4_cb_data(data);
                 return;
@@ -1816,7 +1816,7 @@ nfs4_mount_async(struct nfs_context *nfs, const char *server,
                                    NFS4_PROGRAM, NFS_V4,
                                    nfs4_mount_1_cb, data) != 0) {
                 nfs_set_error(nfs, "Failed to start connection. %s",
-                              nfs_get_error(nfs));
+                              rpc_get_error(nfs->rpc));
                 free_nfs4_cb_data(data);
                 return -1;
         }
@@ -3807,7 +3807,7 @@ nfs4_opendir_continue(struct nfs_context *nfs, struct nfs4_cb_data *data)
         if (rpc_nfs4_compound_task(nfs->rpc, nfs4_opendir_2_cb, &args,
                                    data) == NULL) {
                 nfs_set_error(nfs, "Failed to queue READDIR command. %s",
-                              nfs_get_error(nfs));
+                              rpc_get_error(nfs->rpc));
                 data->cb(-ENOMEM, nfs, nfs_get_error(nfs), data->private_data);
                 free_nfs4_cb_data(data);
                 return;
