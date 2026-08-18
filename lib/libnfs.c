@@ -76,6 +76,7 @@
 
 #include <errno.h>
 #include <fcntl.h>
+#include <inttypes.h>
 #include <stdarg.h>
 #include <stdlib.h>
 #include <string.h>
@@ -735,8 +736,24 @@ nfs_init_context(void)
         }
         nfs4_set_verifier(nfs, verifier);
 
-        snprintf(client_name, MAX_CLIENT_NAME, "Libnfs pid:%d %d", getpid(),
-                 (int)time(NULL));
+        /*
+         * The client name is the NFSv4 client identity. It must differ for
+         * every context: a second SETCLIENTID under an id the server already
+         * knows means "that client rebooted", and the server then purges the
+         * state -- including open stateids -- belonging to the earlier
+         * context. pid plus whole seconds is not enough, because an
+         * application that mounts several exports does so well within one
+         * second and every context after the first evicts its predecessors,
+         * which then fail with NFS4ERR_EXPIRED / NFS4ERR_STALE_CLIENTID.
+         *
+         * Adding the context address and a millisecond timestamp makes the
+         * name unique without needing a lock or an atomic counter: two live
+         * contexts cannot share an address, and an address can only be reused
+         * once the previous context has been destroyed, at which point its
+         * state is no longer wanted.
+         */
+        snprintf(client_name, MAX_CLIENT_NAME, "Libnfs pid:%d %" PRIu64 " %p",
+                 getpid(), rpc_current_time(), (void *)nfs);
         nfs4_set_client_name(nfs, client_name);
 
 #ifdef HAVE_MULTITHREADING
