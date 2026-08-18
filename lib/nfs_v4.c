@@ -260,7 +260,7 @@ free_nfs4_cb_data(struct nfs4_cb_data *data)
 {
 #ifdef HAVE_MULTITHREADING
         if (data->flags & MUTEX_HELD) {
-                nfs_mt_mutex_unlock(&data->nfs->nfsi->nfs4_open_call_mutex);
+                nfs_mt_sem_post(&data->nfs->nfsi->nfs4_open_call_sem);
         }
 #endif        
         free(data->path);
@@ -2711,7 +2711,7 @@ nfs4_open_async(struct nfs_context *nfs, const char *path, int flags,
 
 #ifdef HAVE_MULTITHREADING
         if (nfs->rpc->multithreading_enabled) {
-                nfs_mt_mutex_lock(&nfs->nfsi->nfs4_open_call_mutex);
+                nfs_mt_sem_wait(&nfs->nfsi->nfs4_open_call_sem);
                 data->flags |= MUTEX_HELD;
         }
 #endif        
@@ -2871,7 +2871,7 @@ nfs4_close_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_cb cb,
 
 #ifdef HAVE_MULTITHREADING
         if (nfs->rpc->multithreading_enabled) {
-                nfs_mt_mutex_lock(&nfs->nfsi->nfs4_open_call_mutex);
+                nfs_mt_sem_wait(&nfs->nfsi->nfs4_open_call_sem);
                 data->flags |= MUTEX_HELD;
         }
 #endif        
@@ -4131,7 +4131,7 @@ nfs4_truncate_async(struct nfs_context *nfs, const char *path, uint64_t length,
 
 #ifdef HAVE_MULTITHREADING
         if (nfs->rpc->multithreading_enabled) {
-                nfs_mt_mutex_lock(&nfs->nfsi->nfs4_open_call_mutex);
+                nfs_mt_sem_wait(&nfs->nfsi->nfs4_open_call_sem);
                 data->flags |= MUTEX_HELD;
         }
 #endif        
