@@ -759,7 +759,7 @@ nfs_init_context(void)
 #ifdef HAVE_MULTITHREADING
         nfs_mt_mutex_init(&nfs->nfsi->nfs_mutex);
         nfs_mt_mutex_init(&nfs->nfsi->nfs4_open_counter_mutex);
-        nfs_mt_mutex_init(&nfs->nfsi->nfs4_open_call_mutex);
+        nfs_mt_sem_init(&nfs->nfsi->nfs4_open_call_sem, 1);
 #endif /* HAVE_MULTITHREADING */
 
 #ifdef HAVE_SIGNAL_H
@@ -823,7 +823,7 @@ nfs_destroy_context(struct nfs_context *nfs)
 	}
 
 #ifdef HAVE_MULTITHREADING
-        nfs_mt_mutex_destroy(&nfs->nfsi->nfs4_open_call_mutex);
+        nfs_mt_sem_destroy(&nfs->nfsi->nfs4_open_call_sem);
         nfs_mt_mutex_destroy(&nfs->nfsi->nfs4_open_counter_mutex);
         nfs_mt_mutex_destroy(&nfs->nfsi->nfs_mutex);
         while (nfs->nfsi->thread_ctx) {

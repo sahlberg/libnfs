@@ -927,7 +927,7 @@ struct nfs_context_internal {
        libnfs_thread_t service_thread;
        libnfs_mutex_t nfs_mutex;
        libnfs_mutex_t nfs4_open_counter_mutex;
-       libnfs_mutex_t nfs4_open_call_mutex;
+       libnfs_sem_t nfs4_open_call_sem;
        struct nfs_thread_context *thread_ctx;
 #endif /* HAVE_MULTITHREADING */
        int readonly;
