@@ -1010,7 +1010,7 @@ static int rpc_process_reply(struct rpc_context *rpc, ZDR *zdr)
 	INC_STATS(rpc, num_resp_rcvd);
 
 	memset(&msg, 0, sizeof(struct rpc_msg));
-	msg.body.rbody.reply.areply.verf = _null_auth;
+	msg.body.rbody.reply.areply.verf = libnfs_null_auth;
 	if (pdu->zdr_decode_bufsize > 0) {
 		pdu->zdr_decode_buf = (char *)pdu + PAD_TO_8_BYTES(sizeof(struct rpc_pdu));
 	}
@@ -1288,7 +1288,7 @@ static int rpc_send_error_reply(struct rpc_context *rpc,
         res.body.rbody.stat                          = MSG_ACCEPTED;
         res.body.rbody.reply.areply.reply_data.mismatch_info.low  = min_vers;
         res.body.rbody.reply.areply.reply_data.mismatch_info.high = max_vers;
-	res.body.rbody.reply.areply.verf             = _null_auth;
+	res.body.rbody.reply.areply.verf             = libnfs_null_auth;
 	res.body.rbody.reply.areply.stat             = err;
 
         if (rpc->is_udp) {
@@ -1321,7 +1321,7 @@ int rpc_send_reply(struct rpc_context *rpc,
 	res.xid                                      = call->xid;
         res.direction                                = REPLY;
         res.body.rbody.stat                          = MSG_ACCEPTED;
-	res.body.rbody.reply.areply.verf             = _null_auth;
+	res.body.rbody.reply.areply.verf             = libnfs_null_auth;
 	res.body.rbody.reply.areply.stat             = SUCCESS;
 
         res.body.rbody.reply.areply.reply_data.results.where = reply;

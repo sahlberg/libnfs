@@ -127,7 +127,7 @@ struct opaque_verf {
         /* GSS */
         struct gss_ctx_id_struct *gss_context;
 };
-extern struct opaque_verf _null_auth;
+extern struct opaque_verf libnfs_null_auth;
 
 struct AUTH {
 	struct opaque_cred	ah_cred;

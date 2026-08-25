@@ -75,7 +75,7 @@ struct zdr_mem {
        char buf[1];
 };
 
-struct opaque_verf _null_auth;
+struct opaque_verf libnfs_null_auth;
 
 bool_t libnfs_zdr_setpos(ZDR *zdrs, uint32_t pos)
 {
