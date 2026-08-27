@@ -2144,10 +2144,7 @@ EXTERN int nfs_mt_service_thread_start_ss(struct nfs_context *nfs, size_t stack_
  */
 EXTERN void nfs_mt_service_thread_stop(struct nfs_context *nfs);
 
-#ifdef __cplusplus
-}
-#endif
-
+struct sockaddr;
 
 /*
  * UDP contexts for UDP servers
@@ -2165,10 +2162,14 @@ EXTERN struct sockaddr *rpc_get_udp_src_sockaddr(struct rpc_context *rpc);
 EXTERN struct sockaddr *rpc_get_udp_dst_sockaddr(struct rpc_context *rpc);
 #endif
 
-void rpc_set_resiliency(struct rpc_context *rpc,
+EXTERN void rpc_set_resiliency(struct rpc_context *rpc,
 			int num_tcp_reconnect,
 			int timeout,
 			int retrans);
 
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* !_LIBNFS_H_ */
