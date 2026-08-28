@@ -114,6 +114,41 @@ Utility programs for LibNFS
 %{_mandir}/man1/nfs-ls.1.gz
 
 %changelog
+* Fri Aug 28 2026 : Version 7.0.1
+- Bugfix release, ABI compatible with 7.0.0
+- libnfs.h: move the UDP accessors and rpc_set_resiliency() inside
+  the extern "C" block. C++ callers declared them with C++ linkage
+  and could not link against the unmangled symbols the library
+  exports. rpc_set_resiliency() was also missing EXTERN and so was
+  not exported from the Windows DLL
+- NFSv4: give every context a unique client name. Two contexts created
+  in the same second shared an identity, so the server treated the
+  second SETCLIENTID as a client reboot and purged the state of the
+  first. Applications mounting more than one export only had the most
+  recently created context working
+- NFSv4: make the OPEN gate a semaphore instead of a mutex. It is
+  released from the RPC callback on the service thread, which a mutex
+  does not allow, so with multithreading enabled the gate jammed and
+  OPEN calls stopped being serialised
+- Fix nfs_read() not advancing the file offset for reads larger than
+  the servers readmax, so a read-until-EOF loop never terminated
+- Fix an endless loop in the NFSv3 mount code when scanning the export
+  list for submounts
+- Fix memory leaks in the mount path, in nfs4_open_readlink() and of a
+  connect still in flight when the context is disconnected
+- Report the real error from the RPC layer instead of an empty string
+  when queueing a command fails
+- Fix the arm32 build, which failed on -Werror=cast-align
+- RPC-with-TLS is now optional and properly probed for. Both build
+  systems check for gnutls >= 3.4.6 and for working kTLS and build
+  without TLS if either is missing. Use --enable-tls or
+  -DENABLE_TLS=ON to fail the configure instead, --disable-tls or
+  -DENABLE_TLS=OFF to never build it
+- cmake now installs the manpages. ENABLE_DOCUMENTATION only asks for
+  them to be regenerated from the docbook sources
+- Fix "make dist" to always ship a complete tree, and build the shared
+  server code as a libtool convenience library so out of tree builds
+  work
 * Sat Aug 08 2026 : Version 7.0.0
 - SONAME bumped to 17. struct rpc_stats grew, so this release is not
   ABI compatible with 6.x and dependent packages must be rebuilt

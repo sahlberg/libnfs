@@ -2,9 +2,9 @@ cmake_minimum_required(VERSION 3.16)
 
 project(libnfs
         LANGUAGES C
-        VERSION 17.0.0)
+        VERSION 17.1.0)
 
-set(SOVERSION 17.0.0 CACHE STRING "" FORCE)
+set(SOVERSION 17.1.0 CACHE STRING "" FORCE)
 
 include(cmake/GNUInstallDirs.cmake)
 
