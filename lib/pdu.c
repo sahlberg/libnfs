@@ -1541,7 +1541,17 @@ int rpc_process_pdu(struct rpc_context *rpc, char *buf, int size)
                         rpc_set_error(rpc, "rpc_procdess_reply failed");
                 }
 
-        if (rpc->fragments == NULL && rpc->pdu && rpc->pdu->in.base) {
+        /*
+         * A zero-copy READ still has to hand its payload to the caller, so the
+         * ZDR has to survive this function for the copy in READ_PAYLOAD. That
+         * is true whether the reply arrived as one record or was reassembled
+         * from fragments: in the latter case the ZDR points into the
+         * reassembly buffer, which is live until payload_finished frees it.
+         * Excluding the reassembled case here left free_zdr clear, the copy
+         * skipped, and the caller's buffer untouched while the callback still
+         * reported success.
+         */
+        if (rpc->pdu && rpc->pdu->in.base) {
                 memcpy(&rpc->pdu->zdr, &zdr, sizeof(zdr));
                 rpc->pdu->free_zdr = 1;
         } else {

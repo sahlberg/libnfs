@@ -1133,15 +1133,21 @@ rpc_read_from_socket(struct rpc_context *rpc)
                                                 return -1;
 
                                         /*
-                                         * Now pos is pointing at the start of data, while rpc->inpos
-                                         * is the total bytes we have read for this RPC response,
-                                         * including the RPC header, so "rpc->inpos - pos" is the
-                                         * number of data bytes read. This will be less than ZCRP,
-                                         * since we clamped the read size to ZCRP above.
+                                         * Now pos is pointing at the start of data, and
+                                         * rpc->buf/rpc->pdu_size is the record we just
+                                         * processed, so "rpc->pdu_size - pos" is the number
+                                         * of data bytes we hold. For a single record that is
+                                         * rpc->inbuf and is less than ZCRP, since we clamped
+                                         * the read size to ZCRP above. For a reply that came
+                                         * in fragments it is the reassembly buffer and the
+                                         * whole record, so the entire read payload and not
+                                         * bounded by ZCRP. rpc->inpos cannot be used here: in
+                                         * the reassembled case it only covers the last
+                                         * fragment.
                                          */
                                         pos = zdr_getpos(&rpc->pdu->zdr);
-                                        count = rpc->inpos - pos;
-                                        assert(count <= ZCRP);
+                                        count = rpc->pdu_size - pos;
+                                        assert(rpc->fragments || count <= ZCRP);
                                         /*
                                          * No sane server will return more read data than we asked for.
                                          * If the server is buggy and does send more, we discard the extra
@@ -1167,10 +1173,29 @@ rpc_read_from_socket(struct rpc_context *rpc)
                                         if (rpc->pdu->in.remaining_size < count) {
                                                 count = rpc->pdu->in.remaining_size;
                                         }
-                                        rpc_memcpy_cursor(rpc, &rpc->pdu->in, &rpc->inbuf[pos], count);
+                                        rpc_memcpy_cursor(rpc, &rpc->pdu->in, &rpc->buf[pos], count);
 
                                         if (rpc->pdu->in.remaining_size == 0) {
                                                 // handle padding?
+                                        } else if (rpc->fragments) {
+                                                /*
+                                                 * A reassembled record is whole,
+                                                 * so there is nothing left on
+                                                 * the socket for this reply. If
+                                                 * it still claims more read data
+                                                 * than the record carried it is
+                                                 * malformed, and continuing into
+                                                 * READ_IOVEC would consume the
+                                                 * next record as payload and
+                                                 * desync the stream.
+                                                 */
+                                                rpc_set_error(rpc, "READ reply declares "
+                                                              "more data than the "
+                                                              "reassembled record holds");
+                                                free(rpc->buf);
+                                                rpc->buf = NULL;
+                                                rpc_free_all_fragments(rpc);
+                                                return -1;
                                         } else {
                                                 rpc->pdu->read_count -= count;
                                                 rpc->state = READ_IOVEC;
