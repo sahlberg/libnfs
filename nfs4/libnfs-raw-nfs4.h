@@ -2058,6 +2058,94 @@ struct SEEK4res {
 };
 typedef struct SEEK4res SEEK4res;
 
+struct data_info4 {
+	offset4 di_offset;
+	length4 di_length;
+};
+typedef struct data_info4 data_info4;
+
+struct data4 {
+	offset4 d_offset;
+	struct {
+		uint32_t d_data_len;
+		char *d_data_val;
+	} d_data;
+};
+typedef struct data4 data4;
+
+struct read_plus_content {
+	data_content4 rpc_content;
+	union {
+		data4 rpc_data;
+		data_info4 rpc_hole;
+	} read_plus_content_u;
+};
+typedef struct read_plus_content read_plus_content;
+
+struct READ_PLUS4args {
+	stateid4 rpa_stateid;
+	offset4 rpa_offset;
+	count4 rpa_count;
+};
+typedef struct READ_PLUS4args READ_PLUS4args;
+
+struct READ_PLUS4resok {
+	uint32_t rpr_eof;
+	struct {
+		uint32_t rpr_contents_len;
+		read_plus_content *rpr_contents_val;
+	} rpr_contents;
+};
+typedef struct READ_PLUS4resok READ_PLUS4resok;
+
+struct READ_PLUS4res {
+	nfsstat4 rp_status;
+	union {
+		READ_PLUS4resok rp_resok4;
+	} READ_PLUS4res_u;
+};
+typedef struct READ_PLUS4res READ_PLUS4res;
+
+struct app_data_block4 {
+	offset4 adb_offset;
+	length4 adb_block_size;
+	length4 adb_block_count;
+	length4 adb_reloff_blocknum;
+	count4 adb_block_num;
+	length4 adb_reloff_pattern;
+	struct {
+		uint32_t adb_pattern_len;
+		char *adb_pattern_val;
+	} adb_pattern;
+};
+typedef struct app_data_block4 app_data_block4;
+
+struct write_response4 {
+	struct {
+		uint32_t wr_callback_id_len;
+		stateid4 *wr_callback_id_val;
+	} wr_callback_id;
+	length4 wr_count;
+	stable_how4 wr_committed;
+	verifier4 wr_writeverf;
+};
+typedef struct write_response4 write_response4;
+
+struct WRITE_SAME4args {
+	stateid4 wsa_stateid;
+	stable_how4 wsa_stable;
+	app_data_block4 wsa_adb;
+};
+typedef struct WRITE_SAME4args WRITE_SAME4args;
+
+struct WRITE_SAME4res {
+	nfsstat4 wsr_status;
+	union {
+		write_response4 wsr_resok4;
+	} WRITE_SAME4res_u;
+};
+typedef struct WRITE_SAME4res WRITE_SAME4res;
+
 enum nfs_opnum4 {
 	OP_ACCESS = 3,
 	OP_CLOSE = 4,
@@ -2116,7 +2204,9 @@ enum nfs_opnum4 {
 	OP_RECLAIM_COMPLETE = 58,
 	OP_ALLOCATE = 59,
 	OP_DEALLOCATE = 62,
+	OP_READ_PLUS = 68,
 	OP_SEEK = 69,
+	OP_WRITE_SAME = 70,
 	OP_ILLEGAL = 10044,
 };
 typedef enum nfs_opnum4 nfs_opnum4;
@@ -2174,7 +2264,9 @@ struct nfs_argop4 {
 		RECLAIM_COMPLETE4args opreclaimcomplete;
 		ALLOCATE4args opallocate;
 		DEALLOCATE4args opdeallocate;
+		READ_PLUS4args opreadplus;
 		SEEK4args opseek;
+		WRITE_SAME4args opwritesame;
 	} nfs_argop4_u;
 };
 typedef struct nfs_argop4 nfs_argop4;
@@ -2239,7 +2331,9 @@ struct nfs_resop4 {
 		RECLAIM_COMPLETE4res opreclaimcomplete;
 		ALLOCATE4res opallocate;
 		DEALLOCATE4res opdeallocate;
+		READ_PLUS4res opreadplus;
 		SEEK4res opseek;
+		WRITE_SAME4res opwritesame;
 		ILLEGAL4res opillegal;
 	} nfs_resop4_u;
 };
@@ -2760,6 +2854,16 @@ extern  uint32_t zdr_ALLOCATE4res (ZDR *, ALLOCATE4res*);
 extern  uint32_t zdr_DEALLOCATE4args (ZDR *, DEALLOCATE4args*);
 extern  uint32_t zdr_DEALLOCATE4res (ZDR *, DEALLOCATE4res*);
 extern  uint32_t zdr_SEEK4args (ZDR *, SEEK4args*);
+extern  uint32_t zdr_data_info4 (ZDR *, data_info4*);
+extern  uint32_t zdr_data4 (ZDR *, data4*);
+extern  uint32_t zdr_read_plus_content (ZDR *, read_plus_content*);
+extern  uint32_t zdr_READ_PLUS4args (ZDR *, READ_PLUS4args*);
+extern  uint32_t zdr_READ_PLUS4resok (ZDR *, READ_PLUS4resok*);
+extern  uint32_t zdr_READ_PLUS4res (ZDR *, READ_PLUS4res*);
+extern  uint32_t zdr_app_data_block4 (ZDR *, app_data_block4*);
+extern  uint32_t zdr_write_response4 (ZDR *, write_response4*);
+extern  uint32_t zdr_WRITE_SAME4args (ZDR *, WRITE_SAME4args*);
+extern  uint32_t zdr_WRITE_SAME4res (ZDR *, WRITE_SAME4res*);
 extern  uint32_t zdr_SEEK4resok (ZDR *, SEEK4resok*);
 extern  uint32_t zdr_SEEK4res (ZDR *, SEEK4res*);
 extern  uint32_t zdr_ILLEGAL4res (ZDR *, ILLEGAL4res*);
@@ -3089,6 +3193,16 @@ extern uint32_t zdr_ALLOCATE4res ();
 extern uint32_t zdr_DEALLOCATE4args ();
 extern uint32_t zdr_DEALLOCATE4res ();
 extern uint32_t zdr_SEEK4args ();
+extern uint32_t zdr_data_info4 ();
+extern uint32_t zdr_data4 ();
+extern uint32_t zdr_read_plus_content ();
+extern uint32_t zdr_READ_PLUS4args ();
+extern uint32_t zdr_READ_PLUS4resok ();
+extern uint32_t zdr_READ_PLUS4res ();
+extern uint32_t zdr_app_data_block4 ();
+extern uint32_t zdr_write_response4 ();
+extern uint32_t zdr_WRITE_SAME4args ();
+extern uint32_t zdr_WRITE_SAME4res ();
 extern uint32_t zdr_SEEK4resok ();
 extern uint32_t zdr_SEEK4res ();
 extern uint32_t zdr_ILLEGAL4res ();
@@ -3160,6 +3274,91 @@ EXTERN int nfs4_getacl(struct nfs_context *nfs, struct nfsfh *nfsfh,
                        fattr4_acl *nfs4acl);
 
 EXTERN void nfs4_acl_free(fattr4_acl *nfs4acl);
+
+/*
+ * NFSv4.2 READ_PLUS and WRITE_SAME.
+ *
+ * These have no POSIX equivalent to hide behind, so they are exposed as they
+ * are and an application calls them directly. Both need the context to be
+ * NFSv4.2 and fail with -ENOTSUP otherwise.
+ */
+
+/*
+ * Async READ_PLUS
+ *
+ * Like READ, but the reply describes the range as a list of extents that are
+ * each either data or a hole, so a sparse file can be read without the holes
+ * being sent as zeroes. Note that a hole in the reply may be longer than the
+ * count that was asked for.
+ *
+ * Function returns
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
+ *
+ * When the callback is invoked, status indicates the result:
+ *      0 : Success.
+ *          data is READ_PLUS4resok *. It points into the reply and is only
+ *          valid until the callback returns.
+ * -errno : An error occured.
+ *          data is the error string.
+ */
+EXTERN int nfs42_read_plus_async(struct nfs_context *nfs, struct nfsfh *nfsfh,
+                                 uint64_t offset, uint32_t count,
+                                 nfs_cb cb, void *private_data);
+
+/*
+ * Sync READ_PLUS
+ *
+ * Function returns
+ *      0 : The operation was successful.
+ * -errno : The command failed.
+ *
+ * If the command was successful, the returned data in res must be freed by
+ * calling nfs42_read_plus_free().
+ */
+EXTERN int nfs42_read_plus(struct nfs_context *nfs, struct nfsfh *nfsfh,
+                           uint64_t offset, uint32_t count,
+                           READ_PLUS4resok *res);
+
+EXTERN void nfs42_read_plus_free(READ_PLUS4resok *res);
+
+/*
+ * Async WRITE_SAME
+ *
+ * Writes a pattern repeatedly, so that a large run of identical blocks costs
+ * one RPC rather than one per block. The application data block describes the
+ * pattern, how large a block is and how many of them to write. stable is
+ * non-zero to ask the server to commit the write to stable storage.
+ *
+ * Function returns
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
+ *
+ * When the callback is invoked, status indicates the result:
+ *      0 : Success.
+ *          data is write_response4 *. It points into the reply and is only
+ *          valid until the callback returns.
+ * -errno : An error occured.
+ *          data is the error string.
+ */
+EXTERN int nfs42_write_same_async(struct nfs_context *nfs, struct nfsfh *nfsfh,
+                                  app_data_block4 *adb, int stable,
+                                  nfs_cb cb, void *private_data);
+
+/*
+ * Sync WRITE_SAME
+ *
+ * Function returns
+ *      0 : The operation was successful and count is set to the number of
+ *          bytes written.
+ * -errno : The command failed.
+ */
+EXTERN int nfs42_write_same(struct nfs_context *nfs, struct nfsfh *nfsfh,
+                            app_data_block4 *adb, int stable, uint64_t *count);
 
 #ifdef __cplusplus
 }

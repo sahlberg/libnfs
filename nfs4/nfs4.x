@@ -2129,7 +2129,9 @@ enum nfs_opnum4 {
         /* NFSv4.2, RFC 7862 */
         OP_ALLOCATE             = 59,
         OP_DEALLOCATE           = 62,
+        OP_READ_PLUS            = 68,
         OP_SEEK                 = 69,
+        OP_WRITE_SAME           = 70,
         OP_ILLEGAL              = 10044
 };
 
@@ -2175,6 +2177,73 @@ struct SEEK4resok {
 union SEEK4res switch (nfsstat4 sa_status) {
  case NFS4_OK:
          SEEK4resok     resok4;
+ default:
+         void;
+};
+
+struct data_info4 {
+        offset4         di_offset;
+        length4         di_length;
+};
+
+struct data4 {
+        offset4         d_offset;
+        opaque          d_data<>;
+};
+
+union read_plus_content switch (data_content4 rpc_content) {
+ case NFS4_CONTENT_DATA:
+         data4          rpc_data;
+ case NFS4_CONTENT_HOLE:
+         data_info4     rpc_hole;
+ default:
+         void;
+};
+
+struct READ_PLUS4args {
+        stateid4        rpa_stateid;
+        offset4         rpa_offset;
+        count4          rpa_count;
+};
+
+struct READ_PLUS4resok {
+        bool                    rpr_eof;
+        read_plus_content       rpr_contents<>;
+};
+
+union READ_PLUS4res switch (nfsstat4 rp_status) {
+ case NFS4_OK:
+         READ_PLUS4resok        rp_resok4;
+ default:
+         void;
+};
+
+struct app_data_block4 {
+        offset4         adb_offset;
+        length4         adb_block_size;
+        length4         adb_block_count;
+        length4         adb_reloff_blocknum;
+        count4          adb_block_num;
+        length4         adb_reloff_pattern;
+        opaque          adb_pattern<>;
+};
+
+struct write_response4 {
+        stateid4        wr_callback_id<1>;
+        length4         wr_count;
+        stable_how4     wr_committed;
+        verifier4       wr_writeverf;
+};
+
+struct WRITE_SAME4args {
+        stateid4        wsa_stateid;
+        stable_how4     wsa_stable;
+        app_data_block4 wsa_adb;
+};
+
+union WRITE_SAME4res switch (nfsstat4 wsr_status) {
+ case NFS4_OK:
+         write_response4        wsr_resok4;
  default:
          void;
 };
@@ -2239,7 +2308,9 @@ union nfs_argop4 switch (nfs_opnum4 argop) {
  case OP_RECLAIM_COMPLETE:      RECLAIM_COMPLETE4args opreclaimcomplete;
  case OP_ALLOCATE:              ALLOCATE4args opallocate;
  case OP_DEALLOCATE:            DEALLOCATE4args opdeallocate;
+ case OP_READ_PLUS:             READ_PLUS4args opreadplus;
  case OP_SEEK:                  SEEK4args opseek;
+ case OP_WRITE_SAME:            WRITE_SAME4args opwritesame;
  case OP_ILLEGAL:       void;
 };
 
@@ -2303,7 +2374,9 @@ union nfs_resop4 switch (nfs_opnum4 resop){
  case OP_RECLAIM_COMPLETE:      RECLAIM_COMPLETE4res opreclaimcomplete;
  case OP_ALLOCATE:              ALLOCATE4res opallocate;
  case OP_DEALLOCATE:            DEALLOCATE4res opdeallocate;
+ case OP_READ_PLUS:             READ_PLUS4res opreadplus;
  case OP_SEEK:                  SEEK4res opseek;
+ case OP_WRITE_SAME:            WRITE_SAME4res opwritesame;
  case OP_ILLEGAL:       ILLEGAL4res opillegal;
 };
 
