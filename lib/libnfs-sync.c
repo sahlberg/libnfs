@@ -366,7 +366,15 @@ nfs_mount(struct nfs_context *nfs, const char *server, const char *export)
                 rpc_disconnect(nfs->rpc, "disconnect to try different dialect");
                 ret = _nfs_mount(nfs, server, export);
         }
-        nfs_set_error(nfs, "%s", rpc_get_error(nfs->rpc));
+        /*
+         * Only reach for the RPC layer's error when it actually has one.
+         * Overwriting unconditionally discarded the NFS level reason, and
+         * left an empty string for failures that never got as far as an RPC,
+         * such as asking for a version this context cannot speak.
+         */
+        if (ret && rpc_get_error(nfs->rpc) && *rpc_get_error(nfs->rpc)) {
+                nfs_set_error(nfs, "%s", rpc_get_error(nfs->rpc));
+        }
 
         return ret;
 }
