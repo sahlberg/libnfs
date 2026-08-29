@@ -3846,6 +3846,10 @@ nfs4_parse_readdir(struct nfs_context *nfs, struct nfs4_cb_data *data,
 {
 	struct nfsdir *nfsdir = data->filler.blob1.val;
         struct entry4 *e;
+        uint64_t cookie;
+
+        /* The cookie this reply is answering. */
+        memcpy(&cookie, data->filler.blob2.val, sizeof(uint64_t));
 
         e = res->reply.entries;
         while (e) {
@@ -3942,6 +3946,25 @@ nfs4_parse_readdir(struct nfs_context *nfs, struct nfs4_cb_data *data,
         }
 
         if (res->reply.eof == 0) {
+                uint64_t next;
+
+                /*
+                 * The server says there is more to come, so the next request
+                 * must ask for something different from the last one. A reply
+                 * that leaves the cookie where it was, either by returning no
+                 * entries at all or by repeating the one we sent, would have
+                 * us reissue an identical READDIR forever.
+                 */
+                memcpy(&next, data->filler.blob2.val, sizeof(uint64_t));
+                if (next == cookie) {
+                        nfs_set_error(nfs, "NFS: server did not advance the "
+                                      "readdir cookie for %s, giving up to "
+                                      "avoid looping", data->path);
+                        data->cb(-EIO, nfs, nfs_get_error(nfs),
+                                 data->private_data);
+                        free_nfs4_cb_data(data);
+                        return;
+                }
                 nfs4_opendir_continue(nfs, data);
                 return;
         }
