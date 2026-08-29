@@ -2009,6 +2009,21 @@ rpc_disconnect(struct rpc_context *rpc, const char *error)
 
 	rpc->is_connected = 0;
 
+        /*
+         * Whatever we were part way through reading belongs to the socket we
+         * just closed. Only rpc_reconnect_requeue() reset this, so a plain
+         * disconnect followed by a fresh connect resumed mid-record and ate
+         * the new connection's first bytes as the tail of the old one.
+         *
+         * rpc->pdu is deliberately left alone here. When the disconnect comes
+         * from inside a reply callback, which is what the mount sequence
+         * does, rpc_read_from_socket() sees the connection change under it
+         * and completes that pdu itself.
+         */
+        rpc->state = READ_RM;
+        rpc->inpos = 0;
+        rpc_free_all_fragments(rpc);
+
         if (!rpc->is_server_context) {
                 rpc_error_all_pdus(rpc, error);
         }
