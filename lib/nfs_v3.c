@@ -2571,6 +2571,15 @@ nfs3_lseek_async(struct nfs_context *nfs, struct nfsfh *nfsfh, int64_t offset,
 		return 0;
 	}
 
+	/*
+	 * Anything left has to be SEEK_END. Falling through with an
+	 * unrecognised whence silently treated it as SEEK_END.
+	 */
+	if (whence != SEEK_END) {
+		nfs_set_error(nfs, "Invalid whence %d for lseek()", whence);
+		return -EINVAL;
+	}
+
 	data = calloc(1, sizeof(struct nfs_cb_data));
 	if (data == NULL) {
 		nfs_set_error(nfs, "Out Of Memory: Failed to malloc nfs "

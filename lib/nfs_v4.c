@@ -1311,6 +1311,40 @@ nfs42_op_reclaim_complete(struct nfs_context *nfs _U_, nfs_argop4 *op)
 }
 
 static int
+nfs42_op_deallocate(struct nfs_context *nfs _U_, nfs_argop4 *op,
+                    struct nfsfh *fh, uint64_t offset, uint64_t length)
+{
+        DEALLOCATE4args *daargs;
+
+        op[0].argop = OP_DEALLOCATE;
+        daargs = &op[0].nfs_argop4_u.opdeallocate;
+
+        daargs->da_stateid.seqid = fh->stateid.seqid;
+        memcpy(daargs->da_stateid.other, fh->stateid.other, 12);
+        daargs->da_offset = offset;
+        daargs->da_length = length;
+
+        return 1;
+}
+
+static int
+nfs42_op_seek(struct nfs_context *nfs _U_, nfs_argop4 *op, struct nfsfh *fh,
+              uint64_t offset, data_content4 what)
+{
+        SEEK4args *sargs;
+
+        op[0].argop = OP_SEEK;
+        sargs = &op[0].nfs_argop4_u.opseek;
+
+        sargs->sa_stateid.seqid = fh->stateid.seqid;
+        memcpy(sargs->sa_stateid.other, fh->stateid.other, 12);
+        sargs->sa_offset = offset;
+        sargs->sa_what = what;
+
+        return 1;
+}
+
+static int
 nfs42_op_sequence(struct nfs_context *nfs, nfs_argop4 *op)
 {
         SEQUENCE4args *sargs;
@@ -4761,6 +4795,163 @@ nfs4_lseek_cb(struct rpc_context *rpc, int status, void *command_data,
         free_nfs4_cb_data(data);
 }
 
+#ifdef HAVE_NFS4_2
+static void
+nfs42_fallocate_cb(struct rpc_context *rpc, int status, void *command_data,
+                   void *private_data)
+{
+        struct nfs4_cb_data *data = private_data;
+        struct nfs_context *nfs = data->nfs;
+        COMPOUND4res *res = command_data;
+
+        assert(rpc->magic == RPC_CONTEXT_MAGIC);
+
+        if (check_nfs4_error(nfs, status, data, res, "DEALLOCATE")) {
+                return;
+        }
+
+        data->cb(0, nfs, NULL, data->private_data);
+        free_nfs4_cb_data(data);
+}
+
+int
+nfs42_fallocate_async(struct nfs_context *nfs, struct nfsfh *fh, int mode,
+                      uint64_t offset, uint64_t length, nfs_cb cb,
+                      void *private_data)
+{
+        COMPOUND4args args;
+        nfs_argop4 op[2 + 1];
+        struct nfs4_cb_data *data;
+        int i;
+
+        if (fh->is_readonly) {
+                nfs_set_error(nfs, "Trying to fallocate a read-only file");
+                return -1;
+        }
+
+        /*
+         * Only hole punching is implemented. Linux requires PUNCH_HOLE to be
+         * paired with KEEP_SIZE because a hole never changes the file size,
+         * and DEALLOCATE does not either, so require the same pairing rather
+         * than silently accepting a mode that means something else.
+         */
+        if (mode != (FALLOC_FL_PUNCH_HOLE | FALLOC_FL_KEEP_SIZE)) {
+                nfs_set_error(nfs, "nfs_fallocate only supports "
+                              "FALLOC_FL_PUNCH_HOLE|FALLOC_FL_KEEP_SIZE");
+                return -EINVAL;
+        }
+        if (length == 0) {
+                nfs_set_error(nfs, "nfs_fallocate: length must be non-zero");
+                return -EINVAL;
+        }
+
+        data = calloc(1, sizeof(*data));
+        if (data == NULL) {
+                nfs_set_error(nfs, "Out of memory.");
+                return -1;
+        }
+        data->nfs          = nfs;
+        data->cb           = cb;
+        data->private_data = private_data;
+
+        memset(op, 0, sizeof(op));
+        i = nfs4_start_compound(nfs, op);
+        i += nfs4_op_putfh(nfs, &op[i], fh);
+        i += nfs42_op_deallocate(nfs, &op[i], fh, offset, length);
+
+        memset(&args, 0, sizeof(args));
+        args.argarray.argarray_len = i;
+        args.argarray.argarray_val = op;
+
+        if (rpc_nfs4_compound_task(nfs->rpc, nfs42_fallocate_cb, &args,
+                                   data) == NULL) {
+                nfs_set_error(nfs, "Failed to queue DEALLOCATE. %s",
+                              rpc_get_error(nfs->rpc));
+                free_nfs4_cb_data(data);
+                return -1;
+        }
+
+        return 0;
+}
+
+/*
+ * SEEK_HOLE / SEEK_DATA. blob0.val is the nfsfh.
+ */
+static void
+nfs42_seek_cb(struct rpc_context *rpc, int status, void *command_data,
+              void *private_data)
+{
+        struct nfs4_cb_data *data = private_data;
+        struct nfs_context *nfs = data->nfs;
+        COMPOUND4res *res = command_data;
+        struct nfsfh *fh = data->filler.blob0.val;
+        SEEK4resok *sresok;
+        int i;
+
+        assert(rpc->magic == RPC_CONTEXT_MAGIC);
+
+        if (check_nfs4_error(nfs, status, data, res, "SEEK")) {
+                return;
+        }
+
+        if ((i = nfs4_find_op(nfs, data, res, OP_SEEK, "SEEK")) < 0) {
+                return;
+        }
+        sresok = &res->resarray.resarray_val[i].nfs_resop4_u.opseek.SEEK4res_u.resok4;
+
+        fh->offset = sresok->sr_offset;
+        data->cb(0, nfs, &fh->offset, data->private_data);
+        free_nfs4_cb_data(data);
+}
+
+static int
+nfs42_lseek_content_async(struct nfs_context *nfs, struct nfsfh *fh,
+                          int64_t offset, data_content4 what, nfs_cb cb,
+                          void *private_data)
+{
+        COMPOUND4args args;
+        nfs_argop4 op[2 + 1];
+        struct nfs4_cb_data *data;
+        int i;
+
+        if (offset < 0) {
+                nfs_set_error(nfs, "Negative offset for lseek(SEEK_%s)",
+                              what == NFS4_CONTENT_HOLE ? "HOLE" : "DATA");
+                return -EINVAL;
+        }
+
+        data = calloc(1, sizeof(*data));
+        if (data == NULL) {
+                nfs_set_error(nfs, "Out of memory.");
+                return -1;
+        }
+        data->nfs          = nfs;
+        data->cb           = cb;
+        data->private_data = private_data;
+        data->filler.blob0.val  = fh;
+        data->filler.blob0.free = NULL;
+
+        memset(op, 0, sizeof(op));
+        i = nfs4_start_compound(nfs, op);
+        i += nfs4_op_putfh(nfs, &op[i], fh);
+        i += nfs42_op_seek(nfs, &op[i], fh, (uint64_t)offset, what);
+
+        memset(&args, 0, sizeof(args));
+        args.argarray.argarray_len = i;
+        args.argarray.argarray_val = op;
+
+        if (rpc_nfs4_compound_task(nfs->rpc, nfs42_seek_cb, &args,
+                                   data) == NULL) {
+                nfs_set_error(nfs, "Failed to queue SEEK. %s",
+                              rpc_get_error(nfs->rpc));
+                free_nfs4_cb_data(data);
+                return -1;
+        }
+
+        return 0;
+}
+#endif /* HAVE_NFS4_2 */
+
 /* blob0.val is nfsfh
  * blob1.val is offset
  */
@@ -4784,6 +4975,24 @@ nfs4_lseek_async(struct nfs_context *nfs, struct nfsfh *fh, int64_t offset,
 		}
 		return 0;
 	}
+#ifdef HAVE_NFS4_2
+        /*
+         * Finding the next hole or the next data is a server side question,
+         * and only NFSv4.2 can ask it.
+         */
+        if (whence == SEEK_HOLE || whence == SEEK_DATA) {
+                if (nfs->nfsi->version != NFS_V4_2) {
+                        nfs_set_error(nfs, "lseek(SEEK_%s) requires NFSv4.2",
+                                      whence == SEEK_HOLE ? "HOLE" : "DATA");
+                        return -ENOTSUP;
+                }
+                return nfs42_lseek_content_async(nfs, fh, offset,
+                                                 whence == SEEK_HOLE ?
+                                                 NFS4_CONTENT_HOLE :
+                                                 NFS4_CONTENT_DATA,
+                                                 cb, private_data);
+        }
+#endif /* HAVE_NFS4_2 */
 	if (whence == SEEK_CUR) {
 		if (offset < 0 &&
 		    fh->offset < (uint64_t)(-offset)) {
@@ -4795,6 +5004,15 @@ nfs4_lseek_async(struct nfs_context *nfs, struct nfsfh *fh, int64_t offset,
 			cb(0, nfs, &fh->offset, private_data);
 		}
 		return 0;
+	}
+
+	/*
+	 * Anything left has to be SEEK_END. Falling through with an
+	 * unrecognised whence silently treated it as SEEK_END.
+	 */
+	if (whence != SEEK_END) {
+		nfs_set_error(nfs, "Invalid whence %d for lseek()", whence);
+		return -EINVAL;
 	}
 
         data = calloc(1, sizeof(*data));
