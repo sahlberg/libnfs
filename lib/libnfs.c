@@ -2293,10 +2293,48 @@ nfs_getcwd(struct nfs_context *nfs, const char **cwd)
 	}
 }
 
+#ifdef HAVE_NFS4_2
+int
+nfs_fallocate_async(struct nfs_context *nfs, struct nfsfh *nfsfh, int mode,
+                    uint64_t offset, uint64_t length,
+                    nfs_cb cb, void *private_data)
+{
+        if (nfs->nfsi->version != NFS_V4_2) {
+                nfs_set_error(nfs, "%s requires NFSv4.2", __FUNCTION__);
+                return -ENOTSUP;
+        }
+        return nfs42_fallocate_async(nfs, nfsfh, mode, offset, length,
+                                     cb, private_data);
+}
+#else
+int
+nfs_fallocate_async(struct nfs_context *nfs, struct nfsfh *nfsfh _U_,
+                    int mode _U_, uint64_t offset _U_, uint64_t length _U_,
+                    nfs_cb cb _U_, void *private_data _U_)
+{
+        nfs_set_error(nfs, "NFSv4.2 support was not built into this library");
+        return -ENOTSUP;
+}
+#endif /* HAVE_NFS4_2 */
+
 int
 nfs_lseek_async(struct nfs_context *nfs, struct nfsfh *nfsfh, int64_t offset,
                  int whence, nfs_cb cb, void *private_data)
 {
+        /*
+         * SEEK_HOLE and SEEK_DATA are answered by the server, which only
+         * NFSv4.2 can ask. Check here rather than in each version's
+         * implementation, where an unknown whence would otherwise be taken
+         * for SEEK_END.
+         */
+        if (whence == SEEK_HOLE || whence == SEEK_DATA) {
+                if (nfs->nfsi->version != NFS_V4_2) {
+                        nfs_set_error(nfs, "lseek(SEEK_%s) requires NFSv4.2",
+                                      whence == SEEK_HOLE ? "HOLE" : "DATA");
+                        return -ENOTSUP;
+                }
+        }
+
 	switch (nfs->nfsi->version) {
         case NFS_V3:
                 return nfs3_lseek_async(nfs, nfsfh, offset, whence,

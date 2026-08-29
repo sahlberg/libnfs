@@ -1311,6 +1311,23 @@ nfs42_op_reclaim_complete(struct nfs_context *nfs _U_, nfs_argop4 *op)
 }
 
 static int
+nfs42_op_allocate(struct nfs_context *nfs _U_, nfs_argop4 *op,
+                  struct nfsfh *fh, uint64_t offset, uint64_t length)
+{
+        ALLOCATE4args *aaargs;
+
+        op[0].argop = OP_ALLOCATE;
+        aaargs = &op[0].nfs_argop4_u.opallocate;
+
+        aaargs->aa_stateid.seqid = fh->stateid.seqid;
+        memcpy(aaargs->aa_stateid.other, fh->stateid.other, 12);
+        aaargs->aa_offset = offset;
+        aaargs->aa_length = length;
+
+        return 1;
+}
+
+static int
 nfs42_op_deallocate(struct nfs_context *nfs _U_, nfs_argop4 *op,
                     struct nfsfh *fh, uint64_t offset, uint64_t length)
 {
@@ -4796,6 +4813,19 @@ nfs4_lseek_cb(struct rpc_context *rpc, int status, void *command_data,
 }
 
 #ifdef HAVE_NFS4_2
+/* What the COMPOUND for this fallocate mode is made of, for error messages */
+static char *
+nfs42_fallocate_opname(int mode)
+{
+        if (mode & FALLOC_FL_ZERO_RANGE) {
+                return "DEALLOCATE+ALLOCATE";
+        }
+        if (mode & FALLOC_FL_PUNCH_HOLE) {
+                return "DEALLOCATE";
+        }
+        return "ALLOCATE";
+}
+
 static void
 nfs42_fallocate_cb(struct rpc_context *rpc, int status, void *command_data,
                    void *private_data)
@@ -4806,7 +4836,9 @@ nfs42_fallocate_cb(struct rpc_context *rpc, int status, void *command_data,
 
         assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
-        if (check_nfs4_error(nfs, status, data, res, "DEALLOCATE")) {
+        /* blob1.len carries the mode, so the error names the right op */
+        if (check_nfs4_error(nfs, status, data, res,
+                             nfs42_fallocate_opname(data->filler.blob1.len))) {
                 return;
         }
 
@@ -4820,7 +4852,8 @@ nfs42_fallocate_async(struct nfs_context *nfs, struct nfsfh *fh, int mode,
                       void *private_data)
 {
         COMPOUND4args args;
-        nfs_argop4 op[2 + 1];
+        /* PUTFH plus at most DEALLOCATE and ALLOCATE for ZERO_RANGE */
+        nfs_argop4 op[3 + 1];
         struct nfs4_cb_data *data;
         int i;
 
@@ -4830,14 +4863,30 @@ nfs42_fallocate_async(struct nfs_context *nfs, struct nfsfh *fh, int mode,
         }
 
         /*
-         * Only hole punching is implemented. Linux requires PUNCH_HOLE to be
-         * paired with KEEP_SIZE because a hole never changes the file size,
-         * and DEALLOCATE does not either, so require the same pairing rather
-         * than silently accepting a mode that means something else.
+         * Three modes are implemented.
+         *
+         * 0 reserves space, which is ALLOCATE. NFS grows the file when the
+         * range runs past the end, exactly as fallocate(2) does without
+         * FALLOC_FL_KEEP_SIZE. There is no way to ask NFS to reserve without
+         * growing, so KEEP_SIZE on its own is refused rather than quietly
+         * ignored.
+         *
+         * FALLOC_FL_PUNCH_HOLE deallocates, which is DEALLOCATE, and must be
+         * paired with FALLOC_FL_KEEP_SIZE as Linux requires. A hole never
+         * changes the file size and neither does DEALLOCATE.
+         *
+         * FALLOC_FL_ZERO_RANGE has no single operation of its own. It is a
+         * DEALLOCATE, which makes the range read as zeroes, followed by an
+         * ALLOCATE that puts the space back, both in one COMPOUND so that
+         * the range is never left merely sparse. KEEP_SIZE cannot be honoured
+         * with it for the same reason as above, so it is refused too.
          */
-        if (mode != (FALLOC_FL_PUNCH_HOLE | FALLOC_FL_KEEP_SIZE)) {
-                nfs_set_error(nfs, "nfs_fallocate only supports "
-                              "FALLOC_FL_PUNCH_HOLE|FALLOC_FL_KEEP_SIZE");
+        if (mode != 0 &&
+            mode != (FALLOC_FL_PUNCH_HOLE | FALLOC_FL_KEEP_SIZE) &&
+            mode != FALLOC_FL_ZERO_RANGE) {
+                nfs_set_error(nfs, "nfs_fallocate only supports mode 0, "
+                              "FALLOC_FL_PUNCH_HOLE|FALLOC_FL_KEEP_SIZE and "
+                              "FALLOC_FL_ZERO_RANGE");
                 return -EINVAL;
         }
         if (length == 0) {
@@ -4853,11 +4902,17 @@ nfs42_fallocate_async(struct nfs_context *nfs, struct nfsfh *fh, int mode,
         data->nfs          = nfs;
         data->cb           = cb;
         data->private_data = private_data;
+        data->filler.blob1.len = mode;
 
         memset(op, 0, sizeof(op));
         i = nfs4_start_compound(nfs, op);
         i += nfs4_op_putfh(nfs, &op[i], fh);
-        i += nfs42_op_deallocate(nfs, &op[i], fh, offset, length);
+        if (mode & (FALLOC_FL_PUNCH_HOLE | FALLOC_FL_ZERO_RANGE)) {
+                i += nfs42_op_deallocate(nfs, &op[i], fh, offset, length);
+        }
+        if (!(mode & FALLOC_FL_PUNCH_HOLE)) {
+                i += nfs42_op_allocate(nfs, &op[i], fh, offset, length);
+        }
 
         memset(&args, 0, sizeof(args));
         args.argarray.argarray_len = i;
@@ -4865,7 +4920,8 @@ nfs42_fallocate_async(struct nfs_context *nfs, struct nfsfh *fh, int mode,
 
         if (rpc_nfs4_compound_task(nfs->rpc, nfs42_fallocate_cb, &args,
                                    data) == NULL) {
-                nfs_set_error(nfs, "Failed to queue DEALLOCATE. %s",
+                nfs_set_error(nfs, "Failed to queue %s. %s",
+                              nfs42_fallocate_opname(mode),
                               rpc_get_error(nfs->rpc));
                 free_nfs4_cb_data(data);
                 return -1;

@@ -8,6 +8,7 @@ set(TEST_PROGS prog_access
                prog_fchmod
                prog_fchown
                prog_fstat
+               prog_fallocate
                prog_ftruncate
                prog_lchmod
                prog_lchown

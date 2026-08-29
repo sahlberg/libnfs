@@ -1202,6 +1202,11 @@ int nfs4_link_async(struct nfs_context *nfs, const char *oldpath,
 		    const char *newpath, nfs_cb cb, void *private_data);
 int nfs4_lseek_async(struct nfs_context *nfs, struct nfsfh *nfsfh,
                      int64_t offset, int whence, nfs_cb cb, void *private_data);
+#ifdef HAVE_NFS4_2
+int nfs42_fallocate_async(struct nfs_context *nfs, struct nfsfh *nfsfh,
+                          int mode, uint64_t offset, uint64_t length,
+                          nfs_cb cb, void *private_data);
+#endif /* HAVE_NFS4_2 */
 int nfs4_lockf_async(struct nfs_context *nfs, struct nfsfh *nfsfh,
                      enum nfs4_lock_op op, uint64_t count,
                      nfs_cb cb, void *private_data);

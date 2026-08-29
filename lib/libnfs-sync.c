@@ -991,6 +991,49 @@ fsync_cb(int status, struct nfs_context *nfs, void *data, void *private_data)
         cb_data_is_finished(cb_data, status);
 }
 
+/*
+ * fallocate()
+ */
+static void
+fallocate_cb(int status, struct nfs_context *nfs, void *data,
+             void *private_data)
+{
+	struct sync_cb_data *cb_data = private_data;
+
+	if (status < 0) {
+		nfs_set_error(nfs, "fallocate call failed with \"%s\"",
+                              nfs_get_error(nfs));
+                goto finished;
+	}
+
+ finished:
+        cb_data_is_finished(cb_data, status);
+}
+
+int
+nfs_fallocate(struct nfs_context *nfs, struct nfsfh *nfsfh, int mode,
+              uint64_t offset, uint64_t length)
+{
+	struct sync_cb_data cb_data;
+
+        if (nfs_init_cb_data(&nfs, &cb_data)) {
+                return -1;
+        }
+
+	if (nfs_fallocate_async(nfs, nfsfh, mode, offset, length,
+                                fallocate_cb, &cb_data) != 0) {
+		nfs_set_error(nfs, "nfs_fallocate_async failed. %s",
+                              nfs_get_error(nfs));
+                nfs_destroy_cb_sem(&cb_data);
+		return -1;
+	}
+
+	wait_for_nfs_reply(nfs, &cb_data);
+        nfs_destroy_cb_sem(&cb_data);
+
+	return cb_data.status;
+}
+
 int
 nfs_fsync(struct nfs_context *nfs, struct nfsfh *nfsfh)
 {

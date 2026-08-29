@@ -939,7 +939,87 @@ EXTERN int nfs_write(struct nfs_context *nfs, struct nfsfh *nfsfh,
  * LSEEK()
  */
 /*
+ * Sparse file support, NFSv4.2 only.
+ *
+ * SEEK_HOLE and SEEK_DATA are Linux and Solaris extensions to lseek(), and
+ * FALLOC_FL_PUNCH_HOLE is a Linux extension to fallocate(). Platforms that
+ * lack them still need the constants to call these functions, so define them
+ * here when the system headers did not. The values are the ones Linux uses,
+ * so an application that already has them keeps working unchanged.
+ */
+#ifndef SEEK_DATA
+#define SEEK_DATA 3
+#endif
+#ifndef SEEK_HOLE
+#define SEEK_HOLE 4
+#endif
+#ifndef FALLOC_FL_KEEP_SIZE
+#define FALLOC_FL_KEEP_SIZE 0x01
+#endif
+#ifndef FALLOC_FL_PUNCH_HOLE
+#define FALLOC_FL_PUNCH_HOLE 0x02
+#endif
+#ifndef FALLOC_FL_ZERO_RANGE
+#define FALLOC_FL_ZERO_RANGE 0x10
+#endif
+
+/*
+ * Async fallocate()
+ *
+ * Two modes are implemented:
+ *
+ *   0                                        reserve space for the range,
+ *                                            growing the file if the range
+ *                                            runs past the end, as
+ *                                            fallocate(2) does. The
+ *                                            reservation is advisory: a
+ *                                            server may or may not act on it.
+ *
+ *   FALLOC_FL_PUNCH_HOLE|FALLOC_FL_KEEP_SIZE deallocate the range. It reads
+ *                                            back as zeroes and the file size
+ *                                            does not change.
+ *
+ *   FALLOC_FL_ZERO_RANGE                     zero the range, keeping the
+ *                                            space allocated. The file grows
+ *                                            if the range runs past the end.
+ *
+ * PUNCH_HOLE must be paired with KEEP_SIZE exactly as Linux requires.
+ * KEEP_SIZE on its own is refused: NFS has no way to reserve space without
+ * also growing the file, so it would not mean what it says.
+ *
+ * These are NFSv4.2 operations and fail with -ENOTSUP on any other version.
+ *
+ * Function returns
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
+ *
+ * When the callback is invoked, status indicates the result:
+ *      0 : Success.
+ * -errno : An error occured.
+ *          data is the error string.
+ */
+EXTERN int nfs_fallocate_async(struct nfs_context *nfs, struct nfsfh *nfsfh,
+                               int mode, uint64_t offset, uint64_t length,
+                               nfs_cb cb, void *private_data);
+
+/*
+ * Sync fallocate()
+ *
+ * Function returns
+ *      0 : Success
+ * -errno : An error occured.
+ */
+EXTERN int nfs_fallocate(struct nfs_context *nfs, struct nfsfh *nfsfh,
+                         int mode, uint64_t offset, uint64_t length);
+
+/*
  * Async lseek()
+ *
+ * whence may also be SEEK_HOLE or SEEK_DATA, which find the next hole or the
+ * next data after offset. Those two are NFSv4.2 only and fail with -ENOTSUP
+ * on any other version.
  *
  * Function returns
  *  0 : The command was queued successfully. The callback will be invoked once
