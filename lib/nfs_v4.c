@@ -4453,6 +4453,12 @@ nfs4_lseek_async(struct nfs_context *nfs, struct nfsfh *fh, int64_t offset,
                 free_nfs4_cb_data(data);
                 return -1;
         }
+        /*
+         * free_nfs4_cb_data() only releases a blob that carries a free
+         * function, so without this the offset buffer leaks on every
+         * NFSv4 lseek that has to ask the server.
+         */
+        data->filler.blob1.free = free;
         memcpy(data->filler.blob1.val, &offset, sizeof(uint64_t));
 
         i = nfs4_op_putfh(nfs, &op[0], fh);
