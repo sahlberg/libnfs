@@ -470,7 +470,8 @@ nfs_stat(struct nfs_context *nfs, const char *path, struct stat *st)
         }
 
 	if (nfs_stat_async(nfs, path, stat_cb, &cb_data) != 0) {
-		nfs_set_error(nfs, "nfs_stat_async failed");
+		nfs_set_error(nfs, "nfs_stat_async failed. %s",
+                              nfs_get_error(nfs));
                 nfs_destroy_cb_sem(&cb_data);
 		return -1;
 	}
@@ -848,7 +849,8 @@ nfs_fstat(struct nfs_context *nfs, struct nfsfh *nfsfh, struct stat *st)
         }
 
 	if (nfs_fstat_async(nfs, nfsfh, stat_cb, &cb_data) != 0) {
-		nfs_set_error(nfs, "nfs_fstat_async failed");
+		nfs_set_error(nfs, "nfs_fstat_async failed. %s",
+                              nfs_get_error(nfs));
                 nfs_destroy_cb_sem(&cb_data);
 		return -1;
 	}
@@ -1133,7 +1135,8 @@ nfs_mkdir2(struct nfs_context *nfs, const char *path, int mode)
         }
 
 	if (nfs_mkdir2_async(nfs, path, mode, mkdir_cb, &cb_data) != 0) {
-		nfs_set_error(nfs, "nfs_mkdir2_async failed");
+		nfs_set_error(nfs, "nfs_mkdir2_async failed. %s",
+                              nfs_get_error(nfs));
                 nfs_destroy_cb_sem(&cb_data);
 		return -1;
 	}
@@ -1678,7 +1681,8 @@ nfs_readlink2(struct nfs_context *nfs, const char *path, char **bufptr)
         }
 
 	if (nfs_readlink_async(nfs, path, readlink2_cb, &cb_data) != 0) {
-		nfs_set_error(nfs, "nfs_readlink_async failed");
+		nfs_set_error(nfs, "nfs_readlink_async failed. %s",
+                              nfs_get_error(nfs));
                 nfs_destroy_cb_sem(&cb_data);
 		return -1;
 	}
@@ -1998,7 +2002,8 @@ nfs_utime(struct nfs_context *nfs, const char *path, struct utimbuf *times)
         }
 
 	if (nfs_utime_async(nfs, path, times, utime_cb, &cb_data) != 0) {
-		nfs_set_error(nfs, "nfs_utimes_async failed");
+		nfs_set_error(nfs, "nfs_utimes_async failed. %s",
+                              nfs_get_error(nfs));
                 nfs_destroy_cb_sem(&cb_data);
 		return -1;
 	}
