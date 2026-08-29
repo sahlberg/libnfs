@@ -21,6 +21,7 @@ option(ENABLE_DOCUMENTATION "Build Documentation" OFF)
 option(ENABLE_UTILS "Build util programs" OFF)
 option(ENABLE_EXAMPLES "Build example programs" OFF)
 option(ENABLE_MULTITHREADING "Enable multithreading support" OFF)
+option(ENABLE_NFS4_2 "Build NFSv4.2 support" ON)
 set(ENABLE_TLS "AUTO" CACHE STRING "Build RPC-with-TLS support: ON, OFF or AUTO (only if gnutls and kTLS are available)")
 set_property(CACHE ENABLE_TLS PROPERTY STRINGS AUTO ON OFF)
 
@@ -31,6 +32,15 @@ endif()
 
 if(ENABLE_TESTS)
   set(ENABLE_UTILS ON CACHE BOOL "Building utils required by tests" FORCE)
+endif()
+
+# NFSv4.2 is never built for the small embedded and console targets; they have
+# on the order of a megabyte of RAM and no use for it.
+if(PS2_EE OR PS3_PPU OR AROS)
+  set(ENABLE_NFS4_2 OFF CACHE BOOL "NFSv4.2 is not supported on this platform" FORCE)
+endif()
+if(ENABLE_NFS4_2)
+  add_definitions(-DHAVE_NFS4_2)
 endif()
 
 if(ENABLE_MULTITHREADING)

@@ -94,6 +94,15 @@
 
 #include "libnfs-multithreading.h"
 #include "libnfs-zdr.h"
+
+/*
+ * NFSv4.2 is never built for the small embedded and console targets, whatever
+ * the build system was told. See the note in nfsc/libnfs.h.
+ */
+#if defined(PS2_EE) || defined(PS3_PPU) || defined(AROS)
+#undef HAVE_NFS4_2
+#endif
+
 #include "../nfs/libnfs-raw-nfs.h"
 #include "../nfs4/libnfs-raw-nfs4.h"
 
@@ -397,12 +406,14 @@ struct rpc_context {
 	/* special fields for UDP, which can sometimes be BROADCASTed */
 	int is_udp;
 
+#ifdef HAVE_NFS4_2
 	/*
 	 * NFSv4 minor version stamped into every COMPOUND4args. 0 for
 	 * NFSv4.0, 2 for NFSv4.2. Unrelated to the RPC program version,
 	 * which is 4 for every NFSv4 minor version.
 	 */
 	uint32_t nfs4_minorversion;
+#endif /* HAVE_NFS4_2 */
 	struct sockaddr_storage udp_dest;
 	int is_broadcast;
 

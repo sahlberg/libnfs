@@ -95,6 +95,15 @@ fi
 AC_SUBST(MAYBE_EXAMPLES)
 
 #option: examples
+AC_ARG_ENABLE([nfs4-2],
+              [AS_HELP_STRING([--disable-nfs4-2],[Do not build NFSv4.2 support])],
+	      [ENABLE_NFS4_2=$enableval],
+	      [ENABLE_NFS4_2="yes"])
+if test x$ENABLE_NFS4_2 = xyes; then
+    AC_DEFINE(HAVE_NFS4_2,1,[Whether we build NFSv4.2 support])
+fi
+AM_CONDITIONAL([HAVE_NFS4_2], [test x$ENABLE_NFS4_2 = xyes])
+
 AC_ARG_ENABLE([pthread],
               [AS_HELP_STRING([--enable-pthread],[Build with pthread multithreading support])],
 	      [ENABLE_PTHREAD=$enableval],

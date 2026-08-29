@@ -371,6 +371,17 @@ EXTERN size_t nfs_get_readdir_maxcount(struct nfs_context *nfs);
 EXTERN void nfs_set_readdir_max_buffer_size(struct nfs_context *nfs, uint32_t dircount, uint32_t maxcount);
 
 /*
+ * NFSv4.2 support is not built for the small embedded and console targets.
+ * Those have on the order of a megabyte of RAM in total and no use for any of
+ * it, so the whole dialect is compiled out there rather than carried as dead
+ * weight. Builds for other platforms can drop it too with
+ * --disable-nfs4-2 (autoconf) or -DENABLE_NFS4_2=OFF (cmake), in which case
+ * this constant still exists but nfs_set_version() will reject it.
+ */
+#if !defined(PS2_EE) && !defined(PS3_PPU) && !defined(AROS)
+#define LIBNFS_FEATURE_NFS4_2 1
+
+/*
  * NFSv4.2, i.e. NFSv4 minor version 2.
  *
  * This is a libnfs dialect selector, not an ONC RPC program version: NFSv4 of
@@ -379,12 +390,14 @@ EXTERN void nfs_set_readdir_max_buffer_size(struct nfs_context *nfs, uint32_t di
  * range of real RPC version numbers.
  */
 #define NFS_V4_2 42
+#endif /* small platforms */
 
 /*
  * Set NFS version. Supported versions are
  * NFS_V3 (default)
  * NFS_V4     NFSv4.0
- * NFS_V4_2   NFSv4.2
+ * NFS_V4_2   NFSv4.2, where LIBNFS_FEATURE_NFS4_2 is defined and the library
+ *            was built with NFSv4.2 support
  */
 EXTERN int nfs_set_version(struct nfs_context *nfs, int version);
 /*

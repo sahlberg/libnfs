@@ -227,12 +227,16 @@ struct rpc_pdu *rpc_nfs4_compound_task2(struct rpc_context *rpc, rpc_cb cb,
 		return NULL;
 	}
 
+#ifdef HAVE_NFS4_2
 	/*
 	 * The minor version belongs to the connection, not to each caller, so
 	 * stamp it here rather than at every one of the ~40 places that build
-	 * a COMPOUND. It stays 0 unless the context selected NFSv4.2.
+	 * a COMPOUND. It stays 0 unless the context selected NFSv4.2. Without
+	 * NFSv4.2 there is nothing but 0 to stamp, and callers already
+	 * memset the args, so the whole thing compiles out.
 	 */
 	args->minorversion = rpc->nfs4_minorversion;
+#endif /* HAVE_NFS4_2 */
 
 	if (zdr_COMPOUND4args(&pdu->zdr,  args) == 0) {
 		rpc_set_error(rpc, "ZDR error: Failed to encode COMPOUND4args");
@@ -295,12 +299,16 @@ struct rpc_pdu *rpc_nfs4_readv_task(struct rpc_context *rpc, rpc_cb cb,
 		return NULL;
 	}
 
+#ifdef HAVE_NFS4_2
 	/*
 	 * The minor version belongs to the connection, not to each caller, so
 	 * stamp it here rather than at every one of the ~40 places that build
-	 * a COMPOUND. It stays 0 unless the context selected NFSv4.2.
+	 * a COMPOUND. It stays 0 unless the context selected NFSv4.2. Without
+	 * NFSv4.2 there is nothing but 0 to stamp, and callers already
+	 * memset the args, so the whole thing compiles out.
 	 */
 	args->minorversion = rpc->nfs4_minorversion;
+#endif /* HAVE_NFS4_2 */
 
 	if (zdr_COMPOUND4args(&pdu->zdr,  args) == 0) {
 		rpc_set_error(rpc, "ZDR error: Failed to encode COMPOUND4args");
@@ -381,12 +389,16 @@ struct rpc_pdu *rpc_nfs4_writev_task(struct rpc_context *rpc, rpc_cb cb,
 
         start = zdr_getpos(&pdu->zdr);
 
+#ifdef HAVE_NFS4_2
 	/*
 	 * The minor version belongs to the connection, not to each caller, so
 	 * stamp it here rather than at every one of the ~40 places that build
-	 * a COMPOUND. It stays 0 unless the context selected NFSv4.2.
+	 * a COMPOUND. It stays 0 unless the context selected NFSv4.2. Without
+	 * NFSv4.2 there is nothing but 0 to stamp, and callers already
+	 * memset the args, so the whole thing compiles out.
 	 */
 	args->minorversion = rpc->nfs4_minorversion;
+#endif /* HAVE_NFS4_2 */
 
 	if (zdr_COMPOUND4args(&pdu->zdr,  args) == 0) {
 		rpc_set_error(rpc, "ZDR error: Failed to encode COMPOUND4args");

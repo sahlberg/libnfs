@@ -332,7 +332,13 @@ nfs_set_context_args(struct nfs_context *nfs, const char *arg, const char *val)
 		int v;
 
 		if (!strcmp(val, "4.2")) {
+#ifdef LIBNFS_FEATURE_NFS4_2
 			v = NFS_V4_2;
+#else
+			nfs_set_error(nfs, "NFS version %s is not supported",
+				      val);
+			return -1;
+#endif
 		} else if (!strcmp(val, "4.0")) {
 			v = NFS_V4;
 		} else if (strchr(val, '.')) {
@@ -342,9 +348,12 @@ nfs_set_context_args(struct nfs_context *nfs, const char *arg, const char *val)
 		} else {
 			v = atoi(val);
 		}
+		/*
+		 * nfs_set_version() has already set a specific error, such as
+		 * the version being understood but not built in, so leave it
+		 * alone rather than flattening it to "not supported".
+		 */
 		if (nfs_set_version(nfs, v) < 0) {
-			nfs_set_error(nfs, "NFS version %s is not supported",
-				      val);
 			return -1;
 		}
 	} else if (!strcmp(arg, "nfsport")) {
@@ -2737,9 +2746,13 @@ nfs_set_version(struct nfs_context *nfs, int version) {
 #endif
 		nfs->nfsi->version = version;
 		nfs->nfsi->default_version = 0;
+#ifdef HAVE_NFS4_2
 		nfs->rpc->nfs4_minorversion = 0;
+#endif
 		break;
+#ifdef LIBNFS_FEATURE_NFS4_2
 	case NFS_V4_2:
+#ifdef HAVE_NFS4_2
 		/*
 		 * NFS_V4_2 selects a libnfs dialect, not an RPC program
 		 * version. Every NFSv4 minor version is RPC version 4; the
@@ -2752,6 +2765,12 @@ nfs_set_version(struct nfs_context *nfs, int version) {
 		nfs->nfsi->default_version = 0;
 		nfs->rpc->nfs4_minorversion = 2;
 		break;
+#else
+		nfs_set_error(nfs, "NFSv4.2 support was not built into this "
+			      "library");
+		return -1;
+#endif /* HAVE_NFS4_2 */
+#endif /* LIBNFS_FEATURE_NFS4_2 */
 	default:
 		nfs_set_error(nfs, "NFS version %d is not supported", version);
 		return -1;
