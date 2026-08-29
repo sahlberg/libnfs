@@ -1123,6 +1123,16 @@ rpc_read_from_socket(struct rpc_context *rpc)
                                                         goto payload_finished;
                                                 }
                                         }
+                                        if (rpc->program == NFS4_PROGRAM && rpc->version == NFS_V4) {
+                                                /*
+                                                 * Same for v4. The COMPOUND status is the status of
+                                                 * the last op, which for a zero-copy read is the READ.
+                                                 */
+                                                const COMPOUND4res *res = (COMPOUND4res *)(void *) rpc->pdu->zdr_decode_buf;
+                                                if (res->status != NFS4_OK) {
+                                                        goto payload_finished;
+                                                }
+                                        }
 
                                         /*
                                          * We are doing zero-copy read.
