@@ -114,10 +114,16 @@
  * Naming convention in this file:
  *
  *   nfs4_*   works for every NFSv4 minor version
- *   nfs40_*  NFSv4.0 only. SETCLIENTID, SETCLIENTID_CONFIRM and OPEN_CONFIRM
- *            do not exist from minor version 1 onwards, so neither does the
- *            state bootstrap built on them.
+ *   nfs40_*  an NFSv4.0 only operation. SETCLIENTID, SETCLIENTID_CONFIRM and
+ *            OPEN_CONFIRM do not exist from minor version 1 onwards. Internal
+ *            callbacks are not marked, only the operations themselves.
  *   nfs42_*  NFSv4.2 only, built only when HAVE_NFS4_2 is defined.
+ *
+ * Every op array in this file is deliberately declared one element larger
+ * than the operations put into it. From minor version 1 onwards a COMPOUND
+ * must lead with SEQUENCE, and nfs4_start_compound() places it there; the
+ * spare element is what it uses. It simply goes unused under NFSv4.0, which
+ * costs one stack slot and keeps the sizes uniform rather than conditional.
  */
 
 #ifndef discard_const
@@ -1212,6 +1218,36 @@ nfs4_op_getattr(struct nfs_context *nfs, nfs_argop4 *op,
  *  <idx> : On success. Idx represents the next free index in op.
  *          Caller must free op.
  */
+/*
+ * Open a COMPOUND.
+ *
+ * From minor version 1 onwards every COMPOUND must lead with SEQUENCE, and
+ * NFSv4.0 has no such operation. Callers begin their op array with this and
+ * use the returned count as their starting index, so the difference lives
+ * here instead of at each of the two dozen places that build a COMPOUND.
+ *
+ * The bootstrap COMPOUNDs are the exception and deliberately do not call
+ * this: SETCLIENTID and SETCLIENTID_CONFIRM in 4.0, and EXCHANGE_ID and
+ * CREATE_SESSION in 4.2, all run before there is a session to sequence
+ * against.
+ */
+static int
+nfs4_start_compound(struct nfs_context *nfs, nfs_argop4 *op)
+{
+#ifdef HAVE_NFS4_2
+        if (nfs->nfsi->version == NFS_V4_2) {
+                /*
+                 * TODO: emit SEQUENCE once the session layer exists. Until
+                 * then a 4.2 mount cannot get as far as any COMPOUND.
+                 */
+                return 0;
+        }
+#endif /* HAVE_NFS4_2 */
+        (void)nfs;
+        (void)op;
+        return 0;
+}
+
 static int
 nfs4_allocate_op(struct nfs_context *nfs, nfs_argop4 **op,
                  char *path, int num_extra)
@@ -1223,13 +1259,13 @@ nfs4_allocate_op(struct nfs_context *nfs, nfs_argop4 **op,
 
         count = nfs4_num_path_components(nfs, path);
 
-        *op = malloc(sizeof(**op) * (2 + count + num_extra));
+        *op = malloc(sizeof(**op) * (3 + count + num_extra));
         if (*op == NULL) {
                 nfs_set_error(nfs, "Failed to allocate op array");
                 return -1;
         }
 
-        i = 0;
+        i = nfs4_start_compound(nfs, *op);
         if (nfs->nfsi->rootfh.len) {
                 struct nfsfh fh;
 
@@ -1675,7 +1711,7 @@ nfs4_mount_4_cb(struct rpc_context *rpc, int status, void *command_data,
         COMPOUND4res *res = command_data;
         GETFH4resok *gfhresok;
         COMPOUND4args args;
-        nfs_argop4 op[2];
+        nfs_argop4 op[2 + 1];
         struct nfsfh nfsfh;
         int i;
 
@@ -1704,7 +1740,8 @@ nfs4_mount_4_cb(struct rpc_context *rpc, int status, void *command_data,
 
         memset(op, 0, sizeof(op));
         nfsfh.fh = nfs->nfsi->rootfh;
-        i = nfs4_op_putfh(nfs, &op[0], &nfsfh);
+        i = nfs4_start_compound(nfs, op);
+        i += nfs4_op_putfh(nfs, &op[i], &nfsfh);
         i += nfs4_op_getattr(nfs, &op[i], rwmax_attributes, 1);
                
         memset(&args, 0, sizeof(args));
@@ -1722,7 +1759,7 @@ nfs4_mount_4_cb(struct rpc_context *rpc, int status, void *command_data,
 }
 
 static void
-nfs40_mount_3_cb(struct rpc_context *rpc, int status, void *command_data,
+nfs4_mount_3_cb(struct rpc_context *rpc, int status, void *command_data,
                 void *private_data)
 {
         struct nfs4_cb_data *data = private_data;
@@ -1755,14 +1792,14 @@ nfs40_mount_3_cb(struct rpc_context *rpc, int status, void *command_data,
 }
 
 static void
-nfs40_mount_2_cb(struct rpc_context *rpc, int status, void *command_data,
+nfs4_mount_2_cb(struct rpc_context *rpc, int status, void *command_data,
                 void *private_data)
 {
         struct nfs4_cb_data *data = private_data;
         struct nfs_context *nfs = data->nfs;
         COMPOUND4res *res = command_data;
         COMPOUND4args args;
-        nfs_argop4 op[1];
+        nfs_argop4 op[1 + 1];
         SETCLIENTID4resok *scidresok;
         int i;
 
@@ -1798,7 +1835,7 @@ nfs40_mount_2_cb(struct rpc_context *rpc, int status, void *command_data,
         args.argarray.argarray_len = i;
         args.argarray.argarray_val = op;
 
-        if (rpc_nfs4_compound_task(rpc, nfs40_mount_3_cb, &args,
+        if (rpc_nfs4_compound_task(rpc, nfs4_mount_3_cb, &args,
                                    private_data) == NULL) {
                 nfs_set_error(nfs, "Failed to queue SETCLIENTID_CONFIRM. %s",
                               rpc_get_error(rpc));
@@ -1809,13 +1846,13 @@ nfs40_mount_2_cb(struct rpc_context *rpc, int status, void *command_data,
 }
 
 static void
-nfs40_mount_1_cb(struct rpc_context *rpc, int status, void *command_data,
+nfs4_mount_1_cb(struct rpc_context *rpc, int status, void *command_data,
                 void *private_data)
 {
         struct nfs4_cb_data *data = private_data;
         struct nfs_context *nfs = data->nfs;
         COMPOUND4args args;
-        nfs_argop4 op[1];
+        nfs_argop4 op[1 + 1];
         int i;
 
         assert(rpc->magic == RPC_CONTEXT_MAGIC);
@@ -1832,7 +1869,7 @@ nfs40_mount_1_cb(struct rpc_context *rpc, int status, void *command_data,
         args.argarray.argarray_len = i;
         args.argarray.argarray_val = op;
 
-        if (rpc_nfs4_compound_task(rpc, nfs40_mount_2_cb, &args, data) == NULL) {
+        if (rpc_nfs4_compound_task(rpc, nfs4_mount_2_cb, &args, data) == NULL) {
                 nfs_set_error(nfs, "Failed to queue SETCLIENTID. %s",
                               rpc_get_error(rpc));
                 data->cb(-ENOMEM, nfs, nfs_get_error(nfs), data->private_data);
@@ -1892,7 +1929,7 @@ nfs4_mount_async(struct nfs_context *nfs, const char *server,
         port = nfs->nfsi->nfsport ? nfs->nfsi->nfsport : 2049;
         if (rpc_connect_port_async(nfs->rpc, server, port,
                                    NFS4_PROGRAM, NFS_V4,
-                                   nfs40_mount_1_cb, data) != 0) {
+                                   nfs4_mount_1_cb, data) != 0) {
                 nfs_set_error(nfs, "Failed to start connection. %s",
                               rpc_get_error(nfs->rpc));
                 free_nfs4_cb_data(data);
@@ -2225,14 +2262,15 @@ nfs4_open_truncate_cb(struct rpc_context *rpc, int status, void *command_data,
         struct nfsfh *fh = data->filler.blob0.val;
         COMPOUND4res *res = command_data;
         COMPOUND4args args;
-        nfs_argop4 op[2];
+        nfs_argop4 op[2 + 1];
         int i;
 
         if (check_nfs4_error(nfs, status, data, res, "OPEN")) {
                 return;
         }
 
-        i = nfs4_op_putfh(nfs, op, fh);
+        i = nfs4_start_compound(nfs, op);
+        i += nfs4_op_putfh(nfs, &op[i], fh);
         i += nfs4_op_truncate(nfs, &op[i], fh, data->filler.blob3.val);
 
         memset(&args, 0, sizeof(args));
@@ -2256,14 +2294,15 @@ nfs4_open_chmod_cb(struct rpc_context *rpc, int status, void *command_data,
         struct nfsfh *fh = data->filler.blob0.val;
         COMPOUND4res *res = command_data;
         COMPOUND4args args;
-        nfs_argop4 op[2];
+        nfs_argop4 op[2 + 1];
         int i;
 
         if (check_nfs4_error(nfs, status, data, res, "OPEN")) {
                 return;
         }
 
-        i = nfs4_op_putfh(nfs, op, fh);
+        i = nfs4_start_compound(nfs, op);
+        i += nfs4_op_putfh(nfs, &op[i], fh);
         i += nfs4_op_chmod(nfs, &op[i], fh, data->filler.blob3.val);
 
         memset(&args, 0, sizeof(args));
@@ -2279,7 +2318,7 @@ nfs4_open_chmod_cb(struct rpc_context *rpc, int status, void *command_data,
 }
 
 static void
-nfs40_open_confirm_cb(struct rpc_context *rpc, int status, void *command_data,
+nfs4_open_confirm_cb(struct rpc_context *rpc, int status, void *command_data,
                      void *private_data)
 {
         struct nfs4_cb_data *data = private_data;
@@ -2405,17 +2444,18 @@ nfs4_open_cb(struct rpc_context *rpc, int status, void *command_data,
 
         if (oresok->rflags & OPEN4_RESULT_CONFIRM) {
                 COMPOUND4args args;
-                nfs_argop4 op[2];
+                nfs_argop4 op[2 + 1];
 
                 memset(op, 0, sizeof(op));
-                i = nfs4_op_putfh(nfs, &op[0], fh);
+                i = nfs4_start_compound(nfs, op);
+                i += nfs4_op_putfh(nfs, &op[i], fh);
                 i += nfs40_op_open_confirm(nfs, &op[i], fh);
 
                 memset(&args, 0, sizeof(args));
                 args.argarray.argarray_len = i;
                 args.argarray.argarray_val = op;
 
-                if (rpc_nfs4_compound_task(rpc, nfs40_open_confirm_cb, &args,
+                if (rpc_nfs4_compound_task(rpc, nfs4_open_confirm_cb, &args,
                                            private_data) == NULL) {
                         data->cb(-ENOMEM, nfs, nfs_get_error(nfs),
                                  data->private_data);
@@ -2804,7 +2844,7 @@ nfs4_fstat64_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_cb cb,
                    void *private_data)
 {
         COMPOUND4args args;
-        nfs_argop4 op[2];
+        nfs_argop4 op[2 + 1];
         struct nfs4_cb_data *data;
         int i;
 
@@ -2819,7 +2859,8 @@ nfs4_fstat64_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_cb cb,
         data->cb           = cb;
         data->private_data = private_data;
 
-        i = nfs4_op_putfh(nfs, &op[0], nfsfh);
+        i = nfs4_start_compound(nfs, op);
+        i += nfs4_op_putfh(nfs, &op[i], nfsfh);
         i += nfs4_op_getattr(nfs, &op[i], standard_attributes, 2);
 
         memset(&args, 0, sizeof(args));
@@ -2878,7 +2919,7 @@ nfs4_getacl_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_cb cb,
                    void *private_data)
 {
         COMPOUND4args args;
-        nfs_argop4 op[2];
+        nfs_argop4 op[2 + 1];
         struct nfs4_cb_data *data;
         int i;
 
@@ -2893,7 +2934,8 @@ nfs4_getacl_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_cb cb,
         data->cb           = cb;
         data->private_data = private_data;
 
-        i = nfs4_op_putfh(nfs, &op[0], nfsfh);
+        i = nfs4_start_compound(nfs, op);
+        i += nfs4_op_putfh(nfs, &op[i], nfsfh);
         i += nfs4_op_getattr(nfs, &op[i], getacl_attributes, 1);
 
         memset(&args, 0, sizeof(args));
@@ -2938,7 +2980,7 @@ nfs4_close_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_cb cb,
                  void *private_data)
 {
         COMPOUND4args args;
-        nfs_argop4 op[3];
+        nfs_argop4 op[3 + 1];
         struct nfs4_cb_data *data;
         int i;
 
@@ -2961,7 +3003,8 @@ nfs4_close_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_cb cb,
 
         memset(op, 0, sizeof(op));
 
-        i = nfs4_op_putfh(nfs, &op[0], nfsfh);
+        i = nfs4_start_compound(nfs, op);
+        i += nfs4_op_putfh(nfs, &op[i], nfsfh);
         i += nfs4_op_close(nfs, &op[i], nfsfh);
 
         data->filler.blob0.val  = nfsfh;
@@ -3025,7 +3068,7 @@ nfs4_pread_async_internal(struct nfs_context *nfs, struct nfsfh *nfsfh,
                           nfs_cb cb, void *private_data, int update_pos)
 {
         COMPOUND4args args;
-        nfs_argop4 op[2];
+        nfs_argop4 op[2 + 1];
         struct nfs4_cb_data *data;
         int i;
         struct rpc_pdu *pdu;
@@ -3048,7 +3091,8 @@ nfs4_pread_async_internal(struct nfs_context *nfs, struct nfsfh *nfsfh,
         
         memset(op, 0, sizeof(op));
 
-        i = nfs4_op_putfh(nfs, &op[0], nfsfh);
+        i = nfs4_start_compound(nfs, op);
+        i += nfs4_op_putfh(nfs, &op[i], nfsfh);
         i += nfs4_op_read(nfs, &op[i], nfsfh, offset, count);
 
         memset(&args, 0, sizeof(args));
@@ -3071,7 +3115,7 @@ nfs4_preadv_async_internal(struct nfs_context *nfs, struct nfsfh *nfsfh,
                            nfs_cb cb, void *private_data, int update_pos)
 {
         COMPOUND4args args;
-        nfs_argop4 op[2];
+        nfs_argop4 op[2 + 1];
         struct nfs4_cb_data *data;
         int i;
         struct rpc_pdu *pdu;
@@ -3099,7 +3143,8 @@ nfs4_preadv_async_internal(struct nfs_context *nfs, struct nfsfh *nfsfh,
         
         memset(op, 0, sizeof(op));
 
-        i = nfs4_op_putfh(nfs, &op[0], nfsfh);
+        i = nfs4_start_compound(nfs, op);
+        i += nfs4_op_putfh(nfs, &op[i], nfsfh);
         i += nfs4_op_read(nfs, &op[i], nfsfh, offset, count);
 
         memset(&args, 0, sizeof(args));
@@ -3286,7 +3331,7 @@ nfs4_pwrite_async_internal(struct nfs_context *nfs, struct nfsfh *nfsfh,
                            nfs_cb cb, void *private_data, int update_pos)
 {
         COMPOUND4args args;
-        nfs_argop4 op[2];
+        nfs_argop4 op[2 + 1];
         struct nfs4_cb_data *data;
         int i;
 
@@ -3308,7 +3353,8 @@ nfs4_pwrite_async_internal(struct nfs_context *nfs, struct nfsfh *nfsfh,
 
         memset(op, 0, sizeof(op));
 
-        i = nfs4_op_putfh(nfs, &op[0], nfsfh);
+        i = nfs4_start_compound(nfs, op);
+        i += nfs4_op_putfh(nfs, &op[i], nfsfh);
         i += nfs4_op_write(nfs, &op[i], nfsfh, offset, count, buf);
 
         memset(&args, 0, sizeof(args));
@@ -3388,7 +3434,7 @@ nfs4_write_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t count,
 {
         if (nfsfh->is_append) {
                 COMPOUND4args args;
-                nfs_argop4 op[2];
+                nfs_argop4 op[2 + 1];
                 struct nfs4_cb_data *data;
                 int i;
 
@@ -3408,7 +3454,8 @@ nfs4_write_async(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t count,
 
                 memset(op, 0, sizeof(op));
 
-                i = nfs4_op_putfh(nfs, &op[0], nfsfh);
+                i = nfs4_start_compound(nfs, op);
+                i += nfs4_op_putfh(nfs, &op[i], nfsfh);
                 i += nfs4_op_getattr(nfs, &op[i], standard_attributes, 2);
 
                 memset(&args, 0, sizeof(args));
@@ -3869,7 +3916,7 @@ static void
 nfs4_opendir_continue(struct nfs_context *nfs, struct nfs4_cb_data *data)
 {
         COMPOUND4args args;
-        nfs_argop4 op[2];
+        nfs_argop4 op[2 + 1];
         struct nfsfh *fh = data->filler.blob0.val;
         uint64_t cookie;
         int i;
@@ -3878,7 +3925,8 @@ nfs4_opendir_continue(struct nfs_context *nfs, struct nfs4_cb_data *data)
 
         memset(op, 0, sizeof(op));
 
-        i = nfs4_op_putfh(nfs, &op[0], fh);
+        i = nfs4_start_compound(nfs, op);
+        i += nfs4_op_putfh(nfs, &op[i], fh);
         i += nfs4_op_readdir(nfs, &op[i], cookie);
 
         memset(&args, 0, sizeof(args));
@@ -4180,14 +4228,15 @@ nfs4_truncate_open_cb(struct rpc_context *rpc, int status, void *command_data,
         struct nfsfh *fh = data->filler.blob0.val;
         COMPOUND4res *res = command_data;
         COMPOUND4args args;
-        nfs_argop4 op[4];
+        nfs_argop4 op[4 + 1];
         int i;
 
         if (check_nfs4_error(nfs, status, data, res, "OPEN")) {
                 return;
         }
 
-        i = nfs4_op_putfh(nfs, &op[0], fh);
+        i = nfs4_start_compound(nfs, op);
+        i += nfs4_op_putfh(nfs, &op[i], fh);
         i += nfs4_op_truncate(nfs, &op[i], fh, data->filler.blob3.val);
         i += nfs4_op_close(nfs, &op[i], fh);
 
@@ -4270,7 +4319,7 @@ nfs4_fsync_async(struct nfs_context *nfs, struct nfsfh *fh, nfs_cb cb,
                  void *private_data)
 {
         COMPOUND4args args;
-        nfs_argop4 op[2];
+        nfs_argop4 op[2 + 1];
         struct nfs4_cb_data *data;
         int i;
 
@@ -4286,7 +4335,8 @@ nfs4_fsync_async(struct nfs_context *nfs, struct nfsfh *fh, nfs_cb cb,
 
         memset(op, 0, sizeof(op));
 
-        i = nfs4_op_putfh(nfs, &op[0], fh);
+        i = nfs4_start_compound(nfs, op);
+        i += nfs4_op_putfh(nfs, &op[i], fh);
         i += nfs4_op_commit(nfs, &op[i]);
 
         memset(&args, 0, sizeof(args));
@@ -4308,7 +4358,7 @@ nfs4_ftruncate_async(struct nfs_context *nfs, struct nfsfh *fh,
                      uint64_t length, nfs_cb cb, void *private_data)
 {
         COMPOUND4args args;
-        nfs_argop4 op[2];
+        nfs_argop4 op[2 + 1];
         struct nfs4_cb_data *data;
         int i;
 
@@ -4335,7 +4385,8 @@ nfs4_ftruncate_async(struct nfs_context *nfs, struct nfsfh *fh,
         
         memset(op, 0, sizeof(op));
 
-        i = nfs4_op_putfh(nfs, &op[0], fh);
+        i = nfs4_start_compound(nfs, op);
+        i += nfs4_op_putfh(nfs, &op[i], fh);
         i += nfs4_op_truncate(nfs, &op[i], fh, data->filler.blob3.val);
 
         memset(&args, 0, sizeof(args));
@@ -4406,7 +4457,7 @@ nfs4_lseek_async(struct nfs_context *nfs, struct nfsfh *fh, int64_t offset,
                  int whence, nfs_cb cb, void *private_data)
 {
         COMPOUND4args args;
-        nfs_argop4 op[2];
+        nfs_argop4 op[2 + 1];
         struct nfs4_cb_data *data;
         int i;
 
@@ -4461,7 +4512,8 @@ nfs4_lseek_async(struct nfs_context *nfs, struct nfsfh *fh, int64_t offset,
         data->filler.blob1.free = free;
         memcpy(data->filler.blob1.val, &offset, sizeof(uint64_t));
 
-        i = nfs4_op_putfh(nfs, &op[0], fh);
+        i = nfs4_start_compound(nfs, op);
+        i += nfs4_op_putfh(nfs, &op[i], fh);
         i += nfs4_op_getattr(nfs, &op[i], standard_attributes, 2);
 
         memset(&args, 0, sizeof(args));
@@ -4537,7 +4589,7 @@ nfs4_lockf_async(struct nfs_context *nfs, struct nfsfh *fh,
                      nfs_cb cb, void *private_data)
 {
         COMPOUND4args args;
-        nfs_argop4 op[2];
+        nfs_argop4 op[2 + 1];
         struct nfs4_cb_data *data;
         int i;
 
@@ -4556,7 +4608,8 @@ nfs4_lockf_async(struct nfs_context *nfs, struct nfsfh *fh,
 
         data->filler.blob1.len = cmd;
 
-        i = nfs4_op_putfh(nfs, &op[0], fh);
+        i = nfs4_start_compound(nfs, op);
+        i += nfs4_op_putfh(nfs, &op[i], fh);
         switch (cmd) {
         case NFS4_F_LOCK:
                 i += nfs4_op_lock(nfs, &op[i], fh, OP_LOCK, WRITEW_LT,
@@ -4649,14 +4702,15 @@ nfs4_fcntl_async_internal(struct nfs_context *nfs, struct nfsfh *fh,
                           struct nfs4_cb_data *data)
 {
         COMPOUND4args args;
-        nfs_argop4 op[2];
+        nfs_argop4 op[2 + 1];
         struct nfs4_flock *fl;
         enum nfs4_fcntl_op cmd;
         int i, lock_type;
 
         cmd = data->filler.blob1.len;
 
-        i = nfs4_op_putfh(nfs, &op[0], fh);
+        i = nfs4_start_compound(nfs, op);
+        i += nfs4_op_putfh(nfs, &op[i], fh);
         switch (cmd) {
         case NFS4_F_SETLK:
         case NFS4_F_SETLKW:
@@ -4752,7 +4806,7 @@ nfs4_fcntl_async(struct nfs_context *nfs, struct nfsfh *fh,
         struct nfs4_cb_data *data;
         struct nfs4_flock *fl;
         COMPOUND4args args;
-        nfs_argop4 op[2];
+        nfs_argop4 op[2 + 1];
         int i;
 
         data = calloc(1, sizeof(*data));
@@ -4784,7 +4838,8 @@ nfs4_fcntl_async(struct nfs_context *nfs, struct nfsfh *fh,
                         fl->l_start = fh->offset + fl->l_start;
                         return nfs4_fcntl_async_internal(nfs, fh, data);
                 case SEEK_END:
-                        i = nfs4_op_putfh(nfs, &op[0], fh);
+                        i = nfs4_start_compound(nfs, op);
+                        i += nfs4_op_putfh(nfs, &op[i], fh);
                         i += nfs4_op_getattr(nfs, &op[i], standard_attributes,
                                              2);
 
@@ -5032,7 +5087,7 @@ nfs4_statvfs_async_internal(struct nfs_context *nfs, const char *path,
         struct nfs4_cb_data *data;
         COMPOUND4args args;
         struct nfsfh fh;
-        nfs_argop4 op[2];
+        nfs_argop4 op[2 + 1];
         int i;
 
         data = calloc(1, sizeof(*data));
@@ -5051,7 +5106,8 @@ nfs4_statvfs_async_internal(struct nfs_context *nfs, const char *path,
         fh.fh.len = nfs->nfsi->rootfh.len;
         fh.fh.val = nfs->nfsi->rootfh.val;
 
-        i = nfs4_op_putfh(nfs, &op[0], &fh);
+        i = nfs4_start_compound(nfs, op);
+        i += nfs4_op_putfh(nfs, &op[i], &fh);
         i += nfs4_op_getattr(nfs, &op[i], statvfs_attributes, 2);
 
         memset(&args, 0, sizeof(args));
@@ -5150,7 +5206,7 @@ nfs4_fchmod_async(struct nfs_context *nfs, struct nfsfh *fh, int mode,
                   nfs_cb cb, void *private_data)
 {
         COMPOUND4args args;
-        nfs_argop4 op[2];
+        nfs_argop4 op[2 + 1];
         struct nfs4_cb_data *data;
         uint32_t m;
         int i;
@@ -5178,7 +5234,8 @@ nfs4_fchmod_async(struct nfs_context *nfs, struct nfsfh *fh, int mode,
         
         memset(op, 0, sizeof(op));
 
-        i = nfs4_op_putfh(nfs, &op[0], fh);
+        i = nfs4_start_compound(nfs, op);
+        i += nfs4_op_putfh(nfs, &op[i], fh);
         i += nfs4_op_chmod(nfs, &op[i], fh, data->filler.blob3.val);
 
         memset(&args, 0, sizeof(args));
@@ -5312,7 +5369,7 @@ nfs4_fchown_async(struct nfs_context *nfs, struct nfsfh *fh, int uid, int gid,
                   nfs_cb cb, void *private_data)
 {
         COMPOUND4args args;
-        nfs_argop4 op[2];
+        nfs_argop4 op[2 + 1];
         struct nfs4_cb_data *data;
         int i;
 
@@ -5333,7 +5390,8 @@ nfs4_fchown_async(struct nfs_context *nfs, struct nfsfh *fh, int uid, int gid,
         
         memset(op, 0, sizeof(op));
 
-        i = nfs4_op_putfh(nfs, &op[0], fh);
+        i = nfs4_start_compound(nfs, op);
+        i += nfs4_op_putfh(nfs, &op[i], fh);
         i += nfs4_op_chown(nfs, &op[i], fh, data->filler.blob3.val,
                            data->filler.blob3.len);
 
