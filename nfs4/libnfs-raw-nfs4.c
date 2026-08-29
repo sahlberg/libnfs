@@ -19,6 +19,7 @@
  * It was generated using rpcgen.
  */
 
+#include <string.h>
 #include "libnfs-zdr.h"
 #include "libnfs-raw-nfs4.h"
 
@@ -1919,18 +1920,49 @@ zdr_READDIR4args (ZDR *zdrs, READDIR4args *objp)
 	return TRUE;
 }
 
+/*
+ * Hand written rather than generated. rpcgen walks the entry list by
+ * recursing through zdr_pointer once per entry, which lets a server with a
+ * long directory exhaust the stack, so this iterates instead.
+ */
 uint32_t
 zdr_entry4 (ZDR *zdrs, entry4 *objp)
 {
-	 if (!zdr_nfs_cookie4 (zdrs, &objp->cookie))
-		 return FALSE;
-	 if (!zdr_component4 (zdrs, &objp->name))
-		 return FALSE;
-	 if (!zdr_fattr4 (zdrs, &objp->attrs))
-		 return FALSE;
-	 if (!zdr_pointer (zdrs, (char **)&objp->nextentry, sizeof (entry4), (zdrproc_t) zdr_entry4))
-		 return FALSE;
-	return TRUE;
+	bool_t more_data;
+
+	while (1) {
+		if (!zdr_nfs_cookie4 (zdrs, &objp->cookie))
+			return FALSE;
+		if (!zdr_component4 (zdrs, &objp->name))
+			return FALSE;
+		if (!zdr_fattr4 (zdrs, &objp->attrs))
+			return FALSE;
+
+		/*
+		 * On encode this says whether we have another entry to write.
+		 * On decode libnfs_zdr_bool overwrites it with what the server
+		 * sent.
+		 */
+		more_data = (objp->nextentry != NULL);
+		if (!libnfs_zdr_bool(zdrs, &more_data)) {
+			return FALSE;
+		}
+		if (!more_data) {
+			if (zdrs->x_op == ZDR_DECODE) {
+				objp->nextentry = NULL;
+			}
+			return TRUE;
+		}
+
+		if (zdrs->x_op == ZDR_DECODE) {
+			objp->nextentry = zdr_malloc(zdrs, sizeof(entry4));
+			if (objp->nextentry == NULL) {
+				return FALSE;
+			}
+			memset(objp->nextentry, 0, sizeof(entry4));
+		}
+		objp = objp->nextentry;
+	}
 }
 
 uint32_t
