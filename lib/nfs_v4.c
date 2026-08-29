@@ -1345,6 +1345,40 @@ nfs42_op_deallocate(struct nfs_context *nfs _U_, nfs_argop4 *op,
 }
 
 static int
+nfs42_op_read_plus(struct nfs_context *nfs _U_, nfs_argop4 *op,
+                   struct nfsfh *fh, uint64_t offset, uint32_t count)
+{
+        READ_PLUS4args *rpargs;
+
+        op[0].argop = OP_READ_PLUS;
+        rpargs = &op[0].nfs_argop4_u.opreadplus;
+
+        rpargs->rpa_stateid.seqid = fh->stateid.seqid;
+        memcpy(rpargs->rpa_stateid.other, fh->stateid.other, 12);
+        rpargs->rpa_offset = offset;
+        rpargs->rpa_count = count;
+
+        return 1;
+}
+
+static int
+nfs42_op_write_same(struct nfs_context *nfs _U_, nfs_argop4 *op,
+                    struct nfsfh *fh, app_data_block4 *adb, int stable)
+{
+        WRITE_SAME4args *wsargs;
+
+        op[0].argop = OP_WRITE_SAME;
+        wsargs = &op[0].nfs_argop4_u.opwritesame;
+
+        wsargs->wsa_stateid.seqid = fh->stateid.seqid;
+        memcpy(wsargs->wsa_stateid.other, fh->stateid.other, 12);
+        wsargs->wsa_stable = stable ? FILE_SYNC4 : UNSTABLE4;
+        wsargs->wsa_adb = *adb;
+
+        return 1;
+}
+
+static int
 nfs42_op_seek(struct nfs_context *nfs _U_, nfs_argop4 *op, struct nfsfh *fh,
               uint64_t offset, data_content4 what)
 {
@@ -4922,6 +4956,153 @@ nfs42_fallocate_async(struct nfs_context *nfs, struct nfsfh *fh, int mode,
                                    data) == NULL) {
                 nfs_set_error(nfs, "Failed to queue %s. %s",
                               nfs42_fallocate_opname(mode),
+                              rpc_get_error(nfs->rpc));
+                free_nfs4_cb_data(data);
+                return -1;
+        }
+
+        return 0;
+}
+
+static void
+nfs42_read_plus_cb(struct rpc_context *rpc, int status, void *command_data,
+                   void *private_data)
+{
+        struct nfs4_cb_data *data = private_data;
+        struct nfs_context *nfs = data->nfs;
+        COMPOUND4res *res = command_data;
+        READ_PLUS4resok *rpresok;
+        int i;
+
+        assert(rpc->magic == RPC_CONTEXT_MAGIC);
+
+        if (check_nfs4_error(nfs, status, data, res, "READ_PLUS")) {
+                return;
+        }
+
+        if ((i = nfs4_find_op(nfs, data, res, OP_READ_PLUS, "READ_PLUS")) < 0) {
+                return;
+        }
+        rpresok = &res->resarray.resarray_val[i].nfs_resop4_u.opreadplus.READ_PLUS4res_u.rp_resok4;
+
+        /*
+         * The contents point into the reply, which is released once we
+         * return, so a caller that wants to keep them must copy them.
+         */
+        data->cb(0, nfs, rpresok, data->private_data);
+        free_nfs4_cb_data(data);
+}
+
+int
+nfs42_read_plus_async(struct nfs_context *nfs, struct nfsfh *fh,
+                      uint64_t offset, uint32_t count, nfs_cb cb,
+                      void *private_data)
+{
+        COMPOUND4args args;
+        nfs_argop4 op[2 + 1];
+        struct nfs4_cb_data *data;
+        int i;
+
+        if (nfs->nfsi->version != NFS_V4_2) {
+                nfs_set_error(nfs, "%s requires NFSv4.2", __FUNCTION__);
+                return -ENOTSUP;
+        }
+
+        data = calloc(1, sizeof(*data));
+        if (data == NULL) {
+                nfs_set_error(nfs, "Out of memory.");
+                return -1;
+        }
+        data->nfs          = nfs;
+        data->cb           = cb;
+        data->private_data = private_data;
+
+        memset(op, 0, sizeof(op));
+        i = nfs4_start_compound(nfs, op);
+        i += nfs4_op_putfh(nfs, &op[i], fh);
+        i += nfs42_op_read_plus(nfs, &op[i], fh, offset, count);
+
+        memset(&args, 0, sizeof(args));
+        args.argarray.argarray_len = i;
+        args.argarray.argarray_val = op;
+
+        if (rpc_nfs4_compound_task(nfs->rpc, nfs42_read_plus_cb, &args,
+                                   data) == NULL) {
+                nfs_set_error(nfs, "Failed to queue READ_PLUS. %s",
+                              rpc_get_error(nfs->rpc));
+                free_nfs4_cb_data(data);
+                return -1;
+        }
+
+        return 0;
+}
+
+static void
+nfs42_write_same_cb(struct rpc_context *rpc, int status, void *command_data,
+                    void *private_data)
+{
+        struct nfs4_cb_data *data = private_data;
+        struct nfs_context *nfs = data->nfs;
+        COMPOUND4res *res = command_data;
+        write_response4 *wsresok;
+        int i;
+
+        assert(rpc->magic == RPC_CONTEXT_MAGIC);
+
+        if (check_nfs4_error(nfs, status, data, res, "WRITE_SAME")) {
+                return;
+        }
+
+        if ((i = nfs4_find_op(nfs, data, res, OP_WRITE_SAME,
+                              "WRITE_SAME")) < 0) {
+                return;
+        }
+        wsresok = &res->resarray.resarray_val[i].nfs_resop4_u.opwritesame.WRITE_SAME4res_u.wsr_resok4;
+
+        data->cb(0, nfs, wsresok, data->private_data);
+        free_nfs4_cb_data(data);
+}
+
+int
+nfs42_write_same_async(struct nfs_context *nfs, struct nfsfh *fh,
+                       app_data_block4 *adb, int stable, nfs_cb cb,
+                       void *private_data)
+{
+        COMPOUND4args args;
+        nfs_argop4 op[2 + 1];
+        struct nfs4_cb_data *data;
+        int i;
+
+        if (nfs->nfsi->version != NFS_V4_2) {
+                nfs_set_error(nfs, "%s requires NFSv4.2", __FUNCTION__);
+                return -ENOTSUP;
+        }
+        if (fh->is_readonly) {
+                nfs_set_error(nfs, "Trying to write to a read-only file");
+                return -1;
+        }
+
+        data = calloc(1, sizeof(*data));
+        if (data == NULL) {
+                nfs_set_error(nfs, "Out of memory.");
+                return -1;
+        }
+        data->nfs          = nfs;
+        data->cb           = cb;
+        data->private_data = private_data;
+
+        memset(op, 0, sizeof(op));
+        i = nfs4_start_compound(nfs, op);
+        i += nfs4_op_putfh(nfs, &op[i], fh);
+        i += nfs42_op_write_same(nfs, &op[i], fh, adb, stable);
+
+        memset(&args, 0, sizeof(args));
+        args.argarray.argarray_len = i;
+        args.argarray.argarray_val = op;
+
+        if (rpc_nfs4_compound_task(nfs->rpc, nfs42_write_same_cb, &args,
+                                   data) == NULL) {
+                nfs_set_error(nfs, "Failed to queue WRITE_SAME. %s",
                               rpc_get_error(nfs->rpc));
                 free_nfs4_cb_data(data);
                 return -1;

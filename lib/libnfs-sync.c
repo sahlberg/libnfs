@@ -2341,6 +2341,160 @@ nfs3_getacl(struct nfs_context *nfs, struct nfsfh *nfsfh,
 }
 
 
+#ifdef HAVE_NFS4_2
+/*
+ * NFSv4.2 READ_PLUS and WRITE_SAME
+ */
+struct rp_cb_data {
+        struct sync_cb_data cb_data;
+        READ_PLUS4resok *res;
+};
+
+void nfs42_read_plus_free(READ_PLUS4resok *res)
+{
+        uint32_t i;
+
+        for (i = 0; i < res->rpr_contents.rpr_contents_len; i++) {
+                read_plus_content *c = &res->rpr_contents.rpr_contents_val[i];
+
+                if (c->rpc_content == NFS4_CONTENT_DATA) {
+                        free(c->read_plus_content_u.rpc_data.d_data.d_data_val);
+                }
+        }
+        free(res->rpr_contents.rpr_contents_val);
+        res->rpr_contents.rpr_contents_val = NULL;
+        res->rpr_contents.rpr_contents_len = 0;
+}
+
+static void
+nfs42_read_plus_sync_cb(int status, struct nfs_context *nfs, void *data,
+                        void *private_data)
+{
+	struct rp_cb_data *rp_data = private_data;
+        READ_PLUS4resok *src = data;
+        READ_PLUS4resok *dst = rp_data->res;
+        uint32_t i;
+
+	if (status < 0) {
+		nfs_set_error(nfs, "read_plus call failed with \"%s\"",
+                              nfs_get_error(nfs));
+                goto finished;
+	}
+
+        /*
+         * The reply is released when this returns, so everything the caller
+         * keeps has to be copied out of it here.
+         */
+        dst->rpr_eof = src->rpr_eof;
+        dst->rpr_contents.rpr_contents_len = 0;
+        dst->rpr_contents.rpr_contents_val =
+                calloc(src->rpr_contents.rpr_contents_len,
+                       sizeof(read_plus_content));
+        if (src->rpr_contents.rpr_contents_len &&
+            dst->rpr_contents.rpr_contents_val == NULL) {
+		nfs_set_error(nfs, "Out of memory");
+                status = -ENOMEM;
+                goto finished;
+        }
+        for (i = 0; i < src->rpr_contents.rpr_contents_len; i++) {
+                read_plus_content *sc = &src->rpr_contents.rpr_contents_val[i];
+                read_plus_content *dc = &dst->rpr_contents.rpr_contents_val[i];
+                uint32_t len;
+
+                *dc = *sc;
+                dst->rpr_contents.rpr_contents_len = i + 1;
+                if (sc->rpc_content != NFS4_CONTENT_DATA) {
+                        continue;
+                }
+                len = sc->read_plus_content_u.rpc_data.d_data.d_data_len;
+                dc->read_plus_content_u.rpc_data.d_data.d_data_val =
+                        malloc(len ? len : 1);
+                if (dc->read_plus_content_u.rpc_data.d_data.d_data_val == NULL) {
+                        nfs_set_error(nfs, "Out of memory");
+                        nfs42_read_plus_free(dst);
+                        status = -ENOMEM;
+                        goto finished;
+                }
+                memcpy(dc->read_plus_content_u.rpc_data.d_data.d_data_val,
+                       sc->read_plus_content_u.rpc_data.d_data.d_data_val, len);
+        }
+
+ finished:
+        cb_data_is_finished(&rp_data->cb_data, status);
+}
+
+int
+nfs42_read_plus(struct nfs_context *nfs, struct nfsfh *nfsfh, uint64_t offset,
+                uint32_t count, READ_PLUS4resok *res)
+{
+	struct rp_cb_data rp_data;
+
+        memset(res, 0, sizeof(*res));
+        rp_data.res = res;
+        if (nfs_init_cb_data(&nfs, &rp_data.cb_data)) {
+                return -1;
+        }
+
+	if (nfs42_read_plus_async(nfs, nfsfh, offset, count,
+                                  nfs42_read_plus_sync_cb, &rp_data) != 0) {
+		nfs_set_error(nfs, "nfs42_read_plus_async failed. %s",
+                              nfs_get_error(nfs));
+                nfs_destroy_cb_sem(&rp_data.cb_data);
+		return -1;
+	}
+
+	wait_for_nfs_reply(nfs, &rp_data.cb_data);
+        nfs_destroy_cb_sem(&rp_data.cb_data);
+
+	return rp_data.cb_data.status;
+}
+
+static void
+nfs42_write_same_cb_sync(int status, struct nfs_context *nfs, void *data,
+                         void *private_data)
+{
+	struct sync_cb_data *cb_data = private_data;
+        write_response4 *wr = data;
+
+	if (status < 0) {
+		nfs_set_error(nfs, "write_same call failed with \"%s\"",
+                              nfs_get_error(nfs));
+                goto finished;
+	}
+        if (cb_data->return_data) {
+                *(uint64_t *)cb_data->return_data = wr->wr_count;
+        }
+
+ finished:
+        cb_data_is_finished(cb_data, status);
+}
+
+int
+nfs42_write_same(struct nfs_context *nfs, struct nfsfh *nfsfh,
+                 app_data_block4 *adb, int stable, uint64_t *count)
+{
+	struct sync_cb_data cb_data;
+
+	cb_data.return_data = count;
+        if (nfs_init_cb_data(&nfs, &cb_data)) {
+                return -1;
+        }
+
+	if (nfs42_write_same_async(nfs, nfsfh, adb, stable,
+                                   nfs42_write_same_cb_sync, &cb_data) != 0) {
+		nfs_set_error(nfs, "nfs42_write_same_async failed. %s",
+                              nfs_get_error(nfs));
+                nfs_destroy_cb_sem(&cb_data);
+		return -1;
+	}
+
+	wait_for_nfs_reply(nfs, &cb_data);
+        nfs_destroy_cb_sem(&cb_data);
+
+	return cb_data.status;
+}
+#endif /* HAVE_NFS4_2 */
+
 /*
  * nfs4_getacl()
  */

@@ -42,6 +42,91 @@ EXTERN int nfs4_getacl(struct nfs_context *nfs, struct nfsfh *nfsfh,
 
 EXTERN void nfs4_acl_free(fattr4_acl *nfs4acl);
 
+/*
+ * NFSv4.2 READ_PLUS and WRITE_SAME.
+ *
+ * These have no POSIX equivalent to hide behind, so they are exposed as they
+ * are and an application calls them directly. Both need the context to be
+ * NFSv4.2 and fail with -ENOTSUP otherwise.
+ */
+
+/*
+ * Async READ_PLUS
+ *
+ * Like READ, but the reply describes the range as a list of extents that are
+ * each either data or a hole, so a sparse file can be read without the holes
+ * being sent as zeroes. Note that a hole in the reply may be longer than the
+ * count that was asked for.
+ *
+ * Function returns
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
+ *
+ * When the callback is invoked, status indicates the result:
+ *      0 : Success.
+ *          data is READ_PLUS4resok *. It points into the reply and is only
+ *          valid until the callback returns.
+ * -errno : An error occured.
+ *          data is the error string.
+ */
+EXTERN int nfs42_read_plus_async(struct nfs_context *nfs, struct nfsfh *nfsfh,
+                                 uint64_t offset, uint32_t count,
+                                 nfs_cb cb, void *private_data);
+
+/*
+ * Sync READ_PLUS
+ *
+ * Function returns
+ *      0 : The operation was successful.
+ * -errno : The command failed.
+ *
+ * If the command was successful, the returned data in res must be freed by
+ * calling nfs42_read_plus_free().
+ */
+EXTERN int nfs42_read_plus(struct nfs_context *nfs, struct nfsfh *nfsfh,
+                           uint64_t offset, uint32_t count,
+                           READ_PLUS4resok *res);
+
+EXTERN void nfs42_read_plus_free(READ_PLUS4resok *res);
+
+/*
+ * Async WRITE_SAME
+ *
+ * Writes a pattern repeatedly, so that a large run of identical blocks costs
+ * one RPC rather than one per block. The application data block describes the
+ * pattern, how large a block is and how many of them to write. stable is
+ * non-zero to ask the server to commit the write to stable storage.
+ *
+ * Function returns
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
+ *
+ * When the callback is invoked, status indicates the result:
+ *      0 : Success.
+ *          data is write_response4 *. It points into the reply and is only
+ *          valid until the callback returns.
+ * -errno : An error occured.
+ *          data is the error string.
+ */
+EXTERN int nfs42_write_same_async(struct nfs_context *nfs, struct nfsfh *nfsfh,
+                                  app_data_block4 *adb, int stable,
+                                  nfs_cb cb, void *private_data);
+
+/*
+ * Sync WRITE_SAME
+ *
+ * Function returns
+ *      0 : The operation was successful and count is set to the number of
+ *          bytes written.
+ * -errno : The command failed.
+ */
+EXTERN int nfs42_write_same(struct nfs_context *nfs, struct nfsfh *nfsfh,
+                            app_data_block4 *adb, int stable, uint64_t *count);
+
 #ifdef __cplusplus
 }
 #endif
