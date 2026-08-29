@@ -557,6 +557,10 @@ static bool_t libnfs_accepted_reply(ZDR *zdrs, struct accepted_reply *ar)
                                 return FALSE;
                         }
                                 
+                        /* len is the server's, keep it inside the buffer */
+                        if (len > zdrs->size - zdrs->pos) {
+                                return FALSE;
+                        }
                         message_buffer.length = len;
                         message_buffer.value = zdr_getptr(zdrs) + zdr_getpos(zdrs);
                         output_buffer = ar->reply_data.results.output_buffer;
@@ -566,6 +570,10 @@ static bool_t libnfs_accepted_reply(ZDR *zdrs, struct accepted_reply *ar)
                                           NULL,
                                           NULL);
                         if (maj) {
+                                return FALSE;
+                        }
+                        /* The 4 byte header below must actually be there */
+                        if (output_buffer->length < 4) {
                                 return FALSE;
                         }
                         zdrs->buf = (char *)output_buffer->value + 4;
