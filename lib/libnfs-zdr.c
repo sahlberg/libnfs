@@ -307,6 +307,17 @@ bool_t libnfs_zdr_opaque(ZDR *zdrs, char *objp, uint32_t size)
 {
 	switch (zdrs->x_op) {
 	case ZDR_ENCODE:
+                /*
+                 * Every other encoder bounds its write; this one did not, so
+                 * a fixed size opaque landing near the end of the encode
+                 * buffer, e.g. a stateid at the tail of a compound with many
+                 * LOOKUPs, ran straight off it. The padding below is part of
+                 * the write, so it has to fit too.
+                 */
+                if (zdrs->pos + size > zdrs->size ||
+                    zdrs->pos + ((size + 3) & ~3) > zdrs->size) {
+                        return FALSE;
+                }
 		memcpy(&zdrs->buf[zdrs->pos], objp, size);
 		zdrs->pos += size;
 		if (zdrs->pos & 3) {
