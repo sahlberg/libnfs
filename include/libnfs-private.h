@@ -939,6 +939,19 @@ struct nfs_context_internal {
        char *client_name;
        uint64_t clientid;
        verifier4 setclientid_confirm;
+#ifdef HAVE_NFS4_2
+       /*
+        * NFSv4.2 session state, established by EXCHANGE_ID + CREATE_SESSION.
+        *
+        * We ask for a single slot in CREATE_SESSION, so slot 0 is the only
+        * one and slot_seqid is its sequence id. That serialises the session
+        * to one outstanding COMPOUND, which is correct but not fast; a real
+        * slot table is what lifts that.
+        */
+       sessionid4 sessionid;
+       sequenceid4 slot_seqid;
+       int session_valid;
+#endif /* HAVE_NFS4_2 */
        uint32_t open_counter;
        int has_lock_owner;
 #ifdef HAVE_MULTITHREADING

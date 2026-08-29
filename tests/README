@@ -4,6 +4,12 @@ To run the tests:
   make VERSION=3 test
 or
   make VERSION=4 test
+or
+  make VERSION=4.2 test
+
+VERSION=4 is NFSv4.0 and VERSION=4.2 is NFSv4.2. The latter needs libnfs
+built with NFSv4.2 support, which is the default but can be turned off with
+--disable-nfs4-2 or -DENABLE_NFS4_2=OFF.
 
 The tests will ask for your password as it needs sudo access to
 run exportfs to create/remove the share we use for testing.

@@ -1218,6 +1218,121 @@ nfs4_op_getattr(struct nfs_context *nfs, nfs_argop4 *op,
  *  <idx> : On success. Idx represents the next free index in op.
  *          Caller must free op.
  */
+#ifdef HAVE_NFS4_2
+/*
+ * NFSv4.2 session establishment.
+ *
+ * From minor version 1 onwards a client does not SETCLIENTID. It presents a
+ * client owner to EXCHANGE_ID to get a clientid, turns that into a session
+ * with CREATE_SESSION, and tells the server it has no state to reclaim with
+ * RECLAIM_COMPLETE. Only then can it send ordinary COMPOUNDs, each of which
+ * must lead with SEQUENCE.
+ */
+static int
+nfs42_op_exchange_id(struct nfs_context *nfs, nfs_argop4 *op)
+{
+        EXCHANGE_ID4args *eiargs;
+
+        op[0].argop = OP_EXCHANGE_ID;
+        eiargs = &op[0].nfs_argop4_u.opexchangeid;
+
+        memcpy(eiargs->eia_clientowner.co_verifier, nfs->nfsi->verifier,
+               sizeof(verifier4));
+        eiargs->eia_clientowner.co_ownerid.co_ownerid_len =
+                strlen(nfs->nfsi->client_name);
+        eiargs->eia_clientowner.co_ownerid.co_ownerid_val =
+                nfs->nfsi->client_name;
+
+        /*
+         * We are not a pNFS client and we do not do state protection, so the
+         * flags are empty and spa_how is SP4_NONE.
+         */
+        eiargs->eia_flags = 0;
+        eiargs->eia_state_protect.spa_how = SP4_NONE;
+        eiargs->eia_client_impl_id.eia_client_impl_id_len = 0;
+        eiargs->eia_client_impl_id.eia_client_impl_id_val = NULL;
+
+        return 1;
+}
+
+static int
+nfs42_op_create_session(struct nfs_context *nfs, nfs_argop4 *op,
+                        clientid4 clientid, sequenceid4 seqid)
+{
+        CREATE_SESSION4args *csargs;
+
+        op[0].argop = OP_CREATE_SESSION;
+        csargs = &op[0].nfs_argop4_u.opcreatesession;
+
+        csargs->csa_clientid = clientid;
+        csargs->csa_sequence = seqid;
+        csargs->csa_flags = 0;
+
+        /*
+         * ca_maxrequests is the size of the slot table, and we ask for one.
+         * That makes slot 0 the only slot and keeps SEQUENCE bookkeeping to a
+         * single sequence id, at the cost of one COMPOUND at a time.
+         */
+        csargs->csa_fore_chan_attrs.ca_headerpadsize = 0;
+        /*
+         * These bound a single RPC on the wire, so they are the record limits
+         * rather than NFS_MAX_XFER_SIZE, which is the ceiling on a WRITE
+         * payload assembled from the caller's own buffers.
+         */
+        csargs->csa_fore_chan_attrs.ca_maxrequestsize = MAX_FRAGMENT_SIZE;
+        csargs->csa_fore_chan_attrs.ca_maxresponsesize = NFS_MAX_RECV_XFER_SIZE;
+        csargs->csa_fore_chan_attrs.ca_maxresponsesize_cached = 0;
+        csargs->csa_fore_chan_attrs.ca_maxoperations = 64;
+        csargs->csa_fore_chan_attrs.ca_maxrequests = 1;
+        csargs->csa_fore_chan_attrs.ca_rdma_ird.ca_rdma_ird_len = 0;
+        csargs->csa_fore_chan_attrs.ca_rdma_ird.ca_rdma_ird_val = NULL;
+
+        /*
+         * We run no back channel, but the server still validates the sizes we
+         * offer for it, so they have to be plausible rather than zero.
+         */
+        csargs->csa_back_chan_attrs = csargs->csa_fore_chan_attrs;
+
+        csargs->csa_cb_program = 0;
+        csargs->csa_sec_parms.csa_sec_parms_len = 0;
+        csargs->csa_sec_parms.csa_sec_parms_val = NULL;
+
+        return 1;
+}
+
+static int
+nfs42_op_reclaim_complete(struct nfs_context *nfs _U_, nfs_argop4 *op)
+{
+        op[0].argop = OP_RECLAIM_COMPLETE;
+        /* Nothing to reclaim, and this is about the whole client, not one fs */
+        op[0].nfs_argop4_u.opreclaimcomplete.rca_one_fs = 0;
+
+        return 1;
+}
+
+static int
+nfs42_op_sequence(struct nfs_context *nfs, nfs_argop4 *op)
+{
+        SEQUENCE4args *sargs;
+
+        op[0].argop = OP_SEQUENCE;
+        sargs = &op[0].nfs_argop4_u.opsequence;
+
+        memcpy(sargs->sa_sessionid, nfs->nfsi->sessionid, sizeof(sessionid4));
+        /*
+         * The sequence id identifies this request within its slot and must
+         * advance for every new COMPOUND, so that the server can tell a fresh
+         * request from a retransmit of the previous one.
+         */
+        sargs->sa_sequenceid = ++nfs->nfsi->slot_seqid;
+        sargs->sa_slotid = 0;
+        sargs->sa_highest_slotid = 0;
+        sargs->sa_cachethis = 0;
+
+        return 1;
+}
+#endif /* HAVE_NFS4_2 */
+
 /*
  * Open a COMPOUND.
  *
@@ -1235,12 +1350,12 @@ static int
 nfs4_start_compound(struct nfs_context *nfs, nfs_argop4 *op)
 {
 #ifdef HAVE_NFS4_2
-        if (nfs->nfsi->version == NFS_V4_2) {
-                /*
-                 * TODO: emit SEQUENCE once the session layer exists. Until
-                 * then a 4.2 mount cannot get as far as any COMPOUND.
-                 */
-                return 0;
+        /*
+         * Only once the session exists. The COMPOUNDs that build it run
+         * before there is anything to sequence against.
+         */
+        if (nfs->nfsi->version == NFS_V4_2 && nfs->nfsi->session_valid) {
+                return nfs42_op_sequence(nfs, op);
         }
 #endif /* HAVE_NFS4_2 */
         (void)nfs;
@@ -1758,6 +1873,33 @@ nfs4_mount_4_cb(struct rpc_context *rpc, int status, void *command_data,
         }
 }
 
+/*
+ * The bootstrap is done and the client is usable. Everything from here is the
+ * same whatever established the state, so both the 4.0 SETCLIENTID chain and
+ * the 4.2 session chain converge here to fetch the root filehandle.
+ */
+static void
+nfs4_mount_start_getfh(struct nfs_context *nfs, struct nfs4_cb_data *data,
+                       void *res)
+{
+        data->filler.func = nfs4_populate_getfh;
+        data->filler.max_op = 1;
+        data->filler.data = calloc(2, sizeof(uint32_t));
+        if (data->filler.data == NULL) {
+                nfs_set_error(nfs, "Out of memory. Failed to allocate "
+                              "data structure.");
+                data->cb(-ENOMEM, nfs, res, data->private_data);
+                free_nfs4_cb_data(data);
+                return;
+        }
+
+        if (nfs4_lookup_path_async(nfs, data, nfs4_mount_4_cb) < 0) {
+                data->cb(-ENOMEM, nfs, res, data->private_data);
+                free_nfs4_cb_data(data);
+                return;
+        }
+}
+
 static void
 nfs4_mount_3_cb(struct rpc_context *rpc, int status, void *command_data,
                 void *private_data)
@@ -1772,23 +1914,7 @@ nfs4_mount_3_cb(struct rpc_context *rpc, int status, void *command_data,
                 return;
         }
 
-        data->filler.func = nfs4_populate_getfh;
-        data->filler.max_op = 1;
-        data->filler.data = calloc(2, sizeof(uint32_t));
-        if (data->filler.data == NULL) {
-                nfs_set_error(nfs, "Out of memory. Failed to allocate "
-                              "data structure.");
-                data->cb(-ENOMEM, nfs, res, data->private_data);
-                free_nfs4_cb_data(data);
-                return;
-        }
-
-
-        if (nfs4_lookup_path_async(nfs, data, nfs4_mount_4_cb) < 0) {
-                data->cb(-ENOMEM, nfs, res, data->private_data);
-                free_nfs4_cb_data(data);
-                return;
-        }
+        nfs4_mount_start_getfh(nfs, data, res);
 }
 
 static void
@@ -1878,6 +2004,186 @@ nfs4_mount_1_cb(struct rpc_context *rpc, int status, void *command_data,
         }
 }
 
+#ifdef HAVE_NFS4_2
+/*
+ * Third step: RECLAIM_COMPLETE has been acknowledged, so the session is fully
+ * usable and ordinary COMPOUNDs can start flowing.
+ */
+static void
+nfs42_mount_3_cb(struct rpc_context *rpc, int status, void *command_data,
+                 void *private_data)
+{
+        struct nfs4_cb_data *data = private_data;
+        struct nfs_context *nfs = data->nfs;
+        COMPOUND4res *res = command_data;
+
+        assert(rpc->magic == RPC_CONTEXT_MAGIC);
+
+        if (check_nfs4_error(nfs, status, data, res, "RECLAIM_COMPLETE")) {
+                return;
+        }
+
+        nfs4_mount_start_getfh(nfs, data, res);
+}
+
+/*
+ * Second step: CREATE_SESSION has returned a session id. Record it, mark the
+ * session usable so that nfs4_start_compound() starts emitting SEQUENCE, and
+ * declare that we have no state to reclaim.
+ */
+static void
+nfs42_mount_2_cb(struct rpc_context *rpc, int status, void *command_data,
+                 void *private_data)
+{
+        struct nfs4_cb_data *data = private_data;
+        struct nfs_context *nfs = data->nfs;
+        COMPOUND4res *res = command_data;
+        COMPOUND4args args;
+        nfs_argop4 op[1 + 1];
+        CREATE_SESSION4resok *csresok;
+        int i;
+
+        assert(rpc->magic == RPC_CONTEXT_MAGIC);
+
+        if (check_nfs4_error(nfs, status, data, res, "CREATE_SESSION")) {
+                return;
+        }
+
+        if ((i = nfs4_find_op(nfs, data, res, OP_CREATE_SESSION,
+                              "CREATE_SESSION")) < 0) {
+                return;
+        }
+        csresok = &res->resarray.resarray_val[i].nfs_resop4_u.opcreatesession.CREATE_SESSION4res_u.csr_resok4;
+
+        memcpy(nfs->nfsi->sessionid, csresok->csr_sessionid,
+               sizeof(sessionid4));
+        /*
+         * The first SEQUENCE on a slot uses sequence id 1, and
+         * nfs42_op_sequence() pre-increments, so start from 0.
+         */
+        nfs->nfsi->slot_seqid = 0;
+
+        /*
+         * A server may hand back a smaller fore channel than we asked for. We
+         * asked for a single slot, which is the minimum, so it cannot shrink
+         * below what we use. Anything larger we simply do not take advantage
+         * of yet.
+         */
+        if (csresok->csr_fore_chan_attrs.ca_maxrequests < 1) {
+                nfs_set_error(nfs, "Server granted a session with no slots");
+                data->cb(-EIO, nfs, nfs_get_error(nfs), data->private_data);
+                free_nfs4_cb_data(data);
+                return;
+        }
+
+        nfs->nfsi->session_valid = 1;
+
+        memset(op, 0, sizeof(op));
+        i = nfs4_start_compound(nfs, op);
+        i += nfs42_op_reclaim_complete(nfs, &op[i]);
+
+        memset(&args, 0, sizeof(args));
+        args.argarray.argarray_len = i;
+        args.argarray.argarray_val = op;
+
+        if (rpc_nfs4_compound_task(rpc, nfs42_mount_3_cb, &args, data) == NULL) {
+                nfs_set_error(nfs, "Failed to queue RECLAIM_COMPLETE. %s",
+                              rpc_get_error(rpc));
+                data->cb(-ENOMEM, nfs, nfs_get_error(nfs), data->private_data);
+                free_nfs4_cb_data(data);
+                return;
+        }
+}
+
+/*
+ * First step: EXCHANGE_ID has returned a clientid. Turn it into a session.
+ */
+static void
+nfs42_mount_1_cb(struct rpc_context *rpc, int status, void *command_data,
+                 void *private_data)
+{
+        struct nfs4_cb_data *data = private_data;
+        struct nfs_context *nfs = data->nfs;
+        COMPOUND4res *res = command_data;
+        COMPOUND4args args;
+        nfs_argop4 op[1 + 1];
+        EXCHANGE_ID4resok *eiresok;
+        int i;
+
+        assert(rpc->magic == RPC_CONTEXT_MAGIC);
+
+        if (check_nfs4_error(nfs, status, data, res, "EXCHANGE_ID")) {
+                return;
+        }
+
+        if ((i = nfs4_find_op(nfs, data, res, OP_EXCHANGE_ID,
+                              "EXCHANGE_ID")) < 0) {
+                return;
+        }
+        eiresok = &res->resarray.resarray_val[i].nfs_resop4_u.opexchangeid.EXCHANGE_ID4res_u.eir_resok4;
+
+        nfs->nfsi->clientid = eiresok->eir_clientid;
+
+        memset(op, 0, sizeof(op));
+        /*
+         * CREATE_SESSION is part of the bootstrap and carries no SEQUENCE, so
+         * it does not go through nfs4_start_compound().
+         */
+        i = nfs42_op_create_session(nfs, &op[0], eiresok->eir_clientid,
+                                    eiresok->eir_sequenceid);
+
+        memset(&args, 0, sizeof(args));
+        args.argarray.argarray_len = i;
+        args.argarray.argarray_val = op;
+
+        if (rpc_nfs4_compound_task(rpc, nfs42_mount_2_cb, &args, data) == NULL) {
+                nfs_set_error(nfs, "Failed to queue CREATE_SESSION. %s",
+                              rpc_get_error(rpc));
+                data->cb(-ENOMEM, nfs, nfs_get_error(nfs), data->private_data);
+                free_nfs4_cb_data(data);
+                return;
+        }
+}
+
+/*
+ * Entry point for the 4.2 bootstrap, reached once the socket is connected.
+ */
+static void
+nfs42_mount_start(struct rpc_context *rpc, int status, void *command_data _U_,
+                  void *private_data)
+{
+        struct nfs4_cb_data *data = private_data;
+        struct nfs_context *nfs = data->nfs;
+        COMPOUND4args args;
+        nfs_argop4 op[1 + 1];
+        int i;
+
+        assert(rpc->magic == RPC_CONTEXT_MAGIC);
+
+        if (check_nfs4_error(nfs, status, data, NULL, "CONNECT")) {
+                return;
+        }
+
+        nfs->nfsi->session_valid = 0;
+
+        memset(op, 0, sizeof(op));
+        /* EXCHANGE_ID is what creates the state, so it carries no SEQUENCE. */
+        i = nfs42_op_exchange_id(nfs, &op[0]);
+
+        memset(&args, 0, sizeof(args));
+        args.argarray.argarray_len = i;
+        args.argarray.argarray_val = op;
+
+        if (rpc_nfs4_compound_task(rpc, nfs42_mount_1_cb, &args, data) == NULL) {
+                nfs_set_error(nfs, "Failed to queue EXCHANGE_ID. %s",
+                              rpc_get_error(rpc));
+                data->cb(-ENOMEM, nfs, nfs_get_error(nfs), data->private_data);
+                free_nfs4_cb_data(data);
+                return;
+        }
+}
+#endif /* HAVE_NFS4_2 */
+
 int
 nfs4_mount_async(struct nfs_context *nfs, const char *server,
                  const char *export, nfs_cb cb, void *private_data)
@@ -1885,6 +2191,7 @@ nfs4_mount_async(struct nfs_context *nfs, const char *server,
         struct nfs4_cb_data *data;
         char *new_server, *new_export;
         int port;
+        rpc_cb connect_cb = nfs4_mount_1_cb;
 
         new_server = strdup(server);
 	if (new_server == NULL) {
@@ -1927,9 +2234,14 @@ nfs4_mount_async(struct nfs_context *nfs, const char *server,
         data->path         = strdup(new_export);
 
         port = nfs->nfsi->nfsport ? nfs->nfsi->nfsport : 2049;
+#ifdef HAVE_NFS4_2
+        if (nfs->nfsi->version == NFS_V4_2) {
+                connect_cb = nfs42_mount_start;
+        }
+#endif
         if (rpc_connect_port_async(nfs->rpc, server, port,
                                    NFS4_PROGRAM, NFS_V4,
-                                   nfs4_mount_1_cb, data) != 0) {
+                                   connect_cb, data) != 0) {
                 nfs_set_error(nfs, "Failed to start connection. %s",
                               rpc_get_error(nfs->rpc));
                 free_nfs4_cb_data(data);
