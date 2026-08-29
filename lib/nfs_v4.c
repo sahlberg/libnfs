@@ -5258,7 +5258,14 @@ nfs4_chown_async_internal(struct nfs_context *nfs, const char *path,
 {
         struct nfs4_cb_data *data;
 
-        data = init_cb_data_split_path(nfs, path);
+        /*
+         * SETATTR applies to the filehandle the compound is left on, so the
+         * path has to name the file itself. Splitting the last component off
+         * left the compound sitting on the parent directory and chowned that
+         * instead, silently and successfully. chmod and utimes, which build
+         * the same shape of compound, already use the full path.
+         */
+        data = init_cb_data_full_path(nfs, path);
         if (data == NULL) {
                 return -1;
         }
