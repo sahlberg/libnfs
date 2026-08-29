@@ -233,6 +233,14 @@ bool_t libnfs_zdr_bytes(ZDR *zdrs, char **bufp, uint32_t *size, uint32_t maxsize
 
 	switch (zdrs->x_op) {
 	case ZDR_ENCODE:
+                /*
+                 * The padding below is part of the write, so it has to fit
+                 * too. The check above only covers the payload, which leaves
+                 * a field ending flush with the buffer padded past the end.
+                 */
+                if (zdrs->pos + ((*size + 3) & ~3) > zdrs->size) {
+                        return FALSE;
+                }
 		memcpy(&zdrs->buf[zdrs->pos], *bufp, *size);
 		zdrs->pos += *size;
 
