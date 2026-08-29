@@ -32,5 +32,9 @@ if(ENABLE_DOCUMENTATION)
   endif()
 endif()
 
-install(FILES ${MANPAGE_FILES}
-        DESTINATION ${INSTALL_MAN_DIR}/man1/)
+# The manpages document the utilities, so only install them when the
+# utilities themselves are installed.
+if(ENABLE_UTILS)
+  install(FILES ${MANPAGE_FILES}
+          DESTINATION ${INSTALL_MAN_DIR}/man1/)
+endif()

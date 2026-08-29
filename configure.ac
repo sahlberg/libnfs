@@ -32,6 +32,7 @@ AC_ARG_ENABLE([utils],
 	    	    MAYBE_UTILS=""
 	       fi])
 AC_SUBST(MAYBE_UTILS)
+AM_CONDITIONAL([ENABLE_UTILS], [test x"$MAYBE_UTILS" != x])
 
 #option: examples
 AC_ARG_ENABLE([examples],
