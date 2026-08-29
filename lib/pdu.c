@@ -373,8 +373,12 @@ static struct rpc_pdu *rpc_allocate_reply_pdu(struct rpc_context *rpc,
         /* Add an iovector for the record marker. Ignored for UDP */
         rpc_add_iovector(rpc, &pdu->out, pdu->outdata.data, 4, NULL);
 
+        /*
+         * The buffer starts 4 bytes into the allocation, so it is 4 bytes
+         * shorter than what was asked for, as rpc_allocate_pdu2() has it.
+         */
 	zdrmem_create(&pdu->zdr, &pdu->outdata.data[4],
-                      ZDR_ENCODEBUF_MINSIZE + alloc_hint, ZDR_ENCODE);
+                      ZDR_ENCODEBUF_MINSIZE + alloc_hint - 4, ZDR_ENCODE);
 
 	if (zdr_replymsg(rpc, &pdu->zdr, res) == 0) {
 		rpc_set_error(rpc, "zdr_replymsg failed with %s",
