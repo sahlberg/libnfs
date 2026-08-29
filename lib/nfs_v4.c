@@ -110,6 +110,16 @@
 #include "libnfs-raw-nfs4.h"
 #include "libnfs-private.h"
 
+/*
+ * Naming convention in this file:
+ *
+ *   nfs4_*   works for every NFSv4 minor version
+ *   nfs40_*  NFSv4.0 only. SETCLIENTID, SETCLIENTID_CONFIRM and OPEN_CONFIRM
+ *            do not exist from minor version 1 onwards, so neither does the
+ *            state bootstrap built on them.
+ *   nfs42_*  NFSv4.2 only, built only when HAVE_NFS4_2 is defined.
+ */
+
 #ifndef discard_const
 #define discard_const(ptr) ((void *)((intptr_t)(ptr)))
 #endif
@@ -782,7 +792,7 @@ nfs4_op_access(struct nfs_context *nfs, nfs_argop4 *op, uint32_t access_mask)
 }
 
 static int
-nfs4_op_setclientid(struct nfs_context *nfs, nfs_argop4 *op, verifier4 verifier,
+nfs40_op_setclientid(struct nfs_context *nfs, nfs_argop4 *op, verifier4 verifier,
                     const char *client_name)
 {
         SETCLIENTID4args *scidargs;
@@ -810,7 +820,7 @@ nfs4_op_setclientid(struct nfs_context *nfs, nfs_argop4 *op, verifier4 verifier,
 }
 
 static int
-nfs4_op_open_confirm(struct nfs_context *nfs, nfs_argop4 *op, struct nfsfh *fh)
+nfs40_op_open_confirm(struct nfs_context *nfs, nfs_argop4 *op, struct nfsfh *fh)
 {
         OPEN_CONFIRM4args *ocargs;
 
@@ -1134,7 +1144,7 @@ nfs4_op_lookup(struct nfs_context *nfs, nfs_argop4 *op, const char *path)
 }
 
 static int
-nfs4_op_setclientid_confirm(struct nfs_context *nfs, struct nfs_argop4 *op,
+nfs40_op_setclientid_confirm(struct nfs_context *nfs, struct nfs_argop4 *op,
                             uint64_t clientid, verifier4 verifier)
 {
         SETCLIENTID_CONFIRM4args *scidcargs;
@@ -1712,7 +1722,7 @@ nfs4_mount_4_cb(struct rpc_context *rpc, int status, void *command_data,
 }
 
 static void
-nfs4_mount_3_cb(struct rpc_context *rpc, int status, void *command_data,
+nfs40_mount_3_cb(struct rpc_context *rpc, int status, void *command_data,
                 void *private_data)
 {
         struct nfs4_cb_data *data = private_data;
@@ -1745,7 +1755,7 @@ nfs4_mount_3_cb(struct rpc_context *rpc, int status, void *command_data,
 }
 
 static void
-nfs4_mount_2_cb(struct rpc_context *rpc, int status, void *command_data,
+nfs40_mount_2_cb(struct rpc_context *rpc, int status, void *command_data,
                 void *private_data)
 {
         struct nfs4_cb_data *data = private_data;
@@ -1781,14 +1791,14 @@ nfs4_mount_2_cb(struct rpc_context *rpc, int status, void *command_data,
 
         memset(op, 0, sizeof(op));
 
-        i = nfs4_op_setclientid_confirm(nfs, &op[0], nfs->nfsi->clientid,
+        i = nfs40_op_setclientid_confirm(nfs, &op[0], nfs->nfsi->clientid,
                                         nfs->nfsi->setclientid_confirm);
                
         memset(&args, 0, sizeof(args));
         args.argarray.argarray_len = i;
         args.argarray.argarray_val = op;
 
-        if (rpc_nfs4_compound_task(rpc, nfs4_mount_3_cb, &args,
+        if (rpc_nfs4_compound_task(rpc, nfs40_mount_3_cb, &args,
                                    private_data) == NULL) {
                 nfs_set_error(nfs, "Failed to queue SETCLIENTID_CONFIRM. %s",
                               rpc_get_error(rpc));
@@ -1799,7 +1809,7 @@ nfs4_mount_2_cb(struct rpc_context *rpc, int status, void *command_data,
 }
 
 static void
-nfs4_mount_1_cb(struct rpc_context *rpc, int status, void *command_data,
+nfs40_mount_1_cb(struct rpc_context *rpc, int status, void *command_data,
                 void *private_data)
 {
         struct nfs4_cb_data *data = private_data;
@@ -1816,13 +1826,13 @@ nfs4_mount_1_cb(struct rpc_context *rpc, int status, void *command_data,
 
         memset(op, 0, sizeof(op));
 
-        i = nfs4_op_setclientid(nfs, &op[0], nfs->nfsi->verifier, nfs->nfsi->client_name);
+        i = nfs40_op_setclientid(nfs, &op[0], nfs->nfsi->verifier, nfs->nfsi->client_name);
         
         memset(&args, 0, sizeof(args));
         args.argarray.argarray_len = i;
         args.argarray.argarray_val = op;
 
-        if (rpc_nfs4_compound_task(rpc, nfs4_mount_2_cb, &args, data) == NULL) {
+        if (rpc_nfs4_compound_task(rpc, nfs40_mount_2_cb, &args, data) == NULL) {
                 nfs_set_error(nfs, "Failed to queue SETCLIENTID. %s",
                               rpc_get_error(rpc));
                 data->cb(-ENOMEM, nfs, nfs_get_error(nfs), data->private_data);
@@ -1882,7 +1892,7 @@ nfs4_mount_async(struct nfs_context *nfs, const char *server,
         port = nfs->nfsi->nfsport ? nfs->nfsi->nfsport : 2049;
         if (rpc_connect_port_async(nfs->rpc, server, port,
                                    NFS4_PROGRAM, NFS_V4,
-                                   nfs4_mount_1_cb, data) != 0) {
+                                   nfs40_mount_1_cb, data) != 0) {
                 nfs_set_error(nfs, "Failed to start connection. %s",
                               rpc_get_error(nfs->rpc));
                 free_nfs4_cb_data(data);
@@ -2269,7 +2279,7 @@ nfs4_open_chmod_cb(struct rpc_context *rpc, int status, void *command_data,
 }
 
 static void
-nfs4_open_confirm_cb(struct rpc_context *rpc, int status, void *command_data,
+nfs40_open_confirm_cb(struct rpc_context *rpc, int status, void *command_data,
                      void *private_data)
 {
         struct nfs4_cb_data *data = private_data;
@@ -2399,13 +2409,13 @@ nfs4_open_cb(struct rpc_context *rpc, int status, void *command_data,
 
                 memset(op, 0, sizeof(op));
                 i = nfs4_op_putfh(nfs, &op[0], fh);
-                i += nfs4_op_open_confirm(nfs, &op[i], fh);
+                i += nfs40_op_open_confirm(nfs, &op[i], fh);
 
                 memset(&args, 0, sizeof(args));
                 args.argarray.argarray_len = i;
                 args.argarray.argarray_val = op;
 
-                if (rpc_nfs4_compound_task(rpc, nfs4_open_confirm_cb, &args,
+                if (rpc_nfs4_compound_task(rpc, nfs40_open_confirm_cb, &args,
                                            private_data) == NULL) {
                         data->cb(-ENOMEM, nfs, nfs_get_error(nfs),
                                  data->private_data);
