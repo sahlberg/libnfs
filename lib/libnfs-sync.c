@@ -304,8 +304,13 @@ mount_cb(int status, struct nfs_context *nfs, void *data, void *private_data)
 	struct sync_cb_data *cb_data = private_data;
 
 	if (status < 0) {
-		nfs_set_error(nfs, "%s: %s",
-                              __FUNCTION__, rpc_get_error(nfs->rpc));
+		/*
+		 * data carries the NFS level reason when there is one. The
+		 * RPC layer's error is only the right answer when the failure
+		 * never got past the transport.
+		 */
+		nfs_set_error(nfs, "%s: %s", __FUNCTION__,
+			      data ? (char *)data : rpc_get_error(nfs->rpc));
                 goto finished;
 	}
 
