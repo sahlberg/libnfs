@@ -1241,6 +1241,18 @@ nfs4_lookup_path_2_cb(struct rpc_context *rpc, int status, void *command_data,
         tmp = &path[0];
         while (data->link.idx-- > 1) {
                 tmp = strchr(tmp + 1, '/');
+                /*
+                 * link.idx is counted from the server's result array, so it
+                 * can name more components than the path actually has.
+                 */
+                if (tmp == NULL) {
+                        nfs_set_error(nfs, "Symlink index does not match path.");
+                        data->cb(-EFAULT, nfs, nfs_get_error(nfs),
+                                 data->private_data);
+                        free_nfs4_cb_data(data);
+                        free(path);
+                        return;
+                }
         }
         *tmp++ = 0;
         end = strchr(tmp, '/');
@@ -1420,6 +1432,19 @@ nfs4_lookup_path_1_cb(struct rpc_context *rpc, int status, void *command_data,
                 tmp = path;
                 for (i = 0; i < (int)data->link.idx; i++) {
                         tmp = strchr(tmp + 1, '/');
+                        /*
+                         * link.idx is counted from the server's result array,
+                         * so it can name more components than the path has.
+                         */
+                        if (tmp == NULL) {
+                                nfs_set_error(nfs, "Symlink index does not "
+                                              "match path.");
+                                data->cb(-EFAULT, nfs, nfs_get_error(nfs),
+                                         data->private_data);
+                                free_nfs4_cb_data(data);
+                                free(path);
+                                return;
+                        }
                 }
                 *tmp = 0;
         }
