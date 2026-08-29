@@ -505,37 +505,63 @@ specdata4_to_rdev(uint32_t *specdata)
         return (rdev << 32) | ntohl(specdata[1]);
 }
 
+/*
+ * The server returns the attributes it chose to return, which need not be the
+ * ones we asked for, and it tells us which in the attrmask. Decoding the blob
+ * as if it always held the full standard set silently shifted every later
+ * field when a server returned fewer.
+ */
+static int
+nfs4_attr_is_set(const bitmap4 *mask, int bit)
+{
+        if ((uint32_t)(bit / 32) >= mask->bitmap4_len) {
+                return 0;
+        }
+        return !!(mask->bitmap4_val[bit / 32] & (1U << (bit % 32)));
+}
+
 static int
 nfs_parse_attributes(struct nfs_context *nfs, struct nfs4_cb_data *data,
-                     struct nfs_stat_64 *st, const char *buf, int len)
+                     struct nfs_stat_64 *st, const bitmap4 *mask,
+                     const char *buf, int len)
 {
-        int type, slen, pad;
+        int type = 0, slen, pad;
 
         /* Type */
-        CHECK_GETATTR_BUF_SPACE(len, 4);
-        type = ntohl(*(uint32_t *)(void *)buf);
-        buf += 4;
-        len -= 4;
+        if (nfs4_attr_is_set(mask, FATTR4_TYPE)) {
+                CHECK_GETATTR_BUF_SPACE(len, 4);
+                type = ntohl(*(uint32_t *)(void *)buf);
+                buf += 4;
+                len -= 4;
+        }
         /* Size */
-        CHECK_GETATTR_BUF_SPACE(len, 8);
-        st->nfs_size = nfs_pntoh64((uint32_t *)(void *)buf);
-        buf += 8;
-        len -= 8;
+        if (nfs4_attr_is_set(mask, FATTR4_SIZE)) {
+                CHECK_GETATTR_BUF_SPACE(len, 8);
+                st->nfs_size = nfs_pntoh64((uint32_t *)(void *)buf);
+                buf += 8;
+                len -= 8;
+        }
         /* FSID */
-        CHECK_GETATTR_BUF_SPACE(len, 16);
-        st->nfs_dev = ((uint64_t *)(void *)buf)[0] ^ ((uint64_t *)(void *)buf)[1];
-        buf += 16;
-        len -= 16;
+        if (nfs4_attr_is_set(mask, FATTR4_FSID)) {
+                CHECK_GETATTR_BUF_SPACE(len, 16);
+                st->nfs_dev = ((uint64_t *)(void *)buf)[0] ^ ((uint64_t *)(void *)buf)[1];
+                buf += 16;
+                len -= 16;
+        }
         /* Inode */
-        CHECK_GETATTR_BUF_SPACE(len, 8);
-        st->nfs_ino = nfs_pntoh64((uint32_t *)(void *)buf);
-        buf += 8;
-        len -= 8;
+        if (nfs4_attr_is_set(mask, FATTR4_FILEID)) {
+                CHECK_GETATTR_BUF_SPACE(len, 8);
+                st->nfs_ino = nfs_pntoh64((uint32_t *)(void *)buf);
+                buf += 8;
+                len -= 8;
+        }
         /* Mode */
-        CHECK_GETATTR_BUF_SPACE(len, 4);
-        st->nfs_mode = ntohl(*(uint32_t *)(void *)buf);
-        buf += 4;
-        len -= 4;
+        if (nfs4_attr_is_set(mask, FATTR4_MODE)) {
+                CHECK_GETATTR_BUF_SPACE(len, 4);
+                st->nfs_mode = ntohl(*(uint32_t *)(void *)buf);
+                buf += 4;
+                len -= 4;
+        }
         switch (type) {
         case NF4REG:
                 st->nfs_mode |= S_IFREG;
@@ -562,76 +588,92 @@ nfs_parse_attributes(struct nfs_context *nfs, struct nfs4_cb_data *data,
                 break;
         }
         /* Num Links */
-        CHECK_GETATTR_BUF_SPACE(len, 4);
-        st->nfs_nlink = ntohl(*(uint32_t *)(void *)buf);
-        buf += 4;
-        len -= 4;
+        if (nfs4_attr_is_set(mask, FATTR4_NUMLINKS)) {
+                CHECK_GETATTR_BUF_SPACE(len, 4);
+                st->nfs_nlink = ntohl(*(uint32_t *)(void *)buf);
+                buf += 4;
+                len -= 4;
+        }
         /* Owner */
-        CHECK_GETATTR_BUF_SPACE(len, 4);
-        slen = ntohl(*(uint32_t *)(void *)buf);
-        if (slen < 0) {
-                return -1;
+        if (nfs4_attr_is_set(mask, FATTR4_OWNER)) {
+                CHECK_GETATTR_BUF_SPACE(len, 4);
+                slen = ntohl(*(uint32_t *)(void *)buf);
+                if (slen < 0) {
+                        return -1;
+                }
+                buf += 4;
+                len -= 4;
+                pad = (4 - (slen & 0x03)) & 0x03;
+                CHECK_GETATTR_BUF_SPACE(len, slen);
+                st->nfs_uid = nfs_get_ugid(nfs, buf, slen, 1);
+                buf += slen;
+                len -= slen;
+                CHECK_GETATTR_BUF_SPACE(len, pad);
+                buf += pad;
+                len -= pad;
         }
-        buf += 4;
-        len -= 4;
-        pad = (4 - (slen & 0x03)) & 0x03;
-        CHECK_GETATTR_BUF_SPACE(len, slen);
-        st->nfs_uid = nfs_get_ugid(nfs, buf, slen, 1);
-        buf += slen;
-        len -= slen;
-        CHECK_GETATTR_BUF_SPACE(len, pad);
-        buf += pad;
-        len -= pad;
         /* Group */
-        CHECK_GETATTR_BUF_SPACE(len, 4);
-        slen = ntohl(*(uint32_t *)(void *)buf);
-        if (slen < 0) {
-                return -1;
+        if (nfs4_attr_is_set(mask, FATTR4_OWNER_GROUP)) {
+                CHECK_GETATTR_BUF_SPACE(len, 4);
+                slen = ntohl(*(uint32_t *)(void *)buf);
+                if (slen < 0) {
+                        return -1;
+                }
+                buf += 4;
+                len -= 4;
+                pad = (4 - (slen & 0x03)) & 0x03;
+                CHECK_GETATTR_BUF_SPACE(len, slen);
+                st->nfs_gid = nfs_get_ugid(nfs, buf, slen, 0);
+                buf += slen;
+                len -= slen;
+                CHECK_GETATTR_BUF_SPACE(len, pad);
+                buf += pad;
+                len -= pad;
         }
-        buf += 4;
-        len -= 4;
-        pad = (4 - (slen & 0x03)) & 0x03;
-        CHECK_GETATTR_BUF_SPACE(len, slen);
-        st->nfs_gid = nfs_get_ugid(nfs, buf, slen, 0);
-        buf += slen;
-        len -= slen;
-        CHECK_GETATTR_BUF_SPACE(len, pad);
-        buf += pad;
-        len -= pad;
         /* raw device */
-        CHECK_GETATTR_BUF_SPACE(len, 8);
-        st->nfs_rdev = specdata4_to_rdev((uint32_t *)(void *)buf);
-        buf += 8;
-        len -= 8;
+        if (nfs4_attr_is_set(mask, FATTR4_RAWDEV)) {
+                CHECK_GETATTR_BUF_SPACE(len, 8);
+                st->nfs_rdev = specdata4_to_rdev((uint32_t *)(void *)buf);
+                buf += 8;
+                len -= 8;
+        }
         /* Space Used */
-        CHECK_GETATTR_BUF_SPACE(len, 8);
-        st->nfs_used = nfs_pntoh64((uint32_t *)(void *)buf);
-        buf += 8;
-        len -= 8;
+        if (nfs4_attr_is_set(mask, FATTR4_SPACE_USED)) {
+                CHECK_GETATTR_BUF_SPACE(len, 8);
+                st->nfs_used = nfs_pntoh64((uint32_t *)(void *)buf);
+                buf += 8;
+                len -= 8;
+        }
         /* ATime */
-        CHECK_GETATTR_BUF_SPACE(len, 12);
-        st->nfs_atime = nfs_pntoh64((uint32_t *)(void *)buf);
-        buf += 8;
-        len -= 8;
-        st->nfs_atime_nsec = ntohl(*(uint32_t *)(void *)buf);
-        buf += 4;
-        len -= 4;
+        if (nfs4_attr_is_set(mask, FATTR4_TIME_ACCESS)) {
+                CHECK_GETATTR_BUF_SPACE(len, 12);
+                st->nfs_atime = nfs_pntoh64((uint32_t *)(void *)buf);
+                buf += 8;
+                len -= 8;
+                st->nfs_atime_nsec = ntohl(*(uint32_t *)(void *)buf);
+                buf += 4;
+                len -= 4;
+        }
         /* CTime */
-        CHECK_GETATTR_BUF_SPACE(len, 12);
-        st->nfs_ctime = nfs_pntoh64((uint32_t *)(void *)buf);
-        buf += 8;
-        len -= 8;
-        st->nfs_ctime_nsec = ntohl(*(uint32_t *)(void *)buf);
-        buf += 4;
-        len -= 4;
+        if (nfs4_attr_is_set(mask, FATTR4_TIME_METADATA)) {
+                CHECK_GETATTR_BUF_SPACE(len, 12);
+                st->nfs_ctime = nfs_pntoh64((uint32_t *)(void *)buf);
+                buf += 8;
+                len -= 8;
+                st->nfs_ctime_nsec = ntohl(*(uint32_t *)(void *)buf);
+                buf += 4;
+                len -= 4;
+        }
         /* MTime */
-        CHECK_GETATTR_BUF_SPACE(len, 12);
-        st->nfs_mtime = nfs_pntoh64((uint32_t *)(void *)buf);
-        buf += 8;
-        len -= 8;
-        st->nfs_mtime_nsec = ntohl(*(uint32_t *)(void *)buf);
-        buf += 4;
-        len -= 4;
+        if (nfs4_attr_is_set(mask, FATTR4_TIME_MODIFY)) {
+                CHECK_GETATTR_BUF_SPACE(len, 12);
+                st->nfs_mtime = nfs_pntoh64((uint32_t *)(void *)buf);
+                buf += 8;
+                len -= 8;
+                st->nfs_mtime_nsec = ntohl(*(uint32_t *)(void *)buf);
+                buf += 4;
+                len -= 4;
+        }
 
         st->nfs_blksize = NFS_BLKSIZE;
         st->nfs_blocks  = (st->nfs_used + NFS_BLKSIZE -1) / NFS_BLKSIZE;
@@ -1351,6 +1393,7 @@ nfs4_lookup_path_1_cb(struct rpc_context *rpc, int status, void *command_data,
 
                         memset(&st, 0, sizeof(st));
                         if (nfs_parse_attributes(nfs, data, &st,
+                                 &garesok->obj_attributes.attrmask,
                                  garesok->obj_attributes.attr_vals.attrlist4_val,
                                  garesok->obj_attributes.attr_vals.attrlist4_len) < 0) {
                                 data->cb(-EINVAL, nfs, nfs_get_error(nfs), data->private_data);
@@ -1937,6 +1980,7 @@ nfs4_xstat64_cb(struct rpc_context *rpc, int status, void *command_data,
 
         memset(&st, 0, sizeof(st));
         if (nfs_parse_attributes(nfs, data, &st,
+                                 &garesok->obj_attributes.attrmask,
                                  garesok->obj_attributes.attr_vals.attrlist4_val,
                                  garesok->obj_attributes.attr_vals.attrlist4_len) < 0) {
                 data->cb(-EINVAL, nfs, nfs_get_error(nfs), data->private_data);
@@ -3312,6 +3356,7 @@ nfs4_write_append_cb(struct rpc_context *rpc, int status, void *command_data,
 
         memset(&st, 0, sizeof(st));
         nfs_parse_attributes(nfs, data, &st,
+                             &garesok->obj_attributes.attrmask,
                              garesok->obj_attributes.attr_vals.attrlist4_val,
                              garesok->obj_attributes.attr_vals.attrlist4_len);
         offset = st.nfs_size;
@@ -3886,6 +3931,7 @@ nfs4_parse_readdir(struct nfs_context *nfs, struct nfs4_cb_data *data,
 
                 memset(&st, 0, sizeof(st));
                 if (nfs_parse_attributes(nfs, data, &st,
+                                         &e->attrs.attrmask,
                                          e->attrs.attr_vals.attrlist4_val,
                                          e->attrs.attr_vals.attrlist4_len) < 0) {
                         data->cb(-EINVAL, nfs, nfs_get_error(nfs),
@@ -4324,6 +4370,7 @@ nfs4_lseek_cb(struct rpc_context *rpc, int status, void *command_data,
 
         memset(&st, 0, sizeof(st));
         nfs_parse_attributes(nfs, data, &st,
+                             &garesok->obj_attributes.attrmask,
                              garesok->obj_attributes.attr_vals.attrlist4_val,
                              garesok->obj_attributes.attr_vals.attrlist4_len);
 
@@ -4655,6 +4702,7 @@ nfs4_fcntl_stat_cb(struct rpc_context *rpc, int status, void *command_data,
         garesok = &res->resarray.resarray_val[i].nfs_resop4_u.opgetattr.GETATTR4res_u.resok4;
         memset(&st, 0, sizeof(st));
         if (nfs_parse_attributes(nfs, data, &st,
+                                 &garesok->obj_attributes.attrmask,
                                  garesok->obj_attributes.attr_vals.attrlist4_val,
                                  garesok->obj_attributes.attr_vals.attrlist4_len) < 0) {
                 data->cb(-EINVAL, nfs, nfs_get_error(nfs), data->private_data);
