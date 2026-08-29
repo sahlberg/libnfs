@@ -140,6 +140,48 @@ file_pwrite(struct file_context *fc, char *buf, size_t count, off_t off)
 	}
 }
 
+/*
+ * Sparse copying needs the server to tell us where the holes are, which is
+ * the NFSv4.2 SEEK operation. Nothing else libnfs speaks to can answer that,
+ * so a source that is not NFSv4.2 is copied the plain way.
+ */
+static int
+file_can_seek_holes(struct file_context *fc)
+{
+	return fc->is_nfs && nfs_get_version(fc->nfs) == NFS_V4_2;
+}
+
+static int
+file_seek(struct file_context *fc, uint64_t off, int whence, uint64_t *res)
+{
+	return nfs_lseek(fc->nfs, fc->nfsfh, off, whence, res);
+}
+
+static int
+file_ftruncate(struct file_context *fc, uint64_t size)
+{
+	if (fc->is_nfs == 0) {
+		return ftruncate(fc->fd, (off_t)size);
+	}
+	return nfs_ftruncate(fc->nfs, fc->nfsfh, size);
+}
+
+/*
+ * Deallocate a range of the destination. The destination was just created and
+ * then sized with ftruncate, so the range should already be unallocated; this
+ * makes the hole explicit for a server that chose to allocate anyway. It is
+ * best effort and a failure is not fatal, the range simply stays as it is.
+ */
+static void
+file_punch_hole(struct file_context *fc, uint64_t off, uint64_t len)
+{
+	if (!fc->is_nfs || nfs_get_version(fc->nfs) != NFS_V4_2 || len == 0) {
+		return;
+	}
+	nfs_fallocate(fc->nfs, fc->nfsfh,
+		      FALLOC_FL_PUNCH_HOLE|FALLOC_FL_KEEP_SIZE, off, len);
+}
+
 static struct file_context *
 open_file(const char *url, int flags)
 {
@@ -261,6 +303,86 @@ int main(int argc, char *argv[])
 	}
 
 	off = 0;
+	if (file_can_seek_holes(src)) {
+		/*
+		 * Walk the source from one region of data to the next and copy
+		 * only those, so that the holes between them are neither read
+		 * nor written. Sizing the destination up front means the gaps
+		 * we skip are already holes in it.
+		 */
+		uint64_t pos = 0, data, hole, holes = 0;
+
+		if (file_ftruncate(dst, (uint64_t)st.st_size) != 0) {
+			fprintf(stderr, "Failed to set size of dest file (%s)\n",
+				dst->is_nfs ? nfs_get_error(dst->nfs) : strerror(errno));
+			free_file_context(src);
+			free_file_context(dst);
+			return 10;
+		}
+
+		while (pos < (uint64_t)st.st_size) {
+			if (file_seek(src, pos, SEEK_DATA, &data) != 0) {
+				/*
+				 * No data at or after pos, so everything left
+				 * is a hole. SEEK reports that as ENXIO, the
+				 * same as lseek(2) does.
+				 */
+				file_punch_hole(dst, pos,
+						(uint64_t)st.st_size - pos);
+				holes += (uint64_t)st.st_size - pos;
+				break;
+			}
+			if (data >= (uint64_t)st.st_size) {
+				break;
+			}
+			if (data > pos) {
+				file_punch_hole(dst, pos, data - pos);
+				holes += data - pos;
+			}
+			if (file_seek(src, data, SEEK_HOLE, &hole) != 0 ||
+			    hole > (uint64_t)st.st_size) {
+				hole = (uint64_t)st.st_size;
+			}
+
+			for (off = (off_t)data; off < (off_t)hole; ) {
+				count = (size_t)(hole - (uint64_t)off);
+				if (count > BUFSIZE) {
+					count = BUFSIZE;
+				}
+				count = file_pread(src, buf, count, off);
+				if (count < 0) {
+					fprintf(stderr, "Failed to read from source file (%s)\n",
+						src->is_nfs ? nfs_get_error(src->nfs) : strerror(errno));
+					free_file_context(src);
+					free_file_context(dst);
+					return 10;
+				}
+				if (count == 0) {
+					break;
+				}
+				count = file_pwrite(dst, buf, count, off);
+				if (count <= 0) {
+					fprintf(stderr, "Failed to write to dest file (%s)\n",
+						dst->is_nfs ? nfs_get_error(dst->nfs) : strerror(errno));
+					free_file_context(src);
+					free_file_context(dst);
+					return 10;
+				}
+				off += count;
+			}
+			pos = hole;
+		}
+
+		printf("copied %" PRId64 " bytes, %" PRId64 " bytes of holes "
+		       "skipped\n", (int64_t)st.st_size - (int64_t)holes,
+		       (int64_t)holes);
+
+		free_file_context(src);
+		free_file_context(dst);
+
+		return 0;
+	}
+
 	while (off < st.st_size) {
 		count = (size_t)(st.st_size - off);
 		if (count > BUFSIZE) {

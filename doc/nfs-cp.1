@@ -1,13 +1,13 @@
 '\" t
 .\"     Title: nfs-cp
-.\"    Author: [FIXME: author] [see http://docbook.sf.net/el/author]
-.\" Generator: DocBook XSL Stylesheets v1.78.1 <http://docbook.sf.net/>
-.\"      Date: 05/24/2015
+.\"    Author: [FIXME: author] [see http://www.docbook.org/tdg5/en/html/author]
+.\" Generator: DocBook XSL Stylesheets vsnapshot <http://docbook.sf.net/>
+.\"      Date: 08/30/2026
 .\"    Manual: nfs-cp: copy files to/from an NFS share
 .\"    Source: nfs-cp
 .\"  Language: English
 .\"
-.TH "NFS\-CP" "1" "05/24/2015" "nfs\-cp" "nfs\-cp: copy files to/from an"
+.TH "NFS\-CP" "1" "08/30/2026" "nfs\-cp" "nfs\-cp: copy files to/from an"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------
@@ -35,6 +35,10 @@ nfs-cp \- Utility to copy files to/from and NFS server
 .SH "DESCRIPTION"
 .PP
 nfs\-cp is a utility to copy files to/from and NFS server\&.
+.PP
+When the source is read over NFSv4\&.2, nfs\-cp copies sparse files sparsely\&. It asks the server where the data is, using the SEEK operation, and copies only those regions, so the holes are neither read from the source nor written to the destination\&. The destination is given the full size of the source up front and the skipped regions are left as holes in it; where the destination is also NFSv4\&.2 they are deallocated explicitly with DEALLOCATE\&.
+.PP
+This needs the source to be NFSv4\&.2, for example nfs://server/path/file?version=4\&.2\&. Any other source is copied in full, hole or no hole, as the holes cannot be located\&.
 .PP
 Examples:
 .sp
