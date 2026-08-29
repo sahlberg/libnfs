@@ -2126,7 +2126,57 @@ enum nfs_opnum4 {
         OP_WANT_DELEGATION      = 56,
         OP_DESTROY_CLIENTID     = 57,
         OP_RECLAIM_COMPLETE     = 58,
+        /* NFSv4.2, RFC 7862 */
+        OP_ALLOCATE             = 59,
+        OP_DEALLOCATE           = 62,
+        OP_SEEK                 = 69,
         OP_ILLEGAL              = 10044
+};
+
+/*
+ * NFSv4.2, RFC 7862
+ */
+enum data_content4 {
+        NFS4_CONTENT_DATA = 0,
+        NFS4_CONTENT_HOLE = 1
+};
+
+struct ALLOCATE4args {
+        stateid4        aa_stateid;
+        offset4         aa_offset;
+        length4         aa_length;
+};
+
+struct ALLOCATE4res {
+        nfsstat4        ar_status;
+};
+
+struct DEALLOCATE4args {
+        stateid4        da_stateid;
+        offset4         da_offset;
+        length4         da_length;
+};
+
+struct DEALLOCATE4res {
+        nfsstat4        dr_status;
+};
+
+struct SEEK4args {
+        stateid4        sa_stateid;
+        offset4         sa_offset;
+        data_content4   sa_what;
+};
+
+struct SEEK4resok {
+        bool            sr_eof;
+        offset4         sr_offset;
+};
+
+union SEEK4res switch (nfsstat4 sa_status) {
+ case NFS4_OK:
+         SEEK4resok     resok4;
+ default:
+         void;
 };
 
 union nfs_argop4 switch (nfs_opnum4 argop) {
@@ -2187,6 +2237,9 @@ union nfs_argop4 switch (nfs_opnum4 argop) {
  case OP_WANT_DELEGATION:       WANT_DELEGATION4args opwantdelegation;
  case OP_DESTROY_CLIENTID:      DESTROY_CLIENTID4args opdestroyclientid;
  case OP_RECLAIM_COMPLETE:      RECLAIM_COMPLETE4args opreclaimcomplete;
+ case OP_ALLOCATE:              ALLOCATE4args opallocate;
+ case OP_DEALLOCATE:            DEALLOCATE4args opdeallocate;
+ case OP_SEEK:                  SEEK4args opseek;
  case OP_ILLEGAL:       void;
 };
 
@@ -2248,6 +2301,9 @@ union nfs_resop4 switch (nfs_opnum4 resop){
  case OP_WANT_DELEGATION:       WANT_DELEGATION4res opwantdelegation;
  case OP_DESTROY_CLIENTID:      DESTROY_CLIENTID4res opdestroyclientid;
  case OP_RECLAIM_COMPLETE:      RECLAIM_COMPLETE4res opreclaimcomplete;
+ case OP_ALLOCATE:              ALLOCATE4res opallocate;
+ case OP_DEALLOCATE:            DEALLOCATE4res opdeallocate;
+ case OP_SEEK:                  SEEK4res opseek;
  case OP_ILLEGAL:       ILLEGAL4res opillegal;
 };
 

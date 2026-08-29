@@ -2004,6 +2004,60 @@ struct ILLEGAL4res {
 };
 typedef struct ILLEGAL4res ILLEGAL4res;
 
+/*
+ * NFSv4.2, RFC 7862
+ */
+enum data_content4 {
+	NFS4_CONTENT_DATA = 0,
+	NFS4_CONTENT_HOLE = 1,
+};
+typedef enum data_content4 data_content4;
+
+struct ALLOCATE4args {
+	stateid4 aa_stateid;
+	offset4 aa_offset;
+	length4 aa_length;
+};
+typedef struct ALLOCATE4args ALLOCATE4args;
+
+struct ALLOCATE4res {
+	nfsstat4 ar_status;
+};
+typedef struct ALLOCATE4res ALLOCATE4res;
+
+struct DEALLOCATE4args {
+	stateid4 da_stateid;
+	offset4 da_offset;
+	length4 da_length;
+};
+typedef struct DEALLOCATE4args DEALLOCATE4args;
+
+struct DEALLOCATE4res {
+	nfsstat4 dr_status;
+};
+typedef struct DEALLOCATE4res DEALLOCATE4res;
+
+struct SEEK4args {
+	stateid4 sa_stateid;
+	offset4 sa_offset;
+	data_content4 sa_what;
+};
+typedef struct SEEK4args SEEK4args;
+
+struct SEEK4resok {
+	uint32_t sr_eof;
+	offset4 sr_offset;
+};
+typedef struct SEEK4resok SEEK4resok;
+
+struct SEEK4res {
+	nfsstat4 sa_status;
+	union {
+		SEEK4resok resok4;
+	} SEEK4res_u;
+};
+typedef struct SEEK4res SEEK4res;
+
 enum nfs_opnum4 {
 	OP_ACCESS = 3,
 	OP_CLOSE = 4,
@@ -2060,6 +2114,9 @@ enum nfs_opnum4 {
 	OP_WANT_DELEGATION = 56,
 	OP_DESTROY_CLIENTID = 57,
 	OP_RECLAIM_COMPLETE = 58,
+	OP_ALLOCATE = 59,
+	OP_DEALLOCATE = 62,
+	OP_SEEK = 69,
 	OP_ILLEGAL = 10044,
 };
 typedef enum nfs_opnum4 nfs_opnum4;
@@ -2115,6 +2172,9 @@ struct nfs_argop4 {
 		WANT_DELEGATION4args opwantdelegation;
 		DESTROY_CLIENTID4args opdestroyclientid;
 		RECLAIM_COMPLETE4args opreclaimcomplete;
+		ALLOCATE4args opallocate;
+		DEALLOCATE4args opdeallocate;
+		SEEK4args opseek;
 	} nfs_argop4_u;
 };
 typedef struct nfs_argop4 nfs_argop4;
@@ -2177,6 +2237,9 @@ struct nfs_resop4 {
 		WANT_DELEGATION4res opwantdelegation;
 		DESTROY_CLIENTID4res opdestroyclientid;
 		RECLAIM_COMPLETE4res opreclaimcomplete;
+		ALLOCATE4res opallocate;
+		DEALLOCATE4res opdeallocate;
+		SEEK4res opseek;
 		ILLEGAL4res opillegal;
 	} nfs_resop4_u;
 };
@@ -2691,6 +2754,14 @@ extern  uint32_t zdr_DESTROY_CLIENTID4args (ZDR *, DESTROY_CLIENTID4args*);
 extern  uint32_t zdr_DESTROY_CLIENTID4res (ZDR *, DESTROY_CLIENTID4res*);
 extern  uint32_t zdr_RECLAIM_COMPLETE4args (ZDR *, RECLAIM_COMPLETE4args*);
 extern  uint32_t zdr_RECLAIM_COMPLETE4res (ZDR *, RECLAIM_COMPLETE4res*);
+extern  uint32_t zdr_data_content4 (ZDR *, data_content4*);
+extern  uint32_t zdr_ALLOCATE4args (ZDR *, ALLOCATE4args*);
+extern  uint32_t zdr_ALLOCATE4res (ZDR *, ALLOCATE4res*);
+extern  uint32_t zdr_DEALLOCATE4args (ZDR *, DEALLOCATE4args*);
+extern  uint32_t zdr_DEALLOCATE4res (ZDR *, DEALLOCATE4res*);
+extern  uint32_t zdr_SEEK4args (ZDR *, SEEK4args*);
+extern  uint32_t zdr_SEEK4resok (ZDR *, SEEK4resok*);
+extern  uint32_t zdr_SEEK4res (ZDR *, SEEK4res*);
 extern  uint32_t zdr_ILLEGAL4res (ZDR *, ILLEGAL4res*);
 extern  uint32_t zdr_nfs_opnum4 (ZDR *, nfs_opnum4*);
 extern  uint32_t zdr_nfs_argop4 (ZDR *, nfs_argop4*);
@@ -3012,6 +3083,14 @@ extern uint32_t zdr_DESTROY_CLIENTID4args ();
 extern uint32_t zdr_DESTROY_CLIENTID4res ();
 extern uint32_t zdr_RECLAIM_COMPLETE4args ();
 extern uint32_t zdr_RECLAIM_COMPLETE4res ();
+extern uint32_t zdr_data_content4 ();
+extern uint32_t zdr_ALLOCATE4args ();
+extern uint32_t zdr_ALLOCATE4res ();
+extern uint32_t zdr_DEALLOCATE4args ();
+extern uint32_t zdr_DEALLOCATE4res ();
+extern uint32_t zdr_SEEK4args ();
+extern uint32_t zdr_SEEK4resok ();
+extern uint32_t zdr_SEEK4res ();
 extern uint32_t zdr_ILLEGAL4res ();
 extern uint32_t zdr_nfs_opnum4 ();
 extern uint32_t zdr_nfs_argop4 ();

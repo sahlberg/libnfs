@@ -3362,6 +3362,92 @@ zdr_nfs_opnum4 (ZDR *zdrs, nfs_opnum4 *objp)
 }
 
 uint32_t
+zdr_data_content4 (ZDR *zdrs, data_content4 *objp)
+{
+	 if (!zdr_enum (zdrs, (enum_t *) objp))
+		 return FALSE;
+	return TRUE;
+}
+
+uint32_t
+zdr_ALLOCATE4args (ZDR *zdrs, ALLOCATE4args *objp)
+{
+	 if (!zdr_stateid4 (zdrs, &objp->aa_stateid))
+		 return FALSE;
+	 if (!zdr_offset4 (zdrs, &objp->aa_offset))
+		 return FALSE;
+	 if (!zdr_length4 (zdrs, &objp->aa_length))
+		 return FALSE;
+	return TRUE;
+}
+
+uint32_t
+zdr_ALLOCATE4res (ZDR *zdrs, ALLOCATE4res *objp)
+{
+	 if (!zdr_nfsstat4 (zdrs, &objp->ar_status))
+		 return FALSE;
+	return TRUE;
+}
+
+uint32_t
+zdr_DEALLOCATE4args (ZDR *zdrs, DEALLOCATE4args *objp)
+{
+	 if (!zdr_stateid4 (zdrs, &objp->da_stateid))
+		 return FALSE;
+	 if (!zdr_offset4 (zdrs, &objp->da_offset))
+		 return FALSE;
+	 if (!zdr_length4 (zdrs, &objp->da_length))
+		 return FALSE;
+	return TRUE;
+}
+
+uint32_t
+zdr_DEALLOCATE4res (ZDR *zdrs, DEALLOCATE4res *objp)
+{
+	 if (!zdr_nfsstat4 (zdrs, &objp->dr_status))
+		 return FALSE;
+	return TRUE;
+}
+
+uint32_t
+zdr_SEEK4args (ZDR *zdrs, SEEK4args *objp)
+{
+	 if (!zdr_stateid4 (zdrs, &objp->sa_stateid))
+		 return FALSE;
+	 if (!zdr_offset4 (zdrs, &objp->sa_offset))
+		 return FALSE;
+	 if (!zdr_data_content4 (zdrs, &objp->sa_what))
+		 return FALSE;
+	return TRUE;
+}
+
+uint32_t
+zdr_SEEK4resok (ZDR *zdrs, SEEK4resok *objp)
+{
+	 if (!zdr_bool (zdrs, &objp->sr_eof))
+		 return FALSE;
+	 if (!zdr_offset4 (zdrs, &objp->sr_offset))
+		 return FALSE;
+	return TRUE;
+}
+
+uint32_t
+zdr_SEEK4res (ZDR *zdrs, SEEK4res *objp)
+{
+	 if (!zdr_nfsstat4 (zdrs, &objp->sa_status))
+		 return FALSE;
+	switch (objp->sa_status) {
+	case NFS4_OK:
+		 if (!zdr_SEEK4resok (zdrs, &objp->SEEK4res_u.resok4))
+			 return FALSE;
+		break;
+	default:
+		break;
+	}
+	return TRUE;
+}
+
+uint32_t
 zdr_nfs_argop4 (ZDR *zdrs, nfs_argop4 *objp)
 {
 	 if (!zdr_nfs_opnum4 (zdrs, &objp->argop))
@@ -3571,6 +3657,18 @@ zdr_nfs_argop4 (ZDR *zdrs, nfs_argop4 *objp)
 		break;
 	case OP_RECLAIM_COMPLETE:
 		 if (!zdr_RECLAIM_COMPLETE4args (zdrs, &objp->nfs_argop4_u.opreclaimcomplete))
+			 return FALSE;
+		break;
+	case OP_ALLOCATE:
+		 if (!zdr_ALLOCATE4args (zdrs, &objp->nfs_argop4_u.opallocate))
+			 return FALSE;
+		break;
+	case OP_DEALLOCATE:
+		 if (!zdr_DEALLOCATE4args (zdrs, &objp->nfs_argop4_u.opdeallocate))
+			 return FALSE;
+		break;
+	case OP_SEEK:
+		 if (!zdr_SEEK4args (zdrs, &objp->nfs_argop4_u.opseek))
 			 return FALSE;
 		break;
 	case OP_ILLEGAL:
@@ -3805,6 +3903,18 @@ zdr_nfs_resop4 (ZDR *zdrs, nfs_resop4 *objp)
 		break;
 	case OP_RECLAIM_COMPLETE:
 		 if (!zdr_RECLAIM_COMPLETE4res (zdrs, &objp->nfs_resop4_u.opreclaimcomplete))
+			 return FALSE;
+		break;
+	case OP_ALLOCATE:
+		 if (!zdr_ALLOCATE4res (zdrs, &objp->nfs_resop4_u.opallocate))
+			 return FALSE;
+		break;
+	case OP_DEALLOCATE:
+		 if (!zdr_DEALLOCATE4res (zdrs, &objp->nfs_resop4_u.opdeallocate))
+			 return FALSE;
+		break;
+	case OP_SEEK:
+		 if (!zdr_SEEK4res (zdrs, &objp->nfs_resop4_u.opseek))
 			 return FALSE;
 		break;
 	case OP_ILLEGAL:
