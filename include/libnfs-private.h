@@ -396,6 +396,13 @@ struct rpc_context {
 
 	/* special fields for UDP, which can sometimes be BROADCASTed */
 	int is_udp;
+
+	/*
+	 * NFSv4 minor version stamped into every COMPOUND4args. 0 for
+	 * NFSv4.0, 2 for NFSv4.2. Unrelated to the RPC program version,
+	 * which is 4 for every NFSv4 minor version.
+	 */
+	uint32_t nfs4_minorversion;
 	struct sockaddr_storage udp_dest;
 	int is_broadcast;
 

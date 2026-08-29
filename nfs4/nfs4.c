@@ -227,6 +227,13 @@ struct rpc_pdu *rpc_nfs4_compound_task2(struct rpc_context *rpc, rpc_cb cb,
 		return NULL;
 	}
 
+	/*
+	 * The minor version belongs to the connection, not to each caller, so
+	 * stamp it here rather than at every one of the ~40 places that build
+	 * a COMPOUND. It stays 0 unless the context selected NFSv4.2.
+	 */
+	args->minorversion = rpc->nfs4_minorversion;
+
 	if (zdr_COMPOUND4args(&pdu->zdr,  args) == 0) {
 		rpc_set_error(rpc, "ZDR error: Failed to encode COMPOUND4args");
 		rpc_free_pdu(rpc, pdu);
@@ -287,6 +294,13 @@ struct rpc_pdu *rpc_nfs4_readv_task(struct rpc_context *rpc, rpc_cb cb,
                               "NFS4/COMPOUND call");
 		return NULL;
 	}
+
+	/*
+	 * The minor version belongs to the connection, not to each caller, so
+	 * stamp it here rather than at every one of the ~40 places that build
+	 * a COMPOUND. It stays 0 unless the context selected NFSv4.2.
+	 */
+	args->minorversion = rpc->nfs4_minorversion;
 
 	if (zdr_COMPOUND4args(&pdu->zdr,  args) == 0) {
 		rpc_set_error(rpc, "ZDR error: Failed to encode COMPOUND4args");
@@ -366,6 +380,13 @@ struct rpc_pdu *rpc_nfs4_writev_task(struct rpc_context *rpc, rpc_cb cb,
 	}
 
         start = zdr_getpos(&pdu->zdr);
+
+	/*
+	 * The minor version belongs to the connection, not to each caller, so
+	 * stamp it here rather than at every one of the ~40 places that build
+	 * a COMPOUND. It stays 0 unless the context selected NFSv4.2.
+	 */
+	args->minorversion = rpc->nfs4_minorversion;
 
 	if (zdr_COMPOUND4args(&pdu->zdr,  args) == 0) {
 		rpc_set_error(rpc, "ZDR error: Failed to encode COMPOUND4args");

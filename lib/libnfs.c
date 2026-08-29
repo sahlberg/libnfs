@@ -323,9 +323,28 @@ nfs_set_context_args(struct nfs_context *nfs, const char *arg, const char *val)
 		nfs_set_interface(nfs, val);
 #endif
 	} else if (!strcmp(arg, "version")) {
-		if (nfs_set_version(nfs, atoi(val)) < 0) {
-			nfs_set_error(nfs, "NFS version %d is not supported",
-				      atoi(val));
+		/*
+		 * Minor versions are spelled "4.2", which atoi() would read as
+		 * a plain 4, so they have to be matched in full. Anything else
+		 * carrying a minor version is rejected rather than silently
+		 * truncated down to the major version.
+		 */
+		int v;
+
+		if (!strcmp(val, "4.2")) {
+			v = NFS_V4_2;
+		} else if (!strcmp(val, "4.0")) {
+			v = NFS_V4;
+		} else if (strchr(val, '.')) {
+			nfs_set_error(nfs, "NFS version %s is not supported",
+				      val);
+			return -1;
+		} else {
+			v = atoi(val);
+		}
+		if (nfs_set_version(nfs, v) < 0) {
+			nfs_set_error(nfs, "NFS version %s is not supported",
+				      val);
 			return -1;
 		}
 	} else if (!strcmp(arg, "nfsport")) {
@@ -2718,6 +2737,20 @@ nfs_set_version(struct nfs_context *nfs, int version) {
 #endif
 		nfs->nfsi->version = version;
 		nfs->nfsi->default_version = 0;
+		nfs->rpc->nfs4_minorversion = 0;
+		break;
+	case NFS_V4_2:
+		/*
+		 * NFS_V4_2 selects a libnfs dialect, not an RPC program
+		 * version. Every NFSv4 minor version is RPC version 4; the
+		 * minor version travels inside the COMPOUND.
+		 */
+#ifdef HAVE_TLS
+		nfs->rpc->nfs_version = NFS_V4;
+#endif
+		nfs->nfsi->version = NFS_V4_2;
+		nfs->nfsi->default_version = 0;
+		nfs->rpc->nfs4_minorversion = 2;
 		break;
 	default:
 		nfs_set_error(nfs, "NFS version %d is not supported", version);

@@ -371,9 +371,20 @@ EXTERN size_t nfs_get_readdir_maxcount(struct nfs_context *nfs);
 EXTERN void nfs_set_readdir_max_buffer_size(struct nfs_context *nfs, uint32_t dircount, uint32_t maxcount);
 
 /*
+ * NFSv4.2, i.e. NFSv4 minor version 2.
+ *
+ * This is a libnfs dialect selector, not an ONC RPC program version: NFSv4 of
+ * every minor version is RPC program version 4, and the minor version travels
+ * in the COMPOUND itself. The value is therefore deliberately outside the
+ * range of real RPC version numbers.
+ */
+#define NFS_V4_2 42
+
+/*
  * Set NFS version. Supported versions are
  * NFS_V3 (default)
- * NFS_V4
+ * NFS_V4     NFSv4.0
+ * NFS_V4_2   NFSv4.2
  */
 EXTERN int nfs_set_version(struct nfs_context *nfs, int version);
 /*
