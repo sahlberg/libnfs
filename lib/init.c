@@ -525,6 +525,13 @@ static void rpc_purge_all_pdus(struct rpc_context *rpc, int status, const char *
 #endif /* HAVE_MULTITHREADING */
 		waitqueue = rpc->waitpdu[i];
 		rpc_reset_queue(&rpc->waitpdu[i]);
+		/*
+		 * The queues are being emptied, so the accounting has to go
+		 * with them, exactly as outqueue_len does above. Leaving it
+		 * stale stalls rpc_write_to_socket() forever once the caller
+		 * has set a max_waitpdu_len.
+		 */
+		rpc->waitpdu_len = 0;
 #ifdef HAVE_MULTITHREADING
                 if (rpc->multithreading_enabled) {
                         nfs_mt_mutex_unlock(&rpc->rpc_mutex);
