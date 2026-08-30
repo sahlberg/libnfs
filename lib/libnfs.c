@@ -2328,7 +2328,18 @@ nfs_lseek_async(struct nfs_context *nfs, struct nfsfh *nfsfh, int64_t offset,
          * for SEEK_END.
          */
         if (whence == SEEK_HOLE || whence == SEEK_DATA) {
-                if (nfs->nfsi->version != NFS_V4_2) {
+                /*
+                 * NFS_V4_2 does not exist on the platforms that compile the
+                 * dialect out entirely, so the version can not be compared
+                 * against it there.
+                 */
+#ifdef LIBNFS_FEATURE_NFS4_2
+                const int is_v4_2 = (nfs->nfsi->version == NFS_V4_2);
+#else
+                const int is_v4_2 = 0;
+#endif
+
+                if (!is_v4_2) {
                         nfs_set_error(nfs, "lseek(SEEK_%s) requires NFSv4.2",
                                       whence == SEEK_HOLE ? "HOLE" : "DATA");
                         return -ENOTSUP;
