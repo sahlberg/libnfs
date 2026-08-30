@@ -43,6 +43,114 @@ EXTERN int nfs4_getacl(struct nfs_context *nfs, struct nfsfh *nfsfh,
 EXTERN void nfs4_acl_free(fattr4_acl *nfs4acl);
 
 /*
+ * NFSv4 named attributes.
+ *
+ * Every file and directory can carry a hidden directory of named attributes,
+ * which are themselves ordinary files. Windows NFS clients use these to hold
+ * alternate data streams.
+ *
+ * This is plain NFSv4, so it works for every minor version. A server that
+ * does not implement named attributes answers NFS4ERR_NOTSUPP.
+ */
+
+/*
+ * Async list the named attributes of a file or directory.
+ *
+ * Function returns
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
+ *
+ * When the callback is invoked, status indicates the result:
+ *      0 : Success.
+ *          data is struct nfsdir *, read with nfs_readdir() and released with
+ *          nfs_closedir() exactly as for an ordinary directory.
+ * -errno : An error occured.
+ *          data is the error string.
+ */
+EXTERN int nfs4_opendir_namedattr_async(struct nfs_context *nfs,
+                                        const char *path,
+                                        nfs_cb cb, void *private_data);
+
+/*
+ * Sync list the named attributes of a file or directory.
+ *
+ * Function returns
+ *      0 : The operation was successful.
+ * -errno : The command failed.
+ */
+EXTERN int nfs4_opendir_namedattr(struct nfs_context *nfs, const char *path,
+                                  struct nfsdir **nfsdir);
+
+/*
+ * Async open one named attribute of a file or directory.
+ *
+ * path names the file that owns the attributes and attrname is the attribute
+ * itself, which may not contain '/'. flags are the same as for nfs_open2().
+ * O_CREAT also creates the attribute directory if the file does not have one.
+ *
+ * The handle it returns is an ordinary one: read it with nfs_read(), write it
+ * with nfs_write() and release it with nfs_close().
+ *
+ * Function returns
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
+ *
+ * When the callback is invoked, status indicates the result:
+ *      0 : Success.
+ *          data is struct nfsfh *
+ * -errno : An error occured.
+ *          data is the error string.
+ */
+EXTERN int nfs4_open_namedattr_async(struct nfs_context *nfs,
+                                     const char *path, const char *attrname,
+                                     int flags, nfs_cb cb,
+                                     void *private_data);
+
+/*
+ * Sync open one named attribute of a file or directory.
+ *
+ * Function returns
+ *      0 : The operation was successful.
+ * -errno : The command failed.
+ */
+EXTERN int nfs4_open_namedattr(struct nfs_context *nfs, const char *path,
+                               const char *attrname, int flags,
+                               struct nfsfh **nfsfh);
+
+/*
+ * Async remove one named attribute of a file or directory.
+ *
+ * Function returns
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
+ *
+ * When the callback is invoked, status indicates the result:
+ *      0 : Success.
+ * -errno : An error occured.
+ *          data is the error string.
+ */
+EXTERN int nfs4_remove_namedattr_async(struct nfs_context *nfs,
+                                       const char *path,
+                                       const char *attrname, nfs_cb cb,
+                                       void *private_data);
+
+/*
+ * Sync remove one named attribute of a file or directory.
+ *
+ * Function returns
+ *      0 : The operation was successful.
+ * -errno : The command failed.
+ */
+EXTERN int nfs4_remove_namedattr(struct nfs_context *nfs, const char *path,
+                                 const char *attrname);
+
+/*
  * NFSv4.2 READ_PLUS and WRITE_SAME.
  *
  * These have no POSIX equivalent to hide behind, so they are exposed as they

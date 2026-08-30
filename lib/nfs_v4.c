@@ -172,6 +172,15 @@ struct nfs4_cb_data {
  */
 #define LOOKUP_FLAG_NO_FOLLOW    0x0001
 #define LOOKUP_FLAG_IS_STATVFS64 0x0002
+/*
+ * Operate on the named attribute directory of the file the path names,
+ * rather than on the file itself. OPENATTR is placed after the path has been
+ * resolved, which leaves the attribute directory as the current filehandle,
+ * so every operation that follows applies to it. _CREATE asks the server to
+ * create the directory if the file does not have one yet.
+ */
+#define LOOKUP_FLAG_OPENATTR     0x0004
+#define LOOKUP_FLAG_OPENATTR_CREATE 0x0008
 #define MUTEX_HELD               0x0004
         int flags;
 
@@ -1010,6 +1019,15 @@ nfs4_op_write(struct nfs_context *nfs, nfs_argop4 *op, struct nfsfh *fh,
 }
 
 static int
+nfs4_op_openattr(struct nfs_context *nfs _U_, nfs_argop4 *op, int createdir)
+{
+        op[0].argop = OP_OPENATTR;
+        op[0].nfs_argop4_u.opopenattr.createdir = createdir;
+
+        return 1;
+}
+
+static int
 nfs4_op_getfh(struct nfs_context *nfs, nfs_argop4 *op)
 {
         op[0].argop = OP_GETFH;
@@ -1789,9 +1807,22 @@ nfs4_lookup_path_async(struct nfs_context *nfs,
                 return -1;
         }
 
-        if ((i = nfs4_allocate_op(nfs, &op, path, data->filler.max_op)) < 0) {
+        if ((i = nfs4_allocate_op(nfs, &op, path,
+                                  data->filler.max_op +
+                                  ((data->flags & LOOKUP_FLAG_OPENATTR) ?
+                                   1 : 0))) < 0) {
                 free(path);
                 return -1;
+        }
+
+        /*
+         * Switch to the named attribute directory of whatever the path
+         * resolved to, so the operations the filler adds land there.
+         */
+        if (data->flags & LOOKUP_FLAG_OPENATTR) {
+                i += nfs4_op_openattr(nfs, &op[i],
+                                      !!(data->flags &
+                                         LOOKUP_FLAG_OPENATTR_CREATE));
         }
 
         num_op = data->filler.func(data, &op[i]);
@@ -4550,6 +4581,176 @@ nfs4_populate_readdir(struct nfs4_cb_data *data, nfs_argop4 *op)
  * blob1 is nfsdir
  * blob2 is the cookie
  */
+/*
+ * NFSv4 named attributes.
+ *
+ * Every file and directory can carry a hidden directory of named attributes,
+ * which are themselves ordinary files. Windows clients use these to hold
+ * alternate data streams. The three calls below reach that directory by
+ * setting LOOKUP_FLAG_OPENATTR, which puts an OPENATTR after the path lookup
+ * so that the ordinary readdir, open and remove machinery operates on the
+ * attribute directory instead of on the file.
+ *
+ * This is NFSv4, not NFSv4.2, so it works for every minor version. A server
+ * that does not implement named attributes answers NFS4ERR_NOTSUPP.
+ */
+int
+nfs4_opendir_namedattr_async(struct nfs_context *nfs, const char *path,
+                             nfs_cb cb, void *private_data)
+{
+        struct nfs4_cb_data *data;
+	struct nfsdir *nfsdir;
+
+        data = init_cb_data_full_path(nfs, path);
+        if (data == NULL) {
+                return -1;
+        }
+
+        data->cb           = cb;
+        data->private_data = private_data;
+        data->filler.func  = nfs4_populate_readdir;
+        data->filler.max_op = 2;
+        data->flags       |= LOOKUP_FLAG_OPENATTR;
+
+	nfsdir = calloc(1, sizeof(struct nfsdir));
+	if (nfsdir == NULL) {
+                free_nfs4_cb_data(data);
+		nfs_set_error(nfs, "failed to allocate buffer for nfsdir");
+		return -1;
+	}
+        data->filler.blob1.val  = nfsdir;
+        data->filler.blob1.free = (blob_free)nfs_free_nfsdir;
+
+	data->filler.blob2.val = calloc(1, sizeof(uint64_t));
+	if (data->filler.blob2.val == NULL) {
+                free_nfs4_cb_data(data);
+		nfs_set_error(nfs, "failed to allocate buffer for cookie");
+		return -1;
+	}
+        data->filler.blob2.free = (blob_free)free;
+
+        if (nfs4_lookup_path_async(nfs, data, nfs4_opendir_cb) < 0) {
+                free_nfs4_cb_data(data);
+                return -1;
+        }
+
+        return 0;
+}
+
+int
+nfs4_open_namedattr_async(struct nfs_context *nfs, const char *path,
+                          const char *attrname, int flags, nfs_cb cb,
+                          void *private_data)
+{
+        struct nfs4_cb_data *data;
+
+        if (attrname == NULL || *attrname == 0) {
+                nfs_set_error(nfs, "No named attribute given");
+                return -1;
+        }
+        if (strchr(attrname, '/')) {
+                nfs_set_error(nfs, "A named attribute cannot contain '/'");
+                return -1;
+        }
+
+        /*
+         * The whole path names the file that owns the attributes, and the
+         * attribute itself is the name looked up inside the attribute
+         * directory, which is where data->filler.data goes.
+         */
+        data = init_cb_data_full_path(nfs, path);
+        if (data == NULL) {
+                return -1;
+        }
+
+        data->cb           = cb;
+        data->private_data = private_data;
+        data->filler.data  = strdup(attrname);
+        if (data->filler.data == NULL) {
+                nfs_set_error(nfs, "Out of memory");
+                free_nfs4_cb_data(data);
+                return -1;
+        }
+        data->flags |= LOOKUP_FLAG_OPENATTR;
+        /*
+         * A file that has never had an attribute written has no attribute
+         * directory, so creating one is part of creating the first
+         * attribute.
+         */
+        if (flags & O_CREAT) {
+                data->flags |= LOOKUP_FLAG_OPENATTR_CREATE;
+        }
+
+        /* O_TRUNC is only valid for O_RDWR or O_WRONLY */
+        if (flags & O_TRUNC && !(flags & (O_RDWR|O_WRONLY))) {
+                flags &= ~O_TRUNC;
+        }
+        if (flags & O_EXCL) {
+                flags &= ~O_TRUNC;
+        }
+        if (flags & O_TRUNC) {
+                data->open_cb = nfs4_open_truncate_cb;
+
+                data->filler.blob3.val = malloc(12);
+                if (data->filler.blob3.val == NULL) {
+                        nfs_set_error(nfs, "Out of memory");
+                        free_nfs4_cb_data(data);
+                        return -1;
+                }
+                data->filler.blob3.free = free;
+                memset(data->filler.blob3.val, 0, 12);
+        }
+
+#ifdef HAVE_MULTITHREADING
+        if (nfs->rpc->multithreading_enabled) {
+                nfs_mt_sem_wait(&nfs->nfsi->nfs4_open_call_sem);
+                data->flags |= MUTEX_HELD;
+        }
+#endif
+        return nfs4_open_async_internal(nfs, data, flags, 0666);
+}
+
+int
+nfs4_remove_namedattr_async(struct nfs_context *nfs, const char *path,
+                            const char *attrname, nfs_cb cb,
+                            void *private_data)
+{
+        struct nfs4_cb_data *data;
+
+        if (attrname == NULL || *attrname == 0) {
+                nfs_set_error(nfs, "No named attribute given");
+                return -1;
+        }
+        if (strchr(attrname, '/')) {
+                nfs_set_error(nfs, "A named attribute cannot contain '/'");
+                return -1;
+        }
+
+        data = init_cb_data_full_path(nfs, path);
+        if (data == NULL) {
+                return -1;
+        }
+
+        data->cb           = cb;
+        data->private_data = private_data;
+        data->filler.func  = nfs4_populate_remove;
+        data->filler.max_op = 1;
+        data->filler.data  = strdup(attrname);
+        if (data->filler.data == NULL) {
+                nfs_set_error(nfs, "Out of memory");
+                free_nfs4_cb_data(data);
+                return -1;
+        }
+        data->flags |= LOOKUP_FLAG_OPENATTR;
+
+        if (nfs4_lookup_path_async(nfs, data, nfs4_remove_cb) < 0) {
+                free_nfs4_cb_data(data);
+                return -1;
+        }
+
+        return 0;
+}
+
 int
 nfs4_opendir_async(struct nfs_context *nfs, const char *path, nfs_cb cb,
                    void *private_data)

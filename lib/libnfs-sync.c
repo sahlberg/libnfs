@@ -2496,6 +2496,83 @@ nfs42_write_same(struct nfs_context *nfs, struct nfsfh *nfsfh,
 #endif /* HAVE_NFS4_2 */
 
 /*
+ * NFSv4 named attributes
+ */
+int
+nfs4_opendir_namedattr(struct nfs_context *nfs, const char *path,
+                       struct nfsdir **nfsdir)
+{
+	struct sync_cb_data cb_data;
+
+	cb_data.return_data = nfsdir;
+        if (nfs_init_cb_data(&nfs, &cb_data)) {
+                return -1;
+        }
+
+	if (nfs4_opendir_namedattr_async(nfs, path, opendir_cb,
+                                         &cb_data) != 0) {
+		nfs_set_error(nfs, "nfs4_opendir_namedattr_async failed. %s",
+                              nfs_get_error(nfs));
+                nfs_destroy_cb_sem(&cb_data);
+		return -1;
+	}
+
+	wait_for_nfs_reply(nfs, &cb_data);
+        nfs_destroy_cb_sem(&cb_data);
+
+	return cb_data.status;
+}
+
+int
+nfs4_open_namedattr(struct nfs_context *nfs, const char *path,
+                    const char *attrname, int flags, struct nfsfh **nfsfh)
+{
+	struct sync_cb_data cb_data;
+
+	cb_data.return_data = nfsfh;
+        if (nfs_init_cb_data(&nfs, &cb_data)) {
+                return -1;
+        }
+
+	if (nfs4_open_namedattr_async(nfs, path, attrname, flags, open_cb,
+                                      &cb_data) != 0) {
+		nfs_set_error(nfs, "nfs4_open_namedattr_async failed. %s",
+                              nfs_get_error(nfs));
+                nfs_destroy_cb_sem(&cb_data);
+		return -1;
+	}
+
+	wait_for_nfs_reply(nfs, &cb_data);
+        nfs_destroy_cb_sem(&cb_data);
+
+	return cb_data.status;
+}
+
+int
+nfs4_remove_namedattr(struct nfs_context *nfs, const char *path,
+                      const char *attrname)
+{
+	struct sync_cb_data cb_data;
+
+        if (nfs_init_cb_data(&nfs, &cb_data)) {
+                return -1;
+        }
+
+	if (nfs4_remove_namedattr_async(nfs, path, attrname, unlink_cb,
+                                        &cb_data) != 0) {
+		nfs_set_error(nfs, "nfs4_remove_namedattr_async failed. %s",
+                              nfs_get_error(nfs));
+                nfs_destroy_cb_sem(&cb_data);
+		return -1;
+	}
+
+	wait_for_nfs_reply(nfs, &cb_data);
+        nfs_destroy_cb_sem(&cb_data);
+
+	return cb_data.status;
+}
+
+/*
  * nfs4_getacl()
  */
 void nfs4_acl_free(fattr4_acl *acl)
