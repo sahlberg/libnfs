@@ -3466,7 +3466,7 @@ zdr_READ_PLUS4resok (ZDR *zdrs, READ_PLUS4resok *objp)
 {
 	 if (!zdr_bool (zdrs, &objp->rpr_eof))
 		 return FALSE;
-	 if (!zdr_array (zdrs, (char **)&objp->rpr_contents.rpr_contents_val, (u_int *) &objp->rpr_contents.rpr_contents_len, ~0,
+	 if (!zdr_array (zdrs, (char **)&objp->rpr_contents.rpr_contents_val, &objp->rpr_contents.rpr_contents_len, ~0,
 		sizeof (read_plus_content), (zdrproc_t) zdr_read_plus_content))
 		 return FALSE;
 	return TRUE;
@@ -3511,7 +3511,7 @@ zdr_app_data_block4 (ZDR *zdrs, app_data_block4 *objp)
 uint32_t
 zdr_write_response4 (ZDR *zdrs, write_response4 *objp)
 {
-	 if (!zdr_array (zdrs, (char **)&objp->wr_callback_id.wr_callback_id_val, (u_int *) &objp->wr_callback_id.wr_callback_id_len, 1,
+	 if (!zdr_array (zdrs, (char **)&objp->wr_callback_id.wr_callback_id_val, &objp->wr_callback_id.wr_callback_id_len, 1,
 		sizeof (stateid4), (zdrproc_t) zdr_stateid4))
 		 return FALSE;
 	 if (!zdr_length4 (zdrs, &objp->wr_count))
