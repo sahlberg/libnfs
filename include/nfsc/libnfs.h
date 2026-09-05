@@ -44,6 +44,22 @@ extern "C" {
 #define LIBNFS_FEATURE_UMOUNT
 #define LIBNFS_FEATURE_MULTITHREADING
 
+/*
+ * NFSv4.2, i.e. the NFS_V4_2 dialect and the calls that only it can answer:
+ * nfs_fallocate(), lseek() with SEEK_HOLE or SEEK_DATA, and the READ_PLUS and
+ * WRITE_SAME operations in libnfs-raw-nfs4.h.
+ *
+ * Like the feature macros above this says the API is there, not that the
+ * library was built with it. The small embedded and console targets never
+ * have it, so it is left undefined for them, but any other build can still
+ * have dropped the dialect with --disable-nfs4-2 or -DENABLE_NFS4_2=OFF, and
+ * that is only visible at run time: nfs_set_version(nfs, NFS_V4_2) fails, and
+ * so does every NFSv4.2 only call.
+ */
+#if !defined(PS2_EE) && !defined(PS3_PPU) && !defined(AROS)
+#define LIBNFS_FEATURE_NFS4_2
+#endif
+
 #define NFS_BLKSIZE 4096
 
 struct nfs_context;
@@ -370,17 +386,7 @@ EXTERN void nfs_set_mountport(struct nfs_context *nfs, int port);
 EXTERN size_t nfs_get_readdir_maxcount(struct nfs_context *nfs);
 EXTERN void nfs_set_readdir_max_buffer_size(struct nfs_context *nfs, uint32_t dircount, uint32_t maxcount);
 
-/*
- * NFSv4.2 support is not built for the small embedded and console targets.
- * Those have on the order of a megabyte of RAM in total and no use for any of
- * it, so the whole dialect is compiled out there rather than carried as dead
- * weight. Builds for other platforms can drop it too with
- * --disable-nfs4-2 (autoconf) or -DENABLE_NFS4_2=OFF (cmake), in which case
- * this constant still exists but nfs_set_version() will reject it.
- */
-#if !defined(PS2_EE) && !defined(PS3_PPU) && !defined(AROS)
-#define LIBNFS_FEATURE_NFS4_2 1
-
+#ifdef LIBNFS_FEATURE_NFS4_2
 /*
  * NFSv4.2, i.e. NFSv4 minor version 2.
  *
@@ -408,7 +414,7 @@ EXTERN void nfs_set_readdir_max_buffer_size(struct nfs_context *nfs, uint32_t di
  * NFSv3 and NFSv4.0 have no sessions and are not affected by any of this.
  */
 #define NFS_V4_2 42
-#endif /* small platforms */
+#endif /* LIBNFS_FEATURE_NFS4_2 */
 
 /*
  * Set NFS version. Supported versions are

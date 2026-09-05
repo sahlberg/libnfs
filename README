@@ -52,6 +52,12 @@ ranges, lseek() with SEEK_HOLE and SEEK_DATA, and the READ_PLUS and
 WRITE_SAME operations. NFSv4.2 support is built by default and can be left
 out with --disable-nfs4-2 (autoconf) or -DENABLE_NFS4_2=OFF (cmake).
 
+Applications compile against it behind LIBNFS_FEATURE_NFS4_2, which libnfs.h
+defines wherever the dialect exists at all. As with the other
+LIBNFS_FEATURE_ macros that says the API is there rather than that this
+particular build has it, so a build that dropped the dialect still reports
+that only at run time, by failing nfs_set_version(nfs, NFS_V4_2).
+
 CONCURRENCY AND NFSv4.2:
 ------------------------
 This matters if you drive libnfs hard, and it is the one place where the
