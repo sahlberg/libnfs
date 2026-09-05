@@ -179,8 +179,15 @@ struct nfs4_cb_data {
  * so every operation that follows applies to it. _CREATE asks the server to
  * create the directory if the file does not have one yet.
  */
-#define LOOKUP_FLAG_OPENATTR     0x0004
-#define LOOKUP_FLAG_OPENATTR_CREATE 0x0008
+#define LOOKUP_FLAG_OPENATTR     0x0010
+#define LOOKUP_FLAG_OPENATTR_CREATE 0x0020
+/*
+ * Every flag above lives in the same word as this one, so none of them may
+ * reuse its bit. It used to share 0x0004 with LOOKUP_FLAG_OPENATTR, which
+ * made an open taken under the open semaphore look like a request for the
+ * named attribute directory, and made a named attribute call post a
+ * semaphore it never waited on.
+ */
 #define MUTEX_HELD               0x0004
         int flags;
 
