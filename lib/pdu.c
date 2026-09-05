@@ -1422,7 +1422,49 @@ struct rpc_pdu *rpc_find_pdu(struct rpc_context *rpc, uint32_t xid)
         }
 #endif /* HAVE_MULTITHREADING */
 
-        /* First check outqueue */
+        /*
+         * A pdu is on exactly one of these two queues, so which is searched
+         * first only decides how much work a lookup costs, never what it
+         * finds.
+         *
+         * The pdus we are waiting for replies to are the hashed ones, and
+         * that is what a reply almost always matches, so look there first.
+         * The outqueue is a flat list and can be long, since an NFSv4.2
+         * session lets an application queue far more requests than the
+         * session has slots to carry at once; scanning it for every reply
+         * would make replies cost O(queue length).
+         *
+         * Follow the hash chain. Linear traverse of a singly-linked list, but
+         * track the previous entry for optimised removal.
+         */
+	hash = rpc_hash_xid(rpc, xid);
+	q = &rpc->waitpdu[hash];
+	prev_pdu = NULL;
+	for (pdu=q->head; pdu; pdu=pdu->next) {
+		if (pdu->xid != xid) {
+			prev_pdu = pdu;
+			continue;
+		}
+		if (rpc->is_udp == 0 || rpc->is_broadcast == 0) {
+			/* Singly-linked but we track head and tail */
+			if (pdu == q->head)
+				q->head = pdu->next;
+			if (pdu == q->tail)
+				q->tail = prev_pdu;
+			if (prev_pdu != NULL)
+				prev_pdu->next = pdu->next;
+			rpc->waitpdu_len--;
+		}
+                break;
+        }
+        if (pdu) {
+                goto finished;
+        }
+
+        /*
+         * Not one we are waiting on. It may still be queued but unsent, or
+         * sent and then requeued for retransmit after a reconnect.
+         */
 	q = &rpc->outqueue;
 	prev_pdu = NULL;
 	for (pdu=q->head; pdu; pdu=pdu->next) {
@@ -1448,34 +1490,6 @@ struct rpc_pdu *rpc_find_pdu(struct rpc_context *rpc, uint32_t xid)
 				prev_pdu->next = pdu->next;
 			assert(rpc->stats.outqueue_len > 0);
 			rpc->stats.outqueue_len--;
-		}
-                break;
-        }
-        if (pdu) {
-                goto finished;
-        }
-
-	/* Look up the transaction in a hash table of our requests */
-	hash = rpc_hash_xid(rpc, xid);
-	q = &rpc->waitpdu[hash];
-
-	/* Follow the hash chain.  Linear traverse singly-linked list,
-	 * but track previous entry for optimised removal */
-	prev_pdu = NULL;
-	for (pdu=q->head; pdu; pdu=pdu->next) {
-		if (pdu->xid != xid) {
-			prev_pdu = pdu;
-			continue;
-		}
-		if (rpc->is_udp == 0 || rpc->is_broadcast == 0) {
-			/* Singly-linked but we track head and tail */
-			if (pdu == q->head)
-				q->head = pdu->next;
-			if (pdu == q->tail)
-				q->tail = prev_pdu;
-			if (prev_pdu != NULL)
-				prev_pdu->next = pdu->next;
-			rpc->waitpdu_len--;
 		}
                 break;
         }
