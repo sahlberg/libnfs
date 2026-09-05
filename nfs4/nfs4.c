@@ -111,6 +111,63 @@ nfsstat4_to_str(int error)
         case NFS4ERR_FILE_OPEN: return "NFS4ERR_FILE_OPEN"; break;
         case NFS4ERR_ADMIN_REVOKED: return "NFS4ERR_ADMIN_REVOKED"; break;
         case NFS4ERR_CB_PATH_DOWN: return "NFS4ERR_CB_PATH_DOWN"; break;
+        /* NFSv4.1 (RFC 8881) and NFSv4.2 (RFC 7862) */
+        case NFS4ERR_BADIOMODE: return "NFS4ERR_BADIOMODE"; break;
+        case NFS4ERR_BADLAYOUT: return "NFS4ERR_BADLAYOUT"; break;
+        case NFS4ERR_BAD_SESSION_DIGEST:
+                return "NFS4ERR_BAD_SESSION_DIGEST"; break;
+        case NFS4ERR_BADSESSION: return "NFS4ERR_BADSESSION"; break;
+        case NFS4ERR_BADSLOT: return "NFS4ERR_BADSLOT"; break;
+        case NFS4ERR_COMPLETE_ALREADY:
+                return "NFS4ERR_COMPLETE_ALREADY"; break;
+        case NFS4ERR_CONN_NOT_BOUND_TO_SESSION:
+                return "NFS4ERR_CONN_NOT_BOUND_TO_SESSION"; break;
+        case NFS4ERR_DELEG_ALREADY_WANTED:
+                return "NFS4ERR_DELEG_ALREADY_WANTED"; break;
+        case NFS4ERR_BACK_CHAN_BUSY: return "NFS4ERR_BACK_CHAN_BUSY"; break;
+        case NFS4ERR_LAYOUTTRYLATER: return "NFS4ERR_LAYOUTTRYLATER"; break;
+        case NFS4ERR_LAYOUTUNAVAILABLE:
+                return "NFS4ERR_LAYOUTUNAVAILABLE"; break;
+        case NFS4ERR_NOMATCHING_LAYOUT:
+                return "NFS4ERR_NOMATCHING_LAYOUT"; break;
+        case NFS4ERR_RECALLCONFLICT: return "NFS4ERR_RECALLCONFLICT"; break;
+        case NFS4ERR_UNKNOWN_LAYOUTTYPE:
+                return "NFS4ERR_UNKNOWN_LAYOUTTYPE"; break;
+        case NFS4ERR_SEQ_MISORDERED: return "NFS4ERR_SEQ_MISORDERED"; break;
+        case NFS4ERR_SEQUENCE_POS: return "NFS4ERR_SEQUENCE_POS"; break;
+        case NFS4ERR_REQ_TOO_BIG: return "NFS4ERR_REQ_TOO_BIG"; break;
+        case NFS4ERR_REP_TOO_BIG: return "NFS4ERR_REP_TOO_BIG"; break;
+        case NFS4ERR_REP_TOO_BIG_TO_CACHE:
+                return "NFS4ERR_REP_TOO_BIG_TO_CACHE"; break;
+        case NFS4ERR_RETRY_UNCACHED_REP:
+                return "NFS4ERR_RETRY_UNCACHED_REP"; break;
+        case NFS4ERR_UNSAFE_COMPOUND: return "NFS4ERR_UNSAFE_COMPOUND"; break;
+        case NFS4ERR_TOO_MANY_OPS: return "NFS4ERR_TOO_MANY_OPS"; break;
+        case NFS4ERR_OP_NOT_IN_SESSION:
+                return "NFS4ERR_OP_NOT_IN_SESSION"; break;
+        case NFS4ERR_HASH_ALG_UNSUPP: return "NFS4ERR_HASH_ALG_UNSUPP"; break;
+        case NFS4ERR_CLIENTID_BUSY: return "NFS4ERR_CLIENTID_BUSY"; break;
+        case NFS4ERR_PNFS_IO_HOLE: return "NFS4ERR_PNFS_IO_HOLE"; break;
+        case NFS4ERR_SEQ_FALSE_RETRY: return "NFS4ERR_SEQ_FALSE_RETRY"; break;
+        case NFS4ERR_BAD_HIGH_SLOT: return "NFS4ERR_BAD_HIGH_SLOT"; break;
+        case NFS4ERR_DEADSESSION: return "NFS4ERR_DEADSESSION"; break;
+        case NFS4ERR_ENCR_ALG_UNSUPP: return "NFS4ERR_ENCR_ALG_UNSUPP"; break;
+        case NFS4ERR_PNFS_NO_LAYOUT: return "NFS4ERR_PNFS_NO_LAYOUT"; break;
+        case NFS4ERR_NOT_ONLY_OP: return "NFS4ERR_NOT_ONLY_OP"; break;
+        case NFS4ERR_WRONG_CRED: return "NFS4ERR_WRONG_CRED"; break;
+        case NFS4ERR_WRONG_TYPE: return "NFS4ERR_WRONG_TYPE"; break;
+        case NFS4ERR_DIRDELEG_UNAVAIL:
+                return "NFS4ERR_DIRDELEG_UNAVAIL"; break;
+        case NFS4ERR_REJECT_DELEG: return "NFS4ERR_REJECT_DELEG"; break;
+        case NFS4ERR_RETURNCONFLICT: return "NFS4ERR_RETURNCONFLICT"; break;
+        case NFS4ERR_DELEG_REVOKED: return "NFS4ERR_DELEG_REVOKED"; break;
+        case NFS4ERR_PARTNER_NOTSUPP: return "NFS4ERR_PARTNER_NOTSUPP"; break;
+        case NFS4ERR_PARTNER_NO_AUTH: return "NFS4ERR_PARTNER_NO_AUTH"; break;
+        case NFS4ERR_UNION_NOTSUPP: return "NFS4ERR_UNION_NOTSUPP"; break;
+        case NFS4ERR_OFFLOAD_DENIED: return "NFS4ERR_OFFLOAD_DENIED"; break;
+        case NFS4ERR_WRONG_LFS: return "NFS4ERR_WRONG_LFS"; break;
+        case NFS4ERR_BADLABEL: return "NFS4ERR_BADLABEL"; break;
+        case NFS4ERR_OFFLOAD_NO_REQS: return "NFS4ERR_OFFLOAD_NO_REQS"; break;
 	};
 	return "unknown nfsv4 error";
 }
@@ -140,7 +197,14 @@ nfsstat4_to_errno(int error)
         case NFS4ERR_STALE: return -EIO;
         case NFS4ERR_BADHANDLE: return -EINVAL;
         case NFS4ERR_BAD_COOKIE: return -EINVAL;
-        case NFS4ERR_NOTSUPP: return -EINVAL;
+        /*
+         * The server understood the operation and does not implement
+         * it, which is exactly ENOTSUP. EINVAL said the arguments were
+         * wrong instead, and contradicted what the NFSv4.2 and named
+         * attribute calls document they return for an unsupporting
+         * server.
+         */
+        case NFS4ERR_NOTSUPP: return -ENOTSUP;
         case NFS4ERR_TOOSMALL: return -EIO;
         case NFS4ERR_SERVERFAULT: return -EIO;
         case NFS4ERR_BADTYPE: return -EINVAL;
@@ -184,6 +248,52 @@ nfsstat4_to_errno(int error)
         case NFS4ERR_FILE_OPEN: return -EIO;
         case NFS4ERR_ADMIN_REVOKED: return -EIO;
         case NFS4ERR_CB_PATH_DOWN: return -EIO;
+        /* NFSv4.1 (RFC 8881) and NFSv4.2 (RFC 7862) */
+        case NFS4ERR_BADIOMODE: return -EINVAL;
+        case NFS4ERR_BADLAYOUT: return -EINVAL;
+        case NFS4ERR_BAD_SESSION_DIGEST: return -ENOTCONN;
+        case NFS4ERR_BADSESSION: return -ENOTCONN;
+        case NFS4ERR_BADSLOT: return -EIO;
+        case NFS4ERR_COMPLETE_ALREADY: return -EIO;
+        case NFS4ERR_CONN_NOT_BOUND_TO_SESSION: return -ENOTCONN;
+        case NFS4ERR_DELEG_ALREADY_WANTED: return -EALREADY;
+        case NFS4ERR_BACK_CHAN_BUSY: return -EBUSY;
+        case NFS4ERR_LAYOUTTRYLATER: return -EAGAIN;
+        case NFS4ERR_LAYOUTUNAVAILABLE: return -ENOTSUP;
+        case NFS4ERR_NOMATCHING_LAYOUT: return -ENOENT;
+        case NFS4ERR_RECALLCONFLICT: return -EAGAIN;
+        case NFS4ERR_UNKNOWN_LAYOUTTYPE: return -ENOTSUP;
+        case NFS4ERR_SEQ_MISORDERED: return -EIO;
+        case NFS4ERR_SEQUENCE_POS: return -EIO;
+        case NFS4ERR_REQ_TOO_BIG: return -EFBIG;
+        case NFS4ERR_REP_TOO_BIG: return -EFBIG;
+        case NFS4ERR_REP_TOO_BIG_TO_CACHE: return -EFBIG;
+        case NFS4ERR_RETRY_UNCACHED_REP: return -EIO;
+        case NFS4ERR_UNSAFE_COMPOUND: return -EIO;
+        case NFS4ERR_TOO_MANY_OPS: return -E2BIG;
+        case NFS4ERR_OP_NOT_IN_SESSION: return -EIO;
+        case NFS4ERR_HASH_ALG_UNSUPP: return -ENOTSUP;
+        case NFS4ERR_CLIENTID_BUSY: return -EBUSY;
+        case NFS4ERR_PNFS_IO_HOLE: return -EIO;
+        case NFS4ERR_SEQ_FALSE_RETRY: return -EIO;
+        case NFS4ERR_BAD_HIGH_SLOT: return -EIO;
+        case NFS4ERR_DEADSESSION: return -ENOTCONN;
+        case NFS4ERR_ENCR_ALG_UNSUPP: return -ENOTSUP;
+        case NFS4ERR_PNFS_NO_LAYOUT: return -EIO;
+        case NFS4ERR_NOT_ONLY_OP: return -EIO;
+        case NFS4ERR_WRONG_CRED: return -EPERM;
+        case NFS4ERR_WRONG_TYPE: return -EINVAL;
+        case NFS4ERR_DIRDELEG_UNAVAIL: return -ENOTSUP;
+        case NFS4ERR_REJECT_DELEG: return -EIO;
+        case NFS4ERR_RETURNCONFLICT: return -EAGAIN;
+        case NFS4ERR_DELEG_REVOKED: return -EIO;
+        case NFS4ERR_PARTNER_NOTSUPP: return -ENOTSUP;
+        case NFS4ERR_PARTNER_NO_AUTH: return -EPERM;
+        case NFS4ERR_UNION_NOTSUPP: return -ENOTSUP;
+        case NFS4ERR_OFFLOAD_DENIED: return -EPERM;
+        case NFS4ERR_WRONG_LFS: return -EINVAL;
+        case NFS4ERR_BADLABEL: return -EINVAL;
+        case NFS4ERR_OFFLOAD_NO_REQS: return -ENOTSUP;
 	};
 	return -ERANGE;
 }
