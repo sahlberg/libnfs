@@ -31,6 +31,7 @@
 #endif/*WIN32*/
 
 #include <stdio.h>
+#include <assert.h>
 #include <errno.h>
 #include <string.h>
 #include <stdlib.h>
@@ -298,6 +299,451 @@ nfsstat4_to_errno(int error)
 	return -ERANGE;
 }
 
+#ifdef HAVE_NFS4_2
+/*
+ * NFSv4.1+ session slots.
+ *
+ * Every COMPOUND past the bootstrap leads with SEQUENCE, which names a slot
+ * and a sequence id within that slot. RFC 8881 2.10.6.1 allows only one
+ * request at a time per slot: the server keys its reply cache on the pair, so
+ * a second request sent on a busy slot is either taken for a retransmit of
+ * the first or rejected with NFS4ERR_SEQ_MISORDERED. The number of slots the
+ * session was granted is therefore also the number of COMPOUNDs that may be
+ * in flight at once.
+ *
+ * A slot is taken as the COMPOUND is written to the socket, not when it was
+ * built, so that an application can queue up as many requests as it likes and
+ * only the number on the wire is bounded. It is given back by rpc_free_pdu()
+ * when that COMPOUND is finished with, however it finished, that being the
+ * one place every pdu passes through.
+ */
+void
+nfs4_session_mutex_init(struct rpc_context *rpc)
+{
+#ifdef HAVE_MULTITHREADING
+        nfs_mt_mutex_init(&rpc->nfs4_slot_mutex);
+#endif /* HAVE_MULTITHREADING */
+        (void)rpc;
+}
+
+void
+nfs4_session_mutex_destroy(struct rpc_context *rpc)
+{
+#ifdef HAVE_MULTITHREADING
+        nfs_mt_mutex_destroy(&rpc->nfs4_slot_mutex);
+#endif /* HAVE_MULTITHREADING */
+        (void)rpc;
+}
+
+/*
+ * The slot table has a lock of its own rather than sharing rpc_mutex, because
+ * slots are taken and released from inside regions that already hold
+ * rpc_mutex and that mutex is not recursive. Nothing under this lock reaches
+ * for rpc_mutex, so the two cannot deadlock against each other.
+ */
+static void
+nfs4_session_lock(struct rpc_context *rpc)
+{
+#ifdef HAVE_MULTITHREADING
+        if (rpc->multithreading_enabled) {
+                nfs_mt_mutex_lock(&rpc->nfs4_slot_mutex);
+        }
+#endif /* HAVE_MULTITHREADING */
+        (void)rpc;
+}
+
+static void
+nfs4_session_unlock(struct rpc_context *rpc)
+{
+#ifdef HAVE_MULTITHREADING
+        if (rpc->multithreading_enabled) {
+                nfs_mt_mutex_unlock(&rpc->nfs4_slot_mutex);
+        }
+#endif /* HAVE_MULTITHREADING */
+        (void)rpc;
+}
+
+int
+nfs4_session_init(struct rpc_context *rpc, const char *sessionid,
+                  uint32_t slot_count)
+{
+        struct nfs4_slot *slots;
+
+        if (slot_count < 1) {
+                return -1;
+        }
+        if (slot_count > NFS4_MAX_SLOTS) {
+                slot_count = NFS4_MAX_SLOTS;
+        }
+
+        slots = calloc(slot_count, sizeof(struct nfs4_slot));
+        if (slots == NULL) {
+                return -1;
+        }
+
+        nfs4_session_lock(rpc);
+        free(rpc->nfs4_slots);
+        memcpy(rpc->nfs4_sessionid, sessionid, sizeof(sessionid4));
+        rpc->nfs4_slots = slots;
+        rpc->nfs4_slot_count = slot_count;
+        rpc->nfs4_slots_in_use = 0;
+        rpc->nfs4_slot_hint = 0;
+        rpc->nfs4_renew_due = rpc_current_time() + NFS4_SESSION_RENEW_MSECS;
+        rpc->nfs4_session_valid = 1;
+        nfs4_session_unlock(rpc);
+
+        return 0;
+}
+
+void
+nfs4_session_destroy(struct rpc_context *rpc)
+{
+        nfs4_session_lock(rpc);
+        rpc->nfs4_session_valid = 0;
+        rpc->nfs4_slot_count = 0;
+        rpc->nfs4_slots_in_use = 0;
+        free(rpc->nfs4_slots);
+        rpc->nfs4_slots = NULL;
+        nfs4_session_unlock(rpc);
+}
+
+/*
+ * Take a free slot and advance its sequence id. Returns -1 when every slot is
+ * busy, i.e. when the application already has as many COMPOUNDs outstanding
+ * as the session can carry.
+ */
+static int
+nfs4_session_get_slot(struct rpc_context *rpc, SEQUENCE4args *sargs,
+                      uint32_t *slotid)
+{
+        uint32_t i = 0, n;
+
+        nfs4_session_lock(rpc);
+        if (!rpc->nfs4_session_valid) {
+                nfs4_session_unlock(rpc);
+                return -1;
+        }
+        if (rpc->nfs4_slots_in_use >= rpc->nfs4_slot_count) {
+                nfs4_session_unlock(rpc);
+                return -1;
+        }
+        /*
+         * Start where the last search left off. Slots are taken and released
+         * in roughly the order requests are issued, so the next free one is
+         * almost always the next one along and this finds it immediately
+         * rather than rescanning the busy run from the start every time.
+         */
+        for (n = 0; n < rpc->nfs4_slot_count; n++) {
+                i = (rpc->nfs4_slot_hint + n) % rpc->nfs4_slot_count;
+                if (!rpc->nfs4_slots[i].in_use) {
+                        break;
+                }
+        }
+        assert(n < rpc->nfs4_slot_count);
+        rpc->nfs4_slot_hint = (i + 1) % rpc->nfs4_slot_count;
+        rpc->nfs4_slots[i].in_use = 1;
+        rpc->nfs4_slots_in_use++;
+        /*
+         * The first request on a slot uses sequence id 1 and each new request
+         * on it advances by one, so that the server can tell a fresh request
+         * from a retransmit of the previous one.
+         */
+        rpc->nfs4_slots[i].seqid++;
+
+        memcpy(sargs->sa_sessionid, rpc->nfs4_sessionid, sizeof(sessionid4));
+        sargs->sa_sequenceid = rpc->nfs4_slots[i].seqid;
+        sargs->sa_slotid = i;
+        sargs->sa_highest_slotid = rpc->nfs4_slot_count - 1;
+        sargs->sa_cachethis = 0;
+        nfs4_session_unlock(rpc);
+
+        *slotid = i;
+        return 0;
+}
+
+/*
+ * Give a slot back. rollback is for a COMPOUND that was abandoned before it
+ * could be queued for sending: the server never saw that sequence id, so
+ * leaving it consumed would put a gap in the slot that the next request there
+ * is rejected for.
+ */
+void
+nfs4_session_put_slot(struct rpc_context *rpc, uint32_t slotid, int rollback)
+{
+        nfs4_session_lock(rpc);
+        if (rpc->nfs4_slots && slotid < rpc->nfs4_slot_count) {
+                if (rollback && rpc->nfs4_slots[slotid].seqid > 0) {
+                        rpc->nfs4_slots[slotid].seqid--;
+                }
+                if (rpc->nfs4_slots[slotid].in_use) {
+                        rpc->nfs4_slots[slotid].in_use = 0;
+                        rpc->nfs4_slots_in_use--;
+                }
+        }
+        nfs4_session_unlock(rpc);
+}
+
+/*
+ * Note where the leading SEQUENCE of a COMPOUND is going to land in the
+ * encoded buffer, and mark the pdu as needing a slot. Called before the args
+ * are encoded. A COMPOUND without a leading SEQUENCE, which is any of the
+ * bootstrap ones and every NFSv4.0 COMPOUND, is left alone.
+ *
+ * The slot itself is not taken here. Taking one at encode time would cap how
+ * many requests an application may have outstanding at the number of slots
+ * the session was granted, which for libnfs is the wrong trade: submission
+ * should stay unbounded and the slot count should only bound how many
+ * COMPOUNDs are on the wire at once. So the slot is taken later, by
+ * nfs4_pdu_take_slot() as the pdu is written, and everything behind it simply
+ * waits in the send queue.
+ */
+static int
+nfs4_pdu_note_sequence(struct rpc_context *rpc, struct rpc_pdu *pdu,
+                       struct COMPOUND4args *args, uint32_t start)
+{
+        if (args->argarray.argarray_len < 1 ||
+            args->argarray.argarray_val[0].argop != OP_SEQUENCE) {
+                return 0;
+        }
+
+        /*
+         * With Kerberos integrity or privacy the payload is signed or wrapped
+         * once it has been marshalled, so it cannot be touched again
+         * afterwards. There the slot has to be taken now and stamped into the
+         * args before they are encoded, which does put a request back under
+         * the old ceiling of one outstanding COMPOUND per slot. Plain AUTH_SYS
+         * and AUTH_TLS, which is everything else, take theirs at send time.
+         */
+#ifdef HAVE_LIBKRB5
+        if (rpc->sec == RPC_SEC_KRB5I || rpc->sec == RPC_SEC_KRB5P) {
+                uint32_t slotid;
+
+                if (nfs4_session_get_slot(rpc,
+                        &args->argarray.argarray_val[0].nfs_argop4_u.opsequence,
+                        &slotid) < 0) {
+                        rpc_set_error(rpc, "NFSv4.2 session has no free slot. "
+                                      "All %d are in use by requests that have "
+                                      "not completed yet.",
+                                      rpc->nfs4_slot_count);
+                        return -1;
+                }
+                pdu->nfs4_slot = slotid;
+                pdu->nfs4_slot_held = 1;
+                rpc->nfs4_renew_due = rpc_current_time() +
+                        NFS4_SESSION_RENEW_MSECS;
+                return 0;
+        }
+#endif /* HAVE_LIBKRB5 */
+
+        /*
+         * COMPOUND4args is a tag, a minor version and the operation array,
+         * and the first operation here is the SEQUENCE whose args we want to
+         * come back to. Everything ahead of those args is fixed width, so
+         * their offset can be counted out: the tag's length word and its
+         * padded contents, the minor version, the operation count and the
+         * opcode itself.
+         */
+        pdu->nfs4_seq_pos = start + 4 +
+                ((args->tag.utf8string_len + 3) & ~3u) + 4 + 4 + 4;
+        pdu->nfs4_needs_slot = 1;
+
+        return 0;
+}
+
+/*
+ * Take a slot for a pdu that is about to be written, and stamp the slot id
+ * and its sequence id into the SEQUENCE that was encoded earlier. Returns -1
+ * when every slot is busy, which means the caller should leave this pdu
+ * queued and come back to it once one frees up.
+ */
+int
+nfs4_pdu_take_slot(struct rpc_context *rpc, struct rpc_pdu *pdu)
+{
+        SEQUENCE4args sargs;
+        uint32_t slotid, pos;
+
+        if (!pdu->nfs4_needs_slot || pdu->nfs4_slot_held) {
+                return 0;
+        }
+
+        memset(&sargs, 0, sizeof(sargs));
+        if (nfs4_session_get_slot(rpc, &sargs, &slotid) < 0) {
+                return -1;
+        }
+
+        /*
+         * Rewrite SEQUENCE4args where it already sits. The encode buffer is
+         * what the socket writes from and the record is fixed width up to
+         * this point, so seeking back and re-encoding just these args
+         * disturbs nothing else.
+         */
+        pos = zdr_getpos(&pdu->zdr);
+        assert(pdu->nfs4_seq_pos < pos);
+        zdr_setpos(&pdu->zdr, pdu->nfs4_seq_pos);
+        /*
+         * Cannot fail: these are fixed width fields being written back over
+         * the ones already encoded at this position, so there is nothing to
+         * grow the buffer for.
+         */
+        (void)zdr_SEQUENCE4args(&pdu->zdr, &sargs);
+        assert(zdr_getpos(&pdu->zdr) <= pos);
+        zdr_setpos(&pdu->zdr, pos);
+
+        pdu->nfs4_slot = slotid;
+        pdu->nfs4_slot_held = 1;
+
+        /*
+         * Any SEQUENCE renews the lease, so a connection that is being used
+         * never needs a renewal of its own.
+         */
+        rpc->nfs4_renew_due = rpc_current_time() + NFS4_SESSION_RENEW_MSECS;
+
+        return 0;
+}
+
+/*
+ * Whether a COMPOUND that needs a slot could be sent right now. The send path
+ * asks this before requesting POLLOUT, so that a full slot table parks the
+ * writer instead of spinning on a socket it must not write to yet.
+ */
+int
+nfs4_session_has_free_slot(struct rpc_context *rpc)
+{
+        int free_slot;
+
+        nfs4_session_lock(rpc);
+        free_slot = !rpc->nfs4_session_valid ||
+                rpc->nfs4_slots_in_use < rpc->nfs4_slot_count;
+        nfs4_session_unlock(rpc);
+
+        return free_slot;
+}
+
+/*
+ * Send a COMPOUND holding exactly one session management operation.
+ *
+ * BIND_CONN_TO_SESSION and DESTROY_SESSION are both operations that RFC 8881
+ * requires to travel on their own, without a leading SEQUENCE, so they take
+ * no slot and go out even when every slot is busy. prio lets the caller put
+ * one at the head of the send queue, which is what rebinding a session to a
+ * fresh connection needs: nothing else on that connection may be sent first.
+ */
+static struct rpc_pdu *
+nfs4_session_op_task(struct rpc_context *rpc, rpc_cb cb, nfs_argop4 *op,
+                     int prio, void *private_data, const char *what)
+{
+        struct rpc_pdu *pdu;
+        COMPOUND4args args;
+
+        pdu = rpc_allocate_pdu(rpc, NFS4_PROGRAM, NFS_V4, NFSPROC4_COMPOUND,
+                               cb, private_data, (zdrproc_t)zdr_COMPOUND4res,
+                               sizeof(COMPOUND4res));
+        if (pdu == NULL) {
+                rpc_set_error(rpc, "Out of memory. Failed to allocate pdu for "
+                              "NFS4/%s", what);
+                return NULL;
+        }
+
+        memset(&args, 0, sizeof(args));
+        args.minorversion = rpc->nfs4_minorversion;
+        args.argarray.argarray_len = 1;
+        args.argarray.argarray_val = op;
+
+        if (zdr_COMPOUND4args(&pdu->zdr, &args) == 0) {
+                rpc_set_error(rpc, "ZDR error: Failed to encode COMPOUND4args "
+                              "for %s", what);
+                rpc_free_pdu(rpc, pdu);
+                return NULL;
+        }
+
+        if (rpc_queue_pdu2(rpc, pdu, prio) != 0) {
+                rpc_set_error(rpc, "Failed to queue pdu for NFS4/%s", what);
+                return NULL;
+        }
+
+        return pdu;
+}
+
+/*
+ * A session is bound to the connection it was created on. After an automatic
+ * reconnect the session is still alive on the server, but the new connection
+ * is not associated with it and every COMPOUND on it would be answered with
+ * NFS4ERR_CONN_NOT_BOUND_TO_SESSION. This reassociates the two, and must be
+ * the first thing sent on the new connection.
+ */
+struct rpc_pdu *
+rpc_nfs4_bind_conn_to_session_task(struct rpc_context *rpc, rpc_cb cb,
+                                   void *private_data)
+{
+        nfs_argop4 op;
+        BIND_CONN_TO_SESSION4args *bargs;
+
+        memset(&op, 0, sizeof(op));
+        op.argop = OP_BIND_CONN_TO_SESSION;
+        bargs = &op.nfs_argop4_u.opbindconntosession;
+
+        memcpy(bargs->bctsa_sessid, rpc->nfs4_sessionid, sizeof(sessionid4));
+        /* We run no back channel, so only the fore channel is being bound. */
+        bargs->bctsa_dir = CDFC4_FORE;
+        bargs->bctsa_use_conn_in_rdma_mode = 0;
+
+        return nfs4_session_op_task(rpc, cb, &op, PDU_Q_PRIO_HI, private_data,
+                                    "BIND_CONN_TO_SESSION");
+}
+
+/*
+ * Release the session. Without this the server holds the session, and the
+ * state under it, until the lease expires.
+ */
+struct rpc_pdu *
+rpc_nfs4_destroy_session_task(struct rpc_context *rpc, rpc_cb cb,
+                              void *private_data)
+{
+        nfs_argop4 op;
+
+        memset(&op, 0, sizeof(op));
+        op.argop = OP_DESTROY_SESSION;
+        memcpy(op.nfs_argop4_u.opdestroysession.dsa_sessionid,
+               rpc->nfs4_sessionid, sizeof(sessionid4));
+
+        return nfs4_session_op_task(rpc, cb, &op, PDU_Q_PRIO_LOW, private_data,
+                                    "DESTROY_SESSION");
+}
+
+/*
+ * A COMPOUND that is nothing but its own SEQUENCE. It does no work; sending
+ * one renews the session's lease, which is what keeps an otherwise idle
+ * connection's session from being reaped by the server.
+ *
+ * It goes through the ordinary COMPOUND path so that it takes a slot and is
+ * sequenced like anything else.
+ */
+struct rpc_pdu *
+rpc_nfs4_renew_session_task(struct rpc_context *rpc, rpc_cb cb,
+                            void *private_data)
+{
+        COMPOUND4args args;
+        nfs_argop4 op;
+
+        memset(&op, 0, sizeof(op));
+        op.argop = OP_SEQUENCE;
+
+        memset(&args, 0, sizeof(args));
+        args.argarray.argarray_len = 1;
+        args.argarray.argarray_val = &op;
+
+        return rpc_nfs4_compound_task(rpc, cb, &args, private_data);
+}
+
+int
+rpc_nfs4_session_is_valid(struct rpc_context *rpc)
+{
+        return rpc->nfs4_session_valid;
+}
+
+#endif /* HAVE_NFS4_2 */
+
+
 struct rpc_pdu *rpc_nfs4_null_task(struct rpc_context *rpc, rpc_cb cb,
                                    void *private_data)
 {
@@ -339,13 +785,25 @@ struct rpc_pdu *rpc_nfs4_compound_task2(struct rpc_context *rpc, rpc_cb cb,
 
 #ifdef HAVE_NFS4_2
 	/*
-	 * The minor version belongs to the connection, not to each caller, so
-	 * stamp it here rather than at every one of the ~40 places that build
-	 * a COMPOUND. It stays 0 unless the context selected NFSv4.2. Without
-	 * NFSv4.2 there is nothing but 0 to stamp, and callers already
-	 * memset the args, so the whole thing compiles out.
+	 * The minor version and the session both belong to the connection, not
+	 * to each caller, so they are stamped here rather than at every one of
+	 * the ~40 places that build a COMPOUND. The minor version stays 0
+	 * unless the context selected NFSv4.2, and a COMPOUND that does not
+	 * lead with SEQUENCE needs no slot. Without NFSv4.2 there is nothing
+	 * but 0 to stamp, and callers already memset the args, so the whole
+	 * thing compiles out.
 	 */
 	args->minorversion = rpc->nfs4_minorversion;
+	/*
+	 * Only a COMPOUND that leads with SEQUENCE, i.e. only NFSv4.2 once its
+	 * session exists, is marked as needing a slot. NFSv4.0 builds no
+	 * SEQUENCE and so is never gated on the slot table.
+	 */
+	if (nfs4_pdu_note_sequence(rpc, pdu, args,
+				   zdr_getpos(&pdu->zdr)) < 0) {
+		rpc_free_pdu(rpc, pdu);
+		return NULL;
+	}
 #endif /* HAVE_NFS4_2 */
 
 	if (zdr_COMPOUND4args(&pdu->zdr,  args) == 0) {
@@ -411,13 +869,25 @@ struct rpc_pdu *rpc_nfs4_readv_task(struct rpc_context *rpc, rpc_cb cb,
 
 #ifdef HAVE_NFS4_2
 	/*
-	 * The minor version belongs to the connection, not to each caller, so
-	 * stamp it here rather than at every one of the ~40 places that build
-	 * a COMPOUND. It stays 0 unless the context selected NFSv4.2. Without
-	 * NFSv4.2 there is nothing but 0 to stamp, and callers already
-	 * memset the args, so the whole thing compiles out.
+	 * The minor version and the session both belong to the connection, not
+	 * to each caller, so they are stamped here rather than at every one of
+	 * the ~40 places that build a COMPOUND. The minor version stays 0
+	 * unless the context selected NFSv4.2, and a COMPOUND that does not
+	 * lead with SEQUENCE needs no slot. Without NFSv4.2 there is nothing
+	 * but 0 to stamp, and callers already memset the args, so the whole
+	 * thing compiles out.
 	 */
 	args->minorversion = rpc->nfs4_minorversion;
+	/*
+	 * Only a COMPOUND that leads with SEQUENCE, i.e. only NFSv4.2 once its
+	 * session exists, is marked as needing a slot. NFSv4.0 builds no
+	 * SEQUENCE and so is never gated on the slot table.
+	 */
+	if (nfs4_pdu_note_sequence(rpc, pdu, args,
+				   zdr_getpos(&pdu->zdr)) < 0) {
+		rpc_free_pdu(rpc, pdu);
+		return NULL;
+	}
 #endif /* HAVE_NFS4_2 */
 
 	if (zdr_COMPOUND4args(&pdu->zdr,  args) == 0) {
@@ -501,13 +971,25 @@ struct rpc_pdu *rpc_nfs4_writev_task(struct rpc_context *rpc, rpc_cb cb,
 
 #ifdef HAVE_NFS4_2
 	/*
-	 * The minor version belongs to the connection, not to each caller, so
-	 * stamp it here rather than at every one of the ~40 places that build
-	 * a COMPOUND. It stays 0 unless the context selected NFSv4.2. Without
-	 * NFSv4.2 there is nothing but 0 to stamp, and callers already
-	 * memset the args, so the whole thing compiles out.
+	 * The minor version and the session both belong to the connection, not
+	 * to each caller, so they are stamped here rather than at every one of
+	 * the ~40 places that build a COMPOUND. The minor version stays 0
+	 * unless the context selected NFSv4.2, and a COMPOUND that does not
+	 * lead with SEQUENCE needs no slot. Without NFSv4.2 there is nothing
+	 * but 0 to stamp, and callers already memset the args, so the whole
+	 * thing compiles out.
 	 */
 	args->minorversion = rpc->nfs4_minorversion;
+	/*
+	 * Only a COMPOUND that leads with SEQUENCE, i.e. only NFSv4.2 once its
+	 * session exists, is marked as needing a slot. NFSv4.0 builds no
+	 * SEQUENCE and so is never gated on the slot table.
+	 */
+	if (nfs4_pdu_note_sequence(rpc, pdu, args,
+				   zdr_getpos(&pdu->zdr)) < 0) {
+		rpc_free_pdu(rpc, pdu);
+		return NULL;
+	}
 #endif /* HAVE_NFS4_2 */
 
 	if (zdr_COMPOUND4args(&pdu->zdr,  args) == 0) {

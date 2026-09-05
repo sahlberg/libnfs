@@ -1294,9 +1294,9 @@ nfs42_op_create_session(struct nfs_context *nfs, nfs_argop4 *op,
         csargs->csa_flags = 0;
 
         /*
-         * ca_maxrequests is the size of the slot table, and we ask for one.
-         * That makes slot 0 the only slot and keeps SEQUENCE bookkeeping to a
-         * single sequence id, at the cost of one COMPOUND at a time.
+         * ca_maxrequests is the size of the slot table, which is how many
+         * COMPOUNDs may be in flight at once. Ask for the most we are willing
+         * to track; the server may grant fewer and we use what it grants.
          */
         csargs->csa_fore_chan_attrs.ca_headerpadsize = 0;
         /*
@@ -1308,7 +1308,7 @@ nfs42_op_create_session(struct nfs_context *nfs, nfs_argop4 *op,
         csargs->csa_fore_chan_attrs.ca_maxresponsesize = NFS_MAX_RECV_XFER_SIZE;
         csargs->csa_fore_chan_attrs.ca_maxresponsesize_cached = 0;
         csargs->csa_fore_chan_attrs.ca_maxoperations = 64;
-        csargs->csa_fore_chan_attrs.ca_maxrequests = 1;
+        csargs->csa_fore_chan_attrs.ca_maxrequests = NFS4_MAX_SLOTS;
         csargs->csa_fore_chan_attrs.ca_rdma_ird.ca_rdma_ird_len = 0;
         csargs->csa_fore_chan_attrs.ca_rdma_ird.ca_rdma_ird_val = NULL;
 
@@ -1420,24 +1420,18 @@ nfs42_op_seek(struct nfs_context *nfs _U_, nfs_argop4 *op, struct nfsfh *fh,
         return 1;
 }
 
+/*
+ * Reserve the leading SEQUENCE. Which slot it uses and what sequence id goes
+ * in it are decided later, by nfs4_pdu_take_slot() in nfs4/nfs4.c, as the
+ * COMPOUND is written to the socket. A slot is held for as long as its
+ * request is outstanding, so binding one here would cap how many requests an
+ * application may have queued at the number of slots the session has.
+ */
 static int
-nfs42_op_sequence(struct nfs_context *nfs, nfs_argop4 *op)
+nfs42_op_sequence(struct nfs_context *nfs _U_, nfs_argop4 *op)
 {
-        SEQUENCE4args *sargs;
-
         op[0].argop = OP_SEQUENCE;
-        sargs = &op[0].nfs_argop4_u.opsequence;
-
-        memcpy(sargs->sa_sessionid, nfs->nfsi->sessionid, sizeof(sessionid4));
-        /*
-         * The sequence id identifies this request within its slot and must
-         * advance for every new COMPOUND, so that the server can tell a fresh
-         * request from a retransmit of the previous one.
-         */
-        sargs->sa_sequenceid = ++nfs->nfsi->slot_seqid;
-        sargs->sa_slotid = 0;
-        sargs->sa_highest_slotid = 0;
-        sargs->sa_cachethis = 0;
+        memset(&op[0].nfs_argop4_u.opsequence, 0, sizeof(SEQUENCE4args));
 
         return 1;
 }
@@ -1464,7 +1458,7 @@ nfs4_start_compound(struct nfs_context *nfs, nfs_argop4 *op)
          * Only once the session exists. The COMPOUNDs that build it run
          * before there is anything to sequence against.
          */
-        if (nfs->nfsi->version == NFS_V4_2 && nfs->nfsi->session_valid) {
+        if (nfs->nfsi->version == NFS_V4_2 && nfs->rpc->nfs4_session_valid) {
                 return nfs42_op_sequence(nfs, op);
         }
 #endif /* HAVE_NFS4_2 */
@@ -1484,6 +1478,14 @@ nfs4_allocate_op(struct nfs_context *nfs, nfs_argop4 **op,
 
         count = nfs4_num_path_components(nfs, path);
 
+        /*
+         * The array holds a leading SEQUENCE for NFSv4.2, the PUTFH or
+         * PUTROOTFH, one LOOKUP per path component, the trailing GETATTR, and
+         * whatever the caller said it would add on top. That is exact rather
+         * than generous: NFSv4.0 leaves one entry spare where 4.2 puts its
+         * SEQUENCE, so a caller that adds more than num_extra operations
+         * overruns this.
+         */
         *op = malloc(sizeof(**op) * (3 + count + num_extra));
         if (*op == NULL) {
                 nfs_set_error(nfs, "Failed to allocate op array");
@@ -2184,28 +2186,22 @@ nfs42_mount_2_cb(struct rpc_context *rpc, int status, void *command_data,
         }
         csresok = &res->resarray.resarray_val[i].nfs_resop4_u.opcreatesession.CREATE_SESSION4res_u.csr_resok4;
 
-        memcpy(nfs->nfsi->sessionid, csresok->csr_sessionid,
-               sizeof(sessionid4));
         /*
-         * The first SEQUENCE on a slot uses sequence id 1, and
-         * nfs42_op_sequence() pre-increments, so start from 0.
+         * A server may hand back a smaller fore channel than we asked for, so
+         * the slot table is sized by what it granted rather than what we
+         * wanted. One slot is the minimum a session can have; none at all is
+         * a server we cannot talk to.
          */
-        nfs->nfsi->slot_seqid = 0;
-
-        /*
-         * A server may hand back a smaller fore channel than we asked for. We
-         * asked for a single slot, which is the minimum, so it cannot shrink
-         * below what we use. Anything larger we simply do not take advantage
-         * of yet.
-         */
-        if (csresok->csr_fore_chan_attrs.ca_maxrequests < 1) {
-                nfs_set_error(nfs, "Server granted a session with no slots");
+        if (nfs4_session_init(rpc, csresok->csr_sessionid,
+                              csresok->csr_fore_chan_attrs.ca_maxrequests)) {
+                nfs_set_error(nfs, "Server granted a session with no usable "
+                              "slots (%d requested, %d granted)",
+                              NFS4_MAX_SLOTS,
+                              csresok->csr_fore_chan_attrs.ca_maxrequests);
                 data->cb(-EIO, nfs, nfs_get_error(nfs), data->private_data);
                 free_nfs4_cb_data(data);
                 return;
         }
-
-        nfs->nfsi->session_valid = 1;
 
         memset(op, 0, sizeof(op));
         i = nfs4_start_compound(nfs, op);
@@ -2293,7 +2289,12 @@ nfs42_mount_start(struct rpc_context *rpc, int status, void *command_data _U_,
                 return;
         }
 
-        nfs->nfsi->session_valid = 0;
+        /*
+         * Any session from an earlier connection is gone with that
+         * connection, so start from none. The COMPOUNDs below run before
+         * there is a new one, and therefore carry no SEQUENCE.
+         */
+        nfs4_session_destroy(rpc);
 
         memset(op, 0, sizeof(op));
         /* EXCHANGE_ID is what creates the state, so it carries no SEQUENCE. */
@@ -2311,6 +2312,71 @@ nfs42_mount_start(struct rpc_context *rpc, int status, void *command_data _U_,
                 return;
         }
 }
+
+/*
+ * Release the session on umount.
+ *
+ * DESTROY_SESSION carries no SEQUENCE and so needs no slot, which matters
+ * here because it is the last thing sent and anything still outstanding is
+ * holding one. The reply is only worth waiting for so that we do not tear the
+ * connection down underneath it; a failure changes nothing we can act on, the
+ * session is being abandoned either way.
+ */
+static void
+nfs42_umount_cb(struct rpc_context *rpc, int status, void *command_data,
+                void *private_data)
+{
+        struct nfs4_cb_data *data = private_data;
+        struct nfs_context *nfs = data->nfs;
+        COMPOUND4res *res = command_data;
+
+        assert(rpc->magic == RPC_CONTEXT_MAGIC);
+
+        if (status != RPC_STATUS_SUCCESS || res == NULL ||
+            res->status != NFS4_OK) {
+                RPC_LOG(rpc, 2, "DESTROY_SESSION failed, abandoning the "
+                        "session anyway");
+        } else {
+                RPC_LOG(rpc, 2, "NFSv4 session destroyed");
+        }
+
+        nfs4_session_destroy(rpc);
+        data->cb(0, nfs, NULL, data->private_data);
+        free_nfs4_cb_data(data);
+}
+
+int
+nfs42_umount_async(struct nfs_context *nfs, nfs_cb cb, void *private_data)
+{
+        struct nfs4_cb_data *data;
+
+        if (!rpc_nfs4_session_is_valid(nfs->rpc)) {
+                cb(0, nfs, NULL, private_data);
+                return 0;
+        }
+
+        data = calloc(1, sizeof(*data));
+        if (data == NULL) {
+                /* Nothing to clean up but our own idea of the session. */
+                nfs4_session_destroy(nfs->rpc);
+                cb(0, nfs, NULL, private_data);
+                return 0;
+        }
+        data->nfs          = nfs;
+        data->cb           = cb;
+        data->private_data = private_data;
+
+        if (rpc_nfs4_destroy_session_task(nfs->rpc, nfs42_umount_cb,
+                                          data) == NULL) {
+                nfs4_session_destroy(nfs->rpc);
+                free_nfs4_cb_data(data);
+                cb(0, nfs, NULL, private_data);
+                return 0;
+        }
+
+        return 0;
+}
+
 #endif /* HAVE_NFS4_2 */
 
 int
@@ -3457,6 +3523,8 @@ nfs4_close_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_cb cb,
 
         if (rpc_nfs4_compound_task(nfs->rpc, nfs4_close_cb, &args,
                                    data) == NULL) {
+                nfs_set_error(nfs, "Failed to queue CLOSE. %s",
+                              rpc_get_error(nfs->rpc));
                 data->filler.blob0.val = NULL;
                 free_nfs4_cb_data(data);
                 return -1;
@@ -3543,6 +3611,8 @@ nfs4_pread_async_internal(struct nfs_context *nfs, struct nfsfh *nfsfh,
         pdu = rpc_nfs4_read_task(nfs->rpc, nfs4_pread_cb, buf, count, &args,
                                  data);
         if (pdu == NULL) {
+                nfs_set_error(nfs, "Failed to queue READ. %s",
+                              rpc_get_error(nfs->rpc));
                 free_nfs4_cb_data(data);
                 return -1;
         }
@@ -3595,6 +3665,8 @@ nfs4_preadv_async_internal(struct nfs_context *nfs, struct nfsfh *nfsfh,
         pdu = rpc_nfs4_readv_task(nfs->rpc, nfs4_pread_cb, iov, iovcnt, &args,
                                  data);
         if (pdu == NULL) {
+                nfs_set_error(nfs, "Failed to queue READ. %s",
+                              rpc_get_error(nfs->rpc));
                 free_nfs4_cb_data(data);
                 return -1;
         }

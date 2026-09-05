@@ -1383,6 +1383,12 @@ nfs_umount_async(struct nfs_context *nfs, nfs_cb cb, void *private_data)
                 return nfs3_umount_async(nfs, cb, private_data);
 #ifdef HAVE_NFS4_2
         case NFS_V4_2:
+                /*
+                 * There is nothing to unmount in v4, but a 4.1+ session is
+                 * server side state that lives on until the lease expires
+                 * unless it is released, so give it back here.
+                 */
+                return nfs42_umount_async(nfs, cb, private_data);
 #endif
         case NFS_V4:
                 /* umount is a no-op in v4 */

@@ -388,6 +388,24 @@ EXTERN void nfs_set_readdir_max_buffer_size(struct nfs_context *nfs, uint32_t di
  * every minor version is RPC program version 4, and the minor version travels
  * in the COMPOUND itself. The value is therefore deliberately outside the
  * range of real RPC version numbers.
+ *
+ * A note on concurrency, which matters if you drive libnfs hard.
+ *
+ * From minor version 1 onwards every request travels in a session slot, and
+ * a slot carries one request at a time because the server's reply cache is
+ * keyed on it. The session therefore has a fixed ceiling, set by the server,
+ * on how many requests can be in flight at once, typically some tens.
+ *
+ * This does not limit how many requests you may submit. libnfs takes a slot
+ * as a request goes out on the wire rather than when you hand it over, so
+ * queueing tens of thousands of async calls works exactly as it does on
+ * NFSv3 and NFSv4.0; they are simply released onto the connection as slots
+ * free up. What it does mean is that NFSv4.2 cannot have more than the
+ * granted number of requests outstanding at the server at once, where
+ * NFSv4.0 has no such bound. Workloads whose throughput comes from very deep
+ * request pipelining should measure both before choosing.
+ *
+ * NFSv3 and NFSv4.0 have no sessions and are not affected by any of this.
  */
 #define NFS_V4_2 42
 #endif /* small platforms */

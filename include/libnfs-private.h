@@ -320,6 +320,38 @@ struct tls_context {
 #define INC_STATS(rpc, stat) ++((rpc)->stats.stat)
 
 struct gss_ctx_id_struct;
+#ifdef HAVE_NFS4_2
+/*
+ * Upper bound on the session slot table, i.e. on how many COMPOUNDs libnfs
+ * will have in flight at once. Each slot is a few bytes here and a slot's
+ * worth of reply cache on the server, so this is a ceiling rather than a
+ * target: the session gets whatever the server is willing to grant, capped
+ * here.
+ */
+#define NFS4_MAX_SLOTS 64
+
+/*
+ * How long a session may go unused before we send a SEQUENCE just to keep it
+ * alive. Any SEQUENCE renews the lease, so ordinary traffic renews it for
+ * free and this only fires on an idle connection.
+ *
+ * The server's lease time is not something libnfs asks for, so this is a
+ * fixed interval chosen to sit well inside the shortest lease in common use.
+ * Linux nfsd defaults to 90 seconds.
+ */
+#define NFS4_SESSION_RENEW_MSECS 30000
+
+/*
+ * One NFSv4.1+ session slot. in_use marks the slot as carrying a request that
+ * has not completed yet; seqid is the sequence id of the most recent request
+ * sent on it, which advances by one for each new request.
+ */
+struct nfs4_slot {
+        sequenceid4 seqid;
+        int in_use;
+};
+#endif /* HAVE_NFS4_2 */
+
 struct rpc_context {
 	uint32_t magic;
 	int fd;
@@ -413,6 +445,40 @@ struct rpc_context {
 	 * which is 4 for every NFSv4 minor version.
 	 */
 	uint32_t nfs4_minorversion;
+
+	/*
+	 * NFSv4.2 session, established by EXCHANGE_ID + CREATE_SESSION and
+	 * kept here rather than on the nfs context because a session belongs
+	 * to the connection it was created on.
+	 *
+	 * From minor version 1 onwards every COMPOUND leads with SEQUENCE,
+	 * which names a slot and a sequence id within it. A slot carries one
+	 * request at a time: RFC 8881 2.10.6.1 forbids sending a new request
+	 * on a slot before the previous one there has completed, because the
+	 * pair (slot, sequence id) is what the server's reply cache is keyed
+	 * on. Concurrency therefore costs one slot per request in flight,
+	 * which is what nfs4_slots is: a slot is taken as a COMPOUND goes out
+	 * on the wire, and rpc_free_pdu() gives it back when that COMPOUND is
+	 * done with. Taking it at send time rather than when the request was
+	 * built is what keeps submission itself unbounded.
+	 */
+	sessionid4 nfs4_sessionid;
+	struct nfs4_slot *nfs4_slots;
+	uint32_t nfs4_slot_count;
+	uint32_t nfs4_slots_in_use;
+	uint32_t nfs4_slot_hint;
+	/* When the session next needs a SEQUENCE to keep its lease alive. */
+	uint64_t nfs4_renew_due;
+	int nfs4_session_valid;
+#ifdef HAVE_MULTITHREADING
+	/*
+	 * The slot table has a lock of its own rather than sharing rpc_mutex,
+	 * because slots are taken and released from inside regions that
+	 * already hold rpc_mutex, which is not recursive. Nothing under this
+	 * lock reaches for rpc_mutex, so the two can never deadlock.
+	 */
+	libnfs_mutex_t nfs4_slot_mutex;
+#endif /* HAVE_MULTITHREADING */
 #endif /* HAVE_NFS4_2 */
 	struct sockaddr_storage udp_dest;
 	int is_broadcast;
@@ -694,6 +760,29 @@ rpc_cb cb;
         uint32_t discard_after_sending:1;
         uint32_t zero_copy_iov:1;
 
+#ifdef HAVE_NFS4_2
+        /*
+         * NFSv4.2 session slot bookkeeping.
+         *
+         * nfs4_needs_slot marks a COMPOUND that leads with SEQUENCE and so
+         * has to hold a slot while it is outstanding. The slot is taken as
+         * the pdu is written to the socket, not when it was encoded, so that
+         * an application can submit as many requests as it likes and the
+         * session's slot count only bounds how many are on the wire at once.
+         * nfs4_seq_pos is where SEQUENCE4args sits in the encoded buffer, so
+         * the slot and sequence id can be filled in at that point.
+         *
+         * nfs4_slot_sent says the pdu put bytes on the wire at some point. A
+         * pdu that took a slot and never did has to give its sequence id back
+         * as well, or the slot is left with a gap the server rejects.
+         */
+        uint32_t nfs4_needs_slot:1;
+        uint32_t nfs4_slot_held:1;
+        uint32_t nfs4_slot_sent:1;
+        uint32_t nfs4_slot;
+        uint32_t nfs4_seq_pos;
+#endif /* HAVE_NFS4_2 */
+
 	/*
 	 * If TRUE, this RPC would not be retried. If no response is received
 	 * it'll fail with RPC_STATUS_TIMEOUT after 'timeout' msecs.
@@ -939,19 +1028,6 @@ struct nfs_context_internal {
        char *client_name;
        uint64_t clientid;
        verifier4 setclientid_confirm;
-#ifdef HAVE_NFS4_2
-       /*
-        * NFSv4.2 session state, established by EXCHANGE_ID + CREATE_SESSION.
-        *
-        * We ask for a single slot in CREATE_SESSION, so slot 0 is the only
-        * one and slot_seqid is its sequence id. That serialises the session
-        * to one outstanding COMPOUND, which is correct but not fast; a real
-        * slot table is what lifts that.
-        */
-       sessionid4 sessionid;
-       sequenceid4 slot_seqid;
-       int session_valid;
-#endif /* HAVE_NFS4_2 */
        uint32_t open_counter;
        int has_lock_owner;
 #ifdef HAVE_MULTITHREADING
@@ -1203,6 +1279,24 @@ int nfs4_link_async(struct nfs_context *nfs, const char *oldpath,
 int nfs4_lseek_async(struct nfs_context *nfs, struct nfsfh *nfsfh,
                      int64_t offset, int whence, nfs_cb cb, void *private_data);
 #ifdef HAVE_NFS4_2
+int nfs4_session_init(struct rpc_context *rpc, const char *sessionid,
+                      uint32_t slot_count);
+void nfs4_session_destroy(struct rpc_context *rpc);
+void nfs4_session_put_slot(struct rpc_context *rpc, uint32_t slotid,
+                           int rollback);
+int rpc_nfs4_session_is_valid(struct rpc_context *rpc);
+int nfs4_pdu_take_slot(struct rpc_context *rpc, struct rpc_pdu *pdu);
+int nfs4_session_has_free_slot(struct rpc_context *rpc);
+void nfs4_session_mutex_init(struct rpc_context *rpc);
+void nfs4_session_mutex_destroy(struct rpc_context *rpc);
+int nfs42_umount_async(struct nfs_context *nfs, nfs_cb cb, void *private_data);
+struct rpc_pdu *rpc_nfs4_bind_conn_to_session_task(struct rpc_context *rpc,
+                                                   rpc_cb cb,
+                                                   void *private_data);
+struct rpc_pdu *rpc_nfs4_destroy_session_task(struct rpc_context *rpc,
+                                              rpc_cb cb, void *private_data);
+struct rpc_pdu *rpc_nfs4_renew_session_task(struct rpc_context *rpc,
+                                            rpc_cb cb, void *private_data);
 int nfs42_fallocate_async(struct nfs_context *nfs, struct nfsfh *nfsfh,
                           int mode, uint64_t offset, uint64_t length,
                           nfs_cb cb, void *private_data);

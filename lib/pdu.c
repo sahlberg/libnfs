@@ -628,6 +628,20 @@ void rpc_free_pdu(struct rpc_context *rpc, struct rpc_pdu *pdu)
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
+#ifdef HAVE_NFS4_2
+        /*
+         * Hand back the NFSv4.2 session slot this COMPOUND was holding. This
+         * is the one place every pdu passes through, whether it completed,
+         * errored, timed out or was cancelled, so it is the only place the
+         * slot can be released from without leaking it on some path.
+         */
+        if (pdu->nfs4_slot_held) {
+                pdu->nfs4_slot_held = 0;
+                nfs4_session_put_slot(rpc, pdu->nfs4_slot,
+                                      !pdu->nfs4_slot_sent);
+        }
+#endif /* HAVE_NFS4_2 */
+
 	if (pdu->zdr_decode_buf != NULL) {
 		zdr_free(pdu->zdr_decode_fn, pdu->zdr_decode_buf);
 	}

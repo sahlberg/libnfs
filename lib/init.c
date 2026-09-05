@@ -162,6 +162,9 @@ struct rpc_context *rpc_init_context(void)
 
 #ifdef HAVE_MULTITHREADING
 	nfs_mt_mutex_init(&rpc->rpc_mutex);
+#ifdef HAVE_NFS4_2
+	nfs4_session_mutex_init(rpc);
+#endif /* HAVE_NFS4_2 */
 #ifndef HAVE_STDATOMIC_H
 	nfs_mt_mutex_init(&rpc->atomic_int_mutex);
 #endif
@@ -272,6 +275,9 @@ struct rpc_context *rpc_init_server_context(int s)
 
 #ifdef HAVE_MULTITHREADING
         nfs_mt_mutex_init(&rpc->rpc_mutex);
+#ifdef HAVE_NFS4_2
+        nfs4_session_mutex_init(rpc);
+#endif /* HAVE_NFS4_2 */
 #ifndef HAVE_STDATOMIC_H
 	nfs_mt_mutex_init(&rpc->atomic_int_mutex);
 #endif
@@ -605,6 +611,12 @@ void rpc_destroy_context(struct rpc_context *rpc)
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
 	rpc_purge_all_pdus(rpc, RPC_STATUS_CANCEL, NULL);
+
+#ifdef HAVE_NFS4_2
+        /* The session, if any, dies with the connection it lived on. */
+        nfs4_session_destroy(rpc);
+        nfs4_session_mutex_destroy(rpc);
+#endif /* HAVE_NFS4_2 */
 
 	rpc_free_all_fragments(rpc);
 

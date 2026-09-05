@@ -4,7 +4,8 @@ AM_CPPFLAGS = -I${srcdir}/../include -I${srcdir}/../include/nfsc \
 AM_CFLAGS = $(WARN_CFLAGS)
 LDADD = ../lib/libnfs.la
 
-noinst_PROGRAMS = prog_access prog_access2 prog_chmod prog_chown prog_create \
+noinst_PROGRAMS = prog_access prog_access2 prog_chmod prog_chown \
+	prog_concurrent prog_create \
 	prog_fallocate prog_fchmod prog_fchown prog_fstat prog_ftruncate prog_lchmod \
 	prog_lchown prog_link prog_lseek prog_lstat prog_mkdir \
 	prog_mknod prog_mount prog_opendir prog_open_read prog_open_write \

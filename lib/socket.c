@@ -114,6 +114,11 @@ rpc_reconnect_requeue(struct rpc_context *rpc);
 static int
 rpc_set_sockaddr(struct rpc_context *rpc, const char *server, int port);
 
+#ifdef HAVE_NFS4_2
+static void
+rpc_nfs4_rebind_session(struct rpc_context *rpc);
+#endif /* HAVE_NFS4_2 */
+
 /*
  * How hard rpc_set_sockaddr() tries when the resolver reports a transient
  * failure. This runs on the caller's event loop thread, so keep it short.
@@ -345,6 +350,40 @@ rpc_outqueue_present(struct rpc_context *rpc)
         return present;
 }
 
+#ifdef HAVE_NFS4_2
+/*
+ * Is the pdu at the head of the send queue one that cannot go out yet because
+ * the session has no free slot? The queue is walked by the service thread, so
+ * the head has to be read under the same lock rpc_outqueue_present() uses
+ * rather than dereferenced on its own.
+ */
+static bool_t
+rpc_outqueue_head_waits_for_slot(struct rpc_context *rpc)
+{
+        bool_t waiting;
+
+#ifdef HAVE_MULTITHREADING
+        if (rpc->multithreading_enabled) {
+                nfs_mt_mutex_lock(&rpc->rpc_mutex);
+        }
+#endif /* HAVE_MULTITHREADING */
+        waiting = rpc->outqueue.head != NULL &&
+                rpc->outqueue.head->nfs4_needs_slot &&
+                !rpc->outqueue.head->nfs4_slot_held;
+#ifdef HAVE_MULTITHREADING
+        if (rpc->multithreading_enabled) {
+                nfs_mt_mutex_unlock(&rpc->rpc_mutex);
+        }
+#endif /* HAVE_MULTITHREADING */
+
+        /*
+         * The slot table has its own lock, taken after rpc_mutex is dropped
+         * so that the two are never held at once.
+         */
+        return waiting && !nfs4_session_has_free_slot(rpc);
+}
+#endif /* HAVE_NFS4_2 */
+
 int
 rpc_which_events(struct rpc_context *rpc)
 {
@@ -362,6 +401,22 @@ rpc_which_events(struct rpc_context *rpc)
 	if (rpc_outqueue_present(rpc)) {
 		events |= POLLOUT;
 	}
+
+#ifdef HAVE_NFS4_2
+	/*
+	 * An NFSv4.2 COMPOUND cannot go out until a session slot frees up, and
+	 * a slot only frees when a reply arrives. Asking for POLLOUT while the
+	 * slot table is full would just spin, since the socket is writable and
+	 * we would decline to write, so wait on POLLIN alone until then.
+	 *
+	 * This looks at the head of the queue only, and only at whether that
+	 * one pdu carries a SEQUENCE. An NFSv4.0 or NFSv3 pdu never does, so
+	 * nothing here can throttle them.
+	 */
+	if ((events & POLLOUT) && rpc_outqueue_head_waits_for_slot(rpc)) {
+		events &= ~POLLOUT;
+	}
+#endif /* HAVE_NFS4_2 */
 
 	return events;
 }
@@ -433,6 +488,26 @@ rpc_write_to_socket(struct rpc_context *rpc)
                         /* Fully sent PDU should not be sitting in outqueue */
                         assert(num_done < pdu->out.total_size);
 
+#ifdef HAVE_NFS4_2
+                        /*
+                         * An NFSv4.2 COMPOUND claims its session slot here,
+                         * as it is about to be written, rather than when it
+                         * was built. That is what lets an application queue
+                         * up as many requests as it likes while only as many
+                         * as the session has slots are in flight. When no
+                         * slot is free we stop building this batch and leave
+                         * the rest queued; a reply will free one and
+                         * rpc_which_events() asks for POLLOUT again.
+                         *
+                         * Only a pdu carrying a SEQUENCE gets here, so an
+                         * NFSv4.0 or NFSv3 pdu is never held back.
+                         */
+                        if (pdu->nfs4_needs_slot && !pdu->nfs4_slot_held &&
+                            nfs4_pdu_take_slot(rpc, pdu) < 0) {
+                                break;
+                        }
+#endif /* HAVE_NFS4_2 */
+
                         for (i = 0; i < pdu_niov; i++) {
                                 char *buf = pdu->out.iov[i].buf;
                                 size_t len = pdu->out.iov[i].len;
@@ -463,6 +538,18 @@ rpc_write_to_socket(struct rpc_context *rpc)
                 } while ((rpc->max_waitpdu_len == 0 ||
                           rpc->max_waitpdu_len > (rpc->waitpdu_len + num_pdus)) &&
                          pdu != NULL && niov < iovcnt);
+
+#ifdef HAVE_NFS4_2
+                /*
+                 * The head of the queue is waiting for a session slot, so
+                 * there is nothing to write yet. rpc_which_events() will stop
+                 * asking for POLLOUT until a reply frees one.
+                 */
+                if (niov == 0) {
+                        ret = 0;
+                        goto finished;
+                }
+#endif /* HAVE_NFS4_2 */
 
                 /*
                  * We must never be doing 0-byte writes as those can get into
@@ -513,6 +600,9 @@ rpc_write_to_socket(struct rpc_context *rpc)
                                 count -= remaining;
 
                                 pdu->out.num_done = pdu->out.total_size;
+#ifdef HAVE_NFS4_2
+                                pdu->nfs4_slot_sent = 1;
+#endif /* HAVE_NFS4_2 */
 
                                 rpc->outqueue.head = pdu->next;
                                 if (rpc->outqueue.head == NULL)
@@ -555,6 +645,9 @@ rpc_write_to_socket(struct rpc_context *rpc)
                                 }
                         } else {
                                 pdu->out.num_done += count;
+#ifdef HAVE_NFS4_2
+                                pdu->nfs4_slot_sent = 1;
+#endif /* HAVE_NFS4_2 */
                                 break;
                         }
                 }
@@ -1437,6 +1530,74 @@ rpc_timeout_scan(struct rpc_context *rpc)
 	return (need_reconnect ? -1 : 0);
 }
 
+#ifdef HAVE_NFS4_2
+/*
+ * The reply to a keepalive SEQUENCE. There is nothing to do with a good one.
+ * A bad one means the session is no longer there, which is what happens when
+ * the lease ran out before we got here, so drop it rather than keep sending
+ * into it.
+ */
+static void
+renew_session_cb(struct rpc_context *rpc, int status, void *command_data,
+                 void *private_data _U_)
+{
+	COMPOUND4res *res = command_data;
+
+	if (status == RPC_STATUS_SUCCESS && res && res->status == NFS4_OK) {
+		return;
+	}
+	if (status == RPC_STATUS_CANCEL) {
+		return;
+	}
+
+	RPC_LOG(rpc, 1, "NFSv4 session keepalive failed, the session is gone. "
+		"The context has to be remounted.");
+	nfs4_session_destroy(rpc);
+}
+
+/*
+ * A session whose lease is never renewed is reaped by the server, and every
+ * COMPOUND after that fails. Ordinary traffic renews the lease for free,
+ * since any SEQUENCE does, so this only has to cover a connection that has
+ * gone quiet: nfs4_pdu_take_slot() pushes the deadline out on every request,
+ * and this sends a SEQUENCE of its own if the deadline is ever reached.
+ *
+ * Driven from rpc_service(), so it needs the application to keep servicing
+ * the context. One that has stopped doing even that is not going to notice
+ * the session either way.
+ */
+static void
+rpc_nfs4_maybe_renew_session(struct rpc_context *rpc)
+{
+	uint64_t now;
+
+	if (!rpc->is_connected || !rpc_nfs4_session_is_valid(rpc)) {
+		return;
+	}
+
+	now = rpc_current_time();
+	if (rpc->nfs4_renew_due == 0) {
+		rpc->nfs4_renew_due = now + NFS4_SESSION_RENEW_MSECS;
+		return;
+	}
+	if (now < rpc->nfs4_renew_due) {
+		return;
+	}
+
+	/*
+	 * Move the deadline before sending, not after, so that a failure to
+	 * queue does not turn into one attempt per call.
+	 */
+	rpc->nfs4_renew_due = now + NFS4_SESSION_RENEW_MSECS;
+	if (rpc_nfs4_renew_session_task(rpc, renew_session_cb, NULL) == NULL) {
+		RPC_LOG(rpc, 2, "failed to queue an NFSv4 session keepalive. "
+			"%s", rpc_get_error(rpc));
+		return;
+	}
+	RPC_LOG(rpc, 2, "sent an NFSv4 session keepalive");
+}
+#endif /* HAVE_NFS4_2 */
+
 int
 rpc_service(struct rpc_context *rpc, int revents)
 {
@@ -1451,6 +1612,10 @@ rpc_service(struct rpc_context *rpc, int revents)
 	if (rpc_timeout_scan(rpc) != 0) {
 		return rpc_reconnect_requeue(rpc);
 	}
+
+#ifdef HAVE_NFS4_2
+	rpc_nfs4_maybe_renew_session(rpc);
+#endif /* HAVE_NFS4_2 */
 
 	if (revents == -1 || revents & (POLLERR|POLLHUP)) {
 		if (revents != -1 && revents & POLLERR) {
@@ -2068,8 +2233,68 @@ reconnect_cb_tls(struct rpc_context *rpc, int status,
 	}
 
 	RPC_LOG(rpc, 2, "reconnect_cb_tls: TLS handshake completed successfully!");
+
+#ifdef HAVE_NFS4_2
+	rpc_nfs4_rebind_session(rpc);
+#endif /* HAVE_NFS4_2 */
 }
 #endif
+
+#ifdef HAVE_NFS4_2
+/*
+ * Result of rebinding the session to a reconnected socket. A failure here
+ * means the session is gone for good, usually because the lease ran out
+ * while we were disconnected. Drop it so that the COMPOUNDs behind it fail
+ * with a session error rather than being sent into a session the server no
+ * longer has.
+ */
+static void
+bind_conn_cb(struct rpc_context *rpc, int status, void *command_data,
+             void *private_data _U_)
+{
+	COMPOUND4res *res = command_data;
+
+	assert(rpc->magic == RPC_CONTEXT_MAGIC);
+
+	if (status == RPC_STATUS_SUCCESS && res && res->status == NFS4_OK) {
+		RPC_LOG(rpc, 2, "NFSv4 session rebound to the new connection");
+		return;
+	}
+
+	RPC_LOG(rpc, 1, "BIND_CONN_TO_SESSION failed, the NFSv4 session is "
+		"gone. The context has to be remounted.");
+	nfs4_session_destroy(rpc);
+}
+
+/*
+ * An NFSv4.1+ session belongs to the connection it was created on. The
+ * session itself survives a reconnect, since the server holds it until the
+ * lease expires, but the new connection is not associated with it yet and
+ * every COMPOUND we are about to retransmit would come back
+ * NFS4ERR_CONN_NOT_BOUND_TO_SESSION. Rebind before anything else goes out,
+ * which is why the operation is queued at the head of the send queue.
+ *
+ * Called once the connection is ready to carry NFS, which with TLS means
+ * after the handshake rather than after the TCP connect.
+ */
+static void
+rpc_nfs4_rebind_session(struct rpc_context *rpc)
+{
+	if (!rpc_nfs4_session_is_valid(rpc)) {
+		return;
+	}
+	if (rpc_nfs4_bind_conn_to_session_task(rpc, bind_conn_cb,
+					       NULL) != NULL) {
+		return;
+	}
+
+	RPC_LOG(rpc, 1, "failed to rebind the NFSv4 session to the new "
+		"connection. %s", rpc_get_error(rpc));
+	nfs4_session_destroy(rpc);
+	rpc_error_all_pdus(rpc, "RPC ERROR: Failed to rebind the NFSv4 "
+			   "session to the reconnected socket");
+}
+#endif /* HAVE_NFS4_2 */
 
 static void
 reconnect_cb(struct rpc_context *rpc, int status, void *data,
@@ -2090,6 +2315,8 @@ reconnect_cb(struct rpc_context *rpc, int status, void *data,
 #ifdef HAVE_TLS
 	/*
 	 * For secure NFS connections, we need to setup TLS session now.
+	 * Rebinding an NFSv4 session has to wait until the handshake is done,
+	 * so reconnect_cb_tls() does it in that case.
 	 */
 	RPC_LOG(rpc, 2, "reconnect_cb called with status %d", status);
 	if (rpc->use_tls) {
@@ -2112,8 +2339,13 @@ reconnect_cb(struct rpc_context *rpc, int status, void *data,
 			rpc_reconnect_requeue(rpc);
 			return;
 		}
+		return;
 	}
 #endif /* HAVE_TLS */
+
+#ifdef HAVE_NFS4_2
+	rpc_nfs4_rebind_session(rpc);
+#endif /* HAVE_NFS4_2 */
 }
 
 /* Disconnect but do not error all PDUs, just move pdus in-flight back to the

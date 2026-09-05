@@ -4,6 +4,7 @@ set(TEST_PROGS prog_access
                prog_access2
                prog_chmod
                prog_chown
+               prog_concurrent
                prog_create
                prog_fchmod
                prog_fchown
