@@ -1833,6 +1833,12 @@ nfs4_lookup_path_async(struct nfs_context *nfs,
         }
 
         num_op = data->filler.func(data, &op[i]);
+        /*
+         * nfs4_allocate_op() sized the array from max_op, so a filler that
+         * returns more than it promised has already written past the end of
+         * it. Catch that here rather than letting it corrupt the heap.
+         */
+        assert(num_op <= data->filler.max_op);
         data->continue_cb = cb;
 
         memset(&args, 0, sizeof(args));

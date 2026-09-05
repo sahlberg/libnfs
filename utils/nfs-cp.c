@@ -339,8 +339,15 @@ int main(int argc, char *argv[])
 				file_punch_hole(dst, pos, data - pos);
 				holes += data - pos;
 			}
+			/*
+			 * The hole has to start after the data we just found,
+			 * or there is nothing to copy this time round and pos
+			 * would not advance. Treat anything else as "no
+			 * further hole" and take the rest of the file as one
+			 * run of data, which ends the loop either way.
+			 */
 			if (file_seek(src, data, SEEK_HOLE, &hole) != 0 ||
-			    hole > (uint64_t)st.st_size) {
+			    hole <= data || hole > (uint64_t)st.st_size) {
 				hole = (uint64_t)st.st_size;
 			}
 
