@@ -114,6 +114,55 @@ Utility programs for LibNFS
 %{_mandir}/man1/nfs-ls.1.gz
 
 %changelog
+* Sat Sep 05 2026 : Version 7.0.2
+- Bugfix release, ABI compatible with 7.0.0 and 7.0.1. The public
+  headers are unchanged, so the SONAME stays at 17 and only the libtool
+  revision is bumped, 17.1.0 -> 17.2.0
+- rpc: deliver the payload of a zero-copy READ that arrived in record
+  fragments. Reassembly was fine, but the copy into the caller's iovec
+  was gated on the record having arrived whole, so a fragmented READ ran
+  the callback with success and a buffer of NUL bytes. Servers that
+  fragment, such as unfs3, which flushes its XDR buffer at 65532 bytes,
+  returned zero filled data for any read above that while directory
+  listings, which stay under the limit, worked. Also refuse a
+  reassembled record that declares more read data than it carries
+- NFS: decode the READDIRPLUS and NFSv4 READDIR entry lists iteratively.
+  Both still recursed once per entry with no depth bound, so a server
+  could exhaust the client stack with a single valid sized PDU
+- NFSv4: decode fattr4 according to the returned attrmask. The blob was
+  decoded as if it always held the full standard attribute set in order,
+  so a server returning fewer attributes than were asked for shifted
+  every later field and mode, uid, size and the timestamps came out as
+  neighbouring attributes
+- NFSv4: do not read the payload of a READ that failed. Every v4 pread
+  is a zero-copy read, so an error status left us reading past the
+  decoded compound and either looping on the error forever or desyncing
+  the record stream
+- NFSv4: chown the named file instead of its parent directory
+- NFSv4: bound the symlink component walk by the path rather than by the
+  number of results the server returned
+- NFSv4: give readdir the same cookie-advance guard as v3, so a reply
+  with no entries and eof=0, or one repeating the cookie we sent, no
+  longer loops forever
+- Chunk writes larger than the server's writemax instead of issuing a
+  single WRITE and returning short
+- rpc: reset the read cursor on disconnect. An application that called
+  rpc_disconnect() part way through a record and reconnected consumed
+  the new connection's first bytes as the tail of the old PDU
+- rpc: reset waitpdu_len when the wait queues are purged. With
+  max_waitpdu_len set, the stale count stalled writes permanently after
+  a disconnect
+- zdr: bounds check the ENCODE path of libnfs_zdr_opaque(), count the
+  alignment padding in the libnfs_zdr_bytes() ENCODE check, and correct
+  the length of the reply encode buffer, which was declared 4 bytes
+  longer than the encoder actually owned
+- krb5p: bound the wrapped length and the unwrapped header. The server's
+  length was not checked against the receive buffer and a token shorter
+  than 4 bytes underflowed the ZDR size to ~4GB
+- sync: keep the underlying error in the five wrappers that dropped it,
+  and do not overwrite the mount error with an empty RPC error
+- cmake and automake no longer install the utility manpages when the
+  utilities themselves are not built
 * Fri Aug 28 2026 : Version 7.0.1
 - Bugfix release, ABI compatible with 7.0.0
 - libnfs.h: move the UDP accessors and rpc_set_resiliency() inside

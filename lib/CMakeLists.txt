@@ -21,7 +21,7 @@ target_link_libraries(nfs PRIVATE ${CORE_LIBRARIES} PUBLIC ${SYSTEM_LIBRARIES})
 
 # Set version properties for the library
 set_target_properties(nfs PROPERTIES
-    VERSION ${PROJECT_VERSION}
+    VERSION ${LIBNFS_SOFILE_VERSION}
     SOVERSION ${SOVERSION}
 )
 
