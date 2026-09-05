@@ -1,10 +1,44 @@
 cmake_minimum_required(VERSION 3.16)
 
+# The autotools files are the single source of truth for the version and for
+# the library ABI version; everything below is derived from them so that a
+# release only ever has to be bumped in configure.ac and lib/Makefile.am.
+
+# The release version, from AC_INIT() in configure.ac.
+file(READ "${CMAKE_CURRENT_SOURCE_DIR}/configure.ac" LIBNFS_CONFIGURE_AC)
+if(NOT LIBNFS_CONFIGURE_AC MATCHES "AC_INIT\\(\\[libnfs\\],[ \t]*\\[([0-9]+\\.[0-9]+\\.[0-9]+)\\]")
+  message(FATAL_ERROR "cannot parse the libnfs version out of AC_INIT() in configure.ac")
+endif()
+set(LIBNFS_VERSION "${CMAKE_MATCH_1}")
+unset(LIBNFS_CONFIGURE_AC)
+
+# The libtool current:revision:age triple, from lib/Makefile.am.
+file(READ "${CMAKE_CURRENT_SOURCE_DIR}/lib/Makefile.am" LIBNFS_LIB_MAKEFILE_AM)
+foreach(var SOCURRENT SOREVISION SOAGE)
+  if(NOT LIBNFS_LIB_MAKEFILE_AM MATCHES "(^|\n)[ \t]*${var}[ \t]*=[ \t]*([0-9]+)")
+    message(FATAL_ERROR "cannot parse ${var} out of lib/Makefile.am")
+  endif()
+  set(${var} "${CMAKE_MATCH_2}")
+endforeach()
+unset(LIBNFS_LIB_MAKEFILE_AM)
+
+# libtool installs the library as libnfs.so.(current-age).age.revision with the
+# soname libnfs.so.(current-age). Mirror that here so that the cmake build and
+# the autotools build produce interchangeable libraries.
+math(EXPR SOMAJOR "${SOCURRENT} - ${SOAGE}")
+set(SOVERSION ${SOMAJOR} CACHE STRING "" FORCE)
+set(LIBNFS_SOFILE_VERSION ${SOMAJOR}.${SOAGE}.${SOREVISION})
+
 project(libnfs
         LANGUAGES C
-        VERSION 17.1.0)
+        VERSION ${LIBNFS_VERSION})
 
-set(SOVERSION 17.1.0 CACHE STRING "" FORCE)
+# Re-run cmake when the autotools files we just parsed are edited.
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
+             "${CMAKE_CURRENT_SOURCE_DIR}/configure.ac"
+             "${CMAKE_CURRENT_SOURCE_DIR}/lib/Makefile.am")
+
+message(STATUS "libnfs ${LIBNFS_VERSION}, library libnfs.so.${LIBNFS_SOFILE_VERSION} (soname libnfs.so.${SOVERSION})")
 
 include(cmake/GNUInstallDirs.cmake)
 
