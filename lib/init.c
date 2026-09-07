@@ -501,6 +501,18 @@ static void rpc_purge_all_pdus(struct rpc_context *rpc, int status, const char *
 
 	rpc_reset_queue(&rpc->outqueue);
 	rpc->stats.outqueue_len = 0;
+#ifdef HAVE_MULTITHREADING
+        /*
+         * Drop the lock before running the callbacks. They end up in
+         * nfs_set_error(), which takes rpc_mutex itself, and relocking an
+         * error-checking mutex aborts the process. The queue was emptied
+         * above, so the snapshot is private to this thread and needs no
+         * lock. This mirrors what the waitpdu loop below already does.
+         */
+        if (rpc->multithreading_enabled) {
+                nfs_mt_mutex_unlock(&rpc->rpc_mutex);
+        }
+#endif /* HAVE_MULTITHREADING */
 	while ((pdu = outqueue.head) != NULL) {
 		outqueue.head = pdu->next;
                 pdu->next = NULL;
@@ -509,11 +521,6 @@ static void rpc_purge_all_pdus(struct rpc_context *rpc, int status, const char *
                 }
 		rpc_free_pdu(rpc, pdu);
 	}
-#ifdef HAVE_MULTITHREADING
-        if (rpc->multithreading_enabled) {
-                nfs_mt_mutex_unlock(&rpc->rpc_mutex);
-        }
-#endif /* HAVE_MULTITHREADING */
 
 	for (i = 0; i < rpc->num_hashes; i++) {
 		struct rpc_queue waitqueue;
