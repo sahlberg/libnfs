@@ -53,3 +53,7 @@ foreach(TEST ${TESTS})
            COMMAND ${TEST}
            WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
 endforeach()
+
+add_executable(prog_zdr_bytes_zero prog_zdr_bytes_zero.c)
+target_link_libraries(prog_zdr_bytes_zero nfs)
+add_test(NAME zdr_bytes_zero COMMAND prog_zdr_bytes_zero)

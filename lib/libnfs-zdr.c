@@ -241,7 +241,10 @@ bool_t libnfs_zdr_bytes(ZDR *zdrs, char **bufp, uint32_t *size, uint32_t maxsize
                 if (zdrs->pos + ((*size + 3) & ~3) > zdrs->size) {
                         return FALSE;
                 }
-		memcpy(&zdrs->buf[zdrs->pos], *bufp, *size);
+		/* Empty opaque_auth values can have a NULL payload. */
+		if (*size != 0) {
+			memcpy(&zdrs->buf[zdrs->pos], *bufp, *size);
+		}
 		zdrs->pos += *size;
 
                 pad = (4 - (zdrs->pos & 0x03)) & 0x03;
