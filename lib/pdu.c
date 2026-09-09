@@ -1259,6 +1259,12 @@ static int rpc_process_reply(struct rpc_context *rpc, ZDR *zdr)
         }
 
         if (status != 0xffffffff) {
+#ifdef HAVE_NFS4_2
+                if (status == RPC_STATUS_SUCCESS && pdu->nfs4_delay_maxres &&
+                    nfs4_pdu_retry_delay(rpc, pdu, data)) {
+                        return 0;
+                }
+#endif
                 pdu->cb(rpc, status, data, pdu->private_data);
         }
 	return 0;
@@ -1509,6 +1515,17 @@ struct rpc_pdu *rpc_find_pdu(struct rpc_context *rpc, uint32_t xid)
         }
         
  finished:
+#ifdef HAVE_NFS4_2
+        if (!pdu) {
+                for (pdu = rpc->nfs4_delay_queue.head; pdu; pdu = pdu->next) {
+                        if (pdu->xid == xid) {
+                                rpc_remove_pdu_from_queue(&rpc->nfs4_delay_queue, pdu);
+                                rpc->nfs4_delay_queue_len--;
+                                break;
+                        }
+                }
+        }
+#endif
         if (pdu) {
                 pdu->next = NULL;
         }

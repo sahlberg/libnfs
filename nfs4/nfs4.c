@@ -619,6 +619,137 @@ nfs4_session_has_free_slot(struct rpc_context *rpc)
         return free_slot;
 }
 
+/* RFC 8881 15.1.1.3: replay only if no state-changing op has succeeded. */
+static void
+nfs4_pdu_note_delay(struct rpc_pdu *pdu, const COMPOUND4args *args)
+{
+        uint32_t i;
+
+        if (!pdu->nfs4_needs_slot) {
+                return;
+        }
+        for (i = 0; i < args->argarray.argarray_len; i++) {
+                pdu->nfs4_delay_maxres = i + 1;
+                switch (args->argarray.argarray_val[i].argop) {
+                case OP_SEQUENCE:
+                case OP_PUTFH:
+                case OP_PUTROOTFH:
+                case OP_SAVEFH:
+                case OP_RESTOREFH:
+                case OP_LOOKUP:
+                case OP_LOOKUPP:
+                case OP_GETFH:
+                case OP_GETATTR:
+                case OP_ACCESS:
+                case OP_READLINK:
+                        break;
+                default:
+                        return;
+                }
+        }
+}
+
+int
+nfs4_pdu_retry_delay(struct rpc_context *rpc, struct rpc_pdu *pdu,
+                     const COMPOUND4res *res)
+{
+        uint32_t count, delay, pos;
+
+        /* Leave v4.0, GSS, zero-copy I/O and SEQUENCE errors unchanged. */
+        if (!pdu->nfs4_delay_maxres || rpc->nfs4_minorversion != 2 ||
+            rpc->is_udp || pdu->msg.body.cbody.cred.oa_flavor != AUTH_SYS || pdu->in.base ||
+            pdu->do_not_retry || !pdu->nfs4_slot_held || !res ||
+            res->status != NFS4ERR_DELAY || pdu->nfs4_delay_attempts >= 8) {
+                return 0;
+        }
+        count = res->resarray.resarray_len;
+        if (count < 2 || count > pdu->nfs4_delay_maxres ||
+            res->resarray.resarray_val[0].resop != OP_SEQUENCE ||
+            res->resarray.resarray_val[0].nfs_resop4_u.opsequence.sr_status != NFS4_OK) {
+                return 0;
+        }
+
+        /* A new logical request needs a new sequence, not a transport replay. */
+        nfs4_session_put_slot(rpc, pdu->nfs4_slot, 0);
+        pdu->nfs4_slot_held = 0;
+        pdu->nfs4_slot_sent = 0;
+        delay = pdu->nfs4_delay_attempts < 4 ?
+                100u << pdu->nfs4_delay_attempts : 1000u;
+        pdu->nfs4_delay_attempts++;
+        pdu->nfs4_delay_until = rpc_current_time() + delay;
+
+#ifdef HAVE_MULTITHREADING
+        if (rpc->multithreading_enabled) {
+                nfs_mt_mutex_lock(&rpc->rpc_mutex);
+        }
+#endif
+        pdu->xid = rpc->xid++;
+#ifdef HAVE_MULTITHREADING
+        if (rpc->multithreading_enabled) {
+                nfs_mt_mutex_unlock(&rpc->rpc_mutex);
+        }
+#endif
+        /* Preserve the encoded arguments and the original caller's credentials. */
+        pos = zdr_getpos(&pdu->zdr);
+        zdr_setpos(&pdu->zdr, 0);
+        (void)zdr_uint32_t(&pdu->zdr, &pdu->xid);
+        zdr_setpos(&pdu->zdr, pos);
+        pdu->pdu_stats.xid = pdu->xid;
+        pdu->msg.xid = pdu->xid;
+        RPC_LOG(rpc, 2, "NFS4ERR_DELAY: retry %u in %u ms",
+                pdu->nfs4_delay_attempts, delay);
+        return 1;
+}
+
+void
+nfs4_defer_pdu(struct rpc_context *rpc, struct rpc_pdu *pdu)
+{
+        pdu->zdr_decode_buf = NULL;
+        pdu->out.num_done = 0;
+        pdu->timeout = pdu->major_timeout = 0;
+#ifdef HAVE_MULTITHREADING
+        if (rpc->multithreading_enabled) {
+                nfs_mt_mutex_lock(&rpc->rpc_mutex);
+        }
+#endif
+        rpc_enqueue(&rpc->nfs4_delay_queue, pdu);
+        rpc->nfs4_delay_queue_len++;
+#ifdef HAVE_MULTITHREADING
+        if (rpc->multithreading_enabled) {
+                nfs_mt_mutex_unlock(&rpc->rpc_mutex);
+        }
+#endif
+}
+
+void
+nfs4_service_delayed(struct rpc_context *rpc)
+{
+        struct rpc_pdu *pdu, *next;
+        uint64_t now = rpc_current_time();
+
+#ifdef HAVE_MULTITHREADING
+        if (rpc->multithreading_enabled) {
+                nfs_mt_mutex_lock(&rpc->rpc_mutex);
+        }
+#endif
+        for (pdu = rpc->nfs4_delay_queue.head; pdu; pdu = next) {
+                next = pdu->next;
+                if (now < pdu->nfs4_delay_until) {
+                        continue;
+                }
+                rpc_remove_pdu_from_queue(&rpc->nfs4_delay_queue, pdu);
+                rpc->nfs4_delay_queue_len--;
+                pdu->nfs4_delay_until = 0;
+                pdu_set_timeout(rpc, pdu, now);
+                rpc_add_to_outqueue_lowp(rpc, pdu);
+        }
+#ifdef HAVE_MULTITHREADING
+        if (rpc->multithreading_enabled) {
+                nfs_mt_mutex_unlock(&rpc->rpc_mutex);
+        }
+#endif
+}
+
 /*
  * Send a COMPOUND holding exactly one session management operation.
  *
@@ -811,6 +942,10 @@ struct rpc_pdu *rpc_nfs4_compound_task2(struct rpc_context *rpc, rpc_cb cb,
 		rpc_free_pdu(rpc, pdu);
 		return NULL;
 	}
+
+#ifdef HAVE_NFS4_2
+        nfs4_pdu_note_delay(pdu, args);
+#endif
 
 	if (rpc_queue_pdu(rpc, pdu) != 0) {
 		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for "

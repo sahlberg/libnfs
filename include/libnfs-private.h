@@ -394,6 +394,10 @@ struct rpc_context {
          *       return a pdu to outqueue for retransmit.
          */
 	struct rpc_queue outqueue;
+#ifdef HAVE_NFS4_2
+        struct rpc_queue nfs4_delay_queue;
+        uint32_t nfs4_delay_queue_len;
+#endif
 	struct sockaddr_storage udp_src;
 #ifdef __linux__        
 	struct sockaddr_storage udp_dst; /* Which ip we received a UDP packet on */
@@ -781,6 +785,10 @@ rpc_cb cb;
         uint32_t nfs4_slot_sent:1;
         uint32_t nfs4_slot;
         uint32_t nfs4_seq_pos;
+        /* Only ordinary, replay-safe COMPOUND prefixes are eligible. */
+        uint32_t nfs4_delay_maxres;
+        uint32_t nfs4_delay_attempts;
+        uint64_t nfs4_delay_until;
 #endif /* HAVE_NFS4_2 */
 
 	/*
@@ -1286,6 +1294,10 @@ void nfs4_session_put_slot(struct rpc_context *rpc, uint32_t slotid,
                            int rollback);
 int rpc_nfs4_session_is_valid(struct rpc_context *rpc);
 int nfs4_pdu_take_slot(struct rpc_context *rpc, struct rpc_pdu *pdu);
+int nfs4_pdu_retry_delay(struct rpc_context *rpc, struct rpc_pdu *pdu,
+                        const COMPOUND4res *res);
+void nfs4_defer_pdu(struct rpc_context *rpc, struct rpc_pdu *pdu);
+void nfs4_service_delayed(struct rpc_context *rpc);
 int nfs4_session_has_free_slot(struct rpc_context *rpc);
 void nfs4_session_mutex_init(struct rpc_context *rpc);
 void nfs4_session_mutex_destroy(struct rpc_context *rpc);

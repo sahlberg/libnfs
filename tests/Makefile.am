@@ -14,6 +14,7 @@ noinst_PROGRAMS = prog_access prog_access2 prog_chmod prog_chown \
 	prog_read_update_pos prog_readonly prog_parse_url_full
 
 EXTRA_PROGRAMS = ld_timeout
+EXTRA_DIST = prog_nfs4_delay.c
 CLEANFILES = ld_timeout.o ld_timeout.so
 
 ld_timeout_SOURCES = ld_timeout.c

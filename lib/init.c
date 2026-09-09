@@ -505,6 +505,16 @@ static void rpc_purge_all_pdus(struct rpc_context *rpc, int status, const char *
 #endif /* HAVE_MULTITHREADING */
 	outqueue = rpc->outqueue;
 
+#ifdef HAVE_NFS4_2
+        if (outqueue.tail) {
+                outqueue.tail->next = rpc->nfs4_delay_queue.head;
+        } else {
+                outqueue.head = rpc->nfs4_delay_queue.head;
+        }
+        rpc_reset_queue(&rpc->nfs4_delay_queue);
+        rpc->nfs4_delay_queue_len = 0;
+#endif
+
 	rpc_reset_queue(&rpc->outqueue);
 	rpc->stats.outqueue_len = 0;
 #ifdef HAVE_MULTITHREADING

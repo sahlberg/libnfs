@@ -744,6 +744,13 @@ static void rpc_finished_pdu(struct rpc_context *rpc)
         rpc->state = READ_RM;
         rpc->inpos  = 0;
         if (rpc->pdu && (rpc->is_udp == 0 || rpc->is_broadcast == 0)) {
+#ifdef HAVE_NFS4_2
+                if (rpc->pdu->nfs4_delay_until) {
+                        nfs4_defer_pdu(rpc, rpc->pdu);
+                        rpc->pdu = NULL;
+                        return;
+                }
+#endif
                 rpc_free_pdu(rpc, rpc->pdu);
                 rpc->pdu = NULL;
         }
@@ -1602,6 +1609,10 @@ int
 rpc_service(struct rpc_context *rpc, int revents)
 {
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
+
+#ifdef HAVE_NFS4_2
+        nfs4_service_delayed(rpc);
+#endif
 
 	/*
 	 * rpc_timeout_scan() will return -1 to indicate that we need to perform
@@ -2578,6 +2589,9 @@ rpc_queue_length(struct rpc_context *rpc)
 	 */
 	i += rpc->stats.outqueue_len;
 	i += rpc->waitpdu_len;
+#ifdef HAVE_NFS4_2
+        i += rpc->nfs4_delay_queue_len;
+#endif
 #ifdef HAVE_MULTITHREADING
         if (rpc->multithreading_enabled) {
                 nfs_mt_mutex_unlock(&rpc->rpc_mutex);
