@@ -70,9 +70,16 @@
 #endif
 
 struct zdr_mem {
-       struct zdr_mem *next;
-       uint32_t size;
-       char buf[1];
+        /* Payload follows this header and must retain malloc's alignment. */
+        union {
+                struct zdr_mem *next;
+                uint64_t u64;
+                long double ld;
+                void *ptr;
+#if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L
+                max_align_t max_align;
+#endif
+        } header;
 };
 
 struct opaque_verf libnfs_null_auth;
@@ -128,31 +135,30 @@ void libnfs_zdrmem_create(ZDR *zdrs, const caddr_t addr, uint32_t size, enum zdr
 void *zdr_malloc(ZDR *zdrs, uint32_t size)
 {
 	struct zdr_mem *mem;
-	int mem_size;
+	size_t mem_size;
 
         /* Clamp max size we handle to 1GB */
         if (size > 1024 * 1024 * 1024) {
 		return NULL;
         }
 
-	mem_size = offsetof(struct zdr_mem, buf) + size;
+	mem_size = sizeof(*mem) + size;
 	mem = malloc(mem_size);
         if (mem == NULL) {
                 return NULL;
         }
 
-	mem->next = zdrs->mem;
-	mem->size = size;
+	mem->header.next = zdrs->mem;
 
 	zdrs->mem = mem;
 
-	return &mem->buf[0];
+	return mem + 1;
 }
 	
 void libnfs_zdr_destroy(ZDR *zdrs)
 {
 	while (zdrs->mem != NULL) {
-		struct zdr_mem *mem = zdrs->mem->next;
+		struct zdr_mem *mem = zdrs->mem->header.next;
 		free(zdrs->mem);
 		zdrs->mem = mem;
 	}
@@ -850,4 +856,3 @@ void libnfs_auth_destroy(struct AUTH *auth)
 	}
 	free(auth);
 }
-

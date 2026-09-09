@@ -32,12 +32,15 @@ set(TEST_PROGS prog_access
                prog_timeout
                prog_truncate
                prog_unlink
-               prog_utimes)
+               prog_utimes
+               prog_zdr_alignment)
 
 foreach(TARGET ${TEST_PROGS})
   add_executable(${TARGET} ${TARGET}.c)
   target_link_libraries(${TARGET} nfs)
 endforeach()
+
+add_test(NAME zdr_alignment COMMAND prog_zdr_alignment)
 
 add_library(ld_timeout SHARED ld_timeout.c)
 set_target_properties(ld_timeout PROPERTIES PREFIX "")
