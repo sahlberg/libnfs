@@ -18,6 +18,11 @@
 // remaining bytes are the decoded reply payload, mirroring how
 // rpc_process_pdu hands server data to the per procedure decoder.
 
+/* glibc needs this for caddr_t in the system headers */
+#ifndef __APPLE__
+#define _GNU_SOURCE
+#endif
+
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
