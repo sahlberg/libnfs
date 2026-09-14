@@ -84,10 +84,6 @@
 #include <sys/sysmacros.h>
 #endif
 
-#ifdef HAVE_GETPWNAM
-#include <pwd.h>
-#endif
-
 #ifdef WIN32
 #include <win32/win32_compat.h>
 #endif
@@ -189,6 +185,8 @@ struct nfs4_cb_data {
  * semaphore it never waited on.
  */
 #define MUTEX_HELD               0x0004
+/* Return a struct nfs4_stat_64 to the callback instead of nfs_stat_64. */
+#define STAT64_FLAG_NFS4         0x0040
         int flags;
 
         /* Internal callback for open-with-continuation use */
@@ -469,59 +467,30 @@ nfs_pntoh64(const uint32_t *buf)
         return val;
 }
 
-static int
-nfs_get_ugid(struct nfs_context *nfs, const char *buf, int slen, int is_user)
+/* A numeric owner/group is the id itself, a name has no id and becomes -1. */
+static uint64_t
+nfs_get_ugid(const char *buf, int slen)
 {
         uint64_t ugid = 0;
         int i;
 
+        if (slen <= 0) {
+                return (uint64_t)-1;
+        }
+
         for (i = 0; i < slen; i++) {
-                /*
-                 * isdigit() takes an unsigned char value or EOF; a plain char
-                 * is signed on most platforms and anything above 0x7f would
-                 * be passed as negative.
-                 */
+                /* isdigit() takes an unsigned char value or EOF. */
                 if (!isdigit((unsigned char)buf[i])) {
-                        break;
-                }
-                /* Stop accumulating rather than overflowing on a long run. */
-                if (ugid > (UINT32_MAX - 9) / 10) {
-                        break;
+                        return (uint64_t)-1;
                 }
                 ugid = ugid * 10 + (uint64_t)(buf[i] - '0');
-        }
-
-        if (i == slen) {
-                /* Wholly numeric, so it is the id itself. */
-                return (int)ugid;
-        }
-
-#ifdef HAVE_GETPWNAM
-        /*
-         * It is a name and has to be looked up. buf points into the fattr4
-         * inside the receive buffer and carries its length separately, with
-         * no terminator, so it cannot be handed to getpwnam() directly: that
-         * would read on past the name and through whatever the server sent
-         * after it.
-         */
-        {
-                char *name = strndup(buf, slen);
-                struct passwd *pwd;
-
-                if (name != NULL) {
-                        pwd = getpwnam(name);
-                        free(name);
-                        if (pwd) {
-                                if (is_user) {
-                                        return pwd->pw_uid;
-                                } else {
-                                        return pwd->pw_gid;
-                                }
-                        }
+                /* Out of range for a uid/gid, so it is not an id at all. */
+                if (ugid > UINT32_MAX) {
+                        return (uint64_t)-1;
                 }
         }
-#endif
-        return 65534;
+
+        return ugid;
 }
 
 #define CHECK_GETATTR_BUF_SPACE(len, size)                              \
@@ -554,8 +523,8 @@ nfs4_attr_is_set(const bitmap4 *mask, int bit)
 
 static int
 nfs_parse_attributes(struct nfs_context *nfs, struct nfs4_cb_data *data,
-                     struct nfs_stat_64 *st, const bitmap4 *mask,
-                     const char *buf, int len)
+                     struct nfs_stat_64 *st, char **user, char **group,
+                     const bitmap4 *mask, const char *buf, int len)
 {
         int type = 0, slen, pad;
 
@@ -637,7 +606,14 @@ nfs_parse_attributes(struct nfs_context *nfs, struct nfs4_cb_data *data,
                 len -= 4;
                 pad = (4 - (slen & 0x03)) & 0x03;
                 CHECK_GETATTR_BUF_SPACE(len, slen);
-                st->nfs_uid = nfs_get_ugid(nfs, buf, slen, 1);
+                st->nfs_uid = nfs_get_ugid(buf, slen);
+                if (user) {
+                        *user = strndup(buf, slen);
+                        if (*user == NULL) {
+                                nfs_set_error(nfs, "Out of memory.");
+                                return -1;
+                        }
+                }
                 buf += slen;
                 len -= slen;
                 CHECK_GETATTR_BUF_SPACE(len, pad);
@@ -655,7 +631,14 @@ nfs_parse_attributes(struct nfs_context *nfs, struct nfs4_cb_data *data,
                 len -= 4;
                 pad = (4 - (slen & 0x03)) & 0x03;
                 CHECK_GETATTR_BUF_SPACE(len, slen);
-                st->nfs_gid = nfs_get_ugid(nfs, buf, slen, 0);
+                st->nfs_gid = nfs_get_ugid(buf, slen);
+                if (group) {
+                        *group = strndup(buf, slen);
+                        if (*group == NULL) {
+                                nfs_set_error(nfs, "Out of memory.");
+                                return -1;
+                        }
+                }
                 buf += slen;
                 len -= slen;
                 CHECK_GETATTR_BUF_SPACE(len, pad);
@@ -1665,7 +1648,7 @@ nfs4_lookup_path_1_cb(struct rpc_context *rpc, int status, void *command_data,
                         garesok = &res->resarray.resarray_val[i].nfs_resop4_u.opgetattr.GETATTR4res_u.resok4;
 
                         memset(&st, 0, sizeof(st));
-                        if (nfs_parse_attributes(nfs, data, &st,
+                        if (nfs_parse_attributes(nfs, data, &st, NULL, NULL,
                                  &garesok->obj_attributes.attrmask,
                                  garesok->obj_attributes.attr_vals.attrlist4_val,
                                  garesok->obj_attributes.attr_vals.attrlist4_len) < 0) {
@@ -2518,7 +2501,8 @@ nfs4_xstat64_cb(struct rpc_context *rpc, int status, void *command_data,
         struct nfs_context *nfs = data->nfs;
         COMPOUND4res *res = command_data;
         GETATTR4resok *garesok;
-        struct nfs_stat_64 st;
+        struct nfs4_stat_64 stx;
+        int nfs4_stat = data->flags & STAT64_FLAG_NFS4;
         int i;
 
         assert(rpc->magic == RPC_CONTEXT_MAGIC);
@@ -2532,22 +2516,28 @@ nfs4_xstat64_cb(struct rpc_context *rpc, int status, void *command_data,
         }
         garesok = &res->resarray.resarray_val[i].nfs_resop4_u.opgetattr.GETATTR4res_u.resok4;
 
-        memset(&st, 0, sizeof(st));
-        if (nfs_parse_attributes(nfs, data, &st,
+        memset(&stx, 0, sizeof(stx));
+        if (nfs_parse_attributes(nfs, data, &stx.st,
+                                 nfs4_stat ? &stx.nfs_user : NULL,
+                                 nfs4_stat ? &stx.nfs_group : NULL,
                                  &garesok->obj_attributes.attrmask,
                                  garesok->obj_attributes.attr_vals.attrlist4_val,
                                  garesok->obj_attributes.attr_vals.attrlist4_len) < 0) {
+                nfs4_free_stat64(&stx);
                 data->cb(-EINVAL, nfs, nfs_get_error(nfs), data->private_data);
                 free_nfs4_cb_data(data);
+                return;
         }
 
-        data->cb(0, nfs, &st, data->private_data);
+        data->cb(0, nfs, nfs4_stat ? (void *)&stx : (void *)&stx.st,
+                 data->private_data);
+        nfs4_free_stat64(&stx);
         free_nfs4_cb_data(data);
 }
 
 int
-nfs4_stat64_async(struct nfs_context *nfs, const char *path,
-                  int no_follow, nfs_cb cb, void *private_data)
+nfs4_xstat64_async(struct nfs_context *nfs, const char *path, int no_follow,
+                   int nfs4_stat, nfs_cb cb, void *private_data)
 {
         struct nfs4_cb_data *data;
 
@@ -2558,6 +2548,9 @@ nfs4_stat64_async(struct nfs_context *nfs, const char *path,
 
         if (no_follow) {
                 data->flags |= LOOKUP_FLAG_NO_FOLLOW;
+        }
+        if (nfs4_stat) {
+                data->flags |= STAT64_FLAG_NFS4;
         }
         data->cb            = cb;
         data->private_data  = private_data;
@@ -3347,8 +3340,8 @@ nfs4_open_async(struct nfs_context *nfs, const char *path, int flags,
 }
 
 int
-nfs4_fstat64_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_cb cb,
-                   void *private_data)
+nfs4_xfstat64_async(struct nfs_context *nfs, struct nfsfh *nfsfh,
+                    int nfs4_stat, nfs_cb cb, void *private_data)
 {
         COMPOUND4args args;
         nfs_argop4 op[2 + 1];
@@ -3365,6 +3358,9 @@ nfs4_fstat64_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_cb cb,
         data->nfs          = nfs;
         data->cb           = cb;
         data->private_data = private_data;
+        if (nfs4_stat) {
+                data->flags |= STAT64_FLAG_NFS4;
+        }
 
         i = nfs4_start_compound(nfs, op);
         i += nfs4_op_putfh(nfs, &op[i], nfsfh);
@@ -3924,7 +3920,7 @@ nfs4_write_append_cb(struct rpc_context *rpc, int status, void *command_data,
         }
 
         memset(&st, 0, sizeof(st));
-        nfs_parse_attributes(nfs, data, &st,
+        nfs_parse_attributes(nfs, data, &st, NULL, NULL,
                              &garesok->obj_attributes.attrmask,
                              garesok->obj_attributes.attr_vals.attrlist4_val,
                              garesok->obj_attributes.attr_vals.attrlist4_len);
@@ -4501,7 +4497,7 @@ nfs4_parse_readdir(struct nfs_context *nfs, struct nfs4_cb_data *data,
                 }
 
                 memset(&st, 0, sizeof(st));
-                if (nfs_parse_attributes(nfs, data, &st,
+                if (nfs_parse_attributes(nfs, data, &st, NULL, NULL,
                                          &e->attrs.attrmask,
                                          e->attrs.attr_vals.attrlist4_val,
                                          e->attrs.attr_vals.attrlist4_len) < 0) {
@@ -5113,7 +5109,7 @@ nfs4_lseek_cb(struct rpc_context *rpc, int status, void *command_data,
         garesok = &res->resarray.resarray_val[i].nfs_resop4_u.opgetattr.GETATTR4res_u.resok4;
 
         memset(&st, 0, sizeof(st));
-        nfs_parse_attributes(nfs, data, &st,
+        nfs_parse_attributes(nfs, data, &st, NULL, NULL,
                              &garesok->obj_attributes.attrmask,
                              garesok->obj_attributes.attr_vals.attrlist4_val,
                              garesok->obj_attributes.attr_vals.attrlist4_len);
@@ -5824,7 +5820,7 @@ nfs4_fcntl_stat_cb(struct rpc_context *rpc, int status, void *command_data,
         }
         garesok = &res->resarray.resarray_val[i].nfs_resop4_u.opgetattr.GETATTR4res_u.resok4;
         memset(&st, 0, sizeof(st));
-        if (nfs_parse_attributes(nfs, data, &st,
+        if (nfs_parse_attributes(nfs, data, &st, NULL, NULL,
                                  &garesok->obj_attributes.attrmask,
                                  garesok->obj_attributes.attr_vals.attrlist4_val,
                                  garesok->obj_attributes.attr_vals.attrlist4_len) < 0) {

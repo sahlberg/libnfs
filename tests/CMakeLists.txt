@@ -19,6 +19,7 @@ set(TEST_PROGS prog_access
                prog_mkdir
                prog_mknod
                prog_mount
+               prog_nfs4_stat
                prog_open_read
                prog_open_write
                prog_opendir

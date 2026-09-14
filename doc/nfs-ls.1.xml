@@ -24,6 +24,7 @@
 		<arg choice="opt">-R --recursive</arg>
 		<arg choice="opt">-s --summary</arg>
 		<arg choice="opt">-D --discovery</arg>
+		<arg choice="opt">-u --utf8-ids</arg>
 		<arg choice="opt">-? --help</arg>
 		<arg choice="opt">--usage</arg>
 	</cmdsynopsis>
@@ -62,6 +63,17 @@ $ nfs-ls nfs://127.0.0.1/data/tmp
         <listitem>
           <para>
 	    Recursive listing of the specified URL.
+	  </para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry><term>-u --utf8-ids</term>
+        <listitem>
+          <para>
+	    Print the raw utf8 owner and group strings as sent by the server
+	    instead of the numeric uid and gid. NFSv4 servers may return
+	    names such as 'root@example.com' here, which have no numeric
+	    id and are shown as -1 in the default listing.
 	  </para>
         </listitem>
       </varlistentry>

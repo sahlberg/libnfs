@@ -1516,46 +1516,85 @@ nfs_stat_async(struct nfs_context *nfs, const char *path,
         }
 }
 
-int
-nfs_stat64_async(struct nfs_context *nfs, const char *path,
-                 nfs_cb cb, void *private_data)
+static int
+nfs_stat64_dispatch(struct nfs_context *nfs, const char *path, int no_follow,
+                  const char *caller, nfs_cb cb, void *private_data)
 {
 	switch (nfs->nfsi->version) {
         case NFS_V3:
-                return nfs3_stat64_async(nfs, path, 0,
+                return nfs3_stat64_async(nfs, path, no_follow,
                                          cb, private_data);
 #ifdef HAVE_NFS4_2
         case NFS_V4_2:
 #endif
         case NFS_V4:
-                return nfs4_stat64_async(nfs, path, 0,
-                                         cb, private_data);
+                return nfs4_xstat64_async(nfs, path, no_follow, 0,
+                                          cb, private_data);
         default:
                 nfs_set_error(nfs, "%s does not support NFSv%d",
-                              __FUNCTION__, nfs->nfsi->version);
+                              caller, nfs->nfsi->version);
                 return -1;
         }
+}
+
+int
+nfs_stat64_async(struct nfs_context *nfs, const char *path,
+                 nfs_cb cb, void *private_data)
+{
+        return nfs_stat64_dispatch(nfs, path, 0, __FUNCTION__,
+                                 cb, private_data);
 }
 
 int
 nfs_lstat64_async(struct nfs_context *nfs, const char *path,
                   nfs_cb cb, void *private_data)
 {
+        return nfs_stat64_dispatch(nfs, path, 1, __FUNCTION__,
+                                 cb, private_data);
+}
+
+/* The owner/group strings only exist in NFSv4. */
+static int
+nfs4_stat64_dispatch(struct nfs_context *nfs, const char *path, int no_follow,
+                    const char *caller, nfs_cb cb, void *private_data)
+{
 	switch (nfs->nfsi->version) {
-        case NFS_V3:
-                return nfs3_stat64_async(nfs, path, 1,
-                                         cb, private_data);
 #ifdef HAVE_NFS4_2
         case NFS_V4_2:
 #endif
         case NFS_V4:
-                return nfs4_stat64_async(nfs, path, 1,
-                                         cb, private_data);
+                return nfs4_xstat64_async(nfs, path, no_follow, 1,
+                                          cb, private_data);
         default:
-                nfs_set_error(nfs, "%s does not support NFSv%d",
-                              __FUNCTION__, nfs->nfsi->version);
+                nfs_set_error(nfs, "%s is only supported for NFSv4",
+                              caller);
                 return -1;
         }
+}
+
+int
+nfs4_stat64_async(struct nfs_context *nfs, const char *path,
+                  nfs_cb cb, void *private_data)
+{
+        return nfs4_stat64_dispatch(nfs, path, 0, __FUNCTION__,
+                                   cb, private_data);
+}
+
+int
+nfs4_lstat64_async(struct nfs_context *nfs, const char *path,
+                   nfs_cb cb, void *private_data)
+{
+        return nfs4_stat64_dispatch(nfs, path, 1, __FUNCTION__,
+                                   cb, private_data);
+}
+
+void
+nfs4_free_stat64(struct nfs4_stat_64 *st)
+{
+        free(st->nfs_user);
+        free(st->nfs_group);
+        st->nfs_user = NULL;
+        st->nfs_group = NULL;
 }
 
 int
@@ -2008,10 +2047,27 @@ nfs_fstat64_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_cb cb,
         case NFS_V4_2:
 #endif
         case NFS_V4:
-                return nfs4_fstat64_async(nfs, nfsfh, cb, private_data);
+                return nfs4_xfstat64_async(nfs, nfsfh, 0, cb, private_data);
         default:
                 nfs_set_error(nfs, "%s does not support NFSv%d",
                               __FUNCTION__, nfs->nfsi->version);
+                return -1;
+        }
+}
+
+int
+nfs4_fstat64_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_cb cb,
+                   void *private_data)
+{
+	switch (nfs->nfsi->version) {
+#ifdef HAVE_NFS4_2
+        case NFS_V4_2:
+#endif
+        case NFS_V4:
+                return nfs4_xfstat64_async(nfs, nfsfh, 1, cb, private_data);
+        default:
+                nfs_set_error(nfs, "%s is only supported for NFSv4",
+                              __FUNCTION__);
                 return -1;
         }
 }

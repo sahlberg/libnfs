@@ -66,11 +66,11 @@ struct client {
        int is_finished;
 };
 
-int recursive = 0, summary = 0, discovery = 0;
+int recursive = 0, summary = 0, discovery = 0, utf8_ids = 0;
 
 void print_usage(void)
 {
-	fprintf(stderr, "Usage: nfs-ls [-?|--help|--usage] [-R|--recursive] [-s|--summary] [-D|--discovery] <url>\n");
+	fprintf(stderr, "Usage: nfs-ls [-?|--help|--usage] [-R|--recursive] [-s|--summary] [-D|--discovery] [-u|--utf8-ids] <url>\n");
 }
 
 int process_server(const char *server, int mountport) {
@@ -148,8 +148,21 @@ void process_dir(struct nfs_context *nfs, char *dir, int level) {
 			"-x"[!!(nfsdirent->mode & S_IXOTH)]
 		);
 		printf(" %2d", (int)nfsdirent->nlink);
-		printf(" %5d", (int)nfsdirent->uid);
-		printf(" %5d", (int)nfsdirent->gid);
+		if (utf8_ids) {
+			struct nfs4_stat_64 st;
+
+			if (nfs4_lstat64(nfs, path, &st)) {
+				printf("Failed to stat(\"%s\") %s\n", path,
+				       nfs_get_error(nfs));
+				exit(10);
+			}
+			printf(" %15s", st.nfs_user ? st.nfs_user : "");
+			printf(" %15s", st.nfs_group ? st.nfs_group : "");
+			nfs4_free_stat64(&st);
+		} else {
+			printf(" %5d", (int)nfsdirent->uid);
+			printf(" %5d", (int)nfsdirent->gid);
+		}
 		printf(" %12" PRId64, nfsdirent->size);
 
 		printf(" %s\n", path + 1);
@@ -195,6 +208,8 @@ int main(int argc, char *argv[])
 			summary++;
 		} else if (!strcmp(argv[i], "-D") || !strcmp(argv[i], "--discovery")) {
 			discovery++;
+		} else if (!strcmp(argv[i], "-u") || !strcmp(argv[i], "--utf8-ids")) {
+			utf8_ids++;
 		} else{
 			goto finished;
 		}
@@ -251,6 +266,18 @@ int main(int argc, char *argv[])
 	if ((ret = nfs_mount(nfs, client.server, client.export)) != 0) {
  		fprintf(stderr, "Failed to mount nfs share : %s\n", nfs_get_error(nfs));
 		goto finished;
+	}
+
+	if (utf8_ids) {
+		struct nfs4_stat_64 st;
+
+		/* The utf8 owner/group strings only exist in NFSv4. */
+		if (nfs4_lstat64(nfs, "", &st)) {
+			fprintf(stderr, "%s\n", nfs_get_error(nfs));
+			ret = -1;
+			goto finished;
+		}
+		nfs4_free_stat64(&st);
 	}
 
 #ifdef HAVE_MULTITHREADING

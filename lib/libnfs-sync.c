@@ -558,6 +558,95 @@ nfs_lstat64(struct nfs_context *nfs, const char *path, struct nfs_stat_64 *st)
 }
 
 /*
+ * The strings handed to the callback belong to the library and are gone once
+ * it returns, so take our own copies for the caller to free.
+ */
+static void
+nfs4_stat64_cb(int status, struct nfs_context *nfs, void *data,
+               void *private_data)
+{
+	struct sync_cb_data *cb_data = private_data;
+	struct nfs4_stat_64 *src = data;
+	struct nfs4_stat_64 *dst = cb_data->return_data;
+
+	if (status < 0) {
+		nfs_set_error(nfs, "stat call failed with \"%s\"",
+                              nfs_get_error(nfs));
+                goto finished;
+	}
+
+	dst->st = src->st;
+	if (src->nfs_user) {
+		dst->nfs_user = strdup(src->nfs_user);
+		if (dst->nfs_user == NULL) {
+			status = -ENOMEM;
+			goto finished;
+		}
+	}
+	if (src->nfs_group) {
+		dst->nfs_group = strdup(src->nfs_group);
+		if (dst->nfs_group == NULL) {
+			nfs4_free_stat64(dst);
+			status = -ENOMEM;
+			goto finished;
+		}
+	}
+
+ finished:
+        cb_data_is_finished(cb_data, status);
+}
+
+int
+nfs4_stat64(struct nfs_context *nfs, const char *path,
+            struct nfs4_stat_64 *st)
+{
+	struct sync_cb_data cb_data;
+
+	memset(st, 0, sizeof(*st));
+	cb_data.return_data = st;
+        if (nfs_init_cb_data(&nfs, &cb_data)) {
+                return -1;
+        }
+
+	if (nfs4_stat64_async(nfs, path, nfs4_stat64_cb, &cb_data) != 0) {
+		nfs_set_error(nfs, "nfs4_stat64_async failed. %s",
+                              nfs_get_error(nfs));
+                nfs_destroy_cb_sem(&cb_data);
+		return -1;
+	}
+
+	wait_for_nfs_reply(nfs, &cb_data);
+        nfs_destroy_cb_sem(&cb_data);
+
+	return cb_data.status;
+}
+
+int
+nfs4_lstat64(struct nfs_context *nfs, const char *path,
+             struct nfs4_stat_64 *st)
+{
+	struct sync_cb_data cb_data;
+
+	memset(st, 0, sizeof(*st));
+	cb_data.return_data = st;
+        if (nfs_init_cb_data(&nfs, &cb_data)) {
+                return -1;
+        }
+
+	if (nfs4_lstat64_async(nfs, path, nfs4_stat64_cb, &cb_data) != 0) {
+		nfs_set_error(nfs, "nfs4_lstat64_async failed. %s",
+                              nfs_get_error(nfs));
+                nfs_destroy_cb_sem(&cb_data);
+		return -1;
+	}
+
+	wait_for_nfs_reply(nfs, &cb_data);
+        nfs_destroy_cb_sem(&cb_data);
+
+	return cb_data.status;
+}
+
+/*
  * open()
  */
 static void
@@ -890,6 +979,34 @@ nfs_fstat64(struct nfs_context *nfs, struct nfsfh *nfsfh,
 
 	if (nfs_fstat64_async(nfs, nfsfh, stat64_cb, &cb_data) != 0) {
 		nfs_set_error(nfs, "nfs_fstat64_async failed. %s",
+                              nfs_get_error(nfs));
+                nfs_destroy_cb_sem(&cb_data);
+		return -1;
+	}
+
+	wait_for_nfs_reply(nfs, &cb_data);
+        nfs_destroy_cb_sem(&cb_data);
+
+	return cb_data.status;
+}
+
+/*
+ * nfs4_fstat64()
+ */
+int
+nfs4_fstat64(struct nfs_context *nfs, struct nfsfh *nfsfh,
+             struct nfs4_stat_64 *st)
+{
+	struct sync_cb_data cb_data;
+
+	memset(st, 0, sizeof(*st));
+	cb_data.return_data = st;
+        if (nfs_init_cb_data(&nfs, &cb_data)) {
+                return -1;
+        }
+
+	if (nfs4_fstat64_async(nfs, nfsfh, nfs4_stat64_cb, &cb_data) != 0) {
+		nfs_set_error(nfs, "nfs4_fstat64_async failed. %s",
                               nfs_get_error(nfs));
                 nfs_destroy_cb_sem(&cb_data);
 		return -1;

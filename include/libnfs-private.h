@@ -1276,8 +1276,8 @@ int nfs4_fchown_async(struct nfs_context *nfs, struct nfsfh *nfsfh, int uid,
 int nfs4_fcntl_async(struct nfs_context *nfs, struct nfsfh *nfsfh,
                      enum nfs4_fcntl_op cmd, void *arg,
                      nfs_cb cb, void *private_data);
-int nfs4_fstat64_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_cb cb,
-                       void *private_data);
+int nfs4_xfstat64_async(struct nfs_context *nfs, struct nfsfh *nfsfh,
+                        int nfs4_stat, nfs_cb cb, void *private_data);
 int nfs4_fsync_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_cb cb,
                      void *private_data);
 int nfs4_ftruncate_async(struct nfs_context *nfs, struct nfsfh *nfsfh,
@@ -1343,8 +1343,9 @@ int nfs4_rename_async(struct nfs_context *nfs, const char *oldpath,
 		      const char *newpath, nfs_cb cb, void *private_data);
 int nfs4_rmdir_async(struct nfs_context *nfs, const char *path, nfs_cb cb,
                      void *private_data);
-int nfs4_stat64_async(struct nfs_context *nfs, const char *path,
-                      int no_follow, nfs_cb cb, void *private_data);
+int nfs4_xstat64_async(struct nfs_context *nfs, const char *path,
+                       int no_follow, int nfs4_stat, nfs_cb cb,
+                       void *private_data);
 int nfs4_statvfs_async(struct nfs_context *nfs, const char *path, nfs_cb cb,
                        void *private_data);
 int nfs4_statvfs64_async(struct nfs_context *nfs, const char *path, nfs_cb cb,

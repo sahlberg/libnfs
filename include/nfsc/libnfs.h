@@ -683,6 +683,80 @@ EXTERN int nfs_fstat64_async(struct nfs_context *nfs, struct nfsfh *nfsfh,
 EXTERN int nfs_fstat64(struct nfs_context *nfs, struct nfsfh *nfsfh,
                        struct nfs_stat_64 *st);
 
+/* nfs4_stat_64
+ * An nfs_stat_64 plus the raw utf8 owner and group strings as sent by the
+ * server. NFSv4 servers may return a name rather than a numeric id, in which
+ * case nfs_uid/nfs_gid in st are set to -1 and the name is only available
+ * here. nfs_user/nfs_group are NULL if the server did not send a name.
+ * These functions are only available for NFSv4.
+ */
+struct nfs4_stat_64 {
+	struct nfs_stat_64 st;
+	char *nfs_user;
+	char *nfs_group;
+};
+
+/*
+ * Free the strings in a struct nfs4_stat_64 filled in by one of the
+ * sync nfs4_[l|f]stat64() functions. The structure itself is owned by
+ * the caller.
+ */
+EXTERN void nfs4_free_stat64(struct nfs4_stat_64 *st);
+
+/*
+ * Async nfs4_stat64(<filename>)
+ * Function returns
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
+ *
+ * When the callback is invoked, status indicates the result:
+ *      0 : Success.
+ *          data is struct nfs4_stat_64 *
+ *          The structure and its strings are only valid for the duration
+ *          of the callback. Do not call nfs4_free_stat64() on it.
+ * -errno : An error occured.
+ *          data is the error string.
+ */
+EXTERN int nfs4_stat64_async(struct nfs_context *nfs, const char *path,
+                             nfs_cb cb, void *private_data);
+/*
+ * Sync nfs4_stat64(<filename>)
+ * Function returns
+ *      0 : The operation was successful. Call nfs4_free_stat64(st)
+ *          once done with the structure.
+ * -errno : The command failed.
+ */
+EXTERN int nfs4_stat64(struct nfs_context *nfs, const char *path,
+                       struct nfs4_stat_64 *st);
+
+/*
+ * Async nfs4_lstat64(<filename>)
+ * Same as nfs4_stat64_async() but does not follow a final symlink.
+ */
+EXTERN int nfs4_lstat64_async(struct nfs_context *nfs, const char *path,
+                              nfs_cb cb, void *private_data);
+/*
+ * Sync nfs4_lstat64(<filename>)
+ * Same as nfs4_stat64() but does not follow a final symlink.
+ */
+EXTERN int nfs4_lstat64(struct nfs_context *nfs, const char *path,
+                        struct nfs4_stat_64 *st);
+
+/*
+ * Async nfs4_fstat64(<nfsfh>)
+ * Same as nfs4_stat64_async() but operates on an open filehandle.
+ */
+EXTERN int nfs4_fstat64_async(struct nfs_context *nfs, struct nfsfh *nfsfh,
+                              nfs_cb cb, void *private_data);
+/*
+ * Sync nfs4_fstat64(<nfsfh>)
+ * Same as nfs4_stat64() but operates on an open filehandle.
+ */
+EXTERN int nfs4_fstat64(struct nfs_context *nfs, struct nfsfh *nfsfh,
+                        struct nfs4_stat_64 *st);
+
 /*
  * UMASK() never blocks, so no special aync/async versions are available
  */
