@@ -6708,11 +6708,16 @@ struct nfs4_object {
 static int
 object_supported(struct nfs_context *nfs)
 {
+#ifdef HAVE_NFS4_2
         if (nfs->nfsi->version != NFS_V4_2 || !nfs->nfsi->rootfh.len) {
                 nfs_set_error(nfs, "Object operations require a mounted NFSv4.2 context");
                 return 0;
         }
         return 1;
+#else
+        nfs_set_error(nfs, "NFSv4.2 support was not built into this library");
+        return 0;
+#endif
 }
 
 static int
