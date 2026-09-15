@@ -195,7 +195,7 @@ nfsstat4_to_errno(int error)
         case NFS4ERR_NAMETOOLONG: return -ENAMETOOLONG;
         case NFS4ERR_NOTEMPTY: return -ENOTEMPTY;
         case NFS4ERR_DQUOT: return -ERANGE;
-        case NFS4ERR_STALE: return -EIO;
+        case NFS4ERR_STALE: return -ESTALE;
         case NFS4ERR_BADHANDLE: return -EINVAL;
         case NFS4ERR_BAD_COOKIE: return -EINVAL;
         /*

@@ -47,7 +47,7 @@ add_library(ld_timeout SHARED ld_timeout.c)
 set_target_properties(ld_timeout PROPERTIES PREFIX "")
 target_link_libraries(ld_timeout nfs ${DL_LIBRARY})
 
-set(UNIT_TEST_PROGS prog_nfs4_delay)
+set(UNIT_TEST_PROGS prog_nfs4_delay prog_nfs4_errno)
 
 foreach(TARGET ${UNIT_TEST_PROGS})
   add_executable(${TARGET} ${TARGET}.c)
