@@ -23,6 +23,9 @@ CLEANFILES = ld_timeout.o ld_timeout.so
 check_PROGRAMS = prog_nfs4_delay
 TESTS = prog_nfs4_delay
 
+check_PROGRAMS += prog_nfs4_object
+TESTS += prog_nfs4_object
+
 ld_timeout_SOURCES = ld_timeout.c
 ld_timeout_CFLAGS = $(AM_CFLAGS) -fPIC
 
