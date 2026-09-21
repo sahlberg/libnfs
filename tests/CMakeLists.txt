@@ -47,13 +47,15 @@ add_library(ld_timeout SHARED ld_timeout.c)
 set_target_properties(ld_timeout PROPERTIES PREFIX "")
 target_link_libraries(ld_timeout nfs ${DL_LIBRARY})
 
-set(UNIT_TEST_PROGS prog_nfs4_delay prog_nfs4_errno)
+set(UNIT_TEST_PROGS prog_nfs4_delay prog_nfs4_errno prog_nfs4_object)
 
 foreach(TARGET ${UNIT_TEST_PROGS})
   add_executable(${TARGET} ${TARGET}.c)
   target_link_libraries(${TARGET} nfs)
   add_test(NAME ${TARGET} COMMAND ${TARGET})
 endforeach()
+
+set_tests_properties(prog_nfs4_object PROPERTIES SKIP_RETURN_CODE 77)
 
 file(GLOB TESTS test_*.sh)
 
