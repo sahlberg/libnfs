@@ -216,10 +216,14 @@ int main(int argc, char *argv[])
 		break;
 	}
 	printf("\n");
-	printf("Access: (%04" PRIo64 "/%s)  Uid: ( %" PRIu64 "/%s)  Gid: ( %" PRIu64 "/%s)\n",
+	/*
+	 * An NFSv4 owner that is a name rather than a numeric id has no
+	 * uid/gid and is reported as -1, so print the ids signed.
+	 */
+	printf("Access: (%04" PRIo64 "/%s)  Uid: ( %" PRId64 "/%s)  Gid: ( %" PRId64 "/%s)\n",
 	       st.nfs_mode & 07777, get_access_bits(st.nfs_mode),
-	       st.nfs_uid, uid_to_name(st.nfs_uid),
-	       st.nfs_gid, gid_to_name(st.nfs_gid));
+	       (int64_t)st.nfs_uid, uid_to_name(st.nfs_uid),
+	       (int64_t)st.nfs_gid, gid_to_name(st.nfs_gid));
 
 	printf("Access: %s", ctime( (const time_t *) &st.nfs_atime));
 	printf("Modify: %s", ctime( (const time_t *) &st.nfs_mtime));
