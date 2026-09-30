@@ -14,7 +14,7 @@ jobs:
           sudo apt-get install -y --no-install-recommends \
             ninja-build \
             nfs-kernel-server nfs-common \
-            valgrind
+            libtool-bin valgrind
       - run: cmake -D ENABLE_TESTS=yes -B build -G Ninja
       - run: ninja --verbose -C build
       - run: sudo ninja --verbose -C build install
@@ -24,6 +24,9 @@ jobs:
       - run: sudo bash -c "cd build/tests;./test_0200_stat.sh"
       - run: sudo bash -c "cd build/tests;./test_0201_stat_paths.sh"
       - run: sudo bash -c "cd build/tests;./test_0203_stat_symlink.sh"
+      - run: sudo bash -c "cd build/tests;VERSION=4.2 ./test_0204_nfs4_stat.sh"
+      - run: sudo bash -c "cd build/tests;./test_0205_nfs_stat_utf8_ids.sh"
+      - run: sudo bash -c "cd build/tests;VERSION=4.2 ./test_0205_nfs_stat_utf8_ids.sh"
       - run: sudo bash -c "cd build/tests;./test_0210_fstat.sh"
       - run: sudo bash -c "cd build/tests;./test_0211_fstat_paths.sh"
       - run: sudo bash -c "cd build/tests;./test_0220_open_paths.sh"
