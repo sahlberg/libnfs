@@ -55,11 +55,15 @@ WSADATA wsaData;
 #include "libnfs-raw.h"
 #include "libnfs-raw-mount.h"
 
-void usage(void)
+int utf8_ids = 0;
+
+void usage(int status)
 {
-	fprintf(stderr, "Usage: nfs-stat <file>\n");
+	fprintf(stderr, "Usage: nfs-stat [-?|--help|--usage] [-u|--utf8-ids] <file>\n");
 	fprintf(stderr, "<file> stat an nfs file.\n");
-	exit(0);
+	fprintf(stderr, "-u|--utf8-ids print the raw NFSv4 owner and group strings\n");
+	fprintf(stderr, "              as sent by the server.\n");
+	exit(status);
 }
 
 char *get_file_type(int mode)
@@ -162,7 +166,10 @@ int main(int argc, char *argv[])
 	struct nfs_url *url;
 	struct nfs_context *nfs;
 	struct nfs_stat_64 st;
-	
+	struct nfs4_stat_64 st4 = { 0 };
+	const char *file = NULL;
+	int i;
+
 #ifdef WIN32
 	if (WSAStartup(MAKEWORD(2,2), &wsaData) != 0) {
 		printf("Failed to start Winsock2\n");
@@ -175,7 +182,22 @@ int main(int argc, char *argv[])
 #endif
 
 	if (argc < 2) {
-		usage();
+		usage(0);
+	}
+
+	for (i = 1; i < argc; i++) {
+		if (!strcmp(argv[i], "-u") || !strcmp(argv[i], "--utf8-ids")) {
+			utf8_ids++;
+		} else if (!strcmp(argv[i], "-?") || !strcmp(argv[i], "--help") || !strcmp(argv[i], "--usage")) {
+			usage(0);
+		} else if (argv[i][0] == '-' || file != NULL) {
+			usage(1);
+		} else {
+			file = argv[i];
+		}
+	}
+	if (file == NULL) {
+		usage(1);
 	}
 
 	nfs = nfs_init_context();
@@ -184,7 +206,7 @@ int main(int argc, char *argv[])
 		exit(10);
 	}
 
-	url = nfs_parse_url_full(nfs, argv[1]);
+	url = nfs_parse_url_full(nfs, file);
 	if (url == NULL) {
 		fprintf(stderr, "%s\n", nfs_get_error(nfs));
 		exit(10);
@@ -196,12 +218,21 @@ int main(int argc, char *argv[])
 		exit(10);
 	}
 
-	if (nfs_stat64(nfs, url->file, &st) < 0) {
-		fprintf(stderr, "Failed to stat %s\n", url->file);
+	if (utf8_ids) {
+		/* The utf8 owner/group strings only exist in NFSv4. */
+		if (nfs4_stat64(nfs, url->file, &st4) < 0) {
+			fprintf(stderr, "Failed to stat %s : %s\n", url->file,
+				nfs_get_error(nfs));
+			exit(10);
+		}
+		st = st4.st;
+	} else if (nfs_stat64(nfs, url->file, &st) < 0) {
+		fprintf(stderr, "Failed to stat %s : %s\n", url->file,
+			nfs_get_error(nfs));
 		exit(10);
 	}
 
-	printf("  File:%s\n", argv[1]);
+	printf("  File:%s\n", file);
 	printf("  Size: %-16" PRIu64 "Blocks: %-11" PRIu64 " IO Block: %" PRIu64 "  %s\n",
 	       st.nfs_size, st.nfs_blocks, st.nfs_blksize,
 	       get_file_type(st.nfs_mode));
@@ -216,15 +247,24 @@ int main(int argc, char *argv[])
 		break;
 	}
 	printf("\n");
-	printf("Access: (%04" PRIo64 "/%s)  Uid: ( %" PRIu64 "/%s)  Gid: ( %" PRIu64 "/%s)\n",
+	/*
+	 * An NFSv4 owner that is a name rather than a numeric id has no
+	 * uid/gid and is reported as -1, so print the ids signed.
+	 * With --utf8-ids the name is the string the server sent instead of
+	 * a lookup of the id in the local user and group databases.
+	 */
+	printf("Access: (%04" PRIo64 "/%s)  Uid: ( %" PRId64 "/%s)  Gid: ( %" PRId64 "/%s)\n",
 	       st.nfs_mode & 07777, get_access_bits(st.nfs_mode),
-	       st.nfs_uid, uid_to_name(st.nfs_uid),
-	       st.nfs_gid, gid_to_name(st.nfs_gid));
+	       (int64_t)st.nfs_uid,
+	       st4.nfs_user ? st4.nfs_user : uid_to_name(st.nfs_uid),
+	       (int64_t)st.nfs_gid,
+	       st4.nfs_group ? st4.nfs_group : gid_to_name(st.nfs_gid));
 
 	printf("Access: %s", ctime( (const time_t *) &st.nfs_atime));
 	printf("Modify: %s", ctime( (const time_t *) &st.nfs_mtime));
 	printf("Change: %s", ctime( (const time_t *) &st.nfs_ctime));
 
+	nfs4_free_stat64(&st4);
 	nfs_destroy_context(nfs);
 	nfs_destroy_url(url);
 	return 0;
