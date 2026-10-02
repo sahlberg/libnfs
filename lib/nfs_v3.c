@@ -4906,7 +4906,7 @@ static void nfs3_open_create_cb(int err, struct nfs_context *nfs, void *ret_data
 	struct open_cb_data *cb_data = private_data;
 
         if (err) {
-		cb_data->cb(nfsstat3_to_errno(err), nfs,
+		cb_data->cb(err, nfs,
                          nfs_get_error(nfs), cb_data->private_data);
                 free_open_cb_data(cb_data);
                 return;
@@ -5066,7 +5066,7 @@ static void nfs3_initial_open_cb(int err, struct nfs_context *nfs, void *ret_dat
                 return;
         }
         if (err) {
-                cb_data->cb(nfsstat3_to_errno(err), nfs,
+                cb_data->cb(err, nfs,
                             nfs_get_error(nfs), cb_data->private_data);
                 free_open_cb_data(cb_data);
                 return;
