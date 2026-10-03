@@ -166,6 +166,13 @@ void libnfs_zdr_destroy(ZDR *zdrs)
 
 bool_t libnfs_zdr_u_int(ZDR *zdrs, uint32_t *u)
 {
+        /* zdrs->buf is guaranteed to be at least uint32_t aligned
+         * and zdrs->pos should always increment in multiples of 4
+         * as the ZDR atoms are uint32_t unless zdrs/zdrs->pos has become
+         * corrupted.
+         */
+        assert((zdrs->pos & 0x03) == 0);
+
 	if (zdrs->pos + 4 > zdrs->size) {
 		return FALSE;
 	}
