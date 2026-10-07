@@ -226,14 +226,36 @@ bool_t libnfs_zdr_int64_t(ZDR *zdrs, int64_t *i)
 	return libnfs_zdr_uint64_t(zdrs, (uint64_t *)i);
 }
 
+/*
+ * Positive maxsize values are hard limits. ~0 is what rpcgen emits when
+ * the protocol states no limit. Zero is unlimited too: the AUTH
+ * credential and verifier paths pass the live length, and a zeroed
+ * object still has length zero.
+ */
+static bool_t libnfs_zdr_size_ok(uint32_t size, uint32_t maxsize)
+{
+        if (maxsize == 0 || maxsize == ~(uint32_t)0) {
+                return TRUE;
+        }
+        return size <= maxsize;
+}
+
 bool_t libnfs_zdr_bytes(ZDR *zdrs, char **bufp, uint32_t *size, uint32_t maxsize)
 {
         uint32_t zero = 0;
         int pad;
 
+        if (zdrs->x_op == ZDR_ENCODE && !libnfs_zdr_size_ok(*size, maxsize)) {
+                return FALSE;
+        }
+
 	if (!libnfs_zdr_u_int(zdrs, size)) {
 		return FALSE;
 	}
+
+        if (zdrs->x_op == ZDR_DECODE && !libnfs_zdr_size_ok(*size, maxsize)) {
+                return FALSE;
+        }
 
         /* Clamp max size we handle to 1GB */
         if (*size > 1024 * 1024 * 1024) {
@@ -269,6 +291,14 @@ bool_t libnfs_zdr_bytes(ZDR *zdrs, char **bufp, uint32_t *size, uint32_t maxsize
 		return TRUE;
 	case ZDR_DECODE:
 		if (*bufp != NULL) {
+                        /*
+                         * Caller-supplied storage is maxsize bytes long.
+                         * A zero maxsize leaves that storage empty, so
+                         * only an empty field may be copied into it.
+                         */
+                        if (*size > maxsize) {
+                                return FALSE;
+                        }
 			memcpy(*bufp, &zdrs->buf[zdrs->pos], *size);
 		} else {
 			*bufp = &zdrs->buf[zdrs->pos];
@@ -368,11 +398,17 @@ bool_t libnfs_zdr_string(ZDR *zdrs, char **strp, uint32_t maxsize)
 
 	if (zdrs->x_op == ZDR_ENCODE) {
 		size = strlen(*strp);
+                if (!libnfs_zdr_size_ok(size, maxsize)) {
+                        return FALSE;
+                }
 	}
 
 	if (!libnfs_zdr_u_int(zdrs, &size)) {
 		return FALSE;
 	}
+        if (zdrs->x_op == ZDR_DECODE && !libnfs_zdr_size_ok(size, maxsize)) {
+                return FALSE;
+        }
 	if (size > zdrs->size) {
 		return FALSE;
 	}
@@ -414,9 +450,17 @@ bool_t libnfs_zdr_array(ZDR *zdrs, char **arrp, uint32_t *size, uint32_t maxsize
 	int  i;
         uint32_t s;
 
+        if (zdrs->x_op == ZDR_ENCODE && !libnfs_zdr_size_ok(*size, maxsize)) {
+                return FALSE;
+        }
+
 	if (!libnfs_zdr_u_int(zdrs, size)) {
 		return FALSE;
 	}
+
+        if (zdrs->x_op == ZDR_DECODE && !libnfs_zdr_size_ok(*size, maxsize)) {
+                return FALSE;
+        }
 
         if (*size > UINT32_MAX/elsize) {
                 return FALSE;

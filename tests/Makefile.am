@@ -47,7 +47,8 @@ test: $(noinst_PROGRAMS)
 		echo; \
 	done
 
-noinst_PROGRAMS += prog_zdr_bytes_zero
+noinst_PROGRAMS += prog_zdr_bytes_zero prog_zdr_maxsize
 
-check-local: prog_zdr_bytes_zero$(EXEEXT)
+check-local: prog_zdr_bytes_zero$(EXEEXT) prog_zdr_maxsize$(EXEEXT)
 	./prog_zdr_bytes_zero$(EXEEXT)
+	./prog_zdr_maxsize$(EXEEXT)
