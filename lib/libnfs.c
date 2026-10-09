@@ -1392,6 +1392,7 @@ nfs_umount_async(struct nfs_context *nfs, nfs_cb cb, void *private_data)
 #endif
         case NFS_V4:
                 /* umount is a no-op in v4 */
+                rpc_nfs40_stop_renew(nfs->rpc);
                 (*cb)(0, nfs, NULL, private_data);
                 return 0;
         default:

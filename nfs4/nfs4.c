@@ -956,17 +956,19 @@ struct rpc_pdu *rpc_nfs4_null_task(struct rpc_context *rpc, rpc_cb cb,
 	return pdu;
 }
 
-struct rpc_pdu *rpc_nfs4_compound_task2(struct rpc_context *rpc, rpc_cb cb,
-                                        struct COMPOUND4args *args,
-                                        void *private_data,
-                                        size_t alloc_hint)
+static struct rpc_pdu *rpc_nfs4_compound_task_auth(struct rpc_context *rpc,
+                                                   rpc_cb cb,
+                                                   struct COMPOUND4args *args,
+                                                   void *private_data,
+                                                   size_t alloc_hint,
+                                                   const struct AUTH *auth)
 {
 	struct rpc_pdu *pdu;
 
-	pdu = rpc_allocate_pdu2(rpc, NFS4_PROGRAM, NFS_V4, NFSPROC4_COMPOUND,
+	pdu = rpc_allocate_pdu2_auth(rpc, NFS4_PROGRAM, NFS_V4, NFSPROC4_COMPOUND,
                                cb, private_data, (zdrproc_t)zdr_COMPOUND4res,
                                sizeof(COMPOUND4res),
-                               alloc_hint, 0);
+                               alloc_hint, 0, auth);
 	if (pdu == NULL) {
 		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu for "
                               "NFS4/COMPOUND call");
@@ -1013,6 +1015,31 @@ struct rpc_pdu *rpc_nfs4_compound_task2(struct rpc_context *rpc, rpc_cb cb,
 	}
 
 	return pdu;
+}
+
+struct rpc_pdu *rpc_nfs4_compound_task2(struct rpc_context *rpc, rpc_cb cb,
+                                        struct COMPOUND4args *args,
+                                        void *private_data,
+                                        size_t alloc_hint)
+{
+	return rpc_nfs4_compound_task_auth(rpc, cb, args, private_data,
+	                                    alloc_hint, NULL);
+}
+
+struct rpc_pdu *rpc_nfs40_renew_task(struct rpc_context *rpc, rpc_cb cb,
+                                    void *private_data)
+{
+	COMPOUND4args args;
+	nfs_argop4 op;
+
+	memset(&op, 0, sizeof(op));
+	op.argop = OP_RENEW;
+	op.nfs_argop4_u.oprenew.clientid = rpc->nfs40_clientid;
+	memset(&args, 0, sizeof(args));
+	args.argarray.argarray_len = 1;
+	args.argarray.argarray_val = &op;
+	return rpc_nfs4_compound_task_auth(rpc, cb, &args, private_data, 0,
+	                                   rpc->nfs40_renew_auth);
 }
 
 

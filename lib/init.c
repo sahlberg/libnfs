@@ -55,6 +55,7 @@
 #include <assert.h>
 #include <fcntl.h>
 #include <time.h>
+#include <limits.h>
 #ifdef HAVE_SYS_EVENTFD_H
 #include <sys/eventfd.h>
 #endif
@@ -628,6 +629,9 @@ void rpc_destroy_context(struct rpc_context *rpc)
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
 	rpc_purge_all_pdus(rpc, RPC_STATUS_CANCEL, NULL);
+	if (rpc->nfs40_renew_auth) {
+		auth_destroy(rpc->nfs40_renew_auth);
+	}
 
 #ifdef HAVE_NFS4_2
         /* The session, if any, dies with the connection it lived on. */
@@ -678,6 +682,54 @@ void rpc_destroy_context(struct rpc_context *rpc)
 	free(rpc);
 }
 
+/* An AUTH_SYS snapshot survives applications changing uid/gid between calls. */
+int rpc_nfs40_save_renew_auth(struct rpc_context *rpc)
+{
+	struct AUTH *saved;
+
+#ifdef HAVE_LIBKRB5
+	/* GSS credentials are generated per PDU from the RPC context. */
+	if (rpc->sec != RPC_SEC_UNDEFINED) {
+		if (rpc->nfs40_renew_auth) {
+			auth_destroy(rpc->nfs40_renew_auth);
+			rpc->nfs40_renew_auth = NULL;
+		}
+		return 0;
+	}
+#endif
+	saved = calloc(1, sizeof(*saved));
+	if (saved == NULL) {
+		return -1;
+	}
+	saved->ah_cred = rpc->auth->ah_cred;
+	saved->ah_verf = rpc->auth->ah_verf;
+	saved->ah_cred.oa_base = NULL;
+	saved->ah_verf.oa_base = NULL;
+	if (rpc->auth->ah_cred.oa_length) {
+		saved->ah_cred.oa_base = malloc(rpc->auth->ah_cred.oa_length);
+		if (saved->ah_cred.oa_base == NULL) {
+			auth_destroy(saved);
+			return -1;
+		}
+		memcpy(saved->ah_cred.oa_base, rpc->auth->ah_cred.oa_base,
+		       rpc->auth->ah_cred.oa_length);
+	}
+	if (rpc->auth->ah_verf.oa_length) {
+		saved->ah_verf.oa_base = malloc(rpc->auth->ah_verf.oa_length);
+		if (saved->ah_verf.oa_base == NULL) {
+			auth_destroy(saved);
+			return -1;
+		}
+		memcpy(saved->ah_verf.oa_base, rpc->auth->ah_verf.oa_base,
+		       rpc->auth->ah_verf.oa_length);
+	}
+	if (rpc->nfs40_renew_auth) {
+		auth_destroy(rpc->nfs40_renew_auth);
+	}
+	rpc->nfs40_renew_auth = saved;
+	return 0;
+}
+
 void rpc_set_mountport(struct rpc_context *rpc, int port)
 {
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
@@ -702,19 +754,34 @@ void rpc_set_poll_timeout(struct rpc_context *rpc, int poll_timeout)
 int rpc_get_poll_timeout(struct rpc_context *rpc)
 {
 #ifdef HAVE_NFS4_2
-	int delay;
+	int session_delay;
 #endif
+	int delay;
+	uint64_t now, remaining;
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
+	delay = rpc->poll_timeout;
 
 #ifdef HAVE_NFS4_2
-	delay = nfs4_next_delay_msecs(rpc);
-	if (delay >= 0 && (rpc->poll_timeout < 0 || delay < rpc->poll_timeout)) {
-		return delay;
+	session_delay = nfs4_next_delay_msecs(rpc);
+	if (session_delay >= 0 && (delay < 0 || session_delay < delay)) {
+		delay = session_delay;
 	}
 #endif /* HAVE_NFS4_2 */
 
-	return rpc->poll_timeout;
+	if (rpc->is_connected && rpc->nfs40_renew_enabled &&
+	    !rpc->nfs40_renew_pending) {
+		now = rpc_current_time();
+		remaining = rpc->nfs40_renew_due > now ?
+		            rpc->nfs40_renew_due - now : 0;
+		if (remaining <= INT_MAX &&
+		    (delay < 0 || remaining < (uint64_t)delay)) {
+			delay = (int)remaining;
+		} else if (delay < 0) {
+			delay = INT_MAX;
+		}
+	}
+	return delay;
 }
 
 void rpc_set_timeout(struct rpc_context *rpc, int timeout_msecs)

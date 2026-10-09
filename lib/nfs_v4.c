@@ -243,8 +243,13 @@ static uint32_t getacl_attributes[1] = {
 };
 
 static uint32_t rwmax_attributes[1] = {
-        (1 << FATTR4_MAXREAD |
-         1 << FATTR4_MAXWRITE )
+        (1u << FATTR4_MAXREAD |
+         1u << FATTR4_MAXWRITE )
+};
+static uint32_t rwmax_lease_attributes[1] = {
+        (1u << FATTR4_LEASE_TIME |
+         1u << FATTR4_MAXREAD |
+         1u << FATTR4_MAXWRITE)
 };
 
 static int
@@ -1867,9 +1872,39 @@ nfs4_populate_access(struct nfs4_cb_data *data, nfs_argop4 *op)
 }
 
 
-static int
-nfs_parse_rwmax(struct nfs_context *nfs, const char *buf, int len)
+int
+nfs4_parse_mount_rwmax(struct nfs_context *nfs, GETATTR4resok *attrs,
+                        uint32_t *lease_seconds)
 {
+        const char *buf = attrs->obj_attributes.attr_vals.attrlist4_val;
+        int len = attrs->obj_attributes.attr_vals.attrlist4_len;
+        uint32_t lease;
+
+        if (buf == NULL) {
+                nfs_set_error(nfs, "NFSv4 mount: missing transfer attributes");
+                return -1;
+        }
+
+        if (nfs->nfsi->version == NFS_V4) {
+                uint32_t wire_lease;
+                if (attrs->obj_attributes.attrmask.bitmap4_len != 1 ||
+                    attrs->obj_attributes.attrmask.bitmap4_val == NULL ||
+                    attrs->obj_attributes.attrmask.bitmap4_val[0] !=
+                            rwmax_lease_attributes[0] ||
+                    len != 20) {
+                        nfs_set_error(nfs, "NFSv4.0 mount: invalid lease_time attributes");
+                        return -1;
+                }
+                memcpy(&wire_lease, buf, sizeof(wire_lease));
+                lease = ntohl(wire_lease);
+                if (lease == 0) {
+                        nfs_set_error(nfs, "NFSv4.0 mount: zero lease_time");
+                        return -1;
+                }
+                *lease_seconds = lease;
+                buf += 4;
+                len -= 4;
+        }
         /* READ MAX */
         CHECK_GETATTR_BUF_SPACE(len, 8);
         nfs_set_readmax(nfs, nfs_pntoh64((uint32_t *)(void *)buf));
@@ -1892,6 +1927,7 @@ nfs4_mount_5_cb(struct rpc_context *rpc, int status, void *command_data,
         struct nfs_context *nfs = data->nfs;
         COMPOUND4res *res = command_data;
         GETATTR4resok *garesok;
+        uint32_t lease_seconds = 0;
         int i;
 
         if (check_nfs4_error(nfs, status, data, res, "RWMAX")) {
@@ -1902,11 +1938,10 @@ nfs4_mount_5_cb(struct rpc_context *rpc, int status, void *command_data,
                 return;
         }
         garesok = &res->resarray.resarray_val[i].nfs_resop4_u.opgetattr.GETATTR4res_u.resok4;
-        if (nfs_parse_rwmax(nfs,
-                            garesok->obj_attributes.attr_vals.attrlist4_val,
-                            garesok->obj_attributes.attr_vals.attrlist4_len) < 0) {
+        if (nfs4_parse_mount_rwmax(nfs, garesok, &lease_seconds) < 0) {
                 data->cb(-EINVAL, nfs, nfs_get_error(nfs), data->private_data);
                 free_nfs4_cb_data(data);
+                return;
         }
         
 	/*
@@ -1926,6 +1961,9 @@ nfs4_mount_5_cb(struct rpc_context *rpc, int status, void *command_data,
 			   nfs->nfsi->auto_reconnect,
 			   nfs->nfsi->timeout,
 			   nfs->nfsi->retrans);
+        if (nfs->nfsi->version == NFS_V4) {
+                rpc_nfs40_start_renew(rpc, nfs->nfsi->clientid, lease_seconds);
+        }
         
         data->cb(0, nfs, NULL, data->private_data);
         free_nfs4_cb_data(data);
@@ -1971,7 +2009,9 @@ nfs4_mount_4_cb(struct rpc_context *rpc, int status, void *command_data,
         nfsfh.fh = nfs->nfsi->rootfh;
         i = nfs4_start_compound(nfs, op);
         i += nfs4_op_putfh(nfs, &op[i], &nfsfh);
-        i += nfs4_op_getattr(nfs, &op[i], rwmax_attributes, 1);
+        i += nfs4_op_getattr(nfs, &op[i],
+                            nfs->nfsi->version == NFS_V4 ?
+                            rwmax_lease_attributes : rwmax_attributes, 1);
                
         memset(&args, 0, sizeof(args));
         args.argarray.argarray_len = i;
@@ -2098,6 +2138,13 @@ nfs4_mount_1_cb(struct rpc_context *rpc, int status, void *command_data,
         assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
         if (check_nfs4_error(nfs, status, data, NULL, "CONNECT")) {
+                return;
+        }
+
+        if (rpc_nfs40_save_renew_auth(rpc) < 0) {
+                nfs_set_error(nfs, "Failed to save NFSv4.0 renewal credentials");
+                data->cb(-ENOMEM, nfs, nfs_get_error(nfs), data->private_data);
+                free_nfs4_cb_data(data);
                 return;
         }
 
@@ -2370,6 +2417,8 @@ nfs4_mount_async(struct nfs_context *nfs, const char *server,
         char *new_server, *new_export;
         int port;
         rpc_cb connect_cb = nfs4_mount_1_cb;
+
+        rpc_nfs40_stop_renew(nfs->rpc);
 
         new_server = strdup(server);
 	if (new_server == NULL) {
