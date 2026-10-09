@@ -1605,6 +1605,86 @@ rpc_nfs4_maybe_renew_session(struct rpc_context *rpc)
 }
 #endif /* HAVE_NFS4_2 */
 
+void rpc_nfs40_stop_renew(struct rpc_context *rpc)
+{
+	rpc->nfs40_renew_enabled = 0;
+	rpc->nfs40_renew_pending = 0;
+	rpc->nfs40_renew_due = 0;
+	rpc->nfs40_renew_epoch++;
+}
+
+void rpc_nfs40_start_renew(struct rpc_context *rpc, uint64_t clientid,
+                           uint32_t lease_seconds)
+{
+	rpc_nfs40_stop_renew(rpc);
+	rpc->nfs40_clientid = clientid;
+	rpc->nfs40_renew_interval = (uint64_t)lease_seconds * 500;
+	rpc->nfs40_renew_due = rpc_current_time() + rpc->nfs40_renew_interval;
+	rpc->nfs40_renew_enabled = 1;
+}
+
+static void
+nfs40_renew_cb(struct rpc_context *rpc, int status, void *command_data,
+               void *private_data)
+{
+	COMPOUND4res *res = command_data;
+	uint32_t epoch = (uint32_t)(uintptr_t)private_data;
+	uint64_t now;
+
+	if (epoch != rpc->nfs40_renew_epoch || !rpc->nfs40_renew_enabled) {
+		return;
+	}
+	rpc->nfs40_renew_pending = 0;
+	if (status == RPC_STATUS_SUCCESS && res &&
+	    (res->status == NFS4_OK || res->status == NFS4ERR_CB_PATH_DOWN)) {
+		RPC_LOG(rpc, 2, "NFSv4.0 lease renewed");
+	} else if (status == RPC_STATUS_SUCCESS && res &&
+	           (res->status == NFS4ERR_EXPIRED ||
+	            res->status == NFS4ERR_STALE_CLIENTID)) {
+		RPC_LOG(rpc, 1, "NFSv4.0 lease lost (%s); context must be remounted",
+		        nfsstat4_to_str(res->status));
+		rpc_nfs40_stop_renew(rpc);
+		return;
+	} else {
+		RPC_LOG(rpc, 1, "NFSv4.0 RENEW failed (RPC %d, NFS %d)",
+		        status, res ? (int)res->status : -1);
+	}
+	now = rpc_current_time();
+	if (rpc->nfs40_renew_due < now) {
+		rpc->nfs40_renew_due = now + rpc->nfs40_renew_interval;
+	}
+}
+
+static void
+rpc_nfs40_maybe_renew(struct rpc_context *rpc)
+{
+	uint64_t now, retry;
+	struct rpc_pdu *pdu;
+
+	if (!rpc->is_connected || !rpc->nfs40_renew_enabled ||
+	    rpc->nfs40_renew_pending) {
+		return;
+	}
+	now = rpc_current_time();
+	if (now < rpc->nfs40_renew_due) {
+		return;
+	}
+	rpc->nfs40_renew_due = now + rpc->nfs40_renew_interval;
+	rpc->nfs40_renew_pending = 1;
+	pdu = rpc_nfs40_renew_task(rpc, nfs40_renew_cb,
+	                           (void *)(uintptr_t)rpc->nfs40_renew_epoch);
+	if (pdu == NULL) {
+		rpc->nfs40_renew_pending = 0;
+		retry = rpc->nfs40_renew_interval < 1000 ?
+		        rpc->nfs40_renew_interval : 1000;
+		rpc->nfs40_renew_due = now + retry;
+		RPC_LOG(rpc, 1, "Failed to queue NFSv4.0 RENEW: %s",
+		        rpc_get_error(rpc));
+		return;
+	}
+	RPC_LOG(rpc, 2, "Queued NFSv4.0 RENEW");
+}
+
 int
 rpc_service(struct rpc_context *rpc, int revents)
 {
@@ -1623,6 +1703,7 @@ rpc_service(struct rpc_context *rpc, int revents)
 	if (rpc_timeout_scan(rpc) != 0) {
 		return rpc_reconnect_requeue(rpc);
 	}
+	rpc_nfs40_maybe_renew(rpc);
 
 #ifdef HAVE_NFS4_2
 	rpc_nfs4_maybe_renew_session(rpc);
@@ -2166,6 +2247,7 @@ int
 rpc_disconnect(struct rpc_context *rpc, const char *error)
 {
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
+	rpc_nfs40_stop_renew(rpc);
 
 	if (rpc->fd != -1) {
 		close(rpc->fd);

@@ -378,6 +378,14 @@ struct rpc_context {
 	void *connect_data;
 
 	struct AUTH *auth;
+	/* NFSv4.0 lease renewal uses the credentials that created clientid. */
+	struct AUTH *nfs40_renew_auth;
+	uint64_t nfs40_clientid;
+	uint64_t nfs40_renew_interval;
+	uint64_t nfs40_renew_due;
+	int nfs40_renew_enabled;
+	int nfs40_renew_pending;
+	uint32_t nfs40_renew_epoch;
 	uint32_t xid;
 
         /*
@@ -871,6 +879,7 @@ int rpc_remove_pdu_from_queue(struct rpc_queue *q, struct rpc_pdu *remove_pdu);
 unsigned int rpc_hash_xid(struct rpc_context *rpc, uint32_t xid);
 struct rpc_pdu *rpc_allocate_pdu(struct rpc_context *rpc, int program, int version, int procedure, rpc_cb cb, void *private_data, zdrproc_t zdr_decode_fn, int zdr_bufsize);
 struct rpc_pdu *rpc_allocate_pdu2(struct rpc_context *rpc, int program, int version, int procedure, rpc_cb cb, void *private_data, zdrproc_t zdr_decode_fn, int zdr_bufsize, size_t alloc_hint, int iovcnt_hint);
+struct rpc_pdu *rpc_allocate_pdu2_auth(struct rpc_context *rpc, int program, int version, int procedure, rpc_cb cb, void *private_data, zdrproc_t zdr_decode_fn, int zdr_bufsize, size_t alloc_hint, int iovcnt_hint, const struct AUTH *auth);
 void pdu_set_timeout(struct rpc_context *rpc, struct rpc_pdu *pdu, uint64_t now_msecs);
 
 void rpc_free_pdu(struct rpc_context *rpc, struct rpc_pdu *pdu);
@@ -1315,6 +1324,14 @@ int nfs42_fallocate_async(struct nfs_context *nfs, struct nfsfh *nfsfh,
                           int mode, uint64_t offset, uint64_t length,
                           nfs_cb cb, void *private_data);
 #endif /* HAVE_NFS4_2 */
+int rpc_nfs40_save_renew_auth(struct rpc_context *rpc);
+int nfs4_parse_mount_rwmax(struct nfs_context *nfs, GETATTR4resok *attrs,
+                            uint32_t *lease_seconds);
+void rpc_nfs40_stop_renew(struct rpc_context *rpc);
+void rpc_nfs40_start_renew(struct rpc_context *rpc, uint64_t clientid,
+                           uint32_t lease_seconds);
+struct rpc_pdu *rpc_nfs40_renew_task(struct rpc_context *rpc, rpc_cb cb,
+                                    void *private_data);
 int nfs4_lockf_async(struct nfs_context *nfs, struct nfsfh *nfsfh,
                      enum nfs4_lock_op op, uint64_t count,
                      nfs_cb cb, void *private_data);

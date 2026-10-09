@@ -398,7 +398,7 @@ static struct rpc_pdu *rpc_allocate_reply_pdu(struct rpc_context *rpc,
 	return pdu;
 }
 
-struct rpc_pdu *rpc_allocate_pdu2(struct rpc_context *rpc, int program, int version, int procedure, rpc_cb cb, void *private_data, zdrproc_t zdr_decode_fn, int zdr_decode_bufsize, size_t alloc_hint, int iovcnt_hint)
+struct rpc_pdu *rpc_allocate_pdu2_auth(struct rpc_context *rpc, int program, int version, int procedure, rpc_cb cb, void *private_data, zdrproc_t zdr_decode_fn, int zdr_decode_bufsize, size_t alloc_hint, int iovcnt_hint, const struct AUTH *auth)
 {
 	struct rpc_pdu *pdu;
 	int pdu_size;
@@ -419,6 +419,13 @@ struct rpc_pdu *rpc_allocate_pdu2(struct rpc_context *rpc, int program, int vers
 #endif /* HAVE_TLS */
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
+	if (auth == NULL) {
+		auth = rpc->auth;
+	}
+	if (auth == NULL) {
+		rpc_set_error(rpc, "No RPC authentication available for request");
+		return NULL;
+	}
 
 	/* Since we already know how much buffer we need for the decoding
 	 * we can just piggyback in the same alloc as for the pdu.
@@ -498,10 +505,10 @@ struct rpc_pdu *rpc_allocate_pdu2(struct rpc_context *rpc, int program, int vers
 		 */
 		pdu->do_not_retry                = TRUE;
 	} else {
-		pdu->msg.body.cbody.cred    = rpc->auth->ah_cred;
+		pdu->msg.body.cbody.cred    = auth->ah_cred;
 	}
 
-	pdu->msg.body.cbody.verf    = rpc->auth->ah_verf;
+	pdu->msg.body.cbody.verf    = auth->ah_verf;
 
 #ifdef HAVE_TLS
 	/* Should not be already set */
@@ -612,7 +619,15 @@ struct rpc_pdu *rpc_allocate_pdu2(struct rpc_context *rpc, int program, int vers
         zdr_destroy(&pdu->zdr);
  failed2:
         free(pdu);
-        return NULL;
+	return NULL;
+}
+
+struct rpc_pdu *rpc_allocate_pdu2(struct rpc_context *rpc, int program, int version, int procedure, rpc_cb cb, void *private_data, zdrproc_t zdr_decode_fn, int zdr_decode_bufsize, size_t alloc_hint, int iovcnt_hint)
+{
+	return rpc_allocate_pdu2_auth(rpc, program, version, procedure, cb,
+	                              private_data, zdr_decode_fn,
+	                              zdr_decode_bufsize, alloc_hint,
+	                              iovcnt_hint, NULL);
 }
 
 struct rpc_pdu *rpc_allocate_pdu(struct rpc_context *rpc, int program, int version, int procedure, rpc_cb cb, void *private_data, zdrproc_t zdr_decode_fn, int zdr_decode_bufsize)
