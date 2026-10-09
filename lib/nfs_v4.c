@@ -102,6 +102,7 @@
 #include "libnfs-zdr.h"
 #include "slist.h"
 #include "libnfs.h"
+#include "libnfs-object.h"
 #include "libnfs-raw.h"
 #include "libnfs-raw-nfs4.h"
 #include "libnfs-private.h"
@@ -168,6 +169,7 @@ struct nfs4_cb_data {
  */
 #define LOOKUP_FLAG_NO_FOLLOW    0x0001
 #define LOOKUP_FLAG_IS_STATVFS64 0x0002
+#define LOOKUP_FLAG_OPEN_FH      0x0008
 /*
  * Operate on the named attribute directory of the file the path names,
  * rather than on the file itself. OPENATTR is placed after the path has been
@@ -203,6 +205,7 @@ struct nfs4_cb_data {
         rpc_cb continue_cb;
 
         char *path; /* path to lookup */
+        struct nfs_fh base_fh;
         struct lookup_filler filler;
 
         /* Data we need when resolving a symlink in the path */
@@ -294,6 +297,7 @@ free_nfs4_cb_data(struct nfs4_cb_data *data)
         }
 #endif        
         free(data->path);
+        free(data->base_fh.val);
         free(data->filler.data);
         if (data->filler.blob0.val && data->filler.blob0.free) {
                 data->filler.blob0.free(data->filler.blob0.val);
@@ -1799,7 +1803,19 @@ nfs4_lookup_path_async(struct nfs_context *nfs,
                 return -1;
         }
 
-        if ((i = nfs4_allocate_op(nfs, &op, path,
+        if (data->base_fh.val) {
+                struct nfsfh base;
+
+                op = calloc(data->filler.max_op + 2, sizeof(*op));
+                if (op == NULL) {
+                        free(path);
+                        return -1;
+                }
+                memset(&base, 0, sizeof(base));
+                base.fh = data->base_fh;
+                i = nfs4_start_compound(nfs, op);
+                i += nfs4_op_putfh(nfs, &op[i], &base);
+        } else if ((i = nfs4_allocate_op(nfs, &op, path,
                                   data->filler.max_op +
                                   ((data->flags & LOOKUP_FLAG_OPENATTR) ?
                                    1 : 0))) < 0) {
@@ -2877,17 +2893,18 @@ nfs4_open_cb(struct rpc_context *rpc, int status, void *command_data,
                 return;
         }
 
-        /* Parse Access and check that we have the access that we need */
-        if ((i = nfs4_find_op(nfs, data, res, OP_ACCESS, "ACCESS")) < 0) {
-                return;
-        }
-        aresok = &res->resarray.resarray_val[i].nfs_resop4_u.opaccess.ACCESS4res_u.resok4;
-        if (aresok->supported != aresok->access) {
-                nfs_set_error(nfs, "Insufficient ACCESS. Wanted %08x but "
-                              "got %08x.", (int)aresok->access, (int)aresok->supported);
-                data->cb(-EINVAL, nfs, nfs_get_error(nfs), data->private_data);
-                free_nfs4_cb_data(data);
-                return;
+        /* Object OPEN is authorized by the server on the opened object. */
+        if (!data->base_fh.val) {
+                if ((i = nfs4_find_op(nfs, data, res, OP_ACCESS, "ACCESS")) < 0)
+                        return;
+                aresok = &res->resarray.resarray_val[i].nfs_resop4_u.opaccess.ACCESS4res_u.resok4;
+                if (aresok->supported != aresok->access) {
+                        nfs_set_error(nfs, "Insufficient ACCESS. Wanted %08x but "
+                                      "got %08x.", (int)aresok->access, (int)aresok->supported);
+                        data->cb(-EINVAL, nfs, nfs_get_error(nfs), data->private_data);
+                        free_nfs4_cb_data(data);
+                        return;
+                }
         }
 
         /* Parse GetFH */
@@ -3016,7 +3033,7 @@ nfs4_populate_open(struct nfs4_cb_data *data, nfs_argop4 *op)
         }
         
         /* Access */
-        i = nfs4_op_access(nfs, &op[0], access_mask);
+        i = data->base_fh.val ? 0 : nfs4_op_access(nfs, &op[0], access_mask);
 
         /* Open */
         op[i].argop = OP_OPEN;
@@ -3064,6 +3081,10 @@ nfs4_populate_open(struct nfs4_cb_data *data, nfs_argop4 *op)
                 strlen(data->filler.data);
         oargs->claim.open_claim4_u.file.utf8string_val =
                 data->filler.data;
+        if (data->flags & LOOKUP_FLAG_OPEN_FH) {
+                memset(&oargs->claim, 0, sizeof(oargs->claim));
+                oargs->claim.claim = CLAIM_FH;
+        }
 
         /* GetFH */
         i += nfs4_op_getfh(nfs, &op[i]);
@@ -6677,4 +6698,584 @@ nfs4_utime_async(struct nfs_context *nfs, const char *path,
 
         return nfs4_utimes_async_internal(nfs, path, 0, new_times,
                                           cb, private_data);
+}
+
+struct nfs4_object {
+        struct nfs_context *context;
+        struct nfsfh handle;
+};
+
+static int
+object_supported(struct nfs_context *nfs)
+{
+#ifdef HAVE_NFS4_2
+        if (nfs->nfsi->version != NFS_V4_2 || !nfs->nfsi->rootfh.len) {
+                nfs_set_error(nfs, "Object operations require a mounted NFSv4.2 context");
+                return 0;
+        }
+        return 1;
+#else
+        nfs_set_error(nfs, "NFSv4.2 support was not built into this library");
+        return 0;
+#endif
+}
+
+static int
+object_name_valid(const char *name)
+{
+        return name && *name && !strchr(name, '/') &&
+               strcmp(name, ".") && strcmp(name, "..");
+}
+
+static struct nfs4_object *
+object_copy(struct nfs_context *nfs, const struct nfs_fh *fh)
+{
+        struct nfs4_object *object;
+        if (!fh->len || fh->len > NFS4_FHSIZE) {
+                nfs_set_error(nfs, "Invalid object filehandle length");
+                return NULL;
+        }
+        object = calloc(1, sizeof(*object));
+        if (!object) {
+                nfs_set_error(nfs, "Out of memory allocating object");
+                return NULL;
+        }
+        object->handle.fh.val = malloc(fh->len);
+        if (!object->handle.fh.val) {
+                nfs_set_error(nfs, "Out of memory copying object filehandle");
+                free(object);
+                return NULL;
+        }
+        memcpy(object->handle.fh.val, fh->val, fh->len);
+        object->handle.fh.len = fh->len;
+        object->context = nfs;
+        return object;
+}
+
+struct nfs4_object *
+nfs4_object_root(struct nfs_context *nfs)
+{
+        if (!object_supported(nfs))
+                return NULL;
+        return object_copy(nfs, &nfs->nfsi->rootfh);
+}
+
+struct nfs4_object *
+nfs4_object_from_open(struct nfs_context *nfs, struct nfsfh *fh)
+{
+        if (!object_supported(nfs) || !fh)
+                return NULL;
+        return object_copy(nfs, &fh->fh);
+}
+
+void
+nfs4_object_free(struct nfs4_object *object)
+{
+        if (object) {
+                free(object->handle.fh.val);
+                free(object);
+        }
+}
+
+const void *
+nfs4_object_key(const struct nfs4_object *object, size_t *length)
+{
+        *length = object->handle.fh.len;
+        return object->handle.fh.val;
+}
+
+static struct nfs4_cb_data *
+object_request(struct nfs_context *nfs, const struct nfs4_object *object,
+               const char *name, nfs_cb cb, void *private_data, int *error)
+{
+        struct nfs4_cb_data *data;
+        *error = -EINVAL;
+        if (!object_supported(nfs) || !object || object->context != nfs ||
+            (name && !object_name_valid(name))) {
+                nfs_set_error(nfs, "Invalid object, context or component name");
+                return NULL;
+        }
+        *error = -ENOMEM;
+        data = init_cb_data_full_path(nfs, "/");
+        if (!data)
+                return NULL;
+        data->cb = cb;
+        data->private_data = private_data;
+        data->flags |= LOOKUP_FLAG_NO_FOLLOW;
+        data->base_fh.val = malloc(object->handle.fh.len);
+        data->filler.data = strdup(name ? name : "");
+        if (!data->base_fh.val || !data->filler.data) {
+                nfs_set_error(nfs, "Out of memory allocating object request");
+                free_nfs4_cb_data(data);
+                return NULL;
+        }
+        data->base_fh.len = object->handle.fh.len;
+        memcpy(data->base_fh.val, object->handle.fh.val, data->base_fh.len);
+        *error = 0;
+        return data;
+}
+
+static int
+object_submit(struct nfs4_cb_data *data, op_filler filler,
+               int max_op, rpc_cb cb)
+{
+        data->filler.func = filler;
+        data->filler.max_op = max_op;
+        if (nfs4_lookup_path_async(data->nfs, data, cb) < 0) {
+                free_nfs4_cb_data(data);
+                return -ENOMEM;
+        }
+        return 0;
+}
+
+static int
+object_lookup_ops(struct nfs4_cb_data *data, nfs_argop4 *op)
+{
+        int i = nfs4_op_lookup(data->nfs, op, data->filler.data);
+        i += nfs4_op_getfh(data->nfs, &op[i]);
+        i += nfs4_op_getattr(data->nfs, &op[i], standard_attributes, 2);
+        return i;
+}
+
+static void
+object_lookup_cb(struct rpc_context *rpc, int status, void *command_data,
+                  void *private_data)
+{
+        struct nfs4_cb_data *data = private_data;
+        struct nfs_context *nfs = data->nfs;
+        COMPOUND4res *res = command_data;
+        GETFH4resok *fh;
+        GETATTR4resok *attr;
+        struct nfs4_object_result result;
+        struct nfs_fh key;
+        int fi, ai;
+        (void)rpc;
+        if (check_nfs4_error(nfs, status, data, res, "OBJECT LOOKUP"))
+                return;
+        fi = nfs4_find_op(nfs, data, res, OP_GETFH, "GETFH");
+        if (fi < 0)
+                return;
+        ai = nfs4_find_op(nfs, data, res, OP_GETATTR, "GETATTR");
+        if (ai < 0)
+                return;
+        fh = &res->resarray.resarray_val[fi].nfs_resop4_u.opgetfh.GETFH4res_u.resok4;
+        attr = &res->resarray.resarray_val[ai].nfs_resop4_u.opgetattr.GETATTR4res_u.resok4;
+        memset(&result, 0, sizeof(result));
+        if (nfs_parse_attributes(nfs, data, &result.attributes, NULL, NULL,
+                                &attr->obj_attributes.attrmask,
+                                attr->obj_attributes.attr_vals.attrlist4_val,
+                                attr->obj_attributes.attr_vals.attrlist4_len) < 0 ||
+            !fh->object.nfs_fh4_len || fh->object.nfs_fh4_len > NFS4_FHSIZE) {
+                data->cb(-EINVAL, nfs, nfs_get_error(nfs), data->private_data);
+                free_nfs4_cb_data(data);
+                return;
+        }
+        key.len = fh->object.nfs_fh4_len;
+        key.val = fh->object.nfs_fh4_val;
+        result.object = object_copy(nfs, &key);
+        if (result.object)
+                data->cb(0, nfs, &result, data->private_data);
+        else
+                data->cb(-ENOMEM, nfs, nfs_get_error(nfs), data->private_data);
+        free_nfs4_cb_data(data);
+}
+
+int
+nfs4_object_lookup_async(struct nfs_context *nfs, const struct nfs4_object *parent,
+                         const char *name, nfs_cb cb, void *private_data)
+{
+        struct nfs4_cb_data *data;
+        int error;
+        if (!object_name_valid(name))
+                return -EINVAL;
+        data = object_request(nfs, parent, name, cb, private_data, &error);
+        if (!data)
+                return error;
+        return object_submit(data, object_lookup_ops, 3, object_lookup_cb);
+}
+
+int
+nfs4_object_getattr_async(struct nfs_context *nfs, const struct nfs4_object *object,
+                          nfs_cb cb, void *private_data)
+{
+        int ret;
+        if (!object || object->context != nfs)
+                return -EINVAL;
+        ret = nfs4_xfstat64_async(nfs, (struct nfsfh *)&object->handle, 0,
+                                 cb, private_data);
+        return ret < 0 ? -ENOMEM : 0;
+}
+
+static int
+object_open(struct nfs_context *nfs, const struct nfs4_object *object,
+             const char *name, int flags, int mode, nfs_cb cb, void *private_data)
+{
+        int error;
+        struct nfs4_cb_data *data = object_request(nfs, object, name, cb, private_data, &error);
+        uint32_t m;
+        if (!data)
+                return error;
+        if (!name)
+                data->flags |= LOOKUP_FLAG_OPEN_FH;
+        /* The kernel, not the path resolver, follows symlinks in object mode. */
+        flags |= O_NOFOLLOW;
+        if (!(flags & (O_WRONLY | O_RDWR)) || (flags & O_EXCL))
+                flags &= ~O_TRUNC;
+        if (flags & (O_TRUNC | O_EXCL)) {
+                data->filler.blob3.val = calloc(1, 12);
+                data->filler.blob3.free = free;
+                if (!data->filler.blob3.val) {
+                        free_nfs4_cb_data(data);
+                        return -ENOMEM;
+                }
+                if (flags & O_EXCL) {
+                        data->open_cb = nfs4_open_chmod_cb;
+                        m = htonl(mode);
+                        memcpy(data->filler.blob3.val, &m, sizeof(m));
+                } else {
+                        data->open_cb = nfs4_open_truncate_cb;
+                }
+        }
+#ifdef HAVE_MULTITHREADING
+        if (nfs->rpc->multithreading_enabled) {
+                nfs_mt_sem_wait(&nfs->nfsi->nfs4_open_call_sem);
+                data->flags |= MUTEX_HELD;
+        }
+#endif
+        error = nfs4_open_async_internal(nfs, data, flags, mode);
+        return error < 0 ? -ENOMEM : 0;
+}
+
+int
+nfs4_object_open_async(struct nfs_context *nfs, const struct nfs4_object *object,
+                       int flags, nfs_cb cb, void *private_data)
+{
+        if (flags & (O_CREAT | O_EXCL))
+                return -EINVAL;
+        return object_open(nfs, object, NULL, flags, 0, cb, private_data);
+}
+
+int
+nfs4_object_openat_async(struct nfs_context *nfs, const struct nfs4_object *parent,
+                         const char *name, int flags, int mode,
+                         nfs_cb cb, void *private_data)
+{
+        if (!object_name_valid(name))
+                return -EINVAL;
+        return object_open(nfs, parent, name, flags, mode, cb, private_data);
+}
+
+int
+nfs4_object_opendir_async(struct nfs_context *nfs, const struct nfs4_object *object,
+                          nfs_cb cb, void *private_data)
+{
+        int error;
+        struct nfs4_cb_data *data = object_request(nfs, object, NULL, cb, private_data, &error);
+        if (!data)
+                return error;
+        data->filler.blob1.val = calloc(1, sizeof(struct nfsdir));
+        data->filler.blob1.free = (blob_free)nfs_free_nfsdir;
+        data->filler.blob2.val = calloc(1, sizeof(uint64_t));
+        data->filler.blob2.free = free;
+        if (!data->filler.blob1.val || !data->filler.blob2.val) {
+                free_nfs4_cb_data(data);
+                return -ENOMEM;
+        }
+        return object_submit(data, nfs4_populate_readdir, 2, nfs4_opendir_cb);
+}
+
+int
+nfs4_object_readlink_async(struct nfs_context *nfs, const struct nfs4_object *object,
+                           nfs_cb cb, void *private_data)
+{
+        int error;
+        struct nfs4_cb_data *data = object_request(nfs, object, NULL, cb, private_data, &error);
+        if (!data)
+                return error;
+        return object_submit(data, nfs4_populate_readlink, 1, nfs4_readlink_cb);
+}
+
+static int
+object_create_ops(struct nfs4_cb_data *data, nfs_argop4 *op)
+{
+        int *creation = data->filler.blob3.val;
+        int i = nfs4_op_create(data->nfs, op, data->filler.data, creation[0],
+                              &data->filler.blob0, &data->filler.blob1,
+                              data->filler.blob2.val, creation[1]);
+        i += nfs4_op_getfh(data->nfs, &op[i]);
+        i += nfs4_op_getattr(data->nfs, &op[i], standard_attributes, 2);
+        return i;
+}
+
+int
+nfs4_object_create_async(struct nfs_context *nfs, const struct nfs4_object *parent,
+                         const char *name, int mode, int dev, const char *link_target,
+                         nfs_cb cb, void *private_data)
+{
+        struct nfs4_cb_data *data;
+        uint32_t *mask, *value;
+        int type, *creation, error;
+        switch (mode & S_IFMT) {
+        case S_IFDIR: type = NF4DIR; break;
+        case S_IFLNK: type = NF4LNK; break;
+        case S_IFCHR: type = NF4CHR; break;
+        case S_IFBLK: type = NF4BLK; break;
+        case S_IFIFO: type = NF4FIFO; break;
+        case S_IFSOCK: type = NF4SOCK; break;
+        default: return -EINVAL;
+        }
+        if (!object_name_valid(name) || (type == NF4LNK && !link_target))
+                return -EINVAL;
+        data = object_request(nfs, parent, name, cb, private_data, &error);
+        if (!data)
+                return error;
+        mask = data->filler.blob0.val = calloc(2, sizeof(*mask));
+        data->filler.blob0.len = 2;
+        data->filler.blob0.free = free;
+        value = data->filler.blob1.val = malloc(sizeof(*value));
+        data->filler.blob1.len = sizeof(*value);
+        data->filler.blob1.free = free;
+        creation = data->filler.blob3.val = calloc(2, sizeof(*creation));
+        data->filler.blob3.free = free;
+        if (link_target) {
+                data->filler.blob2.val = strdup(link_target);
+                data->filler.blob2.free = free;
+        }
+        if (!mask || !value || !creation || (link_target && !data->filler.blob2.val)) {
+                free_nfs4_cb_data(data);
+                return -ENOMEM;
+        }
+        mask[1] = 1U << (FATTR4_MODE - 32);
+        *value = htonl(mode & 07777);
+        creation[0] = type;
+        creation[1] = dev;
+        return object_submit(data, object_create_ops, 3, object_lookup_cb);
+}
+
+int
+nfs4_object_remove_async(struct nfs_context *nfs, const struct nfs4_object *parent,
+                         const char *name, nfs_cb cb, void *private_data)
+{
+        struct nfs4_cb_data *data;
+        int error;
+        if (!object_name_valid(name))
+                return -EINVAL;
+        data = object_request(nfs, parent, name, cb, private_data, &error);
+        if (!data)
+                return error;
+        return object_submit(data, nfs4_populate_remove, 1, nfs4_remove_cb);
+}
+
+static int
+object_second_handle(struct nfs4_cb_data *data, const struct nfs4_object *object)
+{
+        struct nfsfh *fh;
+        if (!object || object->context != data->nfs)
+                return -EINVAL;
+        fh = calloc(1, sizeof(*fh));
+        if (!fh)
+                return -ENOMEM;
+        data->filler.blob0.val = fh;
+        data->filler.blob0.free = (blob_free)nfs_free_nfsfh;
+        fh->fh.len = object->handle.fh.len;
+        fh->fh.val = malloc(fh->fh.len);
+        if (!fh->fh.val)
+                return -ENOMEM;
+        memcpy(fh->fh.val, object->handle.fh.val, fh->fh.len);
+        return 0;
+}
+
+int
+nfs4_object_rename_async(struct nfs_context *nfs, const struct nfs4_object *parent,
+                         const char *name, const struct nfs4_object *newparent,
+                         const char *newname, nfs_cb cb, void *private_data)
+{
+        struct nfs4_cb_data *data;
+        int ret;
+        if (!object_name_valid(name) || !object_name_valid(newname))
+                return -EINVAL;
+        data = object_request(nfs, parent, name, cb, private_data, &ret);
+        if (!data)
+                return ret;
+        ret = object_second_handle(data, newparent);
+        data->filler.blob1.val = strdup(newname);
+        data->filler.blob1.free = free;
+        if (ret < 0 || !data->filler.blob1.val) {
+                free_nfs4_cb_data(data);
+                return ret < 0 ? ret : -ENOMEM;
+        }
+        return object_submit(data, nfs4_populate_rename, 3, nfs4_rename_2_cb);
+}
+
+int
+nfs4_object_link_async(struct nfs_context *nfs, const struct nfs4_object *object,
+                       const struct nfs4_object *parent, const char *name,
+                       nfs_cb cb, void *private_data)
+{
+        struct nfs4_cb_data *data;
+        int ret;
+        if (!object_name_valid(name))
+                return -EINVAL;
+        data = object_request(nfs, object, name, cb, private_data, &ret);
+        if (!data)
+                return ret;
+        ret = object_second_handle(data, parent);
+        if (ret < 0) {
+                free_nfs4_cb_data(data);
+                return ret;
+        }
+        return object_submit(data, nfs4_populate_link, 3, nfs4_link_2_cb);
+}
+
+static void
+object_access_cb(struct rpc_context *rpc, int status, void *command_data,
+                  void *private_data)
+{
+        struct nfs4_cb_data *data = private_data;
+        struct nfs_context *nfs = data->nfs;
+        COMPOUND4res *res = command_data;
+        ACCESS4resok *access;
+        unsigned mode = data->filler.flags;
+        int i, allowed;
+        (void)rpc;
+        if (check_nfs4_error(nfs, status, data, res, "OBJECT ACCESS")) return;
+        i = nfs4_find_op(nfs, data, res, OP_ACCESS, "ACCESS");
+        if (i < 0) return;
+        access = &res->resarray.resarray_val[i].nfs_resop4_u.opaccess.ACCESS4res_u.resok4;
+        allowed = (!(mode & R_OK) || (access->access & ACCESS4_READ)) &&
+                  (!(mode & W_OK) || (access->access & (ACCESS4_MODIFY | ACCESS4_EXTEND)) ==
+                                                (ACCESS4_MODIFY | ACCESS4_EXTEND)) &&
+                  (!(mode & X_OK) || (access->access & (ACCESS4_LOOKUP | ACCESS4_EXECUTE)));
+        data->cb(allowed ? 0 : -EACCES, nfs, NULL, data->private_data);
+        free_nfs4_cb_data(data);
+}
+
+int
+nfs4_object_access_async(struct nfs_context *nfs, const struct nfs4_object *object,
+                         int mode, nfs_cb cb, void *private_data)
+{
+        int error;
+        struct nfs4_cb_data *data;
+        uint32_t *mask;
+        if (mode & ~(R_OK | W_OK | X_OK)) return -EINVAL;
+        data = object_request(nfs, object, NULL, cb, private_data, &error);
+        if (!data)
+                return error;
+        mask = data->filler.blob3.val = calloc(1, sizeof(*mask));
+        data->filler.blob3.free = free;
+        if (!mask) {
+                free_nfs4_cb_data(data);
+                return -ENOMEM;
+        }
+        if (mode & R_OK) *mask |= ACCESS4_READ;
+        if (mode & W_OK) *mask |= ACCESS4_MODIFY | ACCESS4_EXTEND;
+        /* Servers use LOOKUP for directories and EXECUTE for regular files. */
+        if (mode & X_OK) *mask |= ACCESS4_LOOKUP | ACCESS4_EXECUTE;
+        data->filler.flags = mode;
+        return object_submit(data, nfs4_populate_access, 1, object_access_cb);
+}
+
+static int
+object_setattr_ops(struct nfs4_cb_data *data, nfs_argop4 *op)
+{
+        SETATTR4args *args = &op[0].nfs_argop4_u.opsetattr;
+        struct stateid *state = data->filler.blob2.val;
+        memset(op, 0, sizeof(*op));
+        op[0].argop = OP_SETATTR;
+        args->stateid.seqid = state->seqid;
+        memcpy(args->stateid.other, state->other, sizeof(state->other));
+        args->obj_attributes.attrmask.bitmap4_len = data->filler.blob0.len;
+        args->obj_attributes.attrmask.bitmap4_val = data->filler.blob0.val;
+        args->obj_attributes.attr_vals.attrlist4_len = data->filler.blob1.len;
+        args->obj_attributes.attr_vals.attrlist4_val = data->filler.blob1.val;
+        return 1 + nfs4_op_getattr(data->nfs, &op[1], standard_attributes, 2);
+}
+
+int
+nfs4_object_setattr_async(struct nfs_context *nfs, const struct nfs4_object *object,
+                          struct nfsfh *open_fh, const struct nfs_stat_64 *st,
+                          unsigned mask, nfs_cb cb, void *private_data)
+{
+        struct nfs4_cb_data *data;
+        struct stateid *state;
+        uint32_t *bitmap, u32;
+        uint64_t u64;
+        char owner[32], *owner_ptr;
+        ZDR zdr;
+        int ok = 1, error;
+        if (!st || (mask & ~255U) ||
+            ((mask & NFS4_OBJECT_ATIME) && st->nfs_atime_nsec >= 1000000000) ||
+            ((mask & NFS4_OBJECT_MTIME) && st->nfs_mtime_nsec >= 1000000000))
+                return -EINVAL;
+        if (open_fh && (!object || open_fh->fh.len != object->handle.fh.len ||
+                       memcmp(open_fh->fh.val, object->handle.fh.val, open_fh->fh.len)))
+                return -EINVAL;
+        data = object_request(nfs, object, NULL, cb, private_data, &error);
+        if (!data)
+                return error;
+        bitmap = data->filler.blob0.val = calloc(2, sizeof(*bitmap));
+        data->filler.blob0.len = 2;
+        data->filler.blob0.free = free;
+        data->filler.blob1.val = calloc(1, 160);
+        data->filler.blob1.free = free;
+        state = data->filler.blob2.val = calloc(1, sizeof(*state));
+        data->filler.blob2.free = free;
+        if (!bitmap || !data->filler.blob1.val || !state) {
+                free_nfs4_cb_data(data);
+                return -ENOMEM;
+        }
+        if (open_fh)
+                *state = open_fh->stateid;
+        zdrmem_create(&zdr, data->filler.blob1.val, 160, ZDR_ENCODE);
+        if (mask & NFS4_OBJECT_SIZE) {
+                bitmap[0] |= 1U << FATTR4_SIZE;
+                u64 = st->nfs_size;
+                ok &= zdr_uint64_t(&zdr, &u64);
+        }
+        if (mask & NFS4_OBJECT_MODE) {
+                bitmap[1] |= 1U << (FATTR4_MODE - 32);
+                u32 = st->nfs_mode & 07777;
+                ok &= zdr_uint32_t(&zdr, &u32);
+        }
+        if (mask & NFS4_OBJECT_UID) {
+                bitmap[1] |= 1U << (FATTR4_OWNER - 32);
+                snprintf(owner, sizeof(owner), "%" PRIu64, st->nfs_uid);
+                owner_ptr = owner;
+                ok &= zdr_string(&zdr, &owner_ptr, sizeof(owner) - 1);
+        }
+        if (mask & NFS4_OBJECT_GID) {
+                bitmap[1] |= 1U << (FATTR4_OWNER_GROUP - 32);
+                snprintf(owner, sizeof(owner), "%" PRIu64, st->nfs_gid);
+                owner_ptr = owner;
+                ok &= zdr_string(&zdr, &owner_ptr, sizeof(owner) - 1);
+        }
+        if (mask & (NFS4_OBJECT_ATIME | NFS4_OBJECT_ATIME_NOW)) {
+                bitmap[1] |= 1U << (FATTR4_TIME_ACCESS_SET - 32);
+                u32 = mask & NFS4_OBJECT_ATIME_NOW ? SET_TO_SERVER_TIME4 : SET_TO_CLIENT_TIME4;
+                ok &= zdr_uint32_t(&zdr, &u32);
+                if (u32 == SET_TO_CLIENT_TIME4) {
+                        u64 = st->nfs_atime;
+                        u32 = st->nfs_atime_nsec;
+                        ok &= zdr_uint64_t(&zdr, &u64);
+                        ok &= zdr_uint32_t(&zdr, &u32);
+                }
+        }
+        if (mask & (NFS4_OBJECT_MTIME | NFS4_OBJECT_MTIME_NOW)) {
+                bitmap[1] |= 1U << (FATTR4_TIME_MODIFY_SET - 32);
+                u32 = mask & NFS4_OBJECT_MTIME_NOW ? SET_TO_SERVER_TIME4 : SET_TO_CLIENT_TIME4;
+                ok &= zdr_uint32_t(&zdr, &u32);
+                if (u32 == SET_TO_CLIENT_TIME4) {
+                        u64 = st->nfs_mtime;
+                        u32 = st->nfs_mtime_nsec;
+                        ok &= zdr_uint64_t(&zdr, &u64);
+                        ok &= zdr_uint32_t(&zdr, &u32);
+                }
+        }
+        data->filler.blob1.len = zdr_getpos(&zdr);
+        zdr_destroy(&zdr);
+        if (!ok) {
+                free_nfs4_cb_data(data);
+                return -EINVAL;
+        }
+        return object_submit(data, object_setattr_ops, 2, nfs4_xstat64_cb);
 }
