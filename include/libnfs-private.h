@@ -386,6 +386,12 @@ struct rpc_context {
 	int nfs40_renew_enabled;
 	int nfs40_renew_pending;
 	uint32_t nfs40_renew_epoch;
+	uint32_t nfs40_renew_xid;
+	uint64_t nfs40_renew_backoff;
+#ifdef HAVE_MULTITHREADING
+	/* Never held while taking rpc_mutex; the RENEW callback can run under it. */
+	libnfs_mutex_t nfs40_renew_mutex;
+#endif /* HAVE_MULTITHREADING */
 	uint32_t xid;
 
         /*
@@ -895,6 +901,7 @@ int rpc_queue_pdu2(struct rpc_context *rpc, struct rpc_pdu *pdu, int prio);
 void rpc_wakeup_service_thread(struct rpc_context *rpc);
 int rpc_process_pdu(struct rpc_context *rpc, char *buf, int size);
 struct rpc_pdu *rpc_find_pdu(struct rpc_context *rpc, uint32_t xid);
+int rpc_cancel_sent_pdu(struct rpc_context *rpc, uint32_t xid);
 void rpc_error_all_pdus(struct rpc_context *rpc, const char *error);
 
 /*
@@ -1328,6 +1335,7 @@ int rpc_nfs40_save_renew_auth(struct rpc_context *rpc);
 int nfs4_parse_mount_rwmax(struct nfs_context *nfs, GETATTR4resok *attrs,
                             uint32_t *lease_seconds);
 void rpc_nfs40_stop_renew(struct rpc_context *rpc);
+int rpc_nfs40_renew_delay(struct rpc_context *rpc);
 void rpc_nfs40_start_renew(struct rpc_context *rpc, uint64_t clientid,
                            uint32_t lease_seconds);
 struct rpc_pdu *rpc_nfs40_renew_task(struct rpc_context *rpc, rpc_cb cb,

@@ -55,7 +55,6 @@
 #include <assert.h>
 #include <fcntl.h>
 #include <time.h>
-#include <limits.h>
 #ifdef HAVE_SYS_EVENTFD_H
 #include <sys/eventfd.h>
 #endif
@@ -163,6 +162,7 @@ struct rpc_context *rpc_init_context(void)
 
 #ifdef HAVE_MULTITHREADING
 	nfs_mt_mutex_init(&rpc->rpc_mutex);
+	nfs_mt_mutex_init(&rpc->nfs40_renew_mutex);
 #ifdef HAVE_NFS4_2
 	nfs4_session_mutex_init(rpc);
 #endif /* HAVE_NFS4_2 */
@@ -276,6 +276,7 @@ struct rpc_context *rpc_init_server_context(int s)
 
 #ifdef HAVE_MULTITHREADING
         nfs_mt_mutex_init(&rpc->rpc_mutex);
+        nfs_mt_mutex_init(&rpc->nfs40_renew_mutex);
 #ifdef HAVE_NFS4_2
         nfs4_session_mutex_init(rpc);
 #endif /* HAVE_NFS4_2 */
@@ -628,6 +629,7 @@ void rpc_destroy_context(struct rpc_context *rpc)
 {
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
+	rpc_nfs40_stop_renew(rpc);
 	rpc_purge_all_pdus(rpc, RPC_STATUS_CANCEL, NULL);
 	if (rpc->nfs40_renew_auth) {
 		auth_destroy(rpc->nfs40_renew_auth);
@@ -667,6 +669,7 @@ void rpc_destroy_context(struct rpc_context *rpc)
 	rpc->magic = 0;
 #ifdef HAVE_MULTITHREADING
         nfs_mt_mutex_destroy(&rpc->rpc_mutex);
+        nfs_mt_mutex_destroy(&rpc->nfs40_renew_mutex);
 #ifndef HAVE_STDATOMIC_H
         nfs_mt_mutex_destroy(&rpc->atomic_int_mutex);
 #endif
@@ -697,9 +700,13 @@ int rpc_nfs40_save_renew_auth(struct rpc_context *rpc)
 		return 0;
 	}
 #endif
+	if (rpc->auth == NULL) {
+		rpc_set_error(rpc, "No RPC authentication for NFSv4.0 lease renewal");
+		return -EINVAL;
+	}
 	saved = calloc(1, sizeof(*saved));
 	if (saved == NULL) {
-		return -1;
+		return -ENOMEM;
 	}
 	saved->ah_cred = rpc->auth->ah_cred;
 	saved->ah_verf = rpc->auth->ah_verf;
@@ -709,7 +716,7 @@ int rpc_nfs40_save_renew_auth(struct rpc_context *rpc)
 		saved->ah_cred.oa_base = malloc(rpc->auth->ah_cred.oa_length);
 		if (saved->ah_cred.oa_base == NULL) {
 			auth_destroy(saved);
-			return -1;
+			return -ENOMEM;
 		}
 		memcpy(saved->ah_cred.oa_base, rpc->auth->ah_cred.oa_base,
 		       rpc->auth->ah_cred.oa_length);
@@ -718,7 +725,7 @@ int rpc_nfs40_save_renew_auth(struct rpc_context *rpc)
 		saved->ah_verf.oa_base = malloc(rpc->auth->ah_verf.oa_length);
 		if (saved->ah_verf.oa_base == NULL) {
 			auth_destroy(saved);
-			return -1;
+			return -ENOMEM;
 		}
 		memcpy(saved->ah_verf.oa_base, rpc->auth->ah_verf.oa_base,
 		       rpc->auth->ah_verf.oa_length);
@@ -756,8 +763,7 @@ int rpc_get_poll_timeout(struct rpc_context *rpc)
 #ifdef HAVE_NFS4_2
 	int session_delay;
 #endif
-	int delay;
-	uint64_t now, remaining;
+	int delay, renew_delay;
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 	delay = rpc->poll_timeout;
@@ -769,17 +775,9 @@ int rpc_get_poll_timeout(struct rpc_context *rpc)
 	}
 #endif /* HAVE_NFS4_2 */
 
-	if (rpc->is_connected && rpc->nfs40_renew_enabled &&
-	    !rpc->nfs40_renew_pending) {
-		now = rpc_current_time();
-		remaining = rpc->nfs40_renew_due > now ?
-		            rpc->nfs40_renew_due - now : 0;
-		if (remaining <= INT_MAX &&
-		    (delay < 0 || remaining < (uint64_t)delay)) {
-			delay = (int)remaining;
-		} else if (delay < 0) {
-			delay = INT_MAX;
-		}
+	renew_delay = rpc_nfs40_renew_delay(rpc);
+	if (renew_delay >= 0 && (delay < 0 || renew_delay < delay)) {
+		delay = renew_delay;
 	}
 	return delay;
 }

@@ -1886,11 +1886,22 @@ nfs4_parse_mount_rwmax(struct nfs_context *nfs, GETATTR4resok *attrs,
         }
 
         if (nfs->nfsi->version == NFS_V4) {
+                bitmap4 *mask = &attrs->obj_attributes.attrmask;
                 uint32_t wire_lease;
-                if (attrs->obj_attributes.attrmask.bitmap4_len != 1 ||
-                    attrs->obj_attributes.attrmask.bitmap4_val == NULL ||
-                    attrs->obj_attributes.attrmask.bitmap4_val[0] !=
-                            rwmax_lease_attributes[0] ||
+                uint32_t w;
+
+                if (mask->bitmap4_len < 1 || mask->bitmap4_val == NULL) {
+                        nfs_set_error(nfs, "NFSv4.0 mount: invalid lease_time attributes");
+                        return -1;
+                }
+                /* Trailing zero words are legal padding. */
+                for (w = 1; w < mask->bitmap4_len; w++) {
+                        if (mask->bitmap4_val[w]) {
+                                break;
+                        }
+                }
+                if (w < mask->bitmap4_len ||
+                    mask->bitmap4_val[0] != rwmax_lease_attributes[0] ||
                     len != 20) {
                         nfs_set_error(nfs, "NFSv4.0 mount: invalid lease_time attributes");
                         return -1;
@@ -2133,7 +2144,7 @@ nfs4_mount_1_cb(struct rpc_context *rpc, int status, void *command_data,
         struct nfs_context *nfs = data->nfs;
         COMPOUND4args args;
         nfs_argop4 op[1 + 1];
-        int i;
+        int i, ret;
 
         assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
@@ -2141,9 +2152,11 @@ nfs4_mount_1_cb(struct rpc_context *rpc, int status, void *command_data,
                 return;
         }
 
-        if (rpc_nfs40_save_renew_auth(rpc) < 0) {
-                nfs_set_error(nfs, "Failed to save NFSv4.0 renewal credentials");
-                data->cb(-ENOMEM, nfs, nfs_get_error(nfs), data->private_data);
+        ret = rpc_nfs40_save_renew_auth(rpc);
+        if (ret < 0) {
+                nfs_set_error(nfs, "Failed to save NFSv4.0 renewal "
+                              "credentials. %s", rpc_get_error(rpc));
+                data->cb(ret, nfs, nfs_get_error(nfs), data->private_data);
                 free_nfs4_cb_data(data);
                 return;
         }

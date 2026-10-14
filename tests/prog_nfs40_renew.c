@@ -59,6 +59,19 @@ static void test_mount_attributes(void)
         wire[0] = htonl(90);
         attrs.obj_attributes.attr_vals.attrlist4_len--;
         CHECK(nfs4_parse_mount_rwmax(nfs, &attrs, &lease) < 0);
+        attrs.obj_attributes.attr_vals.attrlist4_len++;
+        {
+                uint32_t padded[3] = { bitmap, 0, 0 };
+                attrs.obj_attributes.attrmask.bitmap4_len = 3;
+                attrs.obj_attributes.attrmask.bitmap4_val = padded;
+                lease = 0;
+                CHECK(nfs4_parse_mount_rwmax(nfs, &attrs, &lease) == 0);
+                CHECK(lease == 90);
+                padded[2] = 1;
+                CHECK(nfs4_parse_mount_rwmax(nfs, &attrs, &lease) < 0);
+                attrs.obj_attributes.attrmask.bitmap4_len = 1;
+                attrs.obj_attributes.attrmask.bitmap4_val = &bitmap;
+        }
 #ifdef HAVE_NFS4_2
         nfs->nfsi->version = NFS_V4_2;
         bitmap &= ~(1u << FATTR4_LEASE_TIME);
@@ -168,7 +181,7 @@ static void test_renewal(void)
                 CHECK(rpc_get_poll_timeout(rpc) == 0);
                 CHECK(rpc_service(rpc, 0) == 0);
                 CHECK(rpc->nfs40_renew_pending);
-                CHECK(rpc_get_poll_timeout(rpc) == -1);
+                CHECK(rpc_get_poll_timeout(rpc) > 0);
                 CHECK(rpc_service(rpc, 0) == 0);
                 xid = receive_renew(rpc, pair[1], rpc->nfs40_clientid,
                                     rpc->nfs40_renew_auth);
@@ -176,6 +189,42 @@ static void test_renewal(void)
                 CHECK(!rpc->nfs40_renew_pending);
                 CHECK(rpc->nfs40_renew_enabled == (i < 3));
                 if (i < 3) CHECK(rpc_get_poll_timeout(rpc) > 0);
+                if (i == 2) CHECK(rpc->nfs40_renew_due <=
+                                  rpc_current_time() + 1000);
+                if (i < 2) CHECK(rpc->nfs40_renew_due >
+                                 rpc_current_time() + 1000);
+        }
+        {
+                uint32_t stale, fresh;
+                rpc_nfs40_start_renew(rpc, 1, 90);
+                rpc->nfs40_renew_due = rpc_current_time();
+                CHECK(rpc_service(rpc, 0) == 0 && rpc->nfs40_renew_pending);
+                stale = receive_renew(rpc, pair[1], 1, rpc->nfs40_renew_auth);
+                rpc->nfs40_renew_due = rpc_current_time();
+                CHECK(rpc_service(rpc, 0) == 0 && rpc->nfs40_renew_pending);
+                CHECK(rpc_queue_length(rpc) == 1);
+                fresh = receive_renew(rpc, pair[1], 1, rpc->nfs40_renew_auth);
+                CHECK(stale != fresh);
+                reply_renew(rpc, pair[1], stale, NFS4_OK);
+                CHECK(rpc->nfs40_renew_pending);
+                reply_renew(rpc, pair[1], fresh, NFS4_OK);
+                CHECK(!rpc->nfs40_renew_pending);
+                CHECK(rpc_queue_length(rpc) == 0);
+        }
+        {
+                uint64_t now;
+                rpc_nfs40_start_renew(rpc, 1, 90);
+                for (i = 0; i < 2; i++) {
+                        rpc->nfs40_renew_due = rpc_current_time();
+                        CHECK(rpc_service(rpc, 0) == 0);
+                        xid = receive_renew(rpc, pair[1], 1,
+                                            rpc->nfs40_renew_auth);
+                        reply_renew(rpc, pair[1], xid, NFS4ERR_DELAY);
+                        now = rpc_current_time();
+                        CHECK(rpc->nfs40_renew_due > now + 1000 * i);
+                        CHECK(rpc->nfs40_renew_due <= now + 1000 * (i + 1));
+                }
+                CHECK(rpc->nfs40_renew_backoff == 2000);
         }
         {
                 struct AUTH *saved = rpc->nfs40_renew_auth;
@@ -199,6 +248,18 @@ static void test_renewal(void)
         CHECK(rpc_disconnect(rpc, "test disconnect") == 0);
         CHECK(!rpc->nfs40_renew_enabled);
         close(pair[1]);
+        rpc_destroy_context(rpc);
+}
+
+static void test_no_auth(void)
+{
+        struct rpc_context *rpc = rpc_init_context();
+        struct AUTH *current;
+        CHECK(rpc != NULL);
+        current = rpc->auth;
+        rpc->auth = NULL;
+        CHECK(rpc_nfs40_save_renew_auth(rpc) < 0);
+        rpc->auth = current;
         rpc_destroy_context(rpc);
 }
 
@@ -244,6 +305,7 @@ int main(void)
 {
         test_mount_attributes();
         test_renewal();
+        test_no_auth();
         test_destroy_pending();
         test_unmount();
         puts("PASS: NFSv4.0 lease renewal");

@@ -1445,7 +1445,8 @@ static int rpc_process_call(struct rpc_context *rpc, ZDR *zdr)
         return rpc_send_error_reply(rpc, &c.call, PROC_UNAVAIL, 0 ,0);
 }
 
-struct rpc_pdu *rpc_find_pdu(struct rpc_context *rpc, uint32_t xid)
+static struct rpc_pdu *rpc_find_pdu_in(struct rpc_context *rpc, uint32_t xid,
+                                       int sent_only)
 {
 	struct rpc_pdu *pdu, *prev_pdu;
 	struct rpc_queue *q;
@@ -1492,7 +1493,7 @@ struct rpc_pdu *rpc_find_pdu(struct rpc_context *rpc, uint32_t xid)
 		}
                 break;
         }
-        if (pdu) {
+        if (pdu || sent_only) {
                 goto finished;
         }
 
@@ -1531,7 +1532,7 @@ struct rpc_pdu *rpc_find_pdu(struct rpc_context *rpc, uint32_t xid)
         
  finished:
 #ifdef HAVE_NFS4_2
-        if (!pdu) {
+        if (!pdu && !sent_only) {
                 for (pdu = rpc->nfs4_delay_queue.head; pdu; pdu = pdu->next) {
                         if (pdu->xid == xid) {
                                 rpc_remove_pdu_from_queue(&rpc->nfs4_delay_queue, pdu);
@@ -1552,6 +1553,25 @@ struct rpc_pdu *rpc_find_pdu(struct rpc_context *rpc, uint32_t xid)
 #endif /* HAVE_MULTITHREADING */
 
         return pdu;
+}
+
+struct rpc_pdu *rpc_find_pdu(struct rpc_context *rpc, uint32_t xid)
+{
+        return rpc_find_pdu_in(rpc, xid, 0);
+}
+
+/* Unsent pdus are left alone: the outqueue head may be half written. */
+int rpc_cancel_sent_pdu(struct rpc_context *rpc, uint32_t xid)
+{
+        struct rpc_pdu *pdu;
+
+        pdu = rpc_find_pdu_in(rpc, xid, 1);
+        if (pdu) {
+                rpc_free_pdu(rpc, pdu);
+                return 0;
+        }
+
+        return -ENOENT;
 }
 
 int rpc_cancel_pdu(struct rpc_context *rpc, struct rpc_pdu *pdu)

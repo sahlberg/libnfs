@@ -970,8 +970,6 @@ static struct rpc_pdu *rpc_nfs4_compound_task_auth(struct rpc_context *rpc,
                                sizeof(COMPOUND4res),
                                alloc_hint, 0, auth);
 	if (pdu == NULL) {
-		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu for "
-                              "NFS4/COMPOUND call");
 		return NULL;
 	}
 

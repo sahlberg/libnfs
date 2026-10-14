@@ -90,6 +90,7 @@
 #include <string.h>
 #include <errno.h>
 #include <time.h>
+#include <limits.h>
 #include <sys/types.h>
 #include "libnfs-zdr.h"
 #include "libnfs.h"
@@ -1605,79 +1606,194 @@ rpc_nfs4_maybe_renew_session(struct rpc_context *rpc)
 }
 #endif /* HAVE_NFS4_2 */
 
-void rpc_nfs40_stop_renew(struct rpc_context *rpc)
+static void
+nfs40_renew_lock(struct rpc_context *rpc)
+{
+#ifdef HAVE_MULTITHREADING
+	if (rpc->multithreading_enabled) {
+		nfs_mt_mutex_lock(&rpc->nfs40_renew_mutex);
+	}
+#endif /* HAVE_MULTITHREADING */
+	(void)rpc;
+}
+
+static void
+nfs40_renew_unlock(struct rpc_context *rpc)
+{
+#ifdef HAVE_MULTITHREADING
+	if (rpc->multithreading_enabled) {
+		nfs_mt_mutex_unlock(&rpc->nfs40_renew_mutex);
+	}
+#endif /* HAVE_MULTITHREADING */
+	(void)rpc;
+}
+
+/* Doubles from 1s on each consecutive failure, capped at the interval. */
+static uint64_t
+nfs40_renew_retry(struct rpc_context *rpc)
+{
+	uint64_t retry = rpc->nfs40_renew_backoff ?
+	                 rpc->nfs40_renew_backoff * 2 : 1000;
+
+	if (retry > rpc->nfs40_renew_interval) {
+		retry = rpc->nfs40_renew_interval;
+	}
+	rpc->nfs40_renew_backoff = retry;
+	return retry;
+}
+
+static void
+nfs40_stop_renew_locked(struct rpc_context *rpc)
 {
 	rpc->nfs40_renew_enabled = 0;
 	rpc->nfs40_renew_pending = 0;
 	rpc->nfs40_renew_due = 0;
+	rpc->nfs40_renew_backoff = 0;
 	rpc->nfs40_renew_epoch++;
+}
+
+void rpc_nfs40_stop_renew(struct rpc_context *rpc)
+{
+	nfs40_renew_lock(rpc);
+	nfs40_stop_renew_locked(rpc);
+	nfs40_renew_unlock(rpc);
 }
 
 void rpc_nfs40_start_renew(struct rpc_context *rpc, uint64_t clientid,
                            uint32_t lease_seconds)
 {
-	rpc_nfs40_stop_renew(rpc);
+	nfs40_renew_lock(rpc);
+	nfs40_stop_renew_locked(rpc);
 	rpc->nfs40_clientid = clientid;
 	rpc->nfs40_renew_interval = (uint64_t)lease_seconds * 500;
 	rpc->nfs40_renew_due = rpc_current_time() + rpc->nfs40_renew_interval;
 	rpc->nfs40_renew_enabled = 1;
+	nfs40_renew_unlock(rpc);
+}
+
+/* Milliseconds until rpc_service() next has renewal work, or -1 for none. */
+int rpc_nfs40_renew_delay(struct rpc_context *rpc)
+{
+	uint64_t now, remaining;
+	int delay = -1;
+
+	if (!rpc->nfs40_renew_enabled) {
+		return -1;
+	}
+	nfs40_renew_lock(rpc);
+	if (rpc->is_connected && rpc->nfs40_renew_enabled) {
+		now = rpc_current_time();
+		remaining = rpc->nfs40_renew_due > now ?
+		            rpc->nfs40_renew_due - now : 0;
+		delay = remaining < INT_MAX ? (int)remaining : INT_MAX;
+	}
+	nfs40_renew_unlock(rpc);
+	return delay;
 }
 
 static void
 nfs40_renew_cb(struct rpc_context *rpc, int status, void *command_data,
                void *private_data)
 {
-	COMPOUND4res *res = command_data;
+	COMPOUND4res *res = NULL;
 	uint32_t epoch = (uint32_t)(uintptr_t)private_data;
 	uint64_t now;
 
+	if (status == RPC_STATUS_SUCCESS) {
+		res = command_data;
+	}
+	nfs40_renew_lock(rpc);
 	if (epoch != rpc->nfs40_renew_epoch || !rpc->nfs40_renew_enabled) {
+		nfs40_renew_unlock(rpc);
 		return;
 	}
 	rpc->nfs40_renew_pending = 0;
-	if (status == RPC_STATUS_SUCCESS && res &&
-	    (res->status == NFS4_OK || res->status == NFS4ERR_CB_PATH_DOWN)) {
+	now = rpc_current_time();
+	if (res && (res->status == NFS4_OK ||
+	            res->status == NFS4ERR_CB_PATH_DOWN)) {
+		rpc->nfs40_renew_due = now + rpc->nfs40_renew_interval;
+		rpc->nfs40_renew_backoff = 0;
+		nfs40_renew_unlock(rpc);
 		RPC_LOG(rpc, 2, "NFSv4.0 lease renewed");
-	} else if (status == RPC_STATUS_SUCCESS && res &&
-	           (res->status == NFS4ERR_EXPIRED ||
-	            res->status == NFS4ERR_STALE_CLIENTID)) {
+	} else if (res && (res->status == NFS4ERR_EXPIRED ||
+	                   res->status == NFS4ERR_STALE_CLIENTID)) {
+		nfs40_stop_renew_locked(rpc);
+		nfs40_renew_unlock(rpc);
 		RPC_LOG(rpc, 1, "NFSv4.0 lease lost (%s); context must be remounted",
 		        nfsstat4_to_str(res->status));
-		rpc_nfs40_stop_renew(rpc);
-		return;
 	} else {
+		rpc->nfs40_renew_due = now + nfs40_renew_retry(rpc);
+		nfs40_renew_unlock(rpc);
 		RPC_LOG(rpc, 1, "NFSv4.0 RENEW failed (RPC %d, NFS %d)",
 		        status, res ? (int)res->status : -1);
 	}
-	now = rpc_current_time();
-	if (rpc->nfs40_renew_due < now) {
-		rpc->nfs40_renew_due = now + rpc->nfs40_renew_interval;
-	}
 }
 
+/* A RENEW still pending when due is cancelled and resent, if fully sent. */
 static void
 rpc_nfs40_maybe_renew(struct rpc_context *rpc)
 {
-	uint64_t now, retry;
+	uint64_t now;
+	uint32_t epoch, stale_xid;
+	int stalled;
 	struct rpc_pdu *pdu;
 
-	if (!rpc->is_connected || !rpc->nfs40_renew_enabled ||
-	    rpc->nfs40_renew_pending) {
+	if (!rpc->nfs40_renew_enabled) {
+		return;
+	}
+	nfs40_renew_lock(rpc);
+	if (!rpc->is_connected || !rpc->nfs40_renew_enabled) {
+		nfs40_renew_unlock(rpc);
 		return;
 	}
 	now = rpc_current_time();
 	if (now < rpc->nfs40_renew_due) {
+		nfs40_renew_unlock(rpc);
 		return;
 	}
-	rpc->nfs40_renew_due = now + rpc->nfs40_renew_interval;
+	stalled = rpc->nfs40_renew_pending;
+	stale_xid = rpc->nfs40_renew_xid;
+	epoch = rpc->nfs40_renew_epoch;
+	nfs40_renew_unlock(rpc);
+
+	if (stalled && rpc_cancel_sent_pdu(rpc, stale_xid) != 0) {
+		/* Not fully written yet; a new one would only queue behind it. */
+		nfs40_renew_lock(rpc);
+		if (epoch == rpc->nfs40_renew_epoch) {
+			rpc->nfs40_renew_due = now + rpc->nfs40_renew_interval / 2;
+		}
+		nfs40_renew_unlock(rpc);
+		RPC_LOG(rpc, 1, "NFSv4.0 RENEW still unsent, waiting");
+		return;
+	}
+
+	nfs40_renew_lock(rpc);
+	if (epoch != rpc->nfs40_renew_epoch) {
+		nfs40_renew_unlock(rpc);
+		return;
+	}
+	epoch = ++rpc->nfs40_renew_epoch;
+	rpc->nfs40_renew_due = now + rpc->nfs40_renew_interval / 2;
 	rpc->nfs40_renew_pending = 1;
+	nfs40_renew_unlock(rpc);
+	if (stalled) {
+		RPC_LOG(rpc, 1, "NFSv4.0 RENEW got no reply, sending another");
+	}
+
+	/* Unlocked: queueing takes rpc_mutex. */
 	pdu = rpc_nfs40_renew_task(rpc, nfs40_renew_cb,
-	                           (void *)(uintptr_t)rpc->nfs40_renew_epoch);
+	                           (void *)(uintptr_t)epoch);
+	nfs40_renew_lock(rpc);
+	if (epoch == rpc->nfs40_renew_epoch) {
+		if (pdu) {
+			rpc->nfs40_renew_xid = pdu->xid;
+		} else {
+			rpc->nfs40_renew_pending = 0;
+			rpc->nfs40_renew_due = now + nfs40_renew_retry(rpc);
+		}
+	}
+	nfs40_renew_unlock(rpc);
 	if (pdu == NULL) {
-		rpc->nfs40_renew_pending = 0;
-		retry = rpc->nfs40_renew_interval < 1000 ?
-		        rpc->nfs40_renew_interval : 1000;
-		rpc->nfs40_renew_due = now + retry;
 		RPC_LOG(rpc, 1, "Failed to queue NFSv4.0 RENEW: %s",
 		        rpc_get_error(rpc));
 		return;
@@ -1737,6 +1853,7 @@ rpc_service(struct rpc_context *rpc, int revents)
 		if (rpc->auto_reconnect) {
 			return rpc_reconnect_requeue(rpc);
 		}
+		rpc_nfs40_stop_renew(rpc);
 		maybe_call_connect_cb(rpc, RPC_STATUS_ERROR);
 		return -1;
 
