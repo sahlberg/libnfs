@@ -265,6 +265,19 @@ With cmake:
   cmake -DENABLE_TLS=OFF ..   # never build TLS support
 
 
+BUILDING WITH KERBEROS
+======================
+sec=krb5 support needs the gssapi_krb5 headers and library, e.g. from MIT
+Kerberos.
+
+With autoconf it is built by default and --without-libkrb5 disables it.
+
+With cmake:
+  cmake -DENABLE_KRB5=AUTO ..  # build Kerberos support only if available (default)
+  cmake -DENABLE_KRB5=ON ..    # fail the configure if Kerberos is not available
+  cmake -DENABLE_KRB5=OFF ..   # never build Kerberos support
+
+
 CERTIFICATES
 ============
 libnfs reads CA certs from the following places, so make sure your server's CA
