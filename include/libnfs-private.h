@@ -1150,6 +1150,26 @@ struct stateid {
         char other[12];
 };
 
+/*
+ * An NFSv4 WRITE the server answered as UNSTABLE4. The data is kept until a
+ * COMMIT returns the same write verifier, so it can be sent again to a
+ * server that restarted, or took over, before committing it.
+ */
+struct nfs4_unstable_write {
+        struct nfs4_unstable_write *next;
+        uint64_t seq;
+        uint64_t offset;
+        size_t count;
+        char verf[8];
+        char data[];
+};
+
+struct nfs4_commit_waiter {
+        struct nfs4_commit_waiter *next;
+        nfs_cb cb;
+        void *private_data;
+};
+
 struct nfsfh {
         struct nfs_fh fh;
         int is_sync;
@@ -1165,6 +1185,14 @@ struct nfsfh {
         uint32_t open_seqid;
         uint32_t lock_seqid;
         struct stateid lock_stateid;
+
+        /* NFSv4 unstable writes, oldest first, and the COMMIT in progress */
+        struct nfs4_unstable_write *unstable;
+        struct nfs4_unstable_write *unstable_last;
+        uint64_t unstable_bytes;
+        uint64_t unstable_seq;
+        int commit_running;
+        struct nfs4_commit_waiter *commit_waiters;
 };
 
 void rpc_free_iovector(struct rpc_context *rpc, struct rpc_io_vectors *v);

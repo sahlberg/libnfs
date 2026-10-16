@@ -1335,6 +1335,18 @@ free_nfs_cb_data(struct nfs_cb_data *data)
 void
 nfs_free_nfsfh(struct nfsfh *nfsfh)
 {
+	while (nfsfh->unstable != NULL) {
+		struct nfs4_unstable_write *w = nfsfh->unstable;
+
+		nfsfh->unstable = w->next;
+		free(w);
+	}
+	while (nfsfh->commit_waiters != NULL) {
+		struct nfs4_commit_waiter *w = nfsfh->commit_waiters;
+
+		nfsfh->commit_waiters = w->next;
+		free(w);
+	}
 	if (nfsfh->fh.val != NULL) {
 		free(nfsfh->fh.val);
 		nfsfh->fh.len = 0;
