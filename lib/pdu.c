@@ -1071,6 +1071,7 @@ static int rpc_process_reply(struct rpc_context *rpc, ZDR *zdr)
 #ifdef HAVE_LIBKRB5
         if (rpc->sec == RPC_SEC_KRB5I && pdu->gss_seqno > 0) {
                 msg.body.rbody.reply.areply.reply_data.results.krb5i = 1;
+                msg.body.rbody.reply.areply.verf.gss_context = rpc->gss_context;
         }
         if (rpc->sec == RPC_SEC_KRB5P && pdu->gss_seqno > 0) {
                 msg.body.rbody.reply.areply.reply_data.results.krb5p = 1;

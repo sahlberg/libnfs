@@ -613,10 +613,11 @@ static bool_t libnfs_rpc_call_body(struct rpc_context *rpc, ZDR *zdrs, struct ca
 	return TRUE;
 }
 
-static bool_t libnfs_accepted_reply(ZDR *zdrs, struct accepted_reply *ar)
+static bool_t libnfs_accepted_reply(struct rpc_context *rpc, ZDR *zdrs,
+                                     struct accepted_reply *ar)
 {
 #ifdef HAVE_LIBKRB5
-        uint32_t maj, min, len, tmp;
+        uint32_t maj, min, len, seqno;
         gss_buffer_desc message_buffer, *output_buffer;
 #endif
 
@@ -651,18 +652,54 @@ static bool_t libnfs_accepted_reply(ZDR *zdrs, struct accepted_reply *ar)
                         if (maj) {
                                 return FALSE;
                         }
-                        /* The 4 byte header below must actually be there */
-                        if (output_buffer->length < 4) {
-                                return FALSE;
-                        }
-                        zdrs->buf = (char *)output_buffer->value + 4;
+                        zdrs->buf = (char *)output_buffer->value;
                         zdrs->pos = 0;
-                        zdrs->size = output_buffer->length - 4;
+                        zdrs->size = output_buffer->length;
                 }
                 if (zdrs->x_op ==ZDR_DECODE && ar->reply_data.results.krb5i) {
-                        /* TODO should check the signature */
-                        libnfs_zdr_u_int(zdrs, &tmp);
-                        libnfs_zdr_u_int(zdrs, &tmp);
+                        gss_buffer_desc checksum_buffer;
+                        char *body = NULL, *checksum = NULL;
+                        uint32_t checksum_len = 0;
+
+                        /*
+                         * rpc_gss_integ_data: the body as an opaque followed
+                         * by a MIC over its bytes. Nothing in the body can be
+                         * trusted until that MIC has been verified.
+                         */
+                        if (!libnfs_zdr_bytes(zdrs, &body, &len, 0)) {
+                                return FALSE;
+                        }
+                        if (!libnfs_zdr_bytes(zdrs, &checksum, &checksum_len, 0)) {
+                                return FALSE;
+                        }
+                        message_buffer.length = len;
+                        message_buffer.value = body;
+                        checksum_buffer.length = checksum_len;
+                        checksum_buffer.value = checksum;
+                        maj = gss_verify_mic(&min, ar->verf.gss_context,
+                                             &message_buffer,
+                                             &checksum_buffer,
+                                             NULL);
+                        if (maj) {
+                                return FALSE;
+                        }
+                        zdrs->buf = body;
+                        zdrs->pos = 0;
+                        zdrs->size = len;
+                }
+                if (zdrs->x_op ==ZDR_DECODE &&
+                    (ar->reply_data.results.krb5i || ar->reply_data.results.krb5p)) {
+                        /*
+                         * Both start with the seq_num of the request they
+                         * answer. A body that verifies but carries another
+                         * seq_num is the reply to a different call.
+                         */
+                        if (!libnfs_zdr_u_int(zdrs, &seqno)) {
+                                return FALSE;
+                        }
+                        if (rpc->pdu == NULL || seqno != rpc->pdu->gss_seqno) {
+                                return FALSE;
+                        }
                 }
 #endif /* HAVE_LIBKRB5 */
 		if (!ar->reply_data.results.proc(zdrs, ar->reply_data.results.where)) {
@@ -721,7 +758,7 @@ static bool_t libnfs_rpc_reply_body(struct rpc_context *rpc, ZDR *zdrs, struct r
 
 	switch (rmb->stat) {
 	case MSG_ACCEPTED:
-		if (!libnfs_accepted_reply(zdrs, &rmb->reply.areply)) {
+		if (!libnfs_accepted_reply(rpc, zdrs, &rmb->reply.areply)) {
 			rpc_set_error(rpc, "libnfs_rpc_reply_body failed to "
 				"decode ACCEPTED");
 			return FALSE;
