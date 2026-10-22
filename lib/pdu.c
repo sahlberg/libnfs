@@ -1148,6 +1148,20 @@ static int rpc_process_reply(struct rpc_context *rpc, ZDR *zdr)
 
 #ifdef HAVE_LIBKRB5
                 /*
+                 * Once the GSS context is up an accepted reply has to carry
+                 * an AUTH_GSS verifier, a MIC over the seq_num of our request.
+                 * It is what ties the reply to this call and to the context,
+                 * so a reply without one cannot be accepted.
+                 */
+                if (rpc->sec != RPC_SEC_UNDEFINED && pdu->gss_seqno > 0 &&
+                    msg.body.rbody.reply.areply.verf.oa_flavor != AUTH_GSS) {
+                        status = RPC_STATUS_ERROR;
+                        data = "Server sent a reply without an AUTH_GSS "
+                               "verifier";
+                        break;
+                }
+
+                /*
                  * The verifier flavor is chosen by the server, so on its own
                  * it says nothing about how this reply should be read. Only
                  * act on it once we know the connection actually negotiated
