@@ -1030,6 +1030,25 @@ int rpc_queue_pdu(struct rpc_context *rpc, struct rpc_pdu *pdu)
         return rpc_queue_pdu2(rpc, pdu, PDU_Q_PRIO_LOW);
 }
 
+#ifdef HAVE_LIBKRB5
+/*
+ * A READ that failed has no data in its reply, only a status for the
+ * caller to see.
+ */
+static int rpc_read_reply_ok(struct rpc_context *rpc, struct rpc_pdu *pdu)
+{
+        if (rpc->program == NFS_PROGRAM && rpc->version == NFS_V3) {
+                const READ3res *res = (READ3res *)(void *)pdu->zdr_decode_buf;
+                return res->status == NFS3_OK;
+        }
+        if (rpc->program == NFS4_PROGRAM && rpc->version == NFS_V4) {
+                const COMPOUND4res *res = (COMPOUND4res *)(void *)pdu->zdr_decode_buf;
+                return res->status == NFS4_OK;
+        }
+        return 1;
+}
+#endif /* HAVE_LIBKRB5 */
+
 static int rpc_process_reply(struct rpc_context *rpc, ZDR *zdr)
 {
 	struct rpc_msg msg;
@@ -1207,7 +1226,8 @@ static int rpc_process_reply(struct rpc_context *rpc, ZDR *zdr)
                                 }
                         }
                 }
-                if (pdu->zero_copy_iov && rpc->sec == RPC_SEC_KRB5P) {
+                if (pdu->zero_copy_iov && rpc->sec == RPC_SEC_KRB5P &&
+                    rpc_read_reply_ok(rpc, pdu)) {
                         struct iovec *iov;
                         int num_iov, num, count;
 
@@ -1619,11 +1639,17 @@ int rpc_process_pdu(struct rpc_context *rpc, char *buf, int size)
                 if (rpc_process_reply(rpc, &rpc->pdu->zdr) != 0) {
                         rpc_set_error(rpc, "rpc_procdess_reply failed (for krb5 read)");
                 }
-        } else
+                /*
+                 * rpc_process_reply() has completed this pdu. pdu->zdr
+                 * holds what the decode allocated and is freed with the
+                 * pdu, so it must not be overwritten below.
+                 */
+                return 0;
+        }
 #endif /* HAVE_LIBKRB5 */
-                if (rpc_process_reply(rpc, &zdr) != 0) {
-                        rpc_set_error(rpc, "rpc_procdess_reply failed");
-                }
+        if (rpc_process_reply(rpc, &zdr) != 0) {
+                rpc_set_error(rpc, "rpc_procdess_reply failed");
+        }
 
         /*
          * A zero-copy READ still has to hand its payload to the caller, so the
