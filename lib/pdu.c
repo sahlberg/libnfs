@@ -1109,7 +1109,7 @@ static int rpc_process_reply(struct rpc_context *rpc, ZDR *zdr)
                  * the data and complete the PDU once completed.
                  */
 #ifdef HAVE_LIBKRB5
-                if (rpc->sec != RPC_SEC_KRB5P)
+                if (rpc->sec == RPC_SEC_UNDEFINED)
 #endif /* HAVE_LIBKRB5 */
                         if (pdu->in.base) {
                                 rpc->pdu->free_pdu = 1;
@@ -1226,7 +1226,7 @@ static int rpc_process_reply(struct rpc_context *rpc, ZDR *zdr)
                                 }
                         }
                 }
-                if (pdu->zero_copy_iov && rpc->sec == RPC_SEC_KRB5P &&
+                if (pdu->zero_copy_iov && rpc->sec != RPC_SEC_UNDEFINED &&
                     rpc_read_reply_ok(rpc, pdu)) {
                         struct iovec *iov;
                         int num_iov, num, count;
@@ -1628,12 +1628,12 @@ int rpc_process_pdu(struct rpc_context *rpc, char *buf, int size)
 
 #ifdef HAVE_LIBKRB5
         /*
-         * For KRB5P and iovectors, i.e. NFS[34]READ we
+         * For GSS and iovectors, i.e. NFS[34]READ we
          * need to use a ZDR that hangs off the PDU so we can
          * access the ZDR and its buffers to manually copy
          * data into the iovectors.
          */
-        if (rpc->pdu->zero_copy_iov && rpc->sec == RPC_SEC_KRB5P) {
+        if (rpc->pdu->zero_copy_iov && rpc->sec != RPC_SEC_UNDEFINED) {
                 zdr_destroy(&rpc->pdu->zdr);
                 zdrmem_create(&rpc->pdu->zdr, buf, size, ZDR_DECODE);
                 if (rpc_process_reply(rpc, &rpc->pdu->zdr) != 0) {

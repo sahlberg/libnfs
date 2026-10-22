@@ -923,9 +923,11 @@ rpc_read_from_socket(struct rpc_context *rpc)
                                 /* We do not have rpc->pdu for server context */
 #ifdef HAVE_LIBKRB5
                                 /*
-                                 * KRB5P can not use zero-copy reads
+                                 * GSS can not use zero-copy reads, the whole
+                                 * reply has to be in the buffer to verify it
+                                 * or to unwrap it.
                                  */
-                                if (rpc->sec != RPC_SEC_KRB5P)
+                                if (rpc->sec == RPC_SEC_UNDEFINED)
 #endif /* HAVE_LIBKRB5 */
                                         if (rpc->pdu && rpc->pdu->in.base &&
                                             !rpc->fragments && rpc->pdu_size > ZCRP) {
@@ -1086,7 +1088,7 @@ rpc_read_from_socket(struct rpc_context *rpc)
                                         rpc->pdu = rpc_find_pdu(rpc, rpc->rm_xid[1]);
 
 #ifdef HAVE_LIBKRB5
-                                        if (rpc->sec != RPC_SEC_KRB5P)
+                                        if (rpc->sec == RPC_SEC_UNDEFINED)
 #endif /* HAVE_LIBKRB5 */
                                                 if (rpc->state != READ_FRAGMENT &&
                                                     !rpc->fragments &&
@@ -1205,10 +1207,10 @@ rpc_read_from_socket(struct rpc_context *rpc)
 #ifdef HAVE_LIBKRB5
                                 /*
                                  * Since we don't do zero-copy reads for
-                                 * KRB5P we are basically finished processing
+                                 * GSS we are basically finished processing
                                  * the reply at this point.
                                  */
-                                if (rpc->sec == RPC_SEC_KRB5P) {
+                                if (rpc->sec != RPC_SEC_UNDEFINED) {
                                         goto payload_finished;
                                 }
 #endif /* HAVE_LIBKRB5 */
