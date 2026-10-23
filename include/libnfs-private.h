@@ -357,6 +357,7 @@ struct rpc_context {
 	int fd;
         int socket_disabled; /* Do not allow read/write to the socket */
 	int old_fd;
+	int reconnect_write_fd; /* Keeps the parked reconnect pipe idle. */
 	/*
 	 * eventfd used to wake the multithreading service thread out of poll()
 	 * as soon as a PDU is queued, instead of waiting for the poll timeout.

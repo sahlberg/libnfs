@@ -229,8 +229,6 @@ EXTERN void rpc_set_auth(struct rpc_context *rpc, struct AUTH *auth);
  * Used for interfacing the api into an external eventsystem.
  *
  * rpc_get_fd() returns the file descriptor to poll.
- * During a deferred reconnect it returns -1. Keep servicing timers;
- * the poll timeout is bounded by the next reconnect attempt.
  *
  * rpc_which_events() returns which events that we need to poll for.
  * This is a combination of the POLLIN and POLLOUT flags.

@@ -8,7 +8,37 @@ int main(void) { return 77; }
 #define _GNU_SOURCE
 #include <sys/socket.h>
 #include <errno.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <stdlib.h>
 static int injected_errno, injected_so_error, connect_calls;
+static int injected_pipe_errno, injected_dup_errno, fail_socket_dup;
+static int parked_pipe[2] = {-1, -1};
+static int pipe_writers[32], pipe_count;
+static int fake_pipe(int fds[2])
+{
+        int ret;
+        if (injected_pipe_errno) {
+                errno = injected_pipe_errno;
+                return -1;
+        }
+        ret = pipe(fds);
+        if (ret == 0) {
+                parked_pipe[0] = fds[0];
+                parked_pipe[1] = fds[1];
+                if (pipe_count == 32) abort();
+                pipe_writers[pipe_count++] = fds[1];
+        }
+        return ret;
+}
+static int fake_dup2(int source, int target)
+{
+        if (injected_dup_errno && (source == parked_pipe[0] || fail_socket_dup)) {
+                errno = injected_dup_errno;
+                return -1;
+        }
+        return dup2(source, target);
+}
 static int fake_connect(int fd, const struct sockaddr *address, socklen_t length)
 {
         connect_calls++;
@@ -27,13 +57,17 @@ static int fake_getsockopt(int fd, int level, int option, void *value, socklen_t
         }
         return getsockopt(fd, level, option, value, length);
 }
-/* Compile the real transport with only OS connect/error retrieval substituted.
+/* Compile the real transport with OS connection and pipe setup substituted.
  * No production fault-injection API or network configuration changes needed. */
 #define connect fake_connect
 #define getsockopt fake_getsockopt
+#define pipe fake_pipe
+#define dup2 fake_dup2
 #include "../lib/socket.c"
 #undef connect
 #undef getsockopt
+#undef pipe
+#undef dup2
 
 #define CHECK(x) do { if (!(x)) { fprintf(stderr, "FAIL %d: %s\n", __LINE__, #x); exit(1); } } while (0)
 struct result { int calls, status; };
@@ -61,6 +95,7 @@ static struct rpc_context *fixture(int retries, struct result *r, int *peer)
         *peer = pair[1];
         connect_calls = 0;
         injected_so_error = 0;
+        parked_pipe[0] = parked_pipe[1] = -1;
         return rpc;
 }
 static void due(struct rpc_context *rpc)
@@ -103,7 +138,7 @@ static void serve_null(struct rpc_context *rpc, int peer, struct result *r)
 static void recovery(void)
 {
         struct result r = {0}, second = {0};
-        int old_peer, listener, peer, i;
+        int old_peer, listener, peer, i, registered_fd, writer, flags;
         struct sockaddr_in address = {0};
         socklen_t length = sizeof(address);
         struct rpc_context *rpc = fixture(-1, &r, &old_peer);
@@ -115,10 +150,20 @@ static void recovery(void)
         CHECK(listen(listener, 1) == 0);
         CHECK(getsockname(listener, (struct sockaddr *)&address, &length) == 0);
         memcpy(&rpc->s, &address, sizeof(address));
+        registered_fd = rpc_get_fd(rpc);
+        flags = fcntl(registered_fd, F_GETFD);
         injected_errno = ENETUNREACH;
         CHECK(rpc_service(rpc, POLLHUP) == 0);
         CHECK(connect_calls == 1 && r.calls == 0 && rpc_queue_length(rpc) == 1);
-        CHECK(rpc_get_fd(rpc) == -1 && rpc_which_events(rpc) == 0);
+        CHECK(rpc_get_fd(rpc) == registered_fd && rpc_which_events(rpc) == 0);
+        CHECK(fcntl(registered_fd, F_GETFD) == flags);
+        writer = rpc->reconnect_write_fd;
+        CHECK(writer >= 0 && (fcntl(writer, F_GETFD) & FD_CLOEXEC));
+        /* The application keeps its original descriptor and event mask. */
+        for (i = 0; i < 10; i++) {
+                struct pollfd ready = { .fd = registered_fd, .events = POLLIN | POLLOUT };
+                CHECK(poll(&ready, 1, 1) == 0);
+        }
         rpc_set_poll_timeout(rpc, -1);
         CHECK(rpc_get_poll_timeout(rpc) > 0 && rpc_get_poll_timeout(rpc) <= 1000);
         for (i = 0; i < 10; i++) CHECK(rpc_service(rpc, POLLERR | POLLHUP) == 0);
@@ -127,9 +172,14 @@ static void recovery(void)
         injected_errno = EHOSTUNREACH;
         CHECK(rpc_service(rpc, 0) == 0 && connect_calls == 2);
         CHECK(r.calls == 0 && rpc->num_retries == -1);
+        CHECK(rpc_get_fd(rpc) == registered_fd);
+        writer = rpc->reconnect_write_fd;
         injected_errno = 0;
         due(rpc);
         CHECK(rpc_service(rpc, 0) == 0);
+        CHECK(rpc_get_fd(rpc) == registered_fd);
+        CHECK(rpc->reconnect_write_fd == -1);
+        CHECK(fcntl(writer, F_GETFD) == -1 && errno == EBADF);
         {
                 struct pollfd ready = { .fd = listener, .events = POLLIN };
                 CHECK(poll(&ready, 1, 2000) == 1);
@@ -175,8 +225,9 @@ static void limits(void)
 static void termination(int destroy, int error)
 {
         struct result r = {0};
-        int peer;
+        int peer, registered_fd, writer;
         struct rpc_context *rpc = fixture(-1, &r, &peer);
+        registered_fd = rpc_get_fd(rpc);
         injected_errno = error;
         if (error == EINVAL) {
                 CHECK(rpc_service(rpc, POLLHUP) == -1);
@@ -184,6 +235,8 @@ static void termination(int destroy, int error)
                 rpc_destroy_context(rpc);
         } else {
                 CHECK(rpc_service(rpc, POLLHUP) == 0 && !r.calls);
+                writer = rpc->reconnect_write_fd;
+                CHECK(writer >= 0);
                 if (destroy) {
                         rpc_destroy_context(rpc);
                         CHECK(r.calls == 1 && r.status == RPC_STATUS_CANCEL);
@@ -194,7 +247,9 @@ static void termination(int destroy, int error)
                         CHECK(rpc_service(rpc, 0) == 0 && connect_calls == 1);
                         rpc_destroy_context(rpc);
                 }
+                CHECK(fcntl(writer, F_GETFD) == -1 && errno == EBADF);
         }
+        CHECK(fcntl(registered_fd, F_GETFD) == -1 && errno == EBADF);
         close(peer);
 }
 static void request_timeout(void)
@@ -228,14 +283,84 @@ static void asynchronous_error(int events)
         CHECK(r.calls == 1);
         close(peer);
 }
+static void pipe_failures(void)
+{
+        int failure;
+        for (failure = 0; failure < 2; failure++) {
+                struct result r = {0};
+                int peer, fd;
+                struct rpc_context *rpc = fixture(-1, &r, &peer);
+                fd = rpc_get_fd(rpc);
+                injected_errno = ENETUNREACH;
+                injected_pipe_errno = failure == 0 ? EMFILE : 0;
+                injected_dup_errno = failure == 1 ? EIO : 0;
+                CHECK(rpc_service(rpc, POLLHUP) == -1);
+                CHECK(r.calls == 1 && r.status == RPC_STATUS_ERROR);
+                CHECK(!rpc->reconnect_due && rpc->reconnect_write_fd == -1);
+                CHECK(strstr(rpc_get_error(rpc), failure ? "park reconnect" : "pipe()") != NULL);
+                if (failure) {
+                        CHECK(fcntl(parked_pipe[0], F_GETFD) == -1 && errno == EBADF);
+                        CHECK(fcntl(parked_pipe[1], F_GETFD) == -1 && errno == EBADF);
+                }
+                injected_pipe_errno = injected_dup_errno = 0;
+                rpc_destroy_context(rpc);
+                CHECK(fcntl(fd, F_GETFD) == -1 && errno == EBADF);
+                close(peer);
+        }
+        puts("PASS: pipe/setup failures remain terminal and release descriptors");
+}
+static void replacement_failure(void)
+{
+        struct result r = {0};
+        int peer, fd, writer, socket_fd;
+        struct rpc_context *rpc = fixture(-1, &r, &peer);
+        fd = rpc_get_fd(rpc);
+        injected_errno = ENETUNREACH;
+        CHECK(rpc_service(rpc, POLLHUP) == 0);
+        writer = rpc->reconnect_write_fd;
+        injected_dup_errno = EIO;
+        fail_socket_dup = 1;
+        due(rpc);
+        CHECK(rpc_service(rpc, 0) == -1);
+        CHECK(r.calls == 1 && !rpc->reconnect_due);
+        CHECK(rpc->reconnect_write_fd == -1);
+        CHECK(fcntl(writer, F_GETFD) == -1 && errno == EBADF);
+        socket_fd = rpc->fd;
+        CHECK(socket_fd != fd);
+        injected_dup_errno = fail_socket_dup = 0;
+        rpc_destroy_context(rpc);
+        CHECK(fcntl(fd, F_GETFD) == -1 && errno == EBADF);
+        CHECK(fcntl(socket_fd, F_GETFD) == -1 && errno == EBADF);
+        close(peer);
+}
+static void disable_during_backoff(void)
+{
+        struct result r = {0};
+        int peer, writer;
+        struct rpc_context *rpc = fixture(-1, &r, &peer);
+        injected_errno = ENETUNREACH;
+        CHECK(rpc_service(rpc, POLLHUP) == 0);
+        writer = rpc->reconnect_write_fd;
+        rpc_set_resiliency(rpc, 0, 60000, 2);
+        due(rpc);
+        CHECK(rpc_service(rpc, 0) == -1);
+        CHECK(r.calls == 1 && rpc->reconnect_write_fd == -1);
+        CHECK(fcntl(writer, F_GETFD) == -1 && errno == EBADF);
+        rpc_destroy_context(rpc);
+        close(peer);
+}
 int main(void)
 {
+        int i;
         alarm(20);
         recovery(); limits(); request_timeout();
+        pipe_failures(); replacement_failure(); disable_during_backoff();
         termination(0, ENETUNREACH); termination(1, ENETUNREACH);
         termination(0, EINVAL);
         asynchronous_error(POLLOUT);
         asynchronous_error(POLLERR | POLLHUP);
+        for (i = 0; i < pipe_count; i++)
+                CHECK(fcntl(pipe_writers[i], F_GETFD) == -1 && errno == EBADF);
         puts("PASS: cancel/destroy, permanent error, and asynchronous connection failure");
         return 0;
 }

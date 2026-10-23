@@ -202,6 +202,7 @@ struct rpc_context *rpc_init_context(void)
 	rpc->xid = salt + (uint32_t)rpc_current_time() + ((uint32_t)getpid() << 16);
 	salt += 0x01000000;
 	rpc->fd = -1;
+	rpc->reconnect_write_fd = -1;
 	rpc->tcp_syncnt = RPC_PARAM_UNDEFINED;
 #if defined(WIN32) || defined(ANDROID) || defined(PS3_PPU)
 	rpc->uid = 65534;
@@ -261,6 +262,7 @@ struct rpc_context *rpc_init_server_context(int s)
 
 	rpc->is_server_context = 1;
 	rpc->fd = s;
+	rpc->reconnect_write_fd = -1;
 	/*
 	 * Server contexts have no service thread to wake. Without this the
 	 * calloc() above would leave evfd at 0, i.e. stdin, and we would both
@@ -648,6 +650,10 @@ void rpc_destroy_context(struct rpc_context *rpc)
                 rpc->auth =NULL;
         }
 
+	if (rpc->reconnect_write_fd != -1)
+		close(rpc->reconnect_write_fd);
+	if (rpc->old_fd && rpc->old_fd != rpc->fd)
+		close(rpc->old_fd);
 	if (rpc->fd != -1) {
  		close(rpc->fd);
 	}

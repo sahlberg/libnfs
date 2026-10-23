@@ -284,9 +284,10 @@ rpc_get_fd(struct rpc_context *rpc)
 {
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
-	if (rpc->reconnect_due) {
-		return -1; /* Do not poll a failed socket during the retry delay. */
-	}
+#if defined(WIN32) || defined(PS3_PPU) || defined(PS2_EE)
+	if (rpc->reconnect_due)
+		return -1;
+#endif
 	if (rpc->old_fd) {
 		return rpc->old_fd;
 	}
@@ -1815,15 +1816,15 @@ rpc_service(struct rpc_context *rpc, int revents)
 {
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
-        if (rpc->reconnect_due) {
-                /* Requests are back in outqueue; honor their timeout policy
-                 * without letting a retry bypass the transport backoff. */
-                rpc_timeout_scan(rpc);
-                if (!rpc->reconnect_due || rpc_current_time() < rpc->reconnect_due)
-                        return 0;
-                rpc->reconnect_due = 0;
-                return rpc_reconnect_requeue(rpc);
-        }
+	if (rpc->reconnect_due) {
+		/* Requests are back in outqueue; honor their timeout policy
+		 * without letting a retry bypass the transport backoff. */
+		rpc_timeout_scan(rpc);
+		if (!rpc->reconnect_due || rpc_current_time() < rpc->reconnect_due)
+			return 0;
+		rpc->reconnect_due = 0;
+		return rpc_reconnect_requeue(rpc);
+	}
 
 #ifdef HAVE_NFS4_2
         nfs4_service_delayed(rpc);
@@ -1866,16 +1867,16 @@ rpc_service(struct rpc_context *rpc, int revents)
 			}
 		} else if (revents != -1 && revents & POLLHUP) {
 #ifdef WIN32
-                        connect_error = WSAECONNRESET;
+			connect_error = WSAECONNRESET;
 #else
-                        connect_error = ECONNRESET;
+			connect_error = ECONNRESET;
 #endif
 			rpc_set_error(rpc, "Socket failed with POLLHUP");
 		}
 		if (rpc->auto_reconnect) {
-                        if (!rpc->is_connected && rpc->connect_cb == reconnect_cb &&
-                            connect_error != 0)
-                                return rpc_reconnect_failed(rpc, connect_error);
+			if (!rpc->is_connected && rpc->connect_cb == reconnect_cb &&
+			    connect_error != 0)
+				return rpc_reconnect_failed(rpc, connect_error);
 			return rpc_reconnect_requeue(rpc);
 		}
 		rpc_nfs40_stop_renew(rpc);
@@ -1896,8 +1897,8 @@ rpc_service(struct rpc_context *rpc, int revents)
 			rpc_set_error(rpc, "rpc_service: socket error "
 				  	"%s(%d) while connecting.",
 					strerror(err), err);
-                        if (rpc->connect_cb == reconnect_cb)
-                                return rpc_reconnect_failed(rpc, err);
+			if (rpc->connect_cb == reconnect_cb)
+				return rpc_reconnect_failed(rpc, err);
 			maybe_call_connect_cb(rpc, RPC_STATUS_ERROR);
 			return -1;
 		}
@@ -2150,6 +2151,10 @@ rpc_connect_sockaddr_async(struct rpc_context *rpc)
 		}
 		close(rpc->fd);
 		rpc->fd = rpc->old_fd;
+		if (rpc->reconnect_write_fd != -1) {
+			close(rpc->reconnect_write_fd);
+			rpc->reconnect_write_fd = -1;
+		}
 #else
 		/* On Windows dup2 does not work on sockets
 		 * instead just close the old socket */
@@ -2253,9 +2258,9 @@ rpc_connect_sockaddr_async(struct rpc_context *rpc)
 
 	if (connect(rpc->fd, (struct sockaddr *)s, socksize) != 0 &&
             errno != EINPROGRESS) {
-                rpc->connect_errno = errno;
+		rpc->connect_errno = errno;
 		rpc_set_error(rpc, "connect() to server failed. %s(%d)",
-                              strerror(rpc->connect_errno), rpc->connect_errno);
+			      strerror(rpc->connect_errno), rpc->connect_errno);
 		return -1;
 	}
 
@@ -2392,21 +2397,29 @@ rpc_connect_async(struct rpc_context *rpc, const char *server, int port,
 int
 rpc_disconnect(struct rpc_context *rpc, const char *error)
 {
-        int reconnecting = rpc->reconnect_due || rpc->connect_cb == reconnect_cb;
+	int reconnecting;
+
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
+	reconnecting = rpc->reconnect_due || rpc->connect_cb == reconnect_cb;
 	rpc_nfs40_stop_renew(rpc);
-        rpc->reconnect_due = 0;
+	rpc->reconnect_due = 0;
+	if (rpc->reconnect_write_fd != -1) {
+		close(rpc->reconnect_write_fd);
+		rpc->reconnect_write_fd = -1;
+	}
+	if (rpc->old_fd && rpc->old_fd != rpc->fd)
+		close(rpc->old_fd);
 
 	if (rpc->fd != -1) {
 		close(rpc->fd);
 		rpc->fd  = -1;
 	}
-        rpc->old_fd = 0;
+	rpc->old_fd = 0;
 
 	/* Do not re-disconnect if we are already disconnected */
 	if (!rpc->is_connected) {
-                if (reconnecting)
-                        rpc_error_all_pdus(rpc, error);
+		if (reconnecting)
+			rpc_error_all_pdus(rpc, error);
 		/* but a connect still in flight must be cancelled */
 		rpc_set_resiliency(rpc, 0, rpc->timeout, 0);
 		maybe_call_connect_cb(rpc, RPC_STATUS_CANCEL);
@@ -2546,8 +2559,8 @@ reconnect_cb(struct rpc_context *rpc, int status, void *data,
 {
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
-        if (status == RPC_STATUS_CANCEL)
-                return;
+	if (status == RPC_STATUS_CANCEL)
+		return;
 	if (status != RPC_STATUS_SUCCESS) {
 		rpc_set_error(rpc, "Failed to reconnect async");
 		rpc_reconnect_requeue(rpc);
@@ -2594,35 +2607,77 @@ reconnect_cb(struct rpc_context *rpc, int status, void *data,
 #endif /* HAVE_NFS4_2 */
 }
 
+/* Preserve the registered descriptor without polling a failed socket. */
+static int
+rpc_park_reconnect_fd(struct rpc_context *rpc)
+{
+#if !defined(WIN32) && !defined(PS3_PPU) && !defined(PS2_EE)
+	int pipefd[2];
+	int fd = rpc_get_fd(rpc);
+	int flags = fcntl(fd, F_GETFD);
+
+	if (flags == -1) {
+		rpc_set_error(rpc, "Invalid reconnect descriptor: %s", strerror(errno));
+		return -1;
+	}
+	if (pipe(pipefd) != 0) {
+		rpc_set_error(rpc, "pipe() for reconnect delay failed: %s", strerror(errno));
+		return -1;
+	}
+	if (fcntl(pipefd[1], F_SETFD, FD_CLOEXEC) == -1 ||
+	    dup2(pipefd[0], fd) == -1 || fcntl(fd, F_SETFD, flags) == -1) {
+		int error = errno;
+		close(pipefd[0]);
+		close(pipefd[1]);
+		rpc_set_error(rpc, "Failed to park reconnect descriptor: %s", strerror(error));
+		return -1;
+	}
+	close(pipefd[0]);
+	rpc->fd = rpc->old_fd = fd;
+	rpc->reconnect_write_fd = pipefd[1];
+#else
+	(void)rpc;
+#endif
+	return 0;
+}
+
 /* Retry only transport errors that can clear when the network returns.
  * Setup errors (bad interface, credentials, allocation, etc.) remain fatal. */
 static int
 rpc_reconnect_failed(struct rpc_context *rpc, int error)
 {
-        int retryable = 0;
-        rpc->connect_cb = NULL;
-        switch (error) {
+	int retryable = 0;
+	rpc->connect_cb = NULL;
+	switch (error) {
 #ifdef WIN32
-        case WSAENETDOWN: case WSAENETUNREACH: case WSAEHOSTUNREACH:
-        case WSAECONNREFUSED: case WSAECONNRESET: case WSAECONNABORTED:
-        case WSAETIMEDOUT:
-        case WSAEADDRNOTAVAIL:
+	case WSAENETDOWN: case WSAENETUNREACH: case WSAEHOSTUNREACH:
+	case WSAECONNREFUSED: case WSAECONNRESET: case WSAECONNABORTED:
+	case WSAETIMEDOUT:
+	case WSAEADDRNOTAVAIL:
 #else
-        case ENETDOWN: case ENETUNREACH: case EHOSTUNREACH:
-        case ECONNREFUSED: case ECONNRESET: case ECONNABORTED: case ETIMEDOUT:
-        case EADDRNOTAVAIL:
+	case ENETDOWN: case ENETUNREACH: case EHOSTUNREACH:
+	case ECONNREFUSED: case ECONNRESET: case ECONNABORTED: case ETIMEDOUT:
+	case EADDRNOTAVAIL:
 #endif
-                retryable = 1;
-        }
-        if (retryable && rpc->auto_reconnect != 0 &&
-            (rpc->auto_reconnect < 0 || rpc->num_retries > 0)) {
-                rpc->reconnect_due = rpc_current_time() + 1000;
-                RPC_LOG(rpc, 1, "Reconnect failed; retrying in 1000 ms: %s",
-                        rpc_get_error(rpc));
-                return 0;
-        }
-        rpc_error_all_pdus(rpc, "RPC ERROR: Failed to reconnect async");
-        return -1;
+		retryable = 1;
+	}
+	if (retryable && rpc->auto_reconnect != 0 &&
+	    (rpc->auto_reconnect < 0 || rpc->num_retries > 0)) {
+		if (rpc_park_reconnect_fd(rpc) != 0)
+			goto failed;
+		rpc->reconnect_due = rpc_current_time() + 1000;
+		RPC_LOG(rpc, 1, "Reconnect failed; retrying in 1000 ms: %s",
+			rpc_get_error(rpc));
+		return 0;
+	}
+ failed:
+	rpc->reconnect_due = 0;
+	if (rpc->reconnect_write_fd != -1) {
+		close(rpc->reconnect_write_fd);
+		rpc->reconnect_write_fd = -1;
+	}
+	rpc_error_all_pdus(rpc, "RPC ERROR: Failed to reconnect async");
+	return -1;
 }
 
 /* Disconnect but do not error all PDUs, just move pdus in-flight back to the
@@ -2638,8 +2693,7 @@ rpc_reconnect_requeue(struct rpc_context *rpc)
 
 	if (rpc->auto_reconnect == 0) {
 		RPC_LOG(rpc, 1, "reconnect is disabled");
-		rpc_error_all_pdus(rpc, "RPC ERROR: Failed to reconnect async");
-		return -1;
+		return rpc_reconnect_failed(rpc, 0);
 	}
 
 	if (rpc->is_connected) {
@@ -2721,7 +2775,7 @@ rpc_reconnect_requeue(struct rpc_context *rpc)
 		 */
 		rpc->resolve_server = rpc->resolve_on_reconnect;
 		if (rpc_connect_sockaddr_async(rpc) != 0) {
-                        return rpc_reconnect_failed(rpc, rpc->connect_errno);
+			return rpc_reconnect_failed(rpc, rpc->connect_errno);
 		}
 		INC_STATS(rpc, num_reconnects);
 		return 0;
