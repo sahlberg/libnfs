@@ -78,7 +78,7 @@ static void* nfs_mt_service_thread(void* arg)
         poll_error = 0;
         ret = poll(&pfd, 1, 0);
         if (ret < 0) {
-            poll_error = errno;
+            poll_error = WSAGetLastError();
             revents = -1;
         }
         else {
@@ -86,7 +86,7 @@ static void* nfs_mt_service_thread(void* arg)
         }
         nfs_service(nfs, revents);
         if (poll_error)
-            nfs_set_error(nfs, "Poll failed: %s", strerror(poll_error));
+            nfs_set_error(nfs, "Poll failed: Winsock error %d", poll_error);
     }
     return NULL;
 }

@@ -279,7 +279,11 @@ wait_for_nfs_reply(struct nfs_context *nfs, struct sync_cb_data *cb_data)
 		poll_error = 0;
 		ret = poll(&pfd, 1, rpc_get_poll_timeout(nfs->rpc));
 		if (ret < 0) {
+#ifdef WIN32
+			poll_error = WSAGetLastError();
+#else
 			poll_error = errno;
+#endif
 			revents = -1;
 		} else {
 			revents = pfd.revents;
@@ -293,13 +297,15 @@ wait_for_nfs_reply(struct nfs_context *nfs, struct sync_cb_data *cb_data)
                         rpc_error_all_pdus(nfs->rpc, "RPC ERROR: Failed to reconnect async");
 			/* Cleanup callbacks can replace the service diagnostic. */
 			if (poll_error)
-				nfs_set_error(nfs, "Poll failed: %s", strerror(poll_error));
+				nfs_set_error(nfs, "Poll failed: %s (%d)",
+					      strerror(poll_error), poll_error);
 			else
 				nfs_set_error(nfs, "%s", error);
 			break;
 		}
 		if (poll_error)
-			nfs_set_error(nfs, "Poll failed: %s", strerror(poll_error));
+			nfs_set_error(nfs, "Poll failed: %s (%d)",
+					      strerror(poll_error), poll_error);
 	}
 }
 
