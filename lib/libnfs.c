@@ -244,7 +244,13 @@ nfs_which_events(struct nfs_context *nfs)
 int
 nfs_service(struct nfs_context *nfs, int revents)
 {
-	return rpc_service(nfs->rpc, revents);
+        int ret = rpc_service(nfs->rpc, revents);
+        if (ret < 0) {
+                const char *error = rpc_get_error(nfs->rpc);
+                nfs_set_error(nfs, "%s", error && *error ? error :
+                              "RPC service failed without a diagnostic");
+        }
+        return ret;
 }
 
 char *

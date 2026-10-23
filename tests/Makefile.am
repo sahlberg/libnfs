@@ -52,3 +52,6 @@ noinst_PROGRAMS += prog_zdr_bytes_zero prog_zdr_maxsize
 check-local: prog_zdr_bytes_zero$(EXEEXT) prog_zdr_maxsize$(EXEEXT)
 	./prog_zdr_bytes_zero$(EXEEXT)
 	./prog_zdr_maxsize$(EXEEXT)
+
+check_PROGRAMS += prog_service_error
+TESTS += prog_service_error
