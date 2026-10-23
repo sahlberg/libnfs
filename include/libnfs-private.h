@@ -505,6 +505,8 @@ struct rpc_context {
 	struct sockaddr_storage s;
 	int auto_reconnect;
 	int num_retries;
+	uint64_t reconnect_due; /* Deferred transport retry, milliseconds. */
+	int connect_errno; /* Immediate connect error, not setup/resolver errors. */
 
 	/*
 	 * If true, reconnect will resolve 'server' afresh before reconnecting,

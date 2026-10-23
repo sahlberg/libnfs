@@ -119,6 +119,8 @@ struct utimbuf {
  *
  * nfs_get_fd() returns the file descriptor for the context we need to
  * listen for events from.
+ * During a deferred reconnect it returns -1. Keep servicing timers;
+ * the poll timeout is bounded by the next reconnect attempt.
  *
  * nfs_which_events() returns which events that we need to poll for.
  * This is a combination of the POLLIN and POLLOUT flags.

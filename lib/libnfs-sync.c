@@ -244,7 +244,7 @@ wait_for_reply(struct rpc_context *rpc, struct sync_cb_data *cb_data)
 			break;
 		}
 
-		if (rpc_get_fd(rpc) == -1) {
+		if (rpc_get_fd(rpc) == -1 && !rpc->reconnect_due) {
 			rpc_set_error(rpc, "Socket closed");
 			break;
 		}

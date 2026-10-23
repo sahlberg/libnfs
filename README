@@ -159,6 +159,10 @@ Arguments supported by libnfs are :
                    >=1 : Retry to connect back to the server this many
                          times before failing and returing an error back
                          to the application.
+                     Transient reconnect failures (for example, an unavailable
+                     network) retry after one second while preserving queued
+                     requests. Keep servicing RPC timers during the outage.
+                     This does not recover expired NFSv4 lease/open state.
  if=<interface>    : Interface name (e.g., eth1) to bind; requires `root`
  version=<3|4|4.2> : NFS Version. Default is 3. 4 is NFSv4.0 and 4.2 is
                      NFSv4.2; see the NFSv4 section above for what 4.2 adds

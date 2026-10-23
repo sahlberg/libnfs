@@ -767,6 +767,12 @@ int rpc_get_poll_timeout(struct rpc_context *rpc)
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 	delay = rpc->poll_timeout;
+        if (rpc->reconnect_due) {
+                uint64_t now = rpc_current_time();
+                int retry_delay = rpc->reconnect_due > now ?
+                        (int)(rpc->reconnect_due - now) : 0;
+                return delay < 0 || retry_delay < delay ? retry_delay : delay;
+        }
 
 #ifdef HAVE_NFS4_2
 	session_delay = nfs4_next_delay_msecs(rpc);
