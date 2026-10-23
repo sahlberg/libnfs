@@ -244,7 +244,40 @@ nfs_which_events(struct nfs_context *nfs)
 int
 nfs_service(struct nfs_context *nfs, int revents)
 {
-	return rpc_service(nfs->rpc, revents);
+	struct rpc_context *rpc = nfs->rpc;
+	uint64_t generation;
+	char error[1024];
+	int ret;
+
+#ifdef HAVE_MULTITHREADING
+	if (rpc->multithreading_enabled)
+		nfs_mt_mutex_lock(&rpc->rpc_mutex);
+#endif
+	generation = rpc->error_generation;
+#ifdef HAVE_MULTITHREADING
+	if (rpc->multithreading_enabled)
+		nfs_mt_mutex_unlock(&rpc->rpc_mutex);
+#endif
+
+	ret = rpc_service(rpc, revents);
+	if (ret < 0) {
+#ifdef HAVE_MULTITHREADING
+		if (rpc->multithreading_enabled)
+			nfs_mt_mutex_lock(&rpc->rpc_mutex);
+#endif
+		/* The RPC string may describe an earlier, unrelated failure. */
+		snprintf(error, sizeof(error), "%s",
+			 rpc->error_generation != generation &&
+			 rpc->error_string && *rpc->error_string ?
+			 rpc->error_string :
+			 "RPC service failed without a diagnostic");
+#ifdef HAVE_MULTITHREADING
+		if (rpc->multithreading_enabled)
+			nfs_mt_mutex_unlock(&rpc->rpc_mutex);
+#endif
+		nfs_set_error(nfs, "%s", error);
+	}
+	return ret;
 }
 
 char *

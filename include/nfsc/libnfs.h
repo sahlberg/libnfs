@@ -126,6 +126,7 @@ struct utimbuf {
  * nfs_service() This function should be called once there are events triggered
  * for the filedescriptor. This function takes POLLIN/POLLOUT/POLLHUP/POLLERR
  * as arguments.
+ * On failure, nfs_get_error() contains the RPC service diagnostic.
  * This function returns 0 on success or -1 on error. If it returns -1 it
  * means that the socket is in an unrecoverable error state (disconnected?)
  * and that no further commands can be used.

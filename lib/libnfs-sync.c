@@ -262,6 +262,7 @@ wait_for_nfs_reply(struct nfs_context *nfs, struct sync_cb_data *cb_data)
 	struct pollfd pfd;
 	int revents;
 	int ret;
+	int poll_error;
 
 #ifdef HAVE_MULTITHREADING
         if(nfs->rpc->multithreading_enabled) {
@@ -275,21 +276,36 @@ wait_for_nfs_reply(struct nfs_context *nfs, struct sync_cb_data *cb_data)
 		pfd.events = nfs_which_events(nfs);
 		pfd.revents = 0;
 
+		poll_error = 0;
 		ret = poll(&pfd, 1, rpc_get_poll_timeout(nfs->rpc));
 		if (ret < 0) {
-			nfs_set_error(nfs, "Poll failed");
+#ifdef WIN32
+			poll_error = WSAGetLastError();
+#else
+			poll_error = errno;
+#endif
 			revents = -1;
 		} else {
 			revents = pfd.revents;
 		}
 
 		if (nfs_service(nfs, revents) < 0) {
-			if (revents != -1)
-				nfs_set_error(nfs, "nfs_service failed");
+			char error[1024];
+
+			snprintf(error, sizeof(error), "%s", nfs_get_error(nfs));
 			cb_data->status = -EIO;
                         rpc_error_all_pdus(nfs->rpc, "RPC ERROR: Failed to reconnect async");
+			/* Cleanup callbacks can replace the service diagnostic. */
+			if (poll_error)
+				nfs_set_error(nfs, "Poll failed: %s (%d)",
+					      strerror(poll_error), poll_error);
+			else
+				nfs_set_error(nfs, "%s", error);
 			break;
 		}
+		if (poll_error)
+			nfs_set_error(nfs, "Poll failed: %s (%d)",
+					      strerror(poll_error), poll_error);
 	}
 }
 

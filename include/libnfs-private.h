@@ -370,6 +370,7 @@ struct rpc_context {
 	int is_nonblocking;
 
 	char *error_string;
+	uint64_t error_generation;
 
         uint32_t program;
         uint32_t version;
