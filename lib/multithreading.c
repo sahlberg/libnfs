@@ -66,6 +66,7 @@ static void* nfs_mt_service_thread(void* arg)
     struct pollfd pfd;
     int revents;
     int ret;
+    int poll_error;
 
     nfs->rpc->multithreading_enabled = 1;
 
@@ -74,18 +75,18 @@ static void* nfs_mt_service_thread(void* arg)
         pfd.events = nfs_which_events(nfs);
         pfd.revents = 0;
 
+        poll_error = 0;
         ret = poll(&pfd, 1, 0);
         if (ret < 0) {
-            nfs_set_error(nfs, "Poll failed");
+            poll_error = errno;
             revents = -1;
         }
         else {
             revents = pfd.revents;
         }
-        if (nfs_service(nfs, revents) < 0) {
-            if (revents != -1)
-                nfs_set_error(nfs, "nfs_service failed");
-        }
+        nfs_service(nfs, revents);
+        if (poll_error)
+            nfs_set_error(nfs, "Poll failed: %s", strerror(poll_error));
     }
     return NULL;
 }
@@ -219,6 +220,7 @@ static void *nfs_mt_service_thread(void *arg)
         int nfds;
         int revents;
         int ret;
+        int poll_error;
 
         /*
          * Publish the tid before the flag the starter is waiting on. Note
@@ -243,9 +245,10 @@ static void *nfs_mt_service_thread(void *arg)
                 pfd[nfds].revents = 0;
                 nfds++;
 
+                poll_error = 0;
                 ret = poll(pfd, nfds, rpc_get_poll_timeout(nfs->rpc));
                 if (ret < 0) {
-                        nfs_set_error(nfs, "Poll failed: %s", strerror(errno));
+                        poll_error = errno;
                         revents = -1;
                 } else {
                         if (evfd != -1 && pfd[0].revents != 0) {
@@ -270,9 +273,10 @@ static void *nfs_mt_service_thread(void *arg)
                  * nfs_service() failing is an unusual condition, take a pause
                  * before retrying.
                  */
-                if (nfs_service(nfs, revents) < 0) {
-                        nfs_set_error(nfs, "nfs_service failed, revents=0x%x",
-                                      revents);
+                ret = nfs_service(nfs, revents);
+                if (poll_error)
+                        nfs_set_error(nfs, "Poll failed: %s", strerror(poll_error));
+                if (ret < 0) {
                         RPC_LOG(nfs->rpc, 2, "Sleeping 5 secs, before retrying!");
                         sleep(5);
                 }
