@@ -1241,7 +1241,16 @@ static int rpc_process_reply(struct rpc_context *rpc, ZDR *zdr)
                                 }
                         }
                 }
-                if (pdu->zero_copy_iov && rpc->sec != RPC_SEC_UNDEFINED &&
+                /*
+                 * krb5 protects nothing past the verifier, so once that is
+                 * checked a READ can carry on as zero-copy.
+                 */
+                if (rpc->sec == RPC_SEC_KRB5 && pdu->in.base) {
+                        rpc->pdu->free_pdu = 1;
+                        break;
+                }
+                if (pdu->zero_copy_iov &&
+                    (rpc->sec == RPC_SEC_KRB5I || rpc->sec == RPC_SEC_KRB5P) &&
                     rpc_read_reply_ok(rpc, pdu)) {
                         struct iovec *iov;
                         int num_iov, num, count;
@@ -1309,6 +1318,20 @@ static int rpc_process_reply(struct rpc_context *rpc, ZDR *zdr)
         }
 
         if (status != 0xffffffff) {
+#ifdef HAVE_LIBKRB5
+                /*
+                 * A krb5 zero-copy READ still has its data on the socket,
+                 * headed for the caller's buffers, so a failed verifier can
+                 * only be reported once that has been read.
+                 */
+                if (status == RPC_STATUS_ERROR && rpc->sec == RPC_SEC_KRB5 &&
+                    pdu->in.base &&
+                    msg.body.rbody.reply.areply.stat == SUCCESS) {
+                        pdu->zero_copy_error = data;
+                        pdu->free_pdu = 1;
+                        return 0;
+                }
+#endif /* HAVE_LIBKRB5 */
 #ifdef HAVE_NFS4_2
                 if (status == RPC_STATUS_SUCCESS && pdu->nfs4_delay_maxres &&
                     nfs4_pdu_retry_delay(rpc, pdu, data)) {
@@ -1643,12 +1666,13 @@ int rpc_process_pdu(struct rpc_context *rpc, char *buf, int size)
 
 #ifdef HAVE_LIBKRB5
         /*
-         * For GSS and iovectors, i.e. NFS[34]READ we
+         * For KRB5I/KRB5P and iovectors, i.e. NFS[34]READ we
          * need to use a ZDR that hangs off the PDU so we can
          * access the ZDR and its buffers to manually copy
          * data into the iovectors.
          */
-        if (rpc->pdu->zero_copy_iov && rpc->sec != RPC_SEC_UNDEFINED) {
+        if (rpc->pdu->zero_copy_iov &&
+            (rpc->sec == RPC_SEC_KRB5I || rpc->sec == RPC_SEC_KRB5P)) {
                 zdr_destroy(&rpc->pdu->zdr);
                 zdrmem_create(&rpc->pdu->zdr, buf, size, ZDR_DECODE);
                 if (rpc_process_reply(rpc, &rpc->pdu->zdr) != 0) {

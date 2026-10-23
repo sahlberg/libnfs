@@ -737,7 +737,13 @@ static void rpc_finished_pdu(struct rpc_context *rpc)
                 /*
                  * For zero-copy read, this is where we call the user callback.
                  */
-                rpc->pdu->cb(rpc, RPC_STATUS_SUCCESS, rpc->pdu->zdr_decode_buf, rpc->pdu->private_data);
+                if (rpc->pdu->zero_copy_error) {
+                        rpc->pdu->cb(rpc, RPC_STATUS_ERROR,
+                                     (void *)rpc->pdu->zero_copy_error,
+                                     rpc->pdu->private_data);
+                } else {
+                        rpc->pdu->cb(rpc, RPC_STATUS_SUCCESS, rpc->pdu->zdr_decode_buf, rpc->pdu->private_data);
+                }
         }
         if (rpc->pdu && rpc->pdu->free_zdr) {
                 zdr_destroy(&rpc->pdu->zdr);
@@ -923,11 +929,12 @@ rpc_read_from_socket(struct rpc_context *rpc)
                                 /* We do not have rpc->pdu for server context */
 #ifdef HAVE_LIBKRB5
                                 /*
-                                 * GSS can not use zero-copy reads, the whole
-                                 * reply has to be in the buffer to verify it
-                                 * or to unwrap it.
+                                 * KRB5I and KRB5P can not use zero-copy
+                                 * reads, the whole reply has to be in the
+                                 * buffer to verify it or to unwrap it.
                                  */
-                                if (rpc->sec == RPC_SEC_UNDEFINED)
+                                if (rpc->sec == RPC_SEC_UNDEFINED ||
+                                    rpc->sec == RPC_SEC_KRB5)
 #endif /* HAVE_LIBKRB5 */
                                         if (rpc->pdu && rpc->pdu->in.base &&
                                             !rpc->fragments && rpc->pdu_size > ZCRP) {
@@ -1088,7 +1095,8 @@ rpc_read_from_socket(struct rpc_context *rpc)
                                         rpc->pdu = rpc_find_pdu(rpc, rpc->rm_xid[1]);
 
 #ifdef HAVE_LIBKRB5
-                                        if (rpc->sec == RPC_SEC_UNDEFINED)
+                                        if (rpc->sec == RPC_SEC_UNDEFINED ||
+                                            rpc->sec == RPC_SEC_KRB5)
 #endif /* HAVE_LIBKRB5 */
                                                 if (rpc->state != READ_FRAGMENT &&
                                                     !rpc->fragments &&
@@ -1207,10 +1215,11 @@ rpc_read_from_socket(struct rpc_context *rpc)
 #ifdef HAVE_LIBKRB5
                                 /*
                                  * Since we don't do zero-copy reads for
-                                 * GSS we are basically finished processing
-                                 * the reply at this point.
+                                 * KRB5I/KRB5P we are basically finished
+                                 * processing the reply at this point.
                                  */
-                                if (rpc->sec != RPC_SEC_UNDEFINED) {
+                                if (rpc->sec == RPC_SEC_KRB5I ||
+                                    rpc->sec == RPC_SEC_KRB5P) {
                                         goto payload_finished;
                                 }
 #endif /* HAVE_LIBKRB5 */

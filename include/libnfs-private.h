@@ -672,6 +672,8 @@ struct rpc_pdu {
         ZDR zdr_in;
         int free_zdr;
         int free_pdu;
+        /* Set if a zero-copy READ has to complete with this error */
+        const char *zero_copy_error;
 
         /*
          * Queueing priority that can be passed to rpc_queue_pdu2().
