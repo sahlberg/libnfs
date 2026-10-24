@@ -878,6 +878,37 @@ int rpc_add_iovector(struct rpc_context *rpc, struct rpc_io_vectors *v,
         return 0;
 }
 
+/* krb5i and krb5p sign or wrap the marshalled buffer, so payload can not be zero-copy */
+int rpc_sec_covers_payload(struct rpc_context *rpc)
+{
+#ifdef HAVE_LIBKRB5
+        return rpc->sec == RPC_SEC_KRB5I || rpc->sec == RPC_SEC_KRB5P;
+#else
+        (void)rpc;
+        return 0;
+#endif /* HAVE_LIBKRB5 */
+}
+
+/* Marshal iov[] as one opaque<>, length and XDR padding included */
+int rpc_zdr_put_payload(ZDR *zdr, const struct iovec *iov, int iovcnt,
+                        uint32_t len)
+{
+        int i;
+
+        if (!zdr_u_int(zdr, &len) ||
+            (uint32_t)(zdr->size - zdr->pos) < ((len + 3) & ~3U)) {
+                return -1;
+        }
+        for (i = 0; i < iovcnt; i++) {
+                memcpy(&zdr->buf[zdr->pos], iov[i].iov_base, iov[i].iov_len);
+                zdr->pos += iov[i].iov_len;
+        }
+        while (zdr->pos & 3) {
+                zdr->buf[zdr->pos++] = 0;
+        }
+        return 0;
+}
+
 /*
  * Advance the cursor by len bytes.
  * This must be called after reading len bytes into the cursor, so that the

@@ -1165,7 +1165,7 @@ struct rpc_pdu *rpc_nfs4_writev_task(struct rpc_context *rpc, rpc_cb cb,
         int start;
         uint32_t len;
         static uint32_t zero_padding;
-        int i;
+        int i, copy_payload;
 
         if (iovcnt == 0 || iov == NULL) {
 		rpc_set_error(rpc, "Invalid arguments: iov and iovcnt must be specified");
@@ -1177,9 +1177,16 @@ struct rpc_pdu *rpc_nfs4_writev_task(struct rpc_context *rpc, rpc_cb cb,
 		return NULL;
         }
 
+        len = 0;
+        for (i = 0; i < iovcnt; i++) {
+                len += iov[i].iov_len;
+        }
+        copy_payload = rpc_sec_covers_payload(rpc);
+
 	pdu = rpc_allocate_pdu2(rpc, NFS4_PROGRAM, NFS_V4, NFSPROC4_COMPOUND,
                                 cb, private_data, (zdrproc_t)zdr_COMPOUND4res,
-                                sizeof(COMPOUND4res), 0, iovcnt);
+                                sizeof(COMPOUND4res),
+                                copy_payload ? len + 8 : 0, iovcnt);
 	if (pdu == NULL) {
 		rpc_set_error(rpc, "Out of memory. Failed to allocate pdu for "
                               "NFS4/COMPOUND call");
@@ -1217,17 +1224,20 @@ struct rpc_pdu *rpc_nfs4_writev_task(struct rpc_context *rpc, rpc_cb cb,
 		return NULL;
 	}
 
+        if (copy_payload) {
+                if (rpc_zdr_put_payload(&pdu->zdr, iov, iovcnt, len) < 0) {
+                        rpc_set_error(rpc, "ZDR error: Failed to encode WRITE4 data");
+                        rpc_free_pdu(rpc, pdu);
+                        return NULL;
+                }
+                goto queue;
+        }
+
         /* Add an iovector for the COMPOUND4/.../WRITE4 header */
         if (rpc_add_iovector(rpc, &pdu->out, &pdu->outdata.data[start + 4],
                              zdr_getpos(&pdu->zdr) - start, NULL) < 0) {
 		rpc_free_pdu(rpc, pdu);
 		return NULL;
-        }
-
-        /* Calculate data length to encode in the RPC request */
-        len = 0;
-        for (i = 0; i < iovcnt; i++) {
-                len += iov[i].iov_len;
         }
 
         /* Add an iovector for the length of the byte/array blob */
@@ -1259,6 +1269,7 @@ struct rpc_pdu *rpc_nfs4_writev_task(struct rpc_context *rpc, rpc_cb cb,
                 }
         }
 
+ queue:
 	if (rpc_queue_pdu(rpc, pdu) != 0) {
 		rpc_set_error(rpc, "Out of memory. Failed to queue pdu for "
                               "NFS4/COMPOUND4 call");

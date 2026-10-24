@@ -1174,6 +1174,9 @@ struct nfsfh {
 };
 
 void rpc_free_iovector(struct rpc_context *rpc, struct rpc_io_vectors *v);
+int rpc_sec_covers_payload(struct rpc_context *rpc);
+int rpc_zdr_put_payload(ZDR *zdr, const struct iovec *iov, int iovcnt,
+                        uint32_t len);
 int rpc_add_iovector(struct rpc_context *rpc, struct rpc_io_vectors *v,
                      char *buf, int len, void (*free)(void *));
 void rpc_advance_cursor(struct rpc_context *rpc, struct rpc_iovec_cursor *v,
