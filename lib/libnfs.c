@@ -204,6 +204,40 @@ nfs_set_xprtsecurity(struct nfs_context *nfs, enum rpc_xprtsec xprtsec)
 #endif /* HAVE_TLS */
 
 int
+nfs_set_transport(struct nfs_context *nfs, enum rpc_transport transport)
+{
+	switch (transport) {
+	case RPC_TRANSPORT_TCP:
+		break;
+	case RPC_TRANSPORT_RDMA:
+#ifdef HAVE_RDMA
+		break;
+#else
+		nfs_set_error(nfs, "libnfs was built without RDMA support");
+		return -1;
+#endif
+	default:
+		nfs_set_error(nfs, "Unknown transport %d", transport);
+		return -1;
+	}
+
+	nfs->rpc->wanted_transport = transport;
+	return 0;
+}
+
+int
+nfs_nfsport(struct nfs_context *nfs)
+{
+	if (nfs->nfsi->nfsport) {
+		return nfs->nfsi->nfsport;
+	}
+	if (nfs->rpc->wanted_transport == RPC_TRANSPORT_RDMA) {
+		return 20049;
+	}
+	return 0;
+}
+
+int
 nfs_get_tid(struct nfs_context *nfs)
 {
 	assert(nfs->rpc->magic == RPC_CONTEXT_MAGIC);
@@ -387,6 +421,20 @@ nfs_set_context_args(struct nfs_context *nfs, const char *arg, const char *val)
 		 * alone rather than flattening it to "not supported".
 		 */
 		if (nfs_set_version(nfs, v) < 0) {
+			return -1;
+		}
+	} else if (!strcmp(arg, "proto")) {
+		enum rpc_transport transport;
+
+		if (!strcmp(val, "tcp")) {
+			transport = RPC_TRANSPORT_TCP;
+		} else if (!strcmp(val, "rdma")) {
+			transport = RPC_TRANSPORT_RDMA;
+		} else {
+			nfs_set_error(nfs, "Unknown/unsupported proto : %s", val);
+			return -1;
+		}
+		if (nfs_set_transport(nfs, transport) < 0) {
 			return -1;
 		}
 	} else if (!strcmp(arg, "nfsport")) {

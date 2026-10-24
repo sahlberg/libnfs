@@ -101,6 +101,7 @@ nfs_set_readmax
 nfs_set_readonly
 nfs_set_security
 nfs_set_tcp_syncnt
+nfs_set_transport
 nfs_set_timeout
 nfs_set_uid
 rpc_set_username

@@ -2473,7 +2473,7 @@ nfs4_mount_async(struct nfs_context *nfs, const char *server,
         data->private_data = private_data;
         data->path         = strdup(new_export);
 
-        port = nfs->nfsi->nfsport ? nfs->nfsi->nfsport : 2049;
+        port = nfs_nfsport(nfs) ? nfs_nfsport(nfs) : 2049;
 #ifdef HAVE_NFS4_2
         if (nfs->nfsi->version == NFS_V4_2) {
                 connect_cb = nfs42_mount_start;

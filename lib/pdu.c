@@ -657,6 +657,12 @@ void rpc_free_pdu(struct rpc_context *rpc, struct rpc_pdu *pdu)
         }
 #endif /* HAVE_NFS4_2 */
 
+#ifdef HAVE_RDMA
+        if (pdu->rdma_slot) {
+                rpc_rdma_release_pdu(rpc, pdu);
+        }
+#endif /* HAVE_RDMA */
+
 	if (pdu->zdr_decode_buf != NULL) {
 		zdr_free(pdu->zdr_decode_fn, pdu->zdr_decode_buf);
 	}
@@ -1030,12 +1036,11 @@ int rpc_queue_pdu(struct rpc_context *rpc, struct rpc_pdu *pdu)
         return rpc_queue_pdu2(rpc, pdu, PDU_Q_PRIO_LOW);
 }
 
-#ifdef HAVE_LIBKRB5
 /*
  * A READ that failed has no data in its reply, only a status for the
  * caller to see.
  */
-static int rpc_read_reply_ok(struct rpc_context *rpc, struct rpc_pdu *pdu)
+int rpc_read_reply_ok(struct rpc_context *rpc, struct rpc_pdu *pdu)
 {
         if (rpc->program == NFS_PROGRAM && rpc->version == NFS_V3) {
                 const READ3res *res = (READ3res *)(void *)pdu->zdr_decode_buf;
@@ -1047,7 +1052,6 @@ static int rpc_read_reply_ok(struct rpc_context *rpc, struct rpc_pdu *pdu)
         }
         return 1;
 }
-#endif /* HAVE_LIBKRB5 */
 
 static int rpc_process_reply(struct rpc_context *rpc, ZDR *zdr)
 {

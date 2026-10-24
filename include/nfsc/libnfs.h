@@ -60,6 +60,9 @@ extern "C" {
 #define LIBNFS_FEATURE_NFS4_2
 #endif
 
+/* nfs_set_transport() exists, it fails at run time on builds without RDMA. */
+#define LIBNFS_FEATURE_RDMA
+
 #define NFS_BLKSIZE 4096
 
 struct nfs_context;
@@ -203,6 +206,22 @@ enum rpc_xprtsec {
 EXTERN void nfs_set_xprtsecurity(struct nfs_context *nfs, enum rpc_xprtsec xprtsec);
 
 /*
+ * Transport for NFS, mapping to the mount option proto=[tcp,rdma].
+ * MOUNT and PORTMAP always use TCP. RDMA defaults the NFS port to 20049
+ * and can not be combined with xprtsec=tls/mtls.
+ */
+enum rpc_transport {
+	RPC_TRANSPORT_TCP = 0,
+	RPC_TRANSPORT_RDMA,
+};
+
+/*
+ * Returns 0 on success and -1 if the transport is not supported by this
+ * build of libnfs, see LIBNFS_FEATURE_RDMA.
+ */
+EXTERN int nfs_set_transport(struct nfs_context *nfs, enum rpc_transport transport);
+
+/*
  * Used if you need to bind to a specific interface.
  * Only available on platforms that support SO_BINDTODEVICE.
  */
@@ -285,6 +304,8 @@ EXTERN int nfs_set_hash_size(struct nfs_context *nfs, int hashes);
  *                     none : No TLS security.
  *                     tls  : TLS with server authentication only.
  *                     mtls : Mutual TLS, both server and client authentication.
+ * proto=<tcp|rdma>  : Transport for NFS. rdma uses RPC-over-RDMA and port
+ *                     20049 unless nfsport is given. Default is tcp.
  * auto-traverse-mounts=<0|1>
  *                   : Should libnfs try to traverse across nested mounts
  *                     automatically or not. Default is 1 == enabled.

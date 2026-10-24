@@ -391,6 +391,52 @@ AC_SUBST(TLS_LIBS)
 AC_SUBST(tls_library)
 AM_CONDITIONAL([HAVE_TLS], [test x$libnfs_cv_HAVE_TLS = xyes])
 
+#option: rdma
+#
+# NFS over RDMA needs librdmacm and libibverbs from rdma-core, and epoll.
+#
+AC_ARG_ENABLE([rdma],
+              [AS_HELP_STRING([--enable-rdma],[Build with NFS over RDMA support (default: auto)])],
+	      [ENABLE_RDMA=$enableval],
+	      [ENABLE_RDMA="auto"])
+
+libnfs_cv_HAVE_RDMA=no
+RDMA_LIBS=""
+
+if test x"$ENABLE_RDMA" != x"no"; then
+  save_LIBS="$LIBS"
+  LIBS="-lrdmacm -libverbs $LIBS"
+  AC_CACHE_CHECK([for librdmacm and libibverbs],libnfs_cv_HAVE_RDMACM,[
+  AC_LINK_IFELSE([AC_LANG_PROGRAM([[
+#include <sys/epoll.h>
+#include <infiniband/verbs.h>
+#include <rdma/rdma_cma.h>
+]],
+[[struct rdma_event_channel *ch = rdma_create_event_channel();
+ (void)ibv_wc_status_str(IBV_WC_SUCCESS);
+ (void)epoll_create1(EPOLL_CLOEXEC);
+ rdma_destroy_event_channel(ch);]])],[libnfs_cv_HAVE_RDMACM=yes],[libnfs_cv_HAVE_RDMACM=no])])
+  LIBS="$save_LIBS"
+  libnfs_cv_HAVE_RDMA=$libnfs_cv_HAVE_RDMACM
+
+  if test x"$libnfs_cv_HAVE_RDMA" = x"no"; then
+    if test x"$ENABLE_RDMA" = x"yes"; then
+      AC_MSG_ERROR([--enable-rdma was given but librdmacm/libibverbs development files are missing])
+    fi
+    AC_MSG_NOTICE([librdmacm/libibverbs development files are missing])
+  fi
+fi
+
+if test x"$libnfs_cv_HAVE_RDMA" = x"yes"; then
+    AC_DEFINE(HAVE_RDMA,1,[Whether we have NFS over RDMA support])
+    RDMA_LIBS="-lrdmacm -libverbs"
+    AC_MSG_NOTICE([Build with NFS over RDMA support])
+else
+    AC_MSG_NOTICE([Build WITHOUT NFS over RDMA support])
+fi
+AC_SUBST(RDMA_LIBS)
+AM_CONDITIONAL([HAVE_RDMA], [test x$libnfs_cv_HAVE_RDMA = xyes])
+
 AC_CHECK_MEMBERS([struct stat.st_mtim.tv_nsec])
 
 AC_CHECK_HEADERS(dispatch/dispatch.h)

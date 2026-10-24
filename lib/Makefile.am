@@ -55,3 +55,8 @@ if HAVE_TLS
 libnfs_la_CPPFLAGS += -I$(abs_top_srcdir)/tls $(TLS_CFLAGS)
 libnfs_la_LIBADD += ../tls/libtls.la $(TLS_LIBS)
 endif
+
+if HAVE_RDMA
+libnfs_la_SOURCES += rdma.c
+libnfs_la_LIBADD += $(RDMA_LIBS)
+endif

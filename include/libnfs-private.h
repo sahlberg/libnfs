@@ -639,6 +639,19 @@ struct rpc_context {
 	struct tls_context tls_context;
 #endif /* HAVE_TLS */
 
+	/* Transport for the NFS program, MOUNT and PORTMAP always use TCP. */
+	enum rpc_transport wanted_transport;
+#ifdef HAVE_RDMA
+	int is_rdma;
+	/* Bumped by every teardown, so callers can tell the connection went away. */
+	uint32_t rdma_gen;
+	struct rpc_rdma *rdma;
+#ifdef HAVE_MULTITHREADING
+	/* Taken after rpc_mutex, never before it. */
+	libnfs_mutex_t rdma_mutex;
+#endif /* HAVE_MULTITHREADING */
+#endif /* HAVE_RDMA */
+
 #ifdef HAVE_LIBKRB5
         const char *username;
         enum rpc_sec wanted_sec;
@@ -784,6 +797,11 @@ rpc_cb cb;
         uint32_t discard_after_sending:1;
         uint32_t zero_copy_iov:1;
 
+#ifdef HAVE_RDMA
+        /* RPC-over-RDMA buffers and registrations while the call is in flight */
+        struct rpc_rdma_slot *rdma_slot;
+#endif /* HAVE_RDMA */
+
 #ifdef HAVE_NFS4_2
         /*
          * NFSv4.2 session slot bookkeeping.
@@ -909,6 +927,35 @@ int rpc_process_pdu(struct rpc_context *rpc, char *buf, int size);
 struct rpc_pdu *rpc_find_pdu(struct rpc_context *rpc, uint32_t xid);
 int rpc_cancel_sent_pdu(struct rpc_context *rpc, uint32_t xid);
 void rpc_error_all_pdus(struct rpc_context *rpc, const char *error);
+int rpc_read_reply_ok(struct rpc_context *rpc, struct rpc_pdu *pdu);
+int rpc_outqueue_sent(struct rpc_context *rpc, struct rpc_pdu *pdu);
+void rpc_finished_pdu(struct rpc_context *rpc);
+
+#ifdef HAVE_RDMA
+enum rpc_rdma_event {
+        RPC_RDMA_EV_NONE = 0,
+        RPC_RDMA_EV_CONNECTED,
+        RPC_RDMA_EV_CONNECT_FAILED,
+        RPC_RDMA_EV_DISCONNECTED,
+};
+
+int rpc_rdma_connect(struct rpc_context *rpc);
+void rpc_rdma_teardown(struct rpc_context *rpc);
+enum rpc_rdma_event rpc_rdma_service(struct rpc_context *rpc, int *err);
+int rpc_rdma_write(struct rpc_context *rpc);
+void rpc_rdma_release_pdu(struct rpc_context *rpc, struct rpc_pdu *pdu);
+
+static inline int rpc_is_rdma(struct rpc_context *rpc)
+{
+        return rpc->is_rdma;
+}
+#else
+static inline int rpc_is_rdma(struct rpc_context *rpc)
+{
+        (void)rpc;
+        return 0;
+}
+#endif /* HAVE_RDMA */
 
 /*
  * XXX This holds rpc->rpc_mutex, so if the caller is already holding
@@ -973,6 +1020,8 @@ void nfs_set_error_locked(struct nfs_context *nfs, char *error_string, ...)
 
 const char *nfs_get_server(struct nfs_context *nfs);
 const char *nfs_get_export(struct nfs_context *nfs);
+/* Explicit nfsport, else the RDMA default, else 0 */
+int nfs_nfsport(struct nfs_context *nfs);
 
 void rpc_set_interface(struct rpc_context *rpc, const char *ifname);
 

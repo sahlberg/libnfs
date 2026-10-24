@@ -145,6 +145,8 @@ Arguments supported by libnfs are :
 
                      See CERTIFICATES for details about specifying certificates/keys
                      that libnfs must use when using "tls" or "mtls" security.
+ proto=<tcp|rdma>  : Transport for NFS. rdma uses RPC-over-RDMA on port 20049
+                     unless nfsport is given. Default is tcp. See RDMA.
  auto-traverse-mounts=<0|1>
                    : Should libnfs try to traverse across nested mounts
                      automatically or not. Default is 1 == enabled.
@@ -283,6 +285,22 @@ With cmake:
   cmake -DENABLE_KRB5=ON ..    # fail the configure if Kerberos is not available
   cmake -DENABLE_KRB5=OFF ..   # never build Kerberos support
 
+
+RDMA
+====
+NFS over RDMA (RPC-over-RDMA version 1, RFC 8166) is built on Linux when the
+librdmacm and libibverbs development files from rdma-core are found, see
+--enable-rdma and -DENABLE_RDMA. It is selected with proto=rdma or
+nfs_set_transport(). MOUNT and PORTMAP still use TCP, so an NFSv3 mount needs
+both.
+
+READ data is placed directly in the caller's buffer and WRITE data is read
+directly from it, which pins that memory while the call is in flight. Processes
+without CAP_IPC_LOCK are limited by RLIMIT_MEMLOCK, which may need raising for
+many large requests in parallel.
+
+Software iWARP (siw) or RoCE (rxe) is enough for testing:
+  rdma link add siw0 type siw netdev eth0
 
 CERTIFICATES
 ============

@@ -10,6 +10,10 @@ set(SOURCES init.c
             socket.c
 )
 
+if(LIBNFS_RDMA)
+  list(APPEND SOURCES rdma.c)
+endif()
+
 # deal with version info in "dll" case
 if(WIN32 AND BUILD_SHARED_LIBS)
   configure_file(../win32/version.rc.template version.rc @ONLY)
