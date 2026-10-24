@@ -402,6 +402,10 @@ rpc_which_events(struct rpc_context *rpc)
 	if (rpc->reconnect_due) {
 		return 0;
 	}
+	/* Sends never wait for POLLOUT, everything arrives on the epoll fd */
+	if (rpc_is_rdma(rpc)) {
+		return POLLIN;
+	}
 	events = rpc->is_connected ? POLLIN : POLLOUT;
 
 	if (rpc->is_udp != 0) {
@@ -438,6 +442,60 @@ rpc_disable_socket(struct rpc_context *rpc, int val)
         rpc->socket_disabled = val;
 }
 
+/* Head of outqueue fully sent, move it to waitpdu. Returns 1 if it was freed. */
+int
+rpc_outqueue_sent(struct rpc_context *rpc, struct rpc_pdu *pdu)
+{
+        unsigned int hash;
+
+        assert(rpc->outqueue.head == pdu);
+
+        pdu->out.num_done = pdu->out.total_size;
+#ifdef HAVE_NFS4_2
+        pdu->nfs4_slot_sent = 1;
+#endif /* HAVE_NFS4_2 */
+
+        rpc->outqueue.head = pdu->next;
+        if (rpc->outqueue.head == NULL)
+                rpc->outqueue.tail = NULL;
+
+        /*
+         * We just dequeued the last high priority pdu,
+         * the high priority run is now empty.
+         */
+        if (rpc->outqueue.tailp == pdu)
+                rpc->outqueue.tailp = NULL;
+
+        assert(rpc->stats.outqueue_len > 0);
+        rpc->stats.outqueue_len--;
+
+        /* RPC sent, original or retransmit */
+        INC_STATS(rpc, num_req_sent);
+
+#ifdef HAVE_CLOCK_GETTIME
+        /*
+         * Now this RPC is completely written over the socket.
+         * Note current wallclock time as the dispatch time.
+         */
+        pdu->dispatch_usecs = rpc_wallclock_time();
+#endif
+
+        if (pdu->discard_after_sending) {
+                rpc_free_pdu(rpc, pdu);
+                return 1;
+        }
+
+        hash = rpc_hash_xid(rpc, pdu->xid);
+        rpc_enqueue(&rpc->waitpdu[hash], pdu);
+        rpc->waitpdu_len++;
+
+        pdu->pdu_stats.send_timestamp = rpc_current_time_us();
+        if (rpc->stats_cb) {
+                rpc->stats_cb(rpc, &pdu->pdu_stats, rpc->stats_private_data);
+        }
+        return 0;
+}
+
 int
 rpc_write_to_socket(struct rpc_context *rpc)
 {
@@ -451,6 +509,11 @@ rpc_write_to_socket(struct rpc_context *rpc)
         if (rpc->socket_disabled) {
                 return 0;
         }
+#ifdef HAVE_RDMA
+        if (rpc->is_rdma) {
+                return rpc_rdma_write(rpc);
+        }
+#endif /* HAVE_RDMA */
 	if (rpc->fd == -1) {
 		rpc_set_error(rpc, "trying to write but not connected");
 		return -1;
@@ -606,53 +669,11 @@ rpc_write_to_socket(struct rpc_context *rpc)
                 while (count > 0 && (pdu = rpc->outqueue.head) != NULL) {
                         size_t remaining = (pdu->out.total_size - pdu->out.num_done);
                         if (remaining <= count) {
-                                unsigned int hash;
-
                                 count -= remaining;
 
-                                pdu->out.num_done = pdu->out.total_size;
-#ifdef HAVE_NFS4_2
-                                pdu->nfs4_slot_sent = 1;
-#endif /* HAVE_NFS4_2 */
-
-                                rpc->outqueue.head = pdu->next;
-                                if (rpc->outqueue.head == NULL)
-                                        rpc->outqueue.tail = NULL;
-
-                                /*
-                                 * We just dequeued the last high priority pdu,
-                                 * the high priority run is now empty.
-                                 */
-                                if (rpc->outqueue.tailp == pdu)
-                                        rpc->outqueue.tailp = NULL;
-
-                                assert(rpc->stats.outqueue_len > 0);
-                                rpc->stats.outqueue_len--;
-
-                                /* RPC sent, original or retransmit */
-                                INC_STATS(rpc, num_req_sent);
-
-#ifdef HAVE_CLOCK_GETTIME
-                                /*
-                                 * Now this RPC is completely written over the socket.
-                                 * Note current wallclock time as the dispatch time.
-                                 */
-                                pdu->dispatch_usecs = rpc_wallclock_time();
-#endif
-
-                                if (pdu->discard_after_sending) {
-                                        rpc_free_pdu(rpc, pdu);
+                                if (rpc_outqueue_sent(rpc, pdu)) {
                                         ret = 0;
                                         goto finished;
-                                }
-
-                                hash = rpc_hash_xid(rpc, pdu->xid);
-                                rpc_enqueue(&rpc->waitpdu[hash], pdu);
-                                rpc->waitpdu_len++;
-
-                                pdu->pdu_stats.send_timestamp = rpc_current_time_us();
-                                if (rpc->stats_cb) {
-                                        rpc->stats_cb(rpc, &pdu->pdu_stats, rpc->stats_private_data);
                                 }
                         } else {
                                 pdu->out.num_done += count;
@@ -741,7 +762,7 @@ static char *rpc_reassemble_pdu(struct rpc_context *rpc, uint32_t *pdu_size)
         return reasbuf;
 }
 
-static void rpc_finished_pdu(struct rpc_context *rpc)
+void rpc_finished_pdu(struct rpc_context *rpc)
 {
         if (rpc->pdu && rpc->pdu->free_pdu) {
                 /*
@@ -1531,6 +1552,14 @@ rpc_timeout_scan(struct rpc_context *rpc)
 				/* Reset the RPC timeout values as appropriate */
 				pdu_set_timeout(rpc, pdu, t);
 
+#ifdef HAVE_RDMA
+				/* RPC-over-RDMA only retransmits on a new connection */
+				if (rpc->is_rdma) {
+					rpc_rdma_release_pdu(rpc, pdu);
+					need_reconnect = TRUE;
+				}
+#endif /* HAVE_RDMA */
+
 				/* queue it back to outqueue for retransmit */
 				rpc_return_to_outqueue(rpc, pdu);
 			} else {
@@ -1856,6 +1885,34 @@ rpc_service(struct rpc_context *rpc, int revents)
 	rpc_nfs4_maybe_renew_session(rpc);
 #endif /* HAVE_NFS4_2 */
 
+#ifdef HAVE_RDMA
+	if (rpc->is_rdma) {
+		int err = 0;
+
+		switch (rpc_rdma_service(rpc, &err)) {
+		case RPC_RDMA_EV_NONE:
+			break;
+		case RPC_RDMA_EV_CONNECTED:
+			rpc->is_connected = 1;
+			RPC_LOG(rpc, 2, "RDMA connection established");
+			maybe_call_connect_cb(rpc, RPC_STATUS_SUCCESS);
+			break;
+		case RPC_RDMA_EV_CONNECT_FAILED:
+			if (rpc->connect_cb == reconnect_cb)
+				return rpc_reconnect_failed(rpc, err);
+			maybe_call_connect_cb(rpc, RPC_STATUS_ERROR);
+			return -1;
+		case RPC_RDMA_EV_DISCONNECTED:
+			return rpc_reconnect_requeue(rpc);
+		}
+		if (rpc->is_rdma && rpc->is_connected &&
+		    rpc_outqueue_present(rpc) && rpc_write_to_socket(rpc) != 0) {
+			return rpc_reconnect_requeue(rpc);
+		}
+		return 0;
+	}
+#endif /* HAVE_RDMA */
+
 	if (revents == -1 || revents & (POLLERR|POLLHUP)) {
 		int connect_error = 0;
 		if (revents != -1 && revents & POLLERR) {
@@ -2102,6 +2159,12 @@ rpc_connect_sockaddr_async(struct rpc_context *rpc)
 			return -1;
 		}
 	}
+
+#ifdef HAVE_RDMA
+	if (rpc->is_rdma) {
+		return rpc_rdma_connect(rpc);
+	}
+#endif /* HAVE_RDMA */
 
 	switch (s->ss_family) {
 	case AF_INET:
@@ -2390,6 +2453,19 @@ rpc_connect_async(struct rpc_context *rpc, const char *server, int port,
 
 	rpc->auto_reconnect = 0;
 
+#ifdef HAVE_RDMA
+	rpc->is_rdma = rpc->wanted_transport == RPC_TRANSPORT_RDMA &&
+		rpc->program == NFS_PROGRAM;
+#ifdef HAVE_TLS
+	if (rpc->is_rdma && (rpc->wanted_xprtsec == RPC_XPRTSEC_TLS ||
+			     rpc->wanted_xprtsec == RPC_XPRTSEC_MTLS)) {
+		rpc->is_rdma = 0;
+		rpc_set_error(rpc, "xprtsec=tls/mtls is not supported with proto=rdma");
+		return -1;
+	}
+#endif /* HAVE_TLS */
+#endif /* HAVE_RDMA */
+
         if (rpc_set_sockaddr(rpc, server, port) != 0) {
                 return -1;
         }
@@ -2421,6 +2497,10 @@ rpc_disconnect(struct rpc_context *rpc, const char *error)
 	if (rpc->old_fd && rpc->old_fd != rpc->fd)
 		close(rpc->old_fd);
 
+#ifdef HAVE_RDMA
+	rpc_rdma_teardown(rpc);
+	rpc->is_rdma = 0;
+#endif /* HAVE_RDMA */
 	if (rpc->fd != -1) {
 		close(rpc->fd);
 		rpc->fd  = -1;
@@ -2674,7 +2754,8 @@ rpc_reconnect_failed(struct rpc_context *rpc, int error)
 	}
 	if (retryable && rpc->auto_reconnect != 0 &&
 	    (rpc->auto_reconnect < 0 || rpc->num_retries > 0)) {
-		if (rpc_park_reconnect_fd(rpc) != 0)
+		/* The RDMA epoll fd is already idle and stays registered */
+		if (!rpc_is_rdma(rpc) && rpc_park_reconnect_fd(rpc) != 0)
 			goto failed;
 		rpc->reconnect_due = rpc_current_time() + 1000;
 		RPC_LOG(rpc, 1, "Reconnect failed; retrying in 1000 ms: %s",
@@ -2711,10 +2792,17 @@ rpc_reconnect_requeue(struct rpc_context *rpc)
 		rpc->num_retries = rpc->auto_reconnect;
 	}
 
-	if (rpc->fd != -1) {
-		rpc->old_fd = rpc->fd;
+#ifdef HAVE_RDMA
+	if (rpc->is_rdma) {
+		rpc_rdma_teardown(rpc);
+	} else
+#endif /* HAVE_RDMA */
+	{
+		if (rpc->fd != -1) {
+			rpc->old_fd = rpc->fd;
+		}
+		rpc->fd  = -1;
 	}
-	rpc->fd  = -1;
 	rpc->is_connected = 0;
 
 	/*

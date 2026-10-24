@@ -884,9 +884,9 @@ finished:
 		return;
 	}
 
-        if (nfs->nfsi->nfsport) {
+        if (nfs_nfsport(nfs)) {
                 if (rpc_connect_port_async(nfs->rpc, nfs_get_server(nfs),
-                                           nfs->nfsi->nfsport,
+                                           nfs_nfsport(nfs),
                                            NFS_PROGRAM, NFS_V3,
                                            nfs3_mount_5_cb, data) != 0) {
                         nfs_set_error(nfs, "%s: %s", __FUNCTION__,
@@ -1005,9 +1005,9 @@ nfs3_mount_3_cb(struct rpc_context *rpc, int status, void *command_data,
 	 */
 	rpc_disconnect(rpc, "normal disconnect");
 
-        if (nfs->nfsi->nfsport) {
+        if (nfs_nfsport(nfs)) {
                 if (rpc_connect_port_async(nfs->rpc, nfs_get_server(nfs),
-                                           nfs->nfsi->nfsport,
+                                           nfs_nfsport(nfs),
                                            NFS_PROGRAM, NFS_V3,
                                            nfs3_mount_5_cb, data) != 0) {
                         nfs_set_error(nfs, "%s: %s", __FUNCTION__,
@@ -1085,9 +1085,9 @@ nfs3_mount_2_cb(struct rpc_context *rpc, int status, void *command_data,
 
 	rpc_disconnect(rpc, "normal disconnect");
 
-        if (nfs->nfsi->nfsport) {
+        if (nfs_nfsport(nfs)) {
                 if (rpc_connect_port_async(nfs->rpc, nfs_get_server(nfs),
-                                           nfs->nfsi->nfsport,
+                                           nfs_nfsport(nfs),
                                            NFS_PROGRAM, NFS_V3,
                                            nfs3_mount_5_cb, data) != 0) {
                         nfs_set_error(nfs, "%s: %s", __FUNCTION__,

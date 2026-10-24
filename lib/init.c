@@ -163,6 +163,9 @@ struct rpc_context *rpc_init_context(void)
 #ifdef HAVE_MULTITHREADING
 	nfs_mt_mutex_init(&rpc->rpc_mutex);
 	nfs_mt_mutex_init(&rpc->nfs40_renew_mutex);
+#ifdef HAVE_RDMA
+	nfs_mt_mutex_init(&rpc->rdma_mutex);
+#endif /* HAVE_RDMA */
 #ifdef HAVE_NFS4_2
 	nfs4_session_mutex_init(rpc);
 #endif /* HAVE_NFS4_2 */
@@ -279,6 +282,9 @@ struct rpc_context *rpc_init_server_context(int s)
 #ifdef HAVE_MULTITHREADING
         nfs_mt_mutex_init(&rpc->rpc_mutex);
         nfs_mt_mutex_init(&rpc->nfs40_renew_mutex);
+#ifdef HAVE_RDMA
+        nfs_mt_mutex_init(&rpc->rdma_mutex);
+#endif /* HAVE_RDMA */
 #ifdef HAVE_NFS4_2
         nfs4_session_mutex_init(rpc);
 #endif /* HAVE_NFS4_2 */
@@ -653,6 +659,9 @@ void rpc_destroy_context(struct rpc_context *rpc)
                 rpc->auth =NULL;
         }
 
+#ifdef HAVE_RDMA
+	rpc_rdma_teardown(rpc);
+#endif /* HAVE_RDMA */
 	if (rpc->reconnect_write_fd != -1)
 		close(rpc->reconnect_write_fd);
 	if (rpc->old_fd && rpc->old_fd != rpc->fd)
@@ -679,6 +688,9 @@ void rpc_destroy_context(struct rpc_context *rpc)
 #ifdef HAVE_MULTITHREADING
         nfs_mt_mutex_destroy(&rpc->rpc_mutex);
         nfs_mt_mutex_destroy(&rpc->nfs40_renew_mutex);
+#ifdef HAVE_RDMA
+        nfs_mt_mutex_destroy(&rpc->rdma_mutex);
+#endif /* HAVE_RDMA */
 #ifndef HAVE_STDATOMIC_H
         nfs_mt_mutex_destroy(&rpc->atomic_int_mutex);
 #endif
