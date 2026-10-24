@@ -290,6 +290,11 @@ EXTERN int nfs_set_hash_size(struct nfs_context *nfs, int hashes);
  *                     automatically or not. Default is 1 == enabled.
  * readonly	     : Set the mount to readonly.
  * dircache=<0|1>    : Disable/enable directory caching. Enabled by default.
+ * resend-unstable=<MiB>
+ *                   : Keep up to this much NFSv4 data the server has not
+ *                     committed yet, and write it again if the server loses
+ *                     it, see nfs_set_resend_unstable(). 0, the default,
+ *                     disables it.
  * autoreconnect=<-1|0|>=1>
  *                   : Control the auto-reconnect behaviour to the NFS session.
  *                    -1 : Try to reconnect forever on session failures.
@@ -379,6 +384,19 @@ EXTERN void nfs_set_debug(struct nfs_context *nfs, int level);
 EXTERN void nfs_set_auto_traverse_mounts(struct nfs_context *nfs, int enabled);
 EXTERN void nfs_set_dircache(struct nfs_context *nfs, int enabled);
 EXTERN void nfs_set_autoreconnect(struct nfs_context *nfs, int num_retries);
+/*
+ * Keep the data of NFSv4 WRITEs the server answered UNSTABLE4, up to
+ * max_bytes for the whole context, until a COMMIT shows the server has it on
+ * stable storage. When a COMMIT returns another write verifier, the server
+ * restarted or another one took over and lost the data, and it is written
+ * again before fsync or close returns. A WRITE waits for a COMMIT when the
+ * limit is reached. 0, the default, disables it.
+ *
+ * Resent data uses the anonymous stateid when the open state is gone too,
+ * so it bypasses the share reservations and locks this client had.
+ */
+EXTERN void nfs_set_resend_unstable(struct nfs_context *nfs,
+                                    uint64_t max_bytes);
 EXTERN void nfs_set_retrans(struct nfs_context *nfs, int retrans);
 EXTERN void nfs_set_nfsport(struct nfs_context *nfs, int port);
 EXTERN void nfs_set_mountport(struct nfs_context *nfs, int port);

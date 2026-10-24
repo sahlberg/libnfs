@@ -20,8 +20,8 @@ noinst_PROGRAMS = prog_access prog_access2 prog_chmod prog_chown \
 EXTRA_PROGRAMS = ld_timeout
 CLEANFILES = ld_timeout.o ld_timeout.so
 
-check_PROGRAMS += prog_reconnect prog_nfs4_delay prog_nfs4_errno prog_nfs40_renew
-TESTS += prog_reconnect prog_nfs4_delay prog_nfs4_errno prog_nfs40_renew
+check_PROGRAMS += prog_reconnect prog_nfs4_delay prog_nfs4_errno prog_nfs40_renew prog_nfs4_resend
+TESTS += prog_reconnect prog_nfs4_delay prog_nfs4_errno prog_nfs40_renew prog_nfs4_resend
 
 ld_timeout_SOURCES = ld_timeout.c
 ld_timeout_CFLAGS = $(AM_CFLAGS) -fPIC

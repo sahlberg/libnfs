@@ -331,6 +331,88 @@ rpc_wakeup_service_thread(struct rpc_context *rpc)
 #endif
 }
 
+static void
+rpc_timer_lock(struct rpc_context *rpc)
+{
+#ifdef HAVE_MULTITHREADING
+        nfs_mt_mutex_lock(&rpc->timer_mutex);
+#else
+        (void)rpc;
+#endif
+}
+
+static void
+rpc_timer_unlock(struct rpc_context *rpc)
+{
+#ifdef HAVE_MULTITHREADING
+        nfs_mt_mutex_unlock(&rpc->timer_mutex);
+#else
+        (void)rpc;
+#endif
+}
+
+void
+rpc_add_timer(struct rpc_context *rpc, struct rpc_timer *timer, int msecs,
+              rpc_cb cb, void *private_data)
+{
+        timer->due = rpc_current_time() + msecs;
+        timer->cb = cb;
+        timer->private_data = private_data;
+        rpc_timer_lock(rpc);
+        timer->next = rpc->timers;
+        rpc->timers = timer;
+        rpc_timer_unlock(rpc);
+        rpc_wakeup_service_thread(rpc);
+}
+
+/* Runs due timers, or with RPC_STATUS_CANCEL all of them */
+void
+rpc_run_timers(struct rpc_context *rpc, int status)
+{
+        struct rpc_timer *timer, **link, *due = NULL;
+        uint64_t now = rpc_current_time();
+
+        rpc_timer_lock(rpc);
+        link = &rpc->timers;
+        while ((timer = *link) != NULL) {
+                if (status == RPC_STATUS_SUCCESS && timer->due > now) {
+                        link = &timer->next;
+                        continue;
+                }
+                *link = timer->next;
+                timer->next = due;
+                due = timer;
+        }
+        rpc_timer_unlock(rpc);
+
+        while ((timer = due) != NULL) {
+                due = timer->next;
+                timer->cb(rpc, status, NULL, timer->private_data);
+        }
+}
+
+/* Milliseconds until the next timer is due, or -1 if there is none */
+int
+rpc_next_timer(struct rpc_context *rpc)
+{
+        struct rpc_timer *timer;
+        uint64_t now, due = 0;
+
+        rpc_timer_lock(rpc);
+        for (timer = rpc->timers; timer != NULL; timer = timer->next) {
+                if (due == 0 || timer->due < due) {
+                        due = timer->due;
+                }
+        }
+        rpc_timer_unlock(rpc);
+
+        if (due == 0) {
+                return -1;
+        }
+        now = rpc_current_time();
+        return due > now ? (int)(due - now) : 0;
+}
+
 /*
  * Does rpc->outqueue have one or more PDUs waiting to be sent out?
  * Takes rpc_mutex, so it must not be called with the mutex already held.
@@ -1851,6 +1933,7 @@ rpc_service(struct rpc_context *rpc, int revents)
 		return rpc_reconnect_requeue(rpc);
 	}
 	rpc_nfs40_maybe_renew(rpc);
+	rpc_run_timers(rpc, RPC_STATUS_SUCCESS);
 
 #ifdef HAVE_NFS4_2
 	rpc_nfs4_maybe_renew_session(rpc);

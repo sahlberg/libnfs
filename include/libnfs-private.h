@@ -394,6 +394,11 @@ struct rpc_context {
 	/* Never held while taking rpc_mutex; the RENEW callback can run under it. */
 	libnfs_mutex_t nfs40_renew_mutex;
 #endif /* HAVE_MULTITHREADING */
+	struct rpc_timer *timers;
+#ifdef HAVE_MULTITHREADING
+	/* Never held while taking rpc_mutex, timers are added under it */
+	libnfs_mutex_t timer_mutex;
+#endif /* HAVE_MULTITHREADING */
 	uint32_t xid;
 
         /*
@@ -905,6 +910,22 @@ int rpc_queue_pdu2(struct rpc_context *rpc, struct rpc_pdu *pdu, int prio);
  * have had anyway.
  */
 void rpc_wakeup_service_thread(struct rpc_context *rpc);
+
+/*
+ * Runs cb from rpc_service() once msecs have passed, outside of any lock, so
+ * it may queue RPCs. rpc_destroy_context() runs it with RPC_STATUS_CANCEL.
+ * The owner embeds the timer, which must not be queued already.
+ */
+struct rpc_timer {
+        struct rpc_timer *next;
+        uint64_t due;
+        rpc_cb cb;
+        void *private_data;
+};
+void rpc_add_timer(struct rpc_context *rpc, struct rpc_timer *timer,
+                   int msecs, rpc_cb cb, void *private_data);
+void rpc_run_timers(struct rpc_context *rpc, int status);
+int rpc_next_timer(struct rpc_context *rpc);
 int rpc_process_pdu(struct rpc_context *rpc, char *buf, int size);
 struct rpc_pdu *rpc_find_pdu(struct rpc_context *rpc, uint32_t xid);
 int rpc_cancel_sent_pdu(struct rpc_context *rpc, uint32_t xid);
@@ -1060,9 +1081,15 @@ struct nfs_context_internal {
        verifier4 setclientid_confirm;
        uint32_t open_counter;
        int has_lock_owner;
+       /* see nfs_set_resend_unstable() */
+       uint64_t resend_unstable;
+       uint64_t unstable_bytes;
+       struct nfs4_file *nfs4_files;
 #ifdef HAVE_MULTITHREADING
        libnfs_thread_t service_thread;
        libnfs_mutex_t nfs_mutex;
+       /* Never held while taking rpc_mutex */
+       libnfs_mutex_t nfs4_file_mutex;
        libnfs_mutex_t nfs4_open_counter_mutex;
        libnfs_sem_t nfs4_open_call_sem;
        struct nfs_thread_context *thread_ctx;
@@ -1156,6 +1183,51 @@ struct stateid {
         char other[12];
 };
 
+/*
+ * Data of an NFSv4 WRITE the server answered UNSTABLE4, kept until a COMMIT
+ * returns the same write verifier. Kept ranges of a file never overlap.
+ */
+struct nfs4_unstable_write {
+        struct nfs4_unstable_write *next;
+        uint64_t seq;
+        uint64_t offset;
+        size_t count;
+        /* a COMMIT returned another verifier, the server lost it */
+        int lost;
+        char verf[8];
+        char data[];
+};
+
+struct nfs4_commit_data;
+struct nfs4_commit_waiter;
+struct nfs4_deferred_write;
+
+/*
+ * Unstable data of one file, shared by all its opens in a context like the
+ * kernel's inode, so a COMMIT checks every WRITE to the file.
+ */
+struct nfs4_file {
+        struct nfs4_file *next;
+        struct nfs_context_internal *nfsi;
+        struct nfs_fh fh;
+        int refs;
+        struct nfs4_unstable_write *unstable;
+        uint64_t seq;
+        int writes_in_flight;
+        int commit_running;
+        /* lost data is written again, new WRITEs wait in deferred */
+        int resending;
+        struct nfs4_commit_data *draining;
+        struct nfs4_deferred_write *deferred;
+        /* callers for the next COMMIT */
+        struct nfs4_commit_waiter *waiters;
+        /* reported by the next fsync or close */
+        int error;
+};
+
+void nfs4_put_file(struct nfs4_file *file);
+void nfs4_destroy_files(struct nfs_context_internal *nfsi);
+
 struct nfsfh {
         struct nfs_fh fh;
         int is_sync;
@@ -1171,6 +1243,9 @@ struct nfsfh {
         uint32_t open_seqid;
         uint32_t lock_seqid;
         struct stateid lock_stateid;
+
+        /* NFSv4 unstable data kept for resending */
+        struct nfs4_file *file;
 };
 
 void rpc_free_iovector(struct rpc_context *rpc, struct rpc_io_vectors *v);
