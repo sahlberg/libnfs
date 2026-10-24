@@ -4315,6 +4315,33 @@ nfs4_defer_write(struct nfs4_file *file, struct nfs_context *nfs,
         return 0;
 }
 
+/*
+ * Like the kernel, a CLOSE of open state the server no longer has, after it
+ * restarted or another server took over, leaves nothing open: it succeeded.
+ */
+static int
+nfs4_close_state_gone(int status, COMPOUND4res *res)
+{
+        unsigned int n;
+
+        if (status != RPC_STATUS_SUCCESS || res == NULL) {
+                return 0;
+        }
+        n = res->resarray.resarray_len;
+        if (n == 0 || res->resarray.resarray_val[n - 1].resop != OP_CLOSE) {
+                return 0;
+        }
+        switch (res->status) {
+        case NFS4ERR_STALE_STATEID:
+        case NFS4ERR_BAD_STATEID:
+        case NFS4ERR_EXPIRED:
+        case NFS4ERR_ADMIN_REVOKED:
+                return 1;
+        default:
+                return 0;
+        }
+}
+
 static void
 nfs4_close_cb(struct rpc_context *rpc, int status, void *command_data,
               void *private_data)
@@ -4330,7 +4357,8 @@ nfs4_close_cb(struct rpc_context *rpc, int status, void *command_data,
                 nfs_increment_seqid(nfsfh, res->status);
         }
 
-        if (check_nfs4_error(nfs, status, data, res, "CLOSE")) {
+        if (!nfs4_close_state_gone(status, res) &&
+            check_nfs4_error(nfs, status, data, res, "CLOSE")) {
                 return;
         }
 

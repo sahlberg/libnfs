@@ -681,6 +681,36 @@ static void test_close_during_resend(void)
         puts("PASS: close waits for lost data to be written again");
 }
 
+/* CLOSE of state the server lost after a restart leaves nothing open */
+static void test_close_lost_state(void)
+{
+        struct nfsfh *fh;
+        char buf[8192];
+
+        setup(1 << 20);
+        fh = open_file("openstateid1");
+        fill(buf, 1, sizeof(buf));
+        CHECK(write_sync(fh, buf, sizeof(buf), 0) == (int)sizeof(buf));
+        crash(1);
+        srv.close_error = NFS4ERR_STALE_STATEID;
+        CHECK(close_sync(fh) == 0);
+        CHECK(srv.closes == 1 && range_is(0, sizeof(buf), 1));
+        teardown();
+
+        setup(0);
+        fh = open_file("openstateid1");
+        srv.close_error = NFS4ERR_EXPIRED;
+        CHECK(close_sync(fh) == 0);
+        teardown();
+
+        setup(0);
+        fh = open_file("openstateid1");
+        srv.close_error = NFS4ERR_IO;
+        CHECK(close_sync(fh) == -EIO);
+        teardown();
+        puts("PASS: CLOSE of lost open state succeeds");
+}
+
 /* Destroying the context fails a COMMIT that waits for a retry */
 static void test_destroy_during_retry(void)
 {
@@ -867,6 +897,7 @@ int main(void)
         test_over_report();
         test_limit();
         test_close_during_resend();
+        test_close_lost_state();
         test_destroy_during_retry();
 #ifdef HAVE_MULTITHREADING
         test_multithreaded();
