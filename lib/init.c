@@ -163,6 +163,7 @@ struct rpc_context *rpc_init_context(void)
 #ifdef HAVE_MULTITHREADING
 	nfs_mt_mutex_init(&rpc->rpc_mutex);
 	nfs_mt_mutex_init(&rpc->nfs40_renew_mutex);
+	nfs_mt_mutex_init(&rpc->timer_mutex);
 #ifdef HAVE_NFS4_2
 	nfs4_session_mutex_init(rpc);
 #endif /* HAVE_NFS4_2 */
@@ -279,6 +280,7 @@ struct rpc_context *rpc_init_server_context(int s)
 #ifdef HAVE_MULTITHREADING
         nfs_mt_mutex_init(&rpc->rpc_mutex);
         nfs_mt_mutex_init(&rpc->nfs40_renew_mutex);
+        nfs_mt_mutex_init(&rpc->timer_mutex);
 #ifdef HAVE_NFS4_2
         nfs4_session_mutex_init(rpc);
 #endif /* HAVE_NFS4_2 */
@@ -636,6 +638,11 @@ void rpc_destroy_context(struct rpc_context *rpc)
 
 	rpc_nfs40_stop_renew(rpc);
 	rpc_purge_all_pdus(rpc, RPC_STATUS_CANCEL, NULL);
+	/* Cancelled callbacks may add timers, and cancelled timers queue PDUs */
+	while (rpc->timers != NULL) {
+		rpc_run_timers(rpc, RPC_STATUS_CANCEL);
+		rpc_purge_all_pdus(rpc, RPC_STATUS_CANCEL, NULL);
+	}
 	if (rpc->nfs40_renew_auth) {
 		auth_destroy(rpc->nfs40_renew_auth);
 	}
@@ -679,6 +686,7 @@ void rpc_destroy_context(struct rpc_context *rpc)
 #ifdef HAVE_MULTITHREADING
         nfs_mt_mutex_destroy(&rpc->rpc_mutex);
         nfs_mt_mutex_destroy(&rpc->nfs40_renew_mutex);
+        nfs_mt_mutex_destroy(&rpc->timer_mutex);
 #ifndef HAVE_STDATOMIC_H
         nfs_mt_mutex_destroy(&rpc->atomic_int_mutex);
 #endif
@@ -772,7 +780,7 @@ int rpc_get_poll_timeout(struct rpc_context *rpc)
 #ifdef HAVE_NFS4_2
 	int session_delay;
 #endif
-	int delay, renew_delay;
+	int delay, renew_delay, timer_delay;
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 	delay = rpc->poll_timeout;
@@ -793,6 +801,10 @@ int rpc_get_poll_timeout(struct rpc_context *rpc)
 	renew_delay = rpc_nfs40_renew_delay(rpc);
 	if (renew_delay >= 0 && (delay < 0 || renew_delay < delay)) {
 		delay = renew_delay;
+	}
+	timer_delay = rpc_next_timer(rpc);
+	if (timer_delay >= 0 && (delay < 0 || timer_delay < delay)) {
+		delay = timer_delay;
 	}
 	return delay;
 }

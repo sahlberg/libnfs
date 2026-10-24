@@ -210,6 +210,13 @@ struct nfs4_cb_data {
 
         /* Data we need for updating offset in read/write */
         struct rw_data rw_data;
+
+        /* Error to report once the operation completes, e.g. CLOSE after
+         * a failed COMMIT */
+        int error;
+
+        /* WRITE to a file whose unstable data is kept */
+        struct nfs4_file *file;
 };
 
 static uint32_t standard_attributes[2] = {
@@ -3517,6 +3524,824 @@ nfs4_getacl_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_cb cb,
 }
 
 
+/*
+ * Resending unstable writes, enabled by nfs_set_resend_unstable().
+ *
+ * Like the kernel client (fs/nfs/write.c), the data of every WRITE answered
+ * UNSTABLE4 is kept per file until a COMMIT returns the verifier it got, and
+ * a newer WRITE to the same range replaces it, so a resend never puts older
+ * data on the server. A COMMIT that returns another verifier means the
+ * server lost the data: new WRITEs to the file wait, the ones in flight
+ * complete, and the lost data is written again as FILE_SYNC4. A failure
+ * drops the data it covers, and the next fsync or close reports it.
+ */
+
+/* COMMITs that may find lost data before fsync or close fails with EIO */
+#define NFS4_MAX_COMMIT_ROUNDS 3
+/* NFS4ERR_GRACE and NFS4ERR_DELAY are retried after 100 ms, doubling to 15 s */
+#define NFS4_RETRY_MIN_MSECS 100
+#define NFS4_RETRY_MAX_MSECS 15000
+#define NFS4_MAX_RETRIES 16
+
+struct nfs4_commit_waiter {
+        struct nfs4_commit_waiter *next;
+        struct nfs_context *nfs;
+        struct nfsfh *fh;
+        nfs_cb cb;
+        void *private_data;
+        /* fsync and close report errors, a WRITE held back for memory not */
+        int reports;
+};
+
+/* A WRITE that waits while lost data is written again */
+struct nfs4_deferred_write {
+        struct nfs4_deferred_write *next;
+        struct nfs_context *nfs;
+        struct nfsfh *fh;
+        const void *buf;
+        size_t count;
+        uint64_t offset;
+        nfs_cb cb;
+        void *private_data;
+        int update_pos;
+};
+
+struct nfs4_commit_data {
+        struct nfs_context *nfs;
+        /* sends the COMMIT, and its stateid the lost data */
+        struct nfsfh *fh;
+        struct nfs4_file *file;
+        struct nfs4_commit_waiter *waiters;
+        /* data kept before this seq is checked by the COMMIT */
+        uint64_t upto;
+        int rounds;
+        int retries;
+        int delay;
+        int anonymous;
+        /* writing lost data again, else COMMITting */
+        int resend;
+        /* lost data came back UNSTABLE4 again, COMMIT once more */
+        int need_commit;
+        /* the transport failed, nothing more is sent */
+        int broken;
+        int status;
+        /* set from the timer, outside of rpc_mutex */
+        char error[128];
+        struct nfs4_unstable_write *w;
+        struct rpc_timer timer;
+};
+
+static void
+nfs4_file_lock(struct nfs_context_internal *nfsi)
+{
+#ifdef HAVE_MULTITHREADING
+        nfs_mt_mutex_lock(&nfsi->nfs4_file_mutex);
+#else
+        (void)nfsi;
+#endif
+}
+
+static void
+nfs4_file_unlock(struct nfs_context_internal *nfsi)
+{
+#ifdef HAVE_MULTITHREADING
+        nfs_mt_mutex_unlock(&nfsi->nfs4_file_mutex);
+#else
+        (void)nfsi;
+#endif
+}
+
+/* The write state of the file fh is open on, shared by all its opens */
+static struct nfs4_file *
+nfs4_get_file(struct nfs_context *nfs, struct nfsfh *fh)
+{
+        struct nfs_context_internal *nfsi = nfs->nfsi;
+        struct nfs4_file *file;
+
+        nfs4_file_lock(nfsi);
+        file = fh->file;
+        if (file == NULL) {
+                for (file = nfsi->nfs4_files; file; file = file->next) {
+                        if (file->fh.len == fh->fh.len &&
+                            !memcmp(file->fh.val, fh->fh.val, fh->fh.len)) {
+                                break;
+                        }
+                }
+                if (file == NULL) {
+                        file = calloc(1, sizeof(*file) + fh->fh.len);
+                        if (file != NULL) {
+                                file->nfsi = nfsi;
+                                file->fh.len = fh->fh.len;
+                                file->fh.val = (char *)(file + 1);
+                                memcpy(file->fh.val, fh->fh.val, fh->fh.len);
+                                file->next = nfsi->nfs4_files;
+                                nfsi->nfs4_files = file;
+                        }
+                }
+                if (file != NULL) {
+                        file->refs++;
+                        fh->file = file;
+                }
+        }
+        nfs4_file_unlock(nfsi);
+
+        if (file == NULL) {
+                nfs_set_error(nfs, "Out of memory.");
+        }
+        return file;
+}
+
+/* Called locked */
+static void
+nfs4_drop_unstable(struct nfs4_file *file, struct nfs4_unstable_write **link)
+{
+        struct nfs4_unstable_write *w = *link;
+
+        *link = w->next;
+        file->nfsi->unstable_bytes -= w->count;
+        free(w);
+}
+
+void
+nfs4_put_file(struct nfs4_file *file)
+{
+        struct nfs_context_internal *nfsi = file->nfsi;
+        struct nfs4_file **link;
+
+        nfs4_file_lock(nfsi);
+        if (--file->refs > 0) {
+                nfs4_file_unlock(nfsi);
+                return;
+        }
+        /* close waits for the COMMIT, so none can be running */
+        assert(!file->commit_running);
+        for (link = &nfsi->nfs4_files; *link != file; link = &(*link)->next)
+                ;
+        *link = file->next;
+        while (file->unstable != NULL) {
+                nfs4_drop_unstable(file, &file->unstable);
+        }
+        nfs4_file_unlock(nfsi);
+        free(file);
+}
+
+void
+nfs4_destroy_files(struct nfs_context_internal *nfsi)
+{
+        struct nfs4_file *file;
+
+        while ((file = nfsi->nfs4_files) != NULL) {
+                nfsi->nfs4_files = file->next;
+                while (file->unstable != NULL) {
+                        nfs4_drop_unstable(file, &file->unstable);
+                }
+                free(file);
+        }
+}
+
+/* Called locked. Keeps data the server answered UNSTABLE4. */
+static int
+nfs4_keep_unstable(struct nfs4_file *file, uint64_t offset, const char *data,
+                   size_t count, const char *verf)
+{
+        struct nfs4_unstable_write *w, **link;
+
+        w = malloc(sizeof(*w) + count);
+        if (w == NULL) {
+                return -ENOMEM;
+        }
+        w->next = NULL;
+        w->seq = file->seq++;
+        w->offset = offset;
+        w->count = count;
+        w->lost = 0;
+        memcpy(w->verf, verf, NFS4_VERIFIER_SIZE);
+        memcpy(w->data, data, count);
+
+        for (link = &file->unstable; *link != NULL; link = &(*link)->next)
+                ;
+        *link = w;
+        file->nfsi->unstable_bytes += count;
+        return 0;
+}
+
+/*
+ * Called locked. A WRITE of [offset, offset + count) reached the server, so
+ * kept data of that range is older than what the server has and must never
+ * be sent again.
+ */
+static int
+nfs4_trim_unstable(struct nfs4_file *file, uint64_t offset, size_t count)
+{
+        uint64_t end = offset + count, w_end;
+        struct nfs4_unstable_write *w, *tail, **link = &file->unstable;
+        int ret = 0;
+
+        while ((w = *link) != NULL) {
+                w_end = w->offset + w->count;
+                if (w_end <= offset || w->offset >= end) {
+                        link = &w->next;
+                        continue;
+                }
+                if (w->offset >= offset && w_end <= end) {
+                        nfs4_drop_unstable(file, link);
+                        continue;
+                }
+                file->nfsi->unstable_bytes -= w->count;
+                if (w->offset < offset && w_end > end) {
+                        /* The WRITE is inside w, the tail becomes its own */
+                        tail = malloc(sizeof(*tail) + (w_end - end));
+                        if (tail != NULL) {
+                                *tail = *w;
+                                tail->offset = end;
+                                tail->count = w_end - end;
+                                memcpy(tail->data, w->data + (end - w->offset),
+                                       tail->count);
+                                w->next = tail;
+                                file->nfsi->unstable_bytes += tail->count;
+                        } else {
+                                ret = -ENOMEM;
+                        }
+                        w->count = offset - w->offset;
+                } else if (w->offset < offset) {
+                        w->count = offset - w->offset;
+                } else {
+                        memmove(w->data, w->data + (end - w->offset),
+                                w_end - end);
+                        w->count = w_end - end;
+                        w->offset = end;
+                }
+                file->nfsi->unstable_bytes += w->count;
+                link = &w->next;
+        }
+        return ret;
+}
+
+static int nfs4_commit_send(struct nfs4_commit_data *cd);
+static void nfs4_resend_next(struct nfs4_commit_data *cd);
+
+static void
+nfs4_commit_notify(struct nfs4_commit_waiter *w, int status,
+                   struct nfs_context *nfs)
+{
+        struct nfs4_commit_waiter *next;
+        const char *error = nfs_get_error(nfs);
+
+        for (; w != NULL; w = next) {
+                next = w->next;
+                if (status < 0 && w->nfs != nfs) {
+                        nfs_set_error(w->nfs, "%s", error ? error : "EIO");
+                }
+                w->cb(status, w->nfs, status < 0 ? nfs_get_error(w->nfs) : NULL,
+                      w->private_data);
+                free(w);
+        }
+}
+
+static void
+nfs4_commit_finish(struct nfs4_commit_data *cd, int status)
+{
+        struct nfs4_file *file = cd->file;
+        struct nfs_context_internal *nfsi = file->nfsi;
+        struct nfs4_unstable_write **link;
+        struct nfs4_commit_waiter *w, *pending;
+        struct nfs4_deferred_write *deferred, *d;
+        struct nfs4_commit_data *next;
+        int reports = 0, sticky = 0;
+
+        for (w = cd->waiters; w != NULL; w = w->next) {
+                reports |= w->reports;
+        }
+        next = cd->broken ? NULL : calloc(1, sizeof(*next));
+
+        nfs4_file_lock(nfsi);
+        if (status < 0) {
+                /* Like the kernel, drop the data a failed COMMIT covered */
+                link = &file->unstable;
+                while (*link != NULL) {
+                        if ((*link)->seq < cd->upto) {
+                                nfs4_drop_unstable(file, link);
+                        } else {
+                                link = &(*link)->next;
+                        }
+                }
+        }
+        if (!reports) {
+                if (status < 0 && file->error == 0) {
+                        file->error = status;
+                }
+        } else {
+                if (status == 0 && file->error < 0) {
+                        status = file->error;
+                        sticky = 1;
+                }
+                file->error = 0;
+        }
+        if (status == 0 && file->unstable == NULL) {
+                cd->fh->is_dirty = 0;
+        }
+        file->resending = 0;
+        file->draining = NULL;
+        deferred = file->deferred;
+        file->deferred = NULL;
+        pending = file->waiters;
+        file->waiters = NULL;
+        file->commit_running = pending != NULL && next != NULL;
+        nfs4_file_unlock(nfsi);
+
+        if (sticky) {
+                nfs_set_error(cd->nfs, "NFS4: unstable data of this file was "
+                              "lost or could not be kept: %s",
+                              strerror(-status));
+        }
+
+        /* WRITEs that waited for the lost data go out now */
+        while ((d = deferred) != NULL) {
+                deferred = d->next;
+                if (cd->broken ||
+                    nfs4_pwrite_async_internal(d->nfs, d->fh, d->buf, d->count,
+                                               d->offset, d->cb,
+                                               d->private_data,
+                                               d->update_pos) < 0) {
+                        if (cd->broken) {
+                                nfs_set_error(d->nfs, "%s",
+                                              nfs_get_error(cd->nfs));
+                        }
+                        d->cb(-EIO, d->nfs, nfs_get_error(d->nfs),
+                              d->private_data);
+                }
+                free(d);
+        }
+
+        /* Callers that came during this COMMIT need one of their own */
+        if (pending != NULL && next != NULL) {
+                next->nfs = pending->nfs;
+                next->fh = pending->fh;
+                next->file = file;
+                next->waiters = pending;
+                if (nfs4_commit_send(next) < 0) {
+                        nfs4_commit_finish(next, -EIO);
+                }
+                next = NULL;
+        } else if (pending != NULL) {
+                if (!cd->broken) {
+                        nfs_set_error(cd->nfs, "Out of memory.");
+                }
+                nfs4_commit_notify(pending, cd->broken ? status : -ENOMEM,
+                                   cd->nfs);
+        }
+        free(next);
+
+        nfs4_commit_notify(cd->waiters, status, cd->nfs);
+        free(cd);
+}
+
+static void
+nfs4_commit_timer_cb(struct rpc_context *rpc, int status, void *command_data,
+                     void *private_data)
+{
+        struct nfs4_commit_data *cd = private_data;
+
+        if (status != RPC_STATUS_SUCCESS) {
+                snprintf(cd->error, sizeof(cd->error), "NFS4: COMMIT "
+                         "cancelled");
+                cd->broken = 1;
+                cd->status = -EINTR;
+        }
+        if (cd->status < 0) {
+                nfs_set_error(cd->nfs, "%s", cd->error);
+                nfs4_commit_finish(cd, cd->status);
+        } else if (cd->resend) {
+                nfs4_resend_next(cd);
+        } else if (nfs4_commit_send(cd) < 0) {
+                nfs4_commit_finish(cd, -EIO);
+        }
+}
+
+/*
+ * RPC failures can be reported under rpc_mutex, which nfs_set_error() and
+ * sending take, so finish outside of it.
+ */
+static void
+nfs4_commit_fail(struct nfs4_commit_data *cd, int status, const char *what,
+                 int rpc_status, void *command_data)
+{
+        snprintf(cd->error, sizeof(cd->error), "NFS4: %s failed: %s", what,
+                 rpc_status == RPC_STATUS_ERROR ? (char *)command_data :
+                 "cancelled or timed out");
+        cd->broken = 1;
+        cd->status = status;
+        rpc_add_timer(cd->nfs->rpc, &cd->timer, 0, nfs4_commit_timer_cb, cd);
+}
+
+/* NFS4ERR_GRACE or NFS4ERR_DELAY: try again later, like nfs4_update_delay() */
+static int
+nfs4_commit_retry(struct nfs4_commit_data *cd)
+{
+        if (cd->retries++ >= NFS4_MAX_RETRIES) {
+                return -1;
+        }
+        cd->delay = cd->delay ? cd->delay * 2 : NFS4_RETRY_MIN_MSECS;
+        if (cd->delay > NFS4_RETRY_MAX_MSECS) {
+                cd->delay = NFS4_RETRY_MAX_MSECS;
+        }
+        rpc_add_timer(cd->nfs->rpc, &cd->timer, cd->delay,
+                      nfs4_commit_timer_cb, cd);
+        return 0;
+}
+
+static void
+nfs4_resend_cb(struct rpc_context *rpc, int status, void *command_data,
+               void *private_data)
+{
+        struct nfs4_commit_data *cd = private_data;
+        struct nfs4_file *file = cd->file;
+        struct nfs4_unstable_write *w = cd->w, **link;
+        COMPOUND4res *res = command_data;
+        WRITE4resok *wres = NULL;
+        size_t count = 0;
+        int i, ret = 0;
+
+        assert(rpc->magic == RPC_CONTEXT_MAGIC);
+
+        if (status != RPC_STATUS_SUCCESS) {
+                nfs4_commit_fail(cd, -EIO, "writing lost data again", status,
+                                 command_data);
+                return;
+        }
+        switch (res->status) {
+        case NFS4_OK:
+                break;
+        case NFS4ERR_GRACE:
+        case NFS4ERR_DELAY:
+                /* A restarted server takes no I/O until clients reclaim */
+                if (nfs4_commit_retry(cd) == 0) {
+                        return;
+                }
+                break;
+        case NFS4ERR_STALE_STATEID:
+        case NFS4ERR_BAD_STATEID:
+        case NFS4ERR_OLD_STATEID:
+        case NFS4ERR_EXPIRED:
+        case NFS4ERR_ADMIN_REVOKED:
+                /* It usually lost the open state too */
+                if (!cd->anonymous) {
+                        cd->anonymous = 1;
+                        nfs4_resend_next(cd);
+                        return;
+                }
+                break;
+        default:
+                break;
+        }
+        if (res->status != NFS4_OK) {
+                nfs_set_error(cd->nfs, "NFS4: writing lost data again failed "
+                              "with %s(%d)", nfsstat4_to_str(res->status),
+                              nfsstat4_to_errno(res->status));
+                nfs4_commit_finish(cd, nfsstat4_to_errno(res->status));
+                return;
+        }
+        for (i = 0; i < (int)res->resarray.resarray_len; i++) {
+                if (res->resarray.resarray_val[i].resop == OP_WRITE) {
+                        wres = &res->resarray.resarray_val[i].nfs_resop4_u.opwrite.WRITE4res_u.resok4;
+                }
+        }
+        if (wres != NULL) {
+                count = wres->count < w->count ? wres->count : w->count;
+        }
+        if (count == 0) {
+                nfs_set_error(cd->nfs, "NFS4: writing lost data again wrote "
+                              "nothing");
+                nfs4_commit_finish(cd, -EIO);
+                return;
+        }
+        cd->retries = 0;
+        cd->delay = 0;
+
+        nfs4_file_lock(file->nfsi);
+        if (wres->committed != FILE_SYNC4) {
+                ret = nfs4_keep_unstable(file, w->offset, w->data, count,
+                                         wres->writeverf);
+                cd->need_commit = 1;
+        }
+        if (count < w->count) {
+                memmove(w->data, w->data + count, w->count - count);
+                w->offset += count;
+                w->count -= count;
+                file->nfsi->unstable_bytes -= count;
+        } else {
+                for (link = &file->unstable; *link != w; link = &(*link)->next)
+                        ;
+                nfs4_drop_unstable(file, link);
+        }
+        nfs4_file_unlock(file->nfsi);
+
+        if (ret < 0) {
+                nfs_set_error(cd->nfs, "Out of memory. Failed to keep an "
+                              "unstable write");
+                nfs4_commit_finish(cd, ret);
+                return;
+        }
+        nfs4_resend_next(cd);
+}
+
+/*
+ * Writes the next lost piece of data again. New WRITEs to the file wait and
+ * none are in flight, so nothing else changes the kept data meanwhile.
+ */
+static void
+nfs4_resend_next(struct nfs4_commit_data *cd)
+{
+        struct nfs4_file *file = cd->file;
+        struct nfs4_unstable_write *w;
+        COMPOUND4args args;
+        nfs_argop4 op[2 + 1];
+        WRITE4args *wargs;
+        int i;
+
+        nfs4_file_lock(file->nfsi);
+        for (w = file->unstable; w != NULL && !w->lost; w = w->next)
+                ;
+        nfs4_file_unlock(file->nfsi);
+        cd->w = w;
+
+        if (w == NULL) {
+                if (!cd->need_commit) {
+                        nfs4_commit_finish(cd, 0);
+                        return;
+                }
+                cd->need_commit = 0;
+                if (nfs4_commit_send(cd) < 0) {
+                        nfs4_commit_finish(cd, -EIO);
+                }
+                return;
+        }
+
+        memset(op, 0, sizeof(op));
+        i = nfs4_start_compound(cd->nfs, op);
+        i += nfs4_op_putfh(cd->nfs, &op[i], cd->fh);
+        op[i].argop = OP_WRITE;
+        wargs = &op[i++].nfs_argop4_u.opwrite;
+        if (!cd->anonymous) {
+                wargs->stateid.seqid = cd->fh->stateid.seqid;
+                memcpy(wargs->stateid.other, cd->fh->stateid.other, 12);
+        }
+        wargs->offset = w->offset;
+        wargs->stable = FILE_SYNC4;
+        wargs->data.data_len = w->count;
+        wargs->data.data_val = w->data;
+
+        memset(&args, 0, sizeof(args));
+        args.argarray.argarray_len = i;
+        args.argarray.argarray_val = op;
+
+        if (rpc_nfs4_write_task(cd->nfs->rpc, nfs4_resend_cb, w->data,
+                                w->count, &args, cd) == NULL) {
+                nfs_set_error(cd->nfs, "Failed to queue WRITE of lost data. "
+                              "%s", rpc_get_error(cd->nfs->rpc));
+                nfs4_commit_finish(cd, -EIO);
+        }
+}
+
+static void
+nfs4_commit_cb(struct rpc_context *rpc, int status, void *command_data,
+               void *private_data)
+{
+        struct nfs4_commit_data *cd = private_data;
+        struct nfs4_file *file = cd->file;
+        COMPOUND4res *res = command_data;
+        struct nfs4_unstable_write *w, **link;
+        const char *verf = NULL;
+        int i, lost = 0, drain = 0;
+
+        assert(rpc->magic == RPC_CONTEXT_MAGIC);
+
+        if (status != RPC_STATUS_SUCCESS) {
+                nfs4_commit_fail(cd, status == RPC_STATUS_ERROR ? -EFAULT :
+                                 -EINTR, "COMMIT", status, command_data);
+                return;
+        }
+        if (res->status == NFS4ERR_DELAY && nfs4_commit_retry(cd) == 0) {
+                return;
+        }
+        if (res->status != NFS4_OK) {
+                nfs_set_error(cd->nfs, "NFS4: COMMIT failed with %s(%d)",
+                              nfsstat4_to_str(res->status),
+                              nfsstat4_to_errno(res->status));
+                nfs4_commit_finish(cd, nfsstat4_to_errno(res->status));
+                return;
+        }
+        for (i = 0; i < (int)res->resarray.resarray_len; i++) {
+                if (res->resarray.resarray_val[i].resop == OP_COMMIT) {
+                        verf = res->resarray.resarray_val[i].nfs_resop4_u.opcommit.COMMIT4res_u.resok4.writeverf;
+                }
+        }
+        if (verf == NULL) {
+                nfs_set_error(cd->nfs, "NFS4: COMMIT reply has no COMMIT");
+                nfs4_commit_finish(cd, -EIO);
+                return;
+        }
+        cd->retries = 0;
+        cd->delay = 0;
+
+        /*
+         * Data with the verifier of this COMMIT is on stable storage. Data
+         * with another one went to a server instance that is gone.
+         */
+        nfs4_file_lock(file->nfsi);
+        link = &file->unstable;
+        while ((w = *link) != NULL) {
+                if (w->seq < cd->upto) {
+                        if (!memcmp(w->verf, verf, NFS4_VERIFIER_SIZE)) {
+                                nfs4_drop_unstable(file, link);
+                                continue;
+                        }
+                        w->lost = 1;
+                        lost = 1;
+                }
+                link = &w->next;
+        }
+        if (lost && cd->rounds++ < NFS4_MAX_COMMIT_ROUNDS) {
+                cd->resend = 1;
+                file->resending = 1;
+                if (file->writes_in_flight > 0) {
+                        /* Their replies trim what they overwrite first */
+                        file->draining = cd;
+                        drain = 1;
+                }
+        }
+        nfs4_file_unlock(file->nfsi);
+
+        if (!lost) {
+                nfs4_commit_finish(cd, 0);
+        } else if (!cd->resend) {
+                nfs_set_error(cd->nfs, "NFS4: the server keeps losing written "
+                              "data");
+                nfs4_commit_finish(cd, -EIO);
+        } else if (!drain) {
+                nfs4_resend_next(cd);
+        }
+}
+
+static int
+nfs4_commit_send(struct nfs4_commit_data *cd)
+{
+        COMPOUND4args args;
+        nfs_argop4 op[2 + 1];
+        int i;
+
+        nfs4_file_lock(cd->file->nfsi);
+        cd->upto = cd->file->seq;
+        nfs4_file_unlock(cd->file->nfsi);
+        cd->resend = 0;
+
+        memset(op, 0, sizeof(op));
+        i = nfs4_start_compound(cd->nfs, op);
+        i += nfs4_op_putfh(cd->nfs, &op[i], cd->fh);
+        i += nfs4_op_commit(cd->nfs, &op[i]);
+
+        memset(&args, 0, sizeof(args));
+        args.argarray.argarray_len = i;
+        args.argarray.argarray_val = op;
+
+        if (rpc_nfs4_compound_task(cd->nfs->rpc, nfs4_commit_cb, &args,
+                                   cd) == NULL) {
+                nfs_set_error(cd->nfs, "Failed to queue COMMIT. %s",
+                              rpc_get_error(cd->nfs->rpc));
+                return -1;
+        }
+        return 0;
+}
+
+/*
+ * COMMIT the file and write again what the server lost. Callers that come
+ * while a COMMIT runs wait for the next one, which covers their writes.
+ */
+static int
+nfs4_commit_file(struct nfs_context *nfs, struct nfsfh *fh, nfs_cb cb,
+                 void *private_data, int reports)
+{
+        struct nfs4_file *file = fh->file;
+        struct nfs4_commit_waiter *w;
+        struct nfs4_commit_data *cd;
+
+        w = calloc(1, sizeof(*w));
+        cd = calloc(1, sizeof(*cd));
+        if (w == NULL || cd == NULL) {
+                free(w);
+                free(cd);
+                nfs_set_error(nfs, "Out of memory.");
+                return -1;
+        }
+        w->nfs = nfs;
+        w->fh = fh;
+        w->cb = cb;
+        w->private_data = private_data;
+        w->reports = reports;
+
+        nfs4_file_lock(file->nfsi);
+        if (file->commit_running) {
+                w->next = file->waiters;
+                file->waiters = w;
+                nfs4_file_unlock(file->nfsi);
+                free(cd);
+                return 0;
+        }
+        file->commit_running = 1;
+        nfs4_file_unlock(file->nfsi);
+
+        cd->nfs = nfs;
+        cd->fh = fh;
+        cd->file = file;
+        cd->waiters = w;
+        if (nfs4_commit_send(cd) < 0) {
+                nfs4_commit_finish(cd, -EIO);
+        }
+        return 0;
+}
+
+/* Called locked. A WRITE to the file is done, returns a resend it held up. */
+static struct nfs4_commit_data *
+nfs4_write_settled(struct nfs4_file *file)
+{
+        struct nfs4_commit_data *cd = NULL;
+
+        if (--file->writes_in_flight == 0 && file->draining != NULL) {
+                cd = file->draining;
+                file->draining = NULL;
+        }
+        return cd;
+}
+
+static void
+nfs4_resume_resend(struct nfs4_commit_data *cd, int status)
+{
+        if (cd == NULL) {
+                return;
+        }
+        if (status == RPC_STATUS_SUCCESS) {
+                nfs4_resend_next(cd);
+        } else {
+                /* Possibly under rpc_mutex, resend from rpc_service() */
+                rpc_add_timer(cd->nfs->rpc, &cd->timer, 0,
+                              nfs4_commit_timer_cb, cd);
+        }
+}
+
+/* Called locked */
+static int
+nfs4_defer_write(struct nfs4_file *file, struct nfs_context *nfs,
+                 struct nfsfh *fh, const void *buf, size_t count,
+                 uint64_t offset, nfs_cb cb, void *private_data,
+                 int update_pos)
+{
+        struct nfs4_deferred_write *d, **link;
+
+        d = calloc(1, sizeof(*d));
+        if (d == NULL) {
+                return -1;
+        }
+        d->nfs = nfs;
+        d->fh = fh;
+        d->buf = buf;
+        d->count = count;
+        d->offset = offset;
+        d->cb = cb;
+        d->private_data = private_data;
+        d->update_pos = update_pos;
+        for (link = &file->deferred; *link != NULL; link = &(*link)->next)
+                ;
+        *link = d;
+        return 0;
+}
+
+/*
+ * Like the kernel, a CLOSE of open state the server no longer has, after it
+ * restarted or another server took over, leaves nothing open: it succeeded.
+ */
+static int
+nfs4_close_state_gone(int status, COMPOUND4res *res)
+{
+        unsigned int n;
+
+        if (status != RPC_STATUS_SUCCESS || res == NULL) {
+                return 0;
+        }
+        n = res->resarray.resarray_len;
+        if (n == 0 || res->resarray.resarray_val[n - 1].resop != OP_CLOSE) {
+                return 0;
+        }
+        switch (res->status) {
+        case NFS4ERR_STALE_STATEID:
+        case NFS4ERR_BAD_STATEID:
+        case NFS4ERR_EXPIRED:
+        case NFS4ERR_ADMIN_REVOKED:
+                return 1;
+        default:
+                return 0;
+        }
+}
+
 static void
 nfs4_close_cb(struct rpc_context *rpc, int status, void *command_data,
               void *private_data)
@@ -3532,17 +4357,19 @@ nfs4_close_cb(struct rpc_context *rpc, int status, void *command_data,
                 nfs_increment_seqid(nfsfh, res->status);
         }
 
-        if (check_nfs4_error(nfs, status, data, res, "CLOSE")) {
+        if (!nfs4_close_state_gone(status, res) &&
+            check_nfs4_error(nfs, status, data, res, "CLOSE")) {
                 return;
         }
 
-        data->cb(0, nfs, NULL, data->private_data);
+        data->cb(data->error, nfs, data->error < 0 ? nfs_get_error(nfs) : NULL,
+                 data->private_data);
         free_nfs4_cb_data(data);
 }
 
-int
-nfs4_close_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_cb cb,
-                 void *private_data)
+static int
+nfs4_close_send(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_cb cb,
+                void *private_data, int error, int sem_held)
 {
         COMPOUND4args args;
         nfs_argop4 op[3 + 1];
@@ -3553,15 +4380,23 @@ nfs4_close_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_cb cb,
         if (data == NULL) {
                 nfs_set_error(nfs, "Out of memory. Failed to allocate "
                               "cb data");
+#ifdef HAVE_MULTITHREADING
+                if (sem_held) {
+                        nfs_mt_sem_post(&nfs->nfsi->nfs4_open_call_sem);
+                }
+#endif
                 return -1;
         }
+        data->error = error;
 
 #ifdef HAVE_MULTITHREADING
-        if (nfs->rpc->multithreading_enabled) {
+        if (sem_held) {
+                data->flags |= MUTEX_HELD;
+        } else if (nfs->rpc->multithreading_enabled) {
                 nfs_mt_sem_wait(&nfs->nfsi->nfs4_open_call_sem);
                 data->flags |= MUTEX_HELD;
         }
-#endif        
+#endif
         data->nfs          = nfs;
         data->cb           = cb;
         data->private_data = private_data;
@@ -3588,6 +4423,72 @@ nfs4_close_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_cb cb,
                 return -1;
         }
 
+        return 0;
+}
+
+struct nfs4_close_commit_data {
+        struct nfsfh *nfsfh;
+        nfs_cb cb;
+        void *private_data;
+        int sem_held;
+};
+
+static void
+nfs4_close_commit_cb(int status, struct nfs_context *nfs, void *data,
+                     void *private_data)
+{
+        struct nfs4_close_commit_data *cc = private_data;
+
+        if (status == 0) {
+                /* No COMMIT in the CLOSE compound, this one covered it */
+                cc->nfsfh->is_dirty = 0;
+        }
+        if (nfs4_close_send(nfs, cc->nfsfh, cc->cb, cc->private_data,
+                            status < 0 ? status : 0, cc->sem_held) < 0) {
+                cc->cb(-ENOMEM, nfs, nfs_get_error(nfs), cc->private_data);
+                nfs_free_nfsfh(cc->nfsfh);
+        }
+        free(cc);
+}
+
+int
+nfs4_close_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_cb cb,
+                 void *private_data)
+{
+        struct nfs4_close_commit_data *cc;
+
+        if (nfsfh->file == NULL) {
+                return nfs4_close_send(nfs, nfsfh, cb, private_data, 0, 0);
+        }
+
+        cc = calloc(1, sizeof(*cc));
+        if (cc == NULL) {
+                nfs_set_error(nfs, "Out of memory.");
+                return -1;
+        }
+        cc->nfsfh = nfsfh;
+        cc->cb = cb;
+        cc->private_data = private_data;
+#ifdef HAVE_MULTITHREADING
+        /*
+         * Wait for the OPEN/CLOSE semaphore here, not once the COMMIT is
+         * done: that runs on the service thread, which would then wait for
+         * an OPEN reply only it can process.
+         */
+        if (nfs->rpc->multithreading_enabled) {
+                nfs_mt_sem_wait(&nfs->nfsi->nfs4_open_call_sem);
+                cc->sem_held = 1;
+        }
+#endif
+        if (nfs4_commit_file(nfs, nfsfh, nfs4_close_commit_cb, cc, 1) < 0) {
+#ifdef HAVE_MULTITHREADING
+                if (cc->sem_held) {
+                        nfs_mt_sem_post(&nfs->nfsi->nfs4_open_call_sem);
+                }
+#endif
+                free(cc);
+                return -1;
+        }
         return 0;
 }
 
@@ -3864,6 +4765,59 @@ nfs4_readlink_async(struct nfs_context *nfs, const char *path, nfs_cb cb,
         return 0;
 }
 
+/* A WRITE that waits for a COMMIT, its data is over the memory limit */
+struct nfs4_held_write {
+        nfs_cb cb;
+        void *private_data;
+        int count;
+};
+
+static void
+nfs4_held_write_cb(int status, struct nfs_context *nfs, void *data,
+                   void *private_data)
+{
+        struct nfs4_held_write *hw = private_data;
+
+        /* The WRITE succeeded, fsync or close reports a failed COMMIT */
+        hw->cb(hw->count, nfs, NULL, hw->private_data);
+        free(hw);
+}
+
+/*
+ * A WRITE to a file whose unstable data is kept completed. Returns 1 when the
+ * context keeps more than its limit and the WRITE should wait for a COMMIT.
+ */
+static int
+nfs4_write_completed(struct nfs4_file *file, struct nfs4_cb_data *data,
+                     WRITE4resok *wres, int status)
+{
+        struct nfs_context_internal *nfsi = file->nfsi;
+        struct nfs4_commit_data *cd;
+        int ret = 0, over;
+
+        nfs4_file_lock(nfsi);
+        if (wres != NULL && wres->count > 0) {
+                ret = nfs4_trim_unstable(file, data->rw_data.offset,
+                                         wres->count);
+                if (wres->committed == UNSTABLE4 &&
+                    nfs4_keep_unstable(file, data->rw_data.offset,
+                                       data->filler.blob1.val, wres->count,
+                                       wres->writeverf) < 0) {
+                        ret = -ENOMEM;
+                }
+                /* Not protected any more, the next fsync or close says so */
+                if (ret < 0 && file->error == 0) {
+                        file->error = ret;
+                }
+        }
+        over = nfsi->unstable_bytes > nfsi->resend_unstable;
+        cd = nfs4_write_settled(file);
+        nfs4_file_unlock(nfsi);
+
+        nfs4_resume_resend(cd, status);
+        return wres != NULL && over;
+}
+
 static void
 nfs4_pwrite_cb(struct rpc_context *rpc, int status, void *command_data,
                void *private_data)
@@ -3872,12 +4826,29 @@ nfs4_pwrite_cb(struct rpc_context *rpc, int status, void *command_data,
         struct nfs_context *nfs = data->nfs;
         COMPOUND4res *res = command_data;
         WRITE4resok *wres = NULL;
+        struct nfs4_held_write *hw;
         struct nfsfh *nfsfh;
-        int i;
+        int i, over = 0;
 
         assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
         nfsfh = data->filler.blob0.val;
+
+        if (status == RPC_STATUS_SUCCESS && res->status == NFS4_OK) {
+                for (i = 0; i < (int)res->resarray.resarray_len; i++) {
+                        if (res->resarray.resarray_val[i].resop != OP_WRITE) {
+                                continue;
+                        }
+                        wres = &res->resarray.resarray_val[i].nfs_resop4_u.opwrite.WRITE4res_u.resok4;
+                        /* A server must not report more than was sent */
+                        if (wres->count > data->filler.blob1.len) {
+                                wres->count = data->filler.blob1.len;
+                        }
+                }
+        }
+        if (data->file != NULL) {
+                over = nfs4_write_completed(data->file, data, wres, status);
+        }
 
         if (check_nfs4_error(nfs, status, data, res, "WRITE")) {
                 return;
@@ -3892,6 +4863,18 @@ nfs4_pwrite_cb(struct rpc_context *rpc, int status, void *command_data,
                 nfsfh->offset = data->rw_data.offset + wres->count;
         }
 
+        if (over && (hw = malloc(sizeof(*hw))) != NULL) {
+                hw->cb = data->cb;
+                hw->private_data = data->private_data;
+                hw->count = wres->count;
+                if (nfs4_commit_file(nfs, nfsfh, nfs4_held_write_cb, hw,
+                                     0) == 0) {
+                        free_nfs4_cb_data(data);
+                        return;
+                }
+                free(hw);
+        }
+
         data->cb(wres->count, nfs, NULL, data->private_data);
         free_nfs4_cb_data(data);
 }
@@ -3904,23 +4887,52 @@ nfs4_pwrite_async_internal(struct nfs_context *nfs, struct nfsfh *nfsfh,
         COMPOUND4args args;
         nfs_argop4 op[2 + 1];
         struct nfs4_cb_data *data;
+        struct nfs4_file *file = NULL;
         int i;
+
+        if (nfsfh->file != NULL || nfs->nfsi->resend_unstable) {
+                file = nfs4_get_file(nfs, nfsfh);
+                if (file == NULL) {
+                        return -1;
+                }
+                nfs4_file_lock(file->nfsi);
+                if (file->resending) {
+                        i = nfs4_defer_write(file, nfs, nfsfh, buf, count,
+                                             offset, cb, private_data,
+                                             update_pos);
+                        nfs4_file_unlock(file->nfsi);
+                        if (i < 0) {
+                                nfs_set_error(nfs, "Out of memory.");
+                        }
+                        return i;
+                }
+                file->writes_in_flight++;
+                nfs4_file_unlock(file->nfsi);
+        }
 
         data = calloc(1, sizeof(*data));
         if (data == NULL) {
                 nfs_set_error(nfs, "Out of memory. Failed to allocate "
                               "cb data");
+                if (file != NULL) {
+                        nfs4_write_completed(file, NULL, NULL,
+                                             RPC_STATUS_SUCCESS);
+                }
                 return -1;
         }
 
         data->nfs          = nfs;
         data->cb           = cb;
         data->private_data = private_data;
+        data->file         = file;
 
         data->filler.blob0.val  = nfsfh;
         data->filler.blob0.free = NULL;
         data->rw_data.offset = offset;
         data->rw_data.update_pos = update_pos;
+        /* kept by nfs4_pwrite_cb if the server answers UNSTABLE4 */
+        data->filler.blob1.val = discard_const(buf);
+        data->filler.blob1.len = count;
 
         memset(op, 0, sizeof(op));
 
@@ -3936,6 +4948,10 @@ nfs4_pwrite_async_internal(struct nfs_context *nfs, struct nfsfh *nfsfh,
                                 &args, data) == NULL) {
                 nfs_set_error(nfs, "PWRITE "
                         "failed: %s", rpc_get_error(nfs->rpc));
+                if (file != NULL) {
+                        nfs4_write_completed(file, data, NULL,
+                                             RPC_STATUS_SUCCESS);
+                }
                 free_nfs4_cb_data(data);
                 return -EIO;
         }
@@ -5063,6 +6079,13 @@ nfs4_fsync_async(struct nfs_context *nfs, struct nfsfh *fh, nfs_cb cb,
         nfs_argop4 op[2 + 1];
         struct nfs4_cb_data *data;
         int i;
+
+        if (fh->file != NULL || nfs->nfsi->resend_unstable) {
+                if (nfs4_get_file(nfs, fh) == NULL) {
+                        return -1;
+                }
+                return nfs4_commit_file(nfs, fh, cb, private_data, 1);
+        }
 
         data = calloc(1, sizeof(*data));
         if (data == NULL) {

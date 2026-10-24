@@ -351,6 +351,14 @@ nfs_set_context_args(struct nfs_context *nfs, const char *arg, const char *val)
 		nfs_set_dircache(nfs, atoi(val));
 	} else if (!strcmp(arg, "autoreconnect")) {
 		nfs_set_autoreconnect(nfs, atoi(val));
+	} else if (!strcmp(arg, "resend-unstable")) {
+		const int mib = atoi(val);
+		if (mib < 0) {
+			nfs_set_error(nfs, "resend-unstable cannot be less than "
+				      "0: %s", val);
+			return -1;
+		}
+		nfs_set_resend_unstable(nfs, (uint64_t)mib << 20);
 #ifdef HAVE_SO_BINDTODEVICE
 	} else if (!strcmp(arg, "if")) {
 		nfs_set_interface(nfs, val);
@@ -819,6 +827,7 @@ nfs_init_context(void)
 
 #ifdef HAVE_MULTITHREADING
         nfs_mt_mutex_init(&nfs->nfsi->nfs_mutex);
+        nfs_mt_mutex_init(&nfs->nfsi->nfs4_file_mutex);
         nfs_mt_mutex_init(&nfs->nfsi->nfs4_open_counter_mutex);
         nfs_mt_sem_init(&nfs->nfsi->nfs4_open_call_sem, 1);
 #endif /* HAVE_MULTITHREADING */
@@ -882,11 +891,13 @@ nfs_destroy_context(struct nfs_context *nfs)
 		LIBNFS_LIST_REMOVE(&nfs->nfsi->dircache, nfsdir);
 		nfs_free_nfsdir(nfsdir);
 	}
+	nfs4_destroy_files(nfs->nfsi);
 
 #ifdef HAVE_MULTITHREADING
         nfs_mt_sem_destroy(&nfs->nfsi->nfs4_open_call_sem);
         nfs_mt_mutex_destroy(&nfs->nfsi->nfs4_open_counter_mutex);
         nfs_mt_mutex_destroy(&nfs->nfsi->nfs_mutex);
+        nfs_mt_mutex_destroy(&nfs->nfsi->nfs4_file_mutex);
         while (nfs->nfsi->thread_ctx) {
                 struct nfs_thread_context *tmp = nfs->nfsi->thread_ctx->next;
                 free(nfs->nfsi->thread_ctx->nfs.error_string);
@@ -1368,6 +1379,9 @@ free_nfs_cb_data(struct nfs_cb_data *data)
 void
 nfs_free_nfsfh(struct nfsfh *nfsfh)
 {
+	if (nfsfh->file != NULL) {
+		nfs4_put_file(nfsfh->file);
+	}
 	if (nfsfh->fh.val != NULL) {
 		free(nfsfh->fh.val);
 		nfsfh->fh.len = 0;
@@ -2984,6 +2998,11 @@ nfs_set_readonly(struct nfs_context *nfs, int readonly) {
 void
 nfs_set_dircache(struct nfs_context *nfs, int enabled) {
 	nfs->nfsi->dircache_enabled = enabled;
+}
+
+void
+nfs_set_resend_unstable(struct nfs_context *nfs, uint64_t max_bytes) {
+	nfs->nfsi->resend_unstable = max_bytes;
 }
 
 void

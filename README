@@ -149,6 +149,10 @@ Arguments supported by libnfs are :
                    : Should libnfs try to traverse across nested mounts
                      automatically or not. Default is 1 == enabled.
  dircache=<0|1>    : Disable/enable directory caching. Enabled by default.
+ resend-unstable=<MiB>
+                   : Keep up to this much NFSv4 data the server has not
+                     committed yet, and write it again if the server loses
+                     it. 0, the default, disables it.
  readonly	   : Set the mount to readonly.
  autoreconnect=<-1|0|>=1>
                    : Control the auto-reconnect behaviour to the NFS session.
