@@ -3410,6 +3410,30 @@ zdr_DEALLOCATE4res (ZDR *zdrs, DEALLOCATE4res *objp)
 }
 
 uint32_t
+zdr_CLONE4args (ZDR *zdrs, CLONE4args *objp)
+{
+	 if (!zdr_stateid4 (zdrs, &objp->cl_src_stateid))
+		 return FALSE;
+	 if (!zdr_stateid4 (zdrs, &objp->cl_dst_stateid))
+		 return FALSE;
+	 if (!zdr_offset4 (zdrs, &objp->cl_src_offset))
+		 return FALSE;
+	 if (!zdr_offset4 (zdrs, &objp->cl_dst_offset))
+		 return FALSE;
+	 if (!zdr_length4 (zdrs, &objp->cl_count))
+		 return FALSE;
+	return TRUE;
+}
+
+uint32_t
+zdr_CLONE4res (ZDR *zdrs, CLONE4res *objp)
+{
+	 if (!zdr_nfsstat4 (zdrs, &objp->cl_status))
+		 return FALSE;
+	return TRUE;
+}
+
+uint32_t
 zdr_data_info4 (ZDR *zdrs, data_info4 *objp)
 {
 	 if (!zdr_offset4 (zdrs, &objp->di_offset))
@@ -3821,6 +3845,10 @@ zdr_nfs_argop4 (ZDR *zdrs, nfs_argop4 *objp)
 		 if (!zdr_WRITE_SAME4args (zdrs, &objp->nfs_argop4_u.opwritesame))
 			 return FALSE;
 		break;
+	case OP_CLONE:
+		 if (!zdr_CLONE4args (zdrs, &objp->nfs_argop4_u.opclone))
+			 return FALSE;
+		break;
 	case OP_ILLEGAL:
 		break;
 	default:
@@ -4073,6 +4101,10 @@ zdr_nfs_resop4 (ZDR *zdrs, nfs_resop4 *objp)
 		break;
 	case OP_WRITE_SAME:
 		 if (!zdr_WRITE_SAME4res (zdrs, &objp->nfs_resop4_u.opwritesame))
+			 return FALSE;
+		break;
+	case OP_CLONE:
+		 if (!zdr_CLONE4res (zdrs, &objp->nfs_resop4_u.opclone))
 			 return FALSE;
 		break;
 	case OP_ILLEGAL:
