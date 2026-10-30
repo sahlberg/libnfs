@@ -51,7 +51,9 @@ export VPATH	:=	$(foreach dir,$(SOURCE),$(CURDIR)/$(dir)) \
 export BUILDDIR	:=	$(CURDIR)/$(BUILD)
 export DEPSDIR	:=	$(BUILDDIR)
 
-CFILES		:= $(foreach dir,$(SOURCE),$(notdir $(wildcard $(dir)/*.c)))
+# lib/rdma.c needs Linux epoll and rdma-core. The autotools build compiles
+# it only when HAVE_RDMA is set; this makefile does not run configure.
+CFILES		:= $(filter-out rdma.c,$(foreach dir,$(SOURCE),$(notdir $(wildcard $(dir)/*.c))))
 CXXFILES	:= $(foreach dir,$(SOURCE),$(notdir $(wildcard $(dir)/*.cpp)))
 SFILES		:= $(foreach dir,$(SOURCE),$(notdir $(wildcard $(dir)/*.S)))
 BINFILES	:= $(foreach dir,$(DATA),$(notdir $(wildcard $(dir)/*.bin)))
