@@ -77,6 +77,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <inttypes.h>
+#include <limits.h>
 #include <stdarg.h>
 #include <stdlib.h>
 #include <string.h>
@@ -364,12 +365,16 @@ nfs_set_context_args(struct nfs_context *nfs, const char *arg, const char *val)
 		rpc_set_gid(nfs_get_rpc_context(nfs), atoi(val));
 	} else if (!strcmp(arg, "timeo")) {
 		/* val is in deci-seconds */
-		const int timeout_msecs = atoi(val) * 100;
-		if (timeout_msecs < (10 * 1000)) {
+		const long timeo = strtol(val, NULL, 10);
+		if (timeo < 100) {
 			nfs_set_error(nfs, "timeo cannot be less than 100: %s", val);
 			return -1;
 		}
-		nfs_set_timeout(nfs, timeout_msecs);
+		if (timeo > INT_MAX / 100) {
+			nfs_set_error(nfs, "timeo is too large: %s", val);
+			return -1;
+		}
+		nfs_set_timeout(nfs, (int)timeo * 100);
 	} else if (!strcmp(arg, "retrans")) {
 		const int retrans = atoi(val);
 		if (retrans < 0) {

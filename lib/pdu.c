@@ -732,7 +732,7 @@ void pdu_set_timeout(struct rpc_context *rpc, struct rpc_pdu *pdu, uint64_t now_
          * timeout, depending on the value of rpc->retrans.
          */
 	if (pdu->major_timeout == 0) {
-		pdu->major_timeout = now_msecs + (rpc->timeout * rpc->retrans);
+		pdu->major_timeout = now_msecs + ((uint64_t)rpc->timeout * rpc->retrans);
 		pdu->timeout = now_msecs + rpc->timeout;
 #ifndef HAVE_CLOCK_GETTIME
 		pdu->major_timeout += 1000;
