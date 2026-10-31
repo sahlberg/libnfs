@@ -31,6 +31,7 @@
 
 
 #include <arpa/inet.h>
+#include <errno.h>
 #include <fcntl.h>
 #include <poll.h>
 #include <stdlib.h>
@@ -50,6 +51,8 @@
 
 #define DBDIR "/var/run/rpcbind"
 #define DBFILE DBDIR "/rpcbind.libnfs"
+#define DBTMPFILE DBFILE ".tmp"
+#define DBMAXSIZE (64 * 1024 * 1024)
 
 /*
  * Portmapper implementation begins here
@@ -109,10 +112,16 @@ struct mapping *pmap_register(TALLOC_CTX *ctx,
         return item;
 }
 
+/* Encoded size of a ZDR string */
+static uint32_t zdr_string_size(const char *str)
+{
+        return 4 + ((strlen(str) + 3) & ~3);
+}
+
 struct rw_data {
         int f;
         char *buf;
-        ZDR *zdr;
+        ZDR zdr;
 };
 
 static int rw_data_destructor(struct rw_data *rd)
@@ -120,34 +129,73 @@ static int rw_data_destructor(struct rw_data *rd)
         if (rd->f != -1) {
                 close(rd->f);
         }
-        zdr_destroy(rd->zdr);
+        zdr_destroy(&rd->zdr);
         return 0;
 }
 
 static void write_db(TALLOC_CTX *ctx)
 {
         struct rw_data *rd;
-        struct stat st;
-        mapping_ptr tmpmap;
+        struct mapping *tmp;
+        uint32_t size = 4;
+        char *ptr;
+        uint32_t len;
 
-        rd = talloc(ctx, struct rw_data);
+        for (tmp = map; tmp; tmp = tmp->next) {
+                size += 16 + zdr_string_size(tmp->netid) +
+                        zdr_string_size(tmp->addr) +
+                        zdr_string_size(tmp->owner);
+        }
+
+        rd = talloc_zero(ctx, struct rw_data);
         if (rd == NULL) {
                 return;
         }
+        rd->f = -1;
         talloc_set_destructor(rd, rw_data_destructor);
-        rd->f = open(DBFILE, O_RDWR|O_CREAT, 0600);
+        rd->buf = talloc_size(rd, size);
+        if (rd->buf == NULL) {
+                goto out;
+        }
+	zdrmem_create(&rd->zdr, rd->buf, size, ZDR_ENCODE);
+        if (zdr_mapping_ptr(&rd->zdr, &map) == 0) {
+                goto out;
+        }
+
+        /* Write a new file and rename it so the db is never truncated */
+        rd->f = open(DBTMPFILE, O_WRONLY|O_CREAT|O_TRUNC, 0600);
         if (rd->f == -1) {
                 goto out;
         }
-        rd->zdr = talloc(rd, ZDR);
-        rd->buf = talloc_size(rd, 65536);
-        
-	zdrmem_create(rd->zdr, rd->buf, talloc_get_size(rd->buf), ZDR_ENCODE);
-        if (zdr_mapping_ptr(rd->zdr, &map) == 0) {
-                goto out;
+        ptr = zdr_getptr(&rd->zdr);
+        len = zdr_getpos(&rd->zdr);
+        while (len > 0) {
+                ssize_t count = write(rd->f, ptr, len);
+
+                if (count < 0) {
+                        if (errno == EINTR) {
+                                continue;
+                        }
+                        goto err;
+                }
+                ptr += count;
+                len -= count;
         }
-        
-        write(rd->f, zdr_getptr(rd->zdr), zdr_getpos(rd->zdr));
+        if (fsync(rd->f)) {
+                goto err;
+        }
+        if (close(rd->f)) {
+                rd->f = -1;
+                goto err;
+        }
+        rd->f = -1;
+        if (rename(DBTMPFILE, DBFILE)) {
+                goto err;
+        }
+        goto out;
+
+ err:
+        unlink(DBTMPFILE);
  out:
         talloc_free(rd);
 }
@@ -157,31 +205,42 @@ static void read_db(TALLOC_CTX *ctx)
         struct rw_data *rd;
         struct stat st;
         mapping_ptr tmpmap;
+        off_t pos = 0;
 
-        rd = talloc(ctx, struct rw_data);
+        rd = talloc_zero(ctx, struct rw_data);
         if (rd == NULL) {
                 return;
         }
+        rd->f = -1;
         talloc_set_destructor(rd, rw_data_destructor);
         rd->f = open(DBFILE, O_RDONLY);
         if (rd->f == -1) {
                 goto out;
         }
-        rd->zdr = talloc(rd, ZDR);
         if (fstat(rd->f, &st)) {
                 goto out;
         }
-        if (st.st_size == 0) {
+        if (st.st_size == 0 || st.st_size > DBMAXSIZE) {
                 goto out;
         }
         rd->buf = talloc_size(rd, st.st_size);
         if (rd->buf == NULL) {
                 goto out;
         }
-        read(rd->f, rd->buf, st.st_size);
+        while (pos < st.st_size) {
+                ssize_t count = read(rd->f, rd->buf + pos, st.st_size - pos);
 
-	zdrmem_create(rd->zdr, rd->buf, st.st_size, ZDR_DECODE);
-        if (zdr_mapping_ptr(rd->zdr, &tmpmap) == 0) {
+                if (count < 0 && errno == EINTR) {
+                        continue;
+                }
+                if (count <= 0) {
+                        goto out;
+                }
+                pos += count;
+        }
+
+	zdrmem_create(&rd->zdr, rd->buf, st.st_size, ZDR_DECODE);
+        if (zdr_mapping_ptr(&rd->zdr, &tmpmap) == 0) {
                 goto out;
         }
         while(tmpmap) {
@@ -458,7 +517,11 @@ static int pmap2_dump_proc(struct rpc_context *rpc, struct rpc_msg *call, void *
         PMAP2DUMPres reply;
         struct mapping *tmp;
         TALLOC_CTX *tmp_ctx = talloc_new(NULL);
+        int size = 4;
 
+        if (tmp_ctx == NULL) {
+                return 0;
+        }
         reply.list = NULL;
         for (tmp = map; tmp; tmp = tmp->next) {
                 struct pmap2_mapping_list *tmp_list;
@@ -474,18 +537,23 @@ static int pmap2_dump_proc(struct rpc_context *rpc, struct rpc_msg *call, void *
                 }
                       
                 tmp_list = talloc(tmp_ctx, struct pmap2_mapping_list);
+                if (tmp_list == NULL) {
+                        goto out;
+                }
                 tmp_list->map.prog  = tmp->prog;
                 tmp_list->map.vers  = tmp->vers;
                 tmp_list->map.prot  = proto;
                 tmp_list->map.port  = tmp->port;
-                
+
                 tmp_list->next = reply.list;
 
                 reply.list = tmp_list;
+                size += 20;
         }
 
         rpc_send_reply(rpc, call, &reply,
-                       (zdrproc_t)zdr_PMAP2DUMPres, sizeof(PMAP2DUMPres));
+                       (zdrproc_t)zdr_PMAP2DUMPres, size);
+ out:
 
         talloc_free(tmp_ctx);
         return 0;
@@ -648,12 +716,22 @@ static int pmap3_dump_proc(struct rpc_context *rpc, struct rpc_msg *call, void *
         PMAP3DUMPres reply;
         struct mapping *tmp;
         TALLOC_CTX *tmp_ctx = talloc_new(NULL);
-        
+        int size = 4;
+
+        if (tmp_ctx == NULL) {
+                return 0;
+        }
         reply.list = NULL;
         for (tmp = map; tmp; tmp = tmp->next) {
                 struct pmap3_mapping_list *tmp_list;
-                
+
                 tmp_list = talloc(tmp_ctx, struct pmap3_mapping_list);
+                if (tmp_list == NULL) {
+                        goto out;
+                }
+                size += 12 + zdr_string_size(tmp->netid) +
+                        zdr_string_size(tmp->addr) +
+                        zdr_string_size(tmp->owner);
                 tmp_list->map.prog  = tmp->prog;
                 tmp_list->map.vers  = tmp->vers;
                 tmp_list->map.netid = tmp->netid;
@@ -666,8 +744,8 @@ static int pmap3_dump_proc(struct rpc_context *rpc, struct rpc_msg *call, void *
         }
 
         rpc_send_reply(rpc, call, &reply,
-                       (zdrproc_t)zdr_PMAP3DUMPres, sizeof(PMAP3DUMPres));
-
+                       (zdrproc_t)zdr_PMAP3DUMPres, size);
+ out:
         talloc_free(tmp_ctx);
         return 0;
 }
@@ -747,24 +825,40 @@ static int pmap3_u2t_proc(struct rpc_context *rpc, struct rpc_msg *call, void *o
  */
 static int pmap3_t2u_proc(struct rpc_context *rpc, struct rpc_msg *call, void *opaque)
 {
-        struct sockaddr *sa;
         PMAP3TADDR2UADDRargs *args = call->body.cbody.args;
         PMAP3TADDR2UADDRres res;
-        char addr[64] = {0}, *ptr;
-        int port;
-        
-        sa = (struct sockaddr *)args->buf.buf_val;
-        switch (sa->sa_family) {
+        struct sockaddr_storage ss;
+        char addr[64] = {0};
+        const void *in = NULL;
+        int port = 0;
+
+        /* Copy so a short netbuf can not be read past its end */
+        memset(&ss, 0, sizeof(ss));
+        if (args->buf.buf_len > 0 && args->buf.buf_len <= sizeof(ss)) {
+                memcpy(&ss, args->buf.buf_val, args->buf.buf_len);
+        }
+        switch (ss.ss_family) {
         case AF_INET:
-                inet_ntop(sa->sa_family, &((struct sockaddr_in *)sa)->sin_addr, addr, sizeof(addr));
-                port = ((struct sockaddr_in *)sa)->sin_port;
+                if (args->buf.buf_len >= sizeof(struct sockaddr_in)) {
+                        in = &((struct sockaddr_in *)&ss)->sin_addr;
+                        port = ntohs(((struct sockaddr_in *)&ss)->sin_port);
+                }
                 break;
         case AF_INET6:
-                inet_ntop(sa->sa_family, &((struct sockaddr_in6 *)sa)->sin6_addr, addr, sizeof(addr));
-                port = ((struct sockaddr_in6 *)sa)->sin6_port;
+                if (args->buf.buf_len >= sizeof(struct sockaddr_in6)) {
+                        in = &((struct sockaddr_in6 *)&ss)->sin6_addr;
+                        port = ntohs(((struct sockaddr_in6 *)&ss)->sin6_port);
+                }
                 break;
         }
-        sprintf(&addr[strlen(addr)], ".%d.%d", port >> 8, port & 0xff); 
+        if (in && inet_ntop(ss.ss_family, in, addr, sizeof(addr))) {
+                size_t len = strlen(addr);
+
+                snprintf(&addr[len], sizeof(addr) - len, ".%d.%d",
+                         port >> 8, port & 0xff);
+        } else {
+                addr[0] = 0;
+        }
 
         res.addr = &addr[0];
         rpc_send_reply(rpc, call, &res, (zdrproc_t)zdr_PMAP3TADDR2UADDRres, sizeof(PMAP3TADDR2UADDRres));
