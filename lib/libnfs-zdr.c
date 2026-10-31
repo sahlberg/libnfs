@@ -425,7 +425,6 @@ bool_t libnfs_zdr_string(ZDR *zdrs, char **strp, uint32_t maxsize)
 		 */
 	  if (zdrs->size > zdrs->pos + (int)size && zdrs->buf[zdrs->pos + size] == 0) {
 			*strp = &zdrs->buf[zdrs->pos];
-			(*strp)[size] = 0;
 			zdrs->pos += size;
 			libnfs_zdr_pad4(zdrs);
 			return TRUE;
