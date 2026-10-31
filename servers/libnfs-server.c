@@ -433,6 +433,9 @@ struct libnfs_servers *libnfs_create_server(TALLOC_CTX *ctx,
                 goto err;
         }
         to = talloc(tmp_ctx, struct ev_data);
+        if (to == NULL) {
+                goto err;
+        }
         to->tevent = tevent;
         to->stage = 0;
         to->status = 0;
@@ -445,8 +448,9 @@ struct libnfs_servers *libnfs_create_server(TALLOC_CTX *ctx,
         for (i = 0; servers->server_procs[i].program; i++) {
                 PMAP4SETargs set4args;
 
-                set4args.prog = servers->server_procs[i].program;
-                set4args.vers = servers->server_procs[i].version;
+                set4args.prog  = servers->server_procs[i].program;
+                set4args.vers  = servers->server_procs[i].version;
+                set4args.owner = name;
                 if (transports & TRANSPORT_UDP) {
                         to->num_wait += 2;
                         set4args.netid = "udp";
@@ -456,7 +460,6 @@ struct libnfs_servers *libnfs_create_server(TALLOC_CTX *ctx,
                                 goto err;
                         }
                         set4args.addr  = udp4_str;
-                        set4args.owner = name;
                         if (rpc_pmap4_set_task(rpc, &set4args, _pmap4_set_cb, to) == NULL) {
                                 printf("Failed to send SET4 request\n");
                                 goto err;
@@ -476,7 +479,7 @@ struct libnfs_servers *libnfs_create_server(TALLOC_CTX *ctx,
                                 goto err;
                         }
                 }
-                if (transports & TRANSPORT_UDP) {
+                if (transports & TRANSPORT_TCP) {
                         to->num_wait += 2;
                         set4args.netid = "tcp";
                         set4args.addr  = "";
@@ -490,7 +493,7 @@ struct libnfs_servers *libnfs_create_server(TALLOC_CTX *ctx,
                                 goto err;
                         }
                 }
-                if (transports & TRANSPORT_UDP) {
+                if (transports & TRANSPORT_TCP6) {
                         to->num_wait += 2;
                         set4args.netid = "tcp6";
                         set4args.addr  = "";
