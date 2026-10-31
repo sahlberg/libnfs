@@ -1493,6 +1493,10 @@ static int rpc_process_call(struct rpc_context *rpc, ZDR *zdr)
                 if (endpoint->procs[i].proc == c.call.body.cbody.proc) {
                         if (endpoint->procs[i].decode_buf_size) {
                                 c.call.body.cbody.args = zdr_malloc(zdr, endpoint->procs[i].decode_buf_size);
+                                if (c.call.body.cbody.args == NULL) {
+                                        rpc_set_error(rpc, "Out of memory: Failed to allocate call arguments");
+                                        return rpc_send_error_reply(rpc, &c.call, SYSTEM_ERR, 0, 0);
+                                }
                                 memset(c.call.body.cbody.args, 0, endpoint->procs[i].decode_buf_size);
                         }
                         if (!endpoint->procs[i].decode_fn(zdr, c.call.body.cbody.args)) {
