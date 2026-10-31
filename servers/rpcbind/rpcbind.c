@@ -83,9 +83,14 @@ struct mapping *pmap_register(TALLOC_CTX *ctx,
         }
         item->prog  = prog;
         item->vers  = vers;
+        item->port  = 0;
         item->netid = talloc_strdup(item, netid);
         item->addr  = talloc_strdup(item, addr);
         item->owner = talloc_strdup(item, owner);
+        if (item->netid == NULL || item->addr == NULL || item->owner == NULL) {
+                talloc_free(item);
+                return NULL;
+        }
 
         /* The port are the last two dotted decimal fields in the address */
         for (str = item->addr + strlen(item->addr) - 1; str >= item->addr; str--) {
@@ -100,8 +105,11 @@ struct mapping *pmap_register(TALLOC_CTX *ctx,
                 if (count == 2) {
                         int high, low;
 
-                        sscanf(str, ".%d.%d", &high, &low);
-                        item->port = high * 256 + low;
+                        if (sscanf(str, ".%d.%d", &high, &low) == 2 &&
+                            high >= 0 && high <= 255 &&
+                            low >= 0 && low <= 255) {
+                                item->port = high * 256 + low;
+                        }
                         break;
                 }
         }
@@ -259,14 +267,13 @@ static void read_db(TALLOC_CTX *ctx)
 static char *socket_to_str(struct rpc_context *rpc, char *netid)
 {
         static char addr[64] = {0}, *ptr;
+        struct sockaddr_storage ss;
+        struct sockaddr *sa;
+        const void *in;
 
         if (rpc_is_udp_socket(rpc)) {
-                struct sockaddr *sa;
-
                 sa = rpc_get_udp_dst_sockaddr(rpc);
-                inet_ntop(sa->sa_family, &((struct sockaddr_in *)sa)->sin_addr, addr, sizeof(addr));
         } else {
-                struct sockaddr_storage ss;
                 socklen_t ss_len = sizeof(struct sockaddr_storage);
 
                 /*
@@ -274,9 +281,22 @@ static char *socket_to_str(struct rpc_context *rpc, char *netid)
                  * should be good enough.
                  */
                 if (getsockname(rpc_get_fd(rpc), (struct sockaddr *)&ss, &ss_len)) {
-                        return 0;
+                        return NULL;
                 }
-                inet_ntop(ss.ss_family, &((struct sockaddr_in6 *)&ss)->sin6_addr, addr, sizeof(addr));
+                sa = (struct sockaddr *)&ss;
+        }
+        switch (sa->sa_family) {
+        case AF_INET:
+                in = &((struct sockaddr_in *)sa)->sin_addr;
+                break;
+        case AF_INET6:
+                in = &((struct sockaddr_in6 *)sa)->sin6_addr;
+                break;
+        default:
+                return NULL;
+        }
+        if (inet_ntop(sa->sa_family, in, addr, sizeof(addr)) == NULL) {
+                return NULL;
         }
         ptr = &addr[0];
         /*
@@ -331,7 +351,7 @@ void map_remove(struct pmap_state *pmap, int prog, int vers, char *netid)
 
         for (tmp = map; tmp; tmp = next) {
                 next = tmp->next;
-                if (tmp->prog != prog |
+                if (tmp->prog != prog ||
                     tmp->vers != vers ||
                     (netid && netid[0] && strcmp(tmp->netid, netid))) {
                             tmp->next = new_map;
@@ -347,6 +367,7 @@ void map_remove(struct pmap_state *pmap, int prog, int vers, char *netid)
 
 struct callit_data {
         struct rpc_context *rpc;
+        struct rpc_context *client_rpc;
         struct rpc_msg *call;
         struct rpc_pdu *pdu;
         struct tevent_timer *timeout_event;
@@ -360,6 +381,7 @@ static int callit_destructor(struct callit_data *cb_data)
         if (cb_data->call) {
                 rpc_free_deferred_call(cb_data->rpc, cb_data->call);
         }
+        return 0;
 }
 
 static void _timeout_cb(struct tevent_context *ev, struct tevent_timer *te,
@@ -367,7 +389,7 @@ static void _timeout_cb(struct tevent_context *ev, struct tevent_timer *te,
 {
         struct callit_data *cb_data = private_data;
 
-        rpc_cancel_pdu(cb_data->rpc, cb_data->pdu);
+        rpc_cancel_pdu(cb_data->client_rpc, cb_data->pdu);
         talloc_free(cb_data);
 }
 
@@ -411,10 +433,14 @@ static int pmapX_callit_proc(struct pmap_state *pmap, struct rpc_context *rpc, s
         PMAP3CALLITargs *args = call->body.cbody.args;
         struct callit_data *cb_data = NULL;
         struct mapping *map;
-        struct timeval to = {3, 0};
+        struct timeval to = tevent_timeval_current_ofs(3, 0);
 
         /* Only support callit for NULL procedure. */
         if (args->proc != 0) {
+                return 0;
+        }
+        /* The deferred reply must not outlive a TCP connection */
+        if (!rpc_is_udp_socket(rpc)) {
                 return 0;
         }
 
@@ -433,6 +459,7 @@ static int pmapX_callit_proc(struct pmap_state *pmap, struct rpc_context *rpc, s
         }
         talloc_set_destructor(cb_data, callit_destructor);
         cb_data->rpc = rpc;
+        cb_data->client_rpc = pmap->rpc;
         cb_data->pmap_vers = pmap_vers;
         cb_data->call = rpc_copy_deferred_call(rpc, call);
         if (cb_data->call == NULL) {
@@ -488,7 +515,7 @@ static int pmap2_getport_proc(struct rpc_context *rpc, struct rpc_msg *call, voi
         PMAP2GETPORTargs *args = call->body.cbody.args;
         struct mapping *tmp;
         char *netid;
-        static uint32_t port = 0;
+        uint32_t port = 0;
 
         if (args->prot == IPPROTO_TCP) {
                 netid = "tcp";
@@ -585,9 +612,15 @@ static int pmap2_set_proc(struct rpc_context *rpc, struct rpc_msg *call, void *o
                 return 0;
         }
         
-        sprintf(&addr[0], "0.0.0.0.%d.%d", args->port >> 8, args->port & 0xff);
-        pmap_register(pmap, args->prog, args->vers, prot, addr,
-                      "<unknown>");
+        snprintf(addr, sizeof(addr), "0.0.0.0.%d.%d",
+                 args->port >> 8, args->port & 0xff);
+        if (args->port > 65535 ||
+            pmap_register(pmap, args->prog, args->vers, prot, addr,
+                          "<unknown>") == NULL) {
+                response = 0;
+                rpc_send_reply(rpc, call, &response, (zdrproc_t)zdr_uint32_t, sizeof(uint32_t));
+                return 0;
+        }
 
         rpc_send_reply(rpc, call, &response, (zdrproc_t)zdr_uint32_t, sizeof(uint32_t));
         write_db(pmap);
@@ -658,8 +691,12 @@ static int pmap3_set_proc(struct rpc_context *rpc, struct rpc_msg *call, void *o
                 return 0;
         }
         
-        pmap_register(pmap, args->prog, args->vers, args->netid, args->addr,
-                      args->owner);
+        if (pmap_register(pmap, args->prog, args->vers, args->netid,
+                          args->addr, args->owner) == NULL) {
+                response = 0;
+                rpc_send_reply(rpc, call, &response, (zdrproc_t)zdr_uint32_t, sizeof(uint32_t));
+                return 0;
+        }
 
         rpc_send_reply(rpc, call, &response, (zdrproc_t)zdr_uint32_t, sizeof(uint32_t));
         write_db(pmap);
@@ -691,15 +728,17 @@ static int pmap3_getaddr_proc(struct rpc_context *rpc, struct rpc_msg *call, voi
         PMAP3GETADDRargs *args = call->body.cbody.args;
         PMAP3GETADDRres res;
         struct mapping *map;
+        char addr[64] = {0};
+        char *str;
 
-        res.addr = socket_to_str(rpc, args->netid);
-        
+        /* An empty address means the program is not registered */
         map = map_lookup(pmap, args->prog, args->vers, args->netid);
-        if (map != NULL) {
-                sprintf(res.addr + strlen(res.addr), ".%d.%d", map->port >> 8, map->port & 0xff);
-        } else {
-                return 0;
+        str = socket_to_str(rpc, args->netid);
+        if (map != NULL && str != NULL) {
+                snprintf(addr, sizeof(addr), "%s.%d.%d", str,
+                         map->port >> 8, map->port & 0xff);
         }
+        res.addr = addr;
 
         rpc_send_reply(rpc, call, &res, (zdrproc_t)zdr_PMAP3GETADDRres, sizeof(PMAP3GETADDRres));
         return 0;
