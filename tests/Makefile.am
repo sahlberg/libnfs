@@ -55,3 +55,6 @@ check-local: prog_zdr_bytes_zero$(EXEEXT) prog_zdr_maxsize$(EXEEXT)
 
 check_PROGRAMS += prog_service_error
 TESTS += prog_service_error
+
+check_PROGRAMS += prog_nfs4_state_loss
+TESTS += prog_nfs4_state_loss

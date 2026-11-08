@@ -148,9 +148,9 @@ static void test_renewal(void)
         struct rpc_context *rpc = rpc_init_context();
         int pair[2];
         uint32_t xid;
+        /* Terminal lease-loss replies are covered by prog_nfs4_state_loss. */
         nfsstat4 statuses[] = {NFS4_OK, NFS4ERR_CB_PATH_DOWN,
-                               NFS4ERR_SERVERFAULT, NFS4ERR_EXPIRED,
-                               NFS4ERR_STALE_CLIENTID};
+                               NFS4ERR_SERVERFAULT};
         unsigned int i;
 
         CHECK(rpc != NULL);
@@ -176,7 +176,6 @@ static void test_renewal(void)
         CHECK(rpc->nfs40_renew_interval == 45000);
         CHECK(rpc_get_poll_timeout(rpc) > 0);
         for (i = 0; i < sizeof(statuses)/sizeof(statuses[0]); i++) {
-                if (i == 4) rpc_nfs40_start_renew(rpc, 0x123456789abcdef0ULL, 90);
                 rpc->nfs40_renew_due = rpc_current_time();
                 CHECK(rpc_get_poll_timeout(rpc) == 0);
                 CHECK(rpc_service(rpc, 0) == 0);
@@ -187,8 +186,8 @@ static void test_renewal(void)
                                     rpc->nfs40_renew_auth);
                 reply_renew(rpc, pair[1], xid, statuses[i]);
                 CHECK(!rpc->nfs40_renew_pending);
-                CHECK(rpc->nfs40_renew_enabled == (i < 3));
-                if (i < 3) CHECK(rpc_get_poll_timeout(rpc) > 0);
+                CHECK(rpc->nfs40_renew_enabled);
+                CHECK(rpc_get_poll_timeout(rpc) > 0);
                 if (i == 2) CHECK(rpc->nfs40_renew_due <=
                                   rpc_current_time() + 1000);
                 if (i < 2) CHECK(rpc->nfs40_renew_due >

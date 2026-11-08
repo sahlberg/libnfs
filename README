@@ -382,3 +382,15 @@ MAILING LIST
 A libnfs mailing list is available at http://groups.google.com/group/libnfs
 Announcements of new versions of libnfs will be posted to this list.
 
+
+NFSv4.0 client-state loss
+------------------------
+
+High-level NFSv4.0 operations treat NFS4ERR_STALE_CLIENTID and
+NFS4ERR_EXPIRED as terminal client-state loss.
+The operation callback receives its normal errno; rpc_service()/nfs_service()
+then fails outstanding requests and returns -1 with a client-state diagnostic,
+including when RENEW detects it. This also releases callers waiting on the
+built-in service thread. Stop that thread, if used, destroy the context and
+mount with a fresh one. Transport autoreconnect cannot repair this state.
+Ordinary pathname errors remain per-operation errors.

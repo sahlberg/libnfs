@@ -372,6 +372,8 @@ struct rpc_context {
 
 	char *error_string;
 	uint64_t error_generation;
+	/* Set/read only by the RPC service owner; cleared by context destruction. */
+	uint32_t nfs40_state_error;
 
         uint32_t program;
         uint32_t version;

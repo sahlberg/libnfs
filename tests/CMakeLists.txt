@@ -77,3 +77,7 @@ add_test(NAME zdr_maxsize COMMAND prog_zdr_maxsize)
 add_executable(prog_service_error prog_service_error.c)
 target_link_libraries(prog_service_error nfs)
 add_test(NAME prog_service_error COMMAND prog_service_error)
+
+add_executable(prog_nfs4_state_loss prog_nfs4_state_loss.c)
+target_link_libraries(prog_nfs4_state_loss nfs)
+add_test(NAME prog_nfs4_state_loss COMMAND prog_nfs4_state_loss)
