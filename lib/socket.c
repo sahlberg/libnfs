@@ -1767,6 +1767,7 @@ nfs40_renew_cb(struct rpc_context *rpc, int status, void *command_data,
 		RPC_LOG(rpc, 2, "NFSv4.0 lease renewed");
 	} else if (res && (res->status == NFS4ERR_EXPIRED ||
 	                   res->status == NFS4ERR_STALE_CLIENTID)) {
+		rpc->nfs40_state_error = res->status;
 		nfs40_stop_renew_locked(rpc);
 		nfs40_renew_unlock(rpc);
 		RPC_LOG(rpc, 1, "NFSv4.0 lease lost (%s); context must be remounted",
@@ -1851,10 +1852,34 @@ rpc_nfs40_maybe_renew(struct rpc_context *rpc)
 	RPC_LOG(rpc, 2, "Queued NFSv4.0 RENEW");
 }
 
+/* State recovery is not implemented. Report a terminal context failure only
+ * after reply callbacks have returned, never by destroying state in a callback.
+ */
+static int
+rpc_nfs40_check_state(struct rpc_context *rpc)
+{
+	char error[160];
+
+	if (!rpc->nfs40_state_error)
+		return 0;
+	rpc_nfs40_stop_renew(rpc);
+	snprintf(error, sizeof(error),
+	         "NFSv4.0 client state lost: %s (%u); recreate the context",
+	         nfsstat4_to_str(rpc->nfs40_state_error), rpc->nfs40_state_error);
+	/* Wake pending synchronous/background callers too. Cleanup callbacks may
+	 * change diagnostics, so publish the terminal reason after draining work.
+	 */
+	rpc_error_all_pdus(rpc, error);
+	rpc_set_error(rpc, "%s", error);
+	return -1;
+}
+
 int
 rpc_service(struct rpc_context *rpc, int revents)
 {
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
+	if (rpc_nfs40_check_state(rpc) < 0)
+		return -1;
 
 	if (rpc->reconnect_due) {
 		/* Requests are back in outqueue; honor their timeout policy
@@ -1905,6 +1930,8 @@ rpc_service(struct rpc_context *rpc, int revents)
 		case RPC_RDMA_EV_DISCONNECTED:
 			return rpc_reconnect_requeue(rpc);
 		}
+		if (rpc_nfs40_check_state(rpc) < 0)
+			return -1;
 		if (rpc->is_rdma && rpc->is_connected &&
 		    rpc_outqueue_present(rpc) && rpc_write_to_socket(rpc) != 0) {
 			return rpc_reconnect_requeue(rpc);
@@ -2050,6 +2077,9 @@ rpc_service(struct rpc_context *rpc, int revents)
                         }
 		}
 	}
+
+	if (rpc_nfs40_check_state(rpc) < 0)
+		return -1;
 
 #ifdef HAVE_TLS
 	/*

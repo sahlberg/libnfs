@@ -238,7 +238,7 @@ EXTERN void rpc_set_auth(struct rpc_context *rpc, struct AUTH *auth);
  * revents is a combination of POLLIN/POLLOUT/POLLHUP/POLLERR
  *
  * This function returns 0 on success or -1 on error. If it returns -1 it
- * means that the socket is in an unrecoverable error state (disconnected?)
+ * means that the connection or NFS client state is unrecoverable
  * and that no further commands can be used.
  * When this happens the application should destroy the now errored context
  * re-create a new context and reconnect.

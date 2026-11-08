@@ -396,6 +396,10 @@ check_nfs4_error(struct nfs_context *nfs, int status,
                 return 1;
         }
         if (res && res->status != NFS4_OK) {
+                if (nfs->nfsi->version == NFS_V4 &&
+                    (res->status == NFS4ERR_STALE_CLIENTID ||
+                     res->status == NFS4ERR_EXPIRED))
+                        nfs->rpc->nfs40_state_error = res->status;
                 nfs_set_error(nfs, "NFS4: %s (path %s) failed with "
                               "%s(%d)", op_name,
                               data->path,
@@ -1634,6 +1638,10 @@ nfs4_lookup_path_1_cb(struct rpc_context *rpc, int status, void *command_data,
         }
         if (res->status != NFS4_OK &&
             res->status != NFS4ERR_SYMLINK) {
+                if (nfs->nfsi->version == NFS_V4 &&
+                    (res->status == NFS4ERR_STALE_CLIENTID ||
+                     res->status == NFS4ERR_EXPIRED))
+                        nfs->rpc->nfs40_state_error = res->status;
                 nfs_set_error(nfs, "NFS4: (path %s) failed with "
                               "%s(%d)",
                               data->path,

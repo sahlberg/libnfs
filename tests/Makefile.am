@@ -59,3 +59,6 @@ TESTS += prog_service_error
 check_PROGRAMS += prog_close_handle
 TESTS += prog_close_handle
 prog_close_handle_CPPFLAGS = $(AM_CPPFLAGS) -I$(srcdir)/../mount -I$(srcdir)/../portmap
+
+check_PROGRAMS += prog_nfs4_state_loss
+TESTS += prog_nfs4_state_loss

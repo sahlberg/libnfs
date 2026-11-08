@@ -83,3 +83,7 @@ target_include_directories(prog_close_handle PRIVATE ../mount ../portmap)
 target_link_libraries(prog_close_handle nfs)
 add_test(NAME prog_close_handle COMMAND prog_close_handle)
 set_tests_properties(prog_close_handle PROPERTIES SKIP_RETURN_CODE 77)
+
+add_executable(prog_nfs4_state_loss prog_nfs4_state_loss.c)
+target_link_libraries(prog_nfs4_state_loss nfs)
+add_test(NAME prog_nfs4_state_loss COMMAND prog_nfs4_state_loss)
