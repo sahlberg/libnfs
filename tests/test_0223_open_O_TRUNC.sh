@@ -14,7 +14,7 @@ echo -n "kangabanga" > "${TESTDIR}/open1"
 success
 
 echo -n "verify the file got truncated ... "
-expr `stat --printf="%s" "${TESTDIR}/open1"` "==" "0" >/dev/null || failure
+[ "$(stat --printf="%s" "${TESTDIR}/open1")" -eq 0 ] || failure
 success
 
 echo -n "test open(O_RDONLY|O_TRUNC) (2) ... "
@@ -23,7 +23,7 @@ echo -n "kangabanga" > "${TESTDIR}/open1"
 success
 
 echo -n "verify the file did not get truncated ... "
-expr `stat --printf="%s" "${TESTDIR}/open1"` "==" "10" >/dev/null || failure
+[ "$(stat --printf="%s" "${TESTDIR}/open1")" -eq 10 ] || failure
 success
 
 stop_share
