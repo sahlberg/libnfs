@@ -932,6 +932,7 @@ nfs_close(struct nfs_context *nfs, struct nfsfh *nfsfh)
 	struct sync_cb_data cb_data;
 
         if (nfs_init_cb_data(&nfs, &cb_data)) {
+                nfs_free_nfsfh(nfsfh);
                 return -1;
         }
 
