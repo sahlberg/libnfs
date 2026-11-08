@@ -3815,8 +3815,6 @@ nfs3_fsync_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_cb cb,
 	if (rpc_nfs3_commit_task(nfs->rpc, nfs3_fsync_cb, &args, data) == NULL) {
 		nfs_set_error(nfs, "RPC error: Failed to send COMMIT "
                               "call for %s", data->path);
-		data->cb(-ENOMEM, nfs, nfs_get_error(nfs),
-                         data->private_data);
 		free_nfs_cb_data(data);
 		return -1;
 	}
@@ -4210,6 +4208,7 @@ nfs3_close_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_cb cb,
                  void *private_data)
 {
         struct nfs_cb_data *data;
+        int ret;
 
         if (!nfsfh->is_dirty) {
                 nfs_free_nfsfh(nfsfh);
@@ -4228,7 +4227,10 @@ nfs3_close_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_cb cb,
         data->cb = cb;
         data->private_data = private_data;
 
-        return nfs_fsync_async(nfs, nfsfh, nfs3_close_cb, data);
+        ret = nfs_fsync_async(nfs, nfsfh, nfs3_close_cb, data);
+        if (ret < 0)
+                free_nfs_cb_data(data);
+        return ret;
 }
 
 static void

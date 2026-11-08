@@ -2094,19 +2094,29 @@ int
 nfs_close_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_cb cb,
                 void *private_data)
 {
+	int ret;
+
 	switch (nfs->nfsi->version) {
         case NFS_V3:
-                return nfs3_close_async(nfs, nfsfh, cb, private_data);
+                ret = nfs3_close_async(nfs, nfsfh, cb, private_data);
+                break;
 #ifdef HAVE_NFS4_2
         case NFS_V4_2:
 #endif
         case NFS_V4:
-                return nfs4_close_async(nfs, nfsfh, cb, private_data);
+                ret = nfs4_close_async(nfs, nfsfh, cb, private_data);
+                break;
         default:
                 nfs_set_error(nfs, "%s does not support NFSv%d",
                               __FUNCTION__, nfs->nfsi->version);
-                return -1;
+                ret = -1;
         }
+	/* A queued CLOSE owns the handle until completion. Submission failure
+	 * must consume it here, since no completion callback will run.
+	 */
+	if (ret < 0)
+		nfs_free_nfsfh(nfsfh);
+	return ret;
 }
 
 int

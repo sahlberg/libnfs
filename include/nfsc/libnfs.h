@@ -845,6 +845,12 @@ EXTERN int nfs_open2(struct nfs_context *nfs, const char *path, int flags,
 /*
  * Async close(nfsfh)
  *
+ * Consumes nfsfh on every return path, including submission failure. The
+ * caller must not reuse or retry closing the handle. A successfully queued
+ * close releases it when the command completes; submission failure releases
+ * it immediately. An error does not guarantee that server-side state was
+ * closed or that buffered writes were committed.
+ *
  * Function returns
  *  0 : The command was queued successfully. The callback will be invoked once
  *      the command completes.
@@ -861,6 +867,7 @@ EXTERN int nfs_close_async(struct nfs_context *nfs, struct nfsfh *nfsfh,
                            nfs_cb cb, void *private_data);
 /*
  * Sync close(nfsfh)
+ * Consumes nfsfh even on failure. The caller must not reuse or retry closing it.
  * Function returns
  *      0 : The operation was successful.
  * -errno : The command failed.
