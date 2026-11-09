@@ -2069,6 +2069,20 @@ struct DEALLOCATE4res {
 };
 typedef struct DEALLOCATE4res DEALLOCATE4res;
 
+struct CLONE4args {
+	stateid4 cl_src_stateid;
+	stateid4 cl_dst_stateid;
+	offset4 cl_src_offset;
+	offset4 cl_dst_offset;
+	length4 cl_count;
+};
+typedef struct CLONE4args CLONE4args;
+
+struct CLONE4res {
+	nfsstat4 cl_status;
+};
+typedef struct CLONE4res CLONE4res;
+
 struct SEEK4args {
 	stateid4 sa_stateid;
 	offset4 sa_offset;
@@ -2239,6 +2253,7 @@ enum nfs_opnum4 {
 	OP_READ_PLUS = 68,
 	OP_SEEK = 69,
 	OP_WRITE_SAME = 70,
+	OP_CLONE = 71,
 	OP_ILLEGAL = 10044,
 };
 typedef enum nfs_opnum4 nfs_opnum4;
@@ -2299,6 +2314,7 @@ struct nfs_argop4 {
 		READ_PLUS4args opreadplus;
 		SEEK4args opseek;
 		WRITE_SAME4args opwritesame;
+		CLONE4args opclone;
 	} nfs_argop4_u;
 };
 typedef struct nfs_argop4 nfs_argop4;
@@ -2366,6 +2382,7 @@ struct nfs_resop4 {
 		READ_PLUS4res opreadplus;
 		SEEK4res opseek;
 		WRITE_SAME4res opwritesame;
+		CLONE4res opclone;
 		ILLEGAL4res opillegal;
 	} nfs_resop4_u;
 };
@@ -2885,6 +2902,8 @@ extern  uint32_t zdr_ALLOCATE4args (ZDR *, ALLOCATE4args*);
 extern  uint32_t zdr_ALLOCATE4res (ZDR *, ALLOCATE4res*);
 extern  uint32_t zdr_DEALLOCATE4args (ZDR *, DEALLOCATE4args*);
 extern  uint32_t zdr_DEALLOCATE4res (ZDR *, DEALLOCATE4res*);
+extern  uint32_t zdr_CLONE4args (ZDR *, CLONE4args*);
+extern  uint32_t zdr_CLONE4res (ZDR *, CLONE4res*);
 extern  uint32_t zdr_SEEK4args (ZDR *, SEEK4args*);
 extern  uint32_t zdr_data_info4 (ZDR *, data_info4*);
 extern  uint32_t zdr_data4 (ZDR *, data4*);
@@ -3224,6 +3243,8 @@ extern uint32_t zdr_ALLOCATE4args ();
 extern uint32_t zdr_ALLOCATE4res ();
 extern uint32_t zdr_DEALLOCATE4args ();
 extern uint32_t zdr_DEALLOCATE4res ();
+extern uint32_t zdr_CLONE4args ();
+extern uint32_t zdr_CLONE4res ();
 extern uint32_t zdr_SEEK4args ();
 extern uint32_t zdr_data_info4 ();
 extern uint32_t zdr_data4 ();

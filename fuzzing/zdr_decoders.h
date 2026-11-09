@@ -171,6 +171,7 @@ static const struct libnfs_fuzz_decoder_entry libnfs_zdr_decoders[] = {
 	{ (zdrproc_t)zdr_write_response4, sizeof(write_response4) },
 	{ (zdrproc_t)zdr_WRITE_SAME4res, sizeof(WRITE_SAME4res) },
 	{ (zdrproc_t)zdr_SEEK4res, sizeof(SEEK4res) },
+	{ (zdrproc_t)zdr_CLONE4res, sizeof(CLONE4res) },
 	{ (zdrproc_t)zdr_nfs_resop4, sizeof(nfs_resop4) },
 	{ (zdrproc_t)zdr_COMPOUND4res, sizeof(COMPOUND4res) },
 	{ (zdrproc_t)zdr_CB_GETATTR4res, sizeof(CB_GETATTR4res) },

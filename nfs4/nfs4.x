@@ -2166,6 +2166,7 @@ enum nfs_opnum4 {
         OP_READ_PLUS            = 68,
         OP_SEEK                 = 69,
         OP_WRITE_SAME           = 70,
+        OP_CLONE                = 71,
         OP_ILLEGAL              = 10044
 };
 
@@ -2195,6 +2196,18 @@ struct DEALLOCATE4args {
 
 struct DEALLOCATE4res {
         nfsstat4        dr_status;
+};
+
+struct CLONE4args {
+        stateid4        cl_src_stateid;
+        stateid4        cl_dst_stateid;
+        offset4         cl_src_offset;
+        offset4         cl_dst_offset;
+        length4         cl_count;
+};
+
+struct CLONE4res {
+        nfsstat4        cl_status;
 };
 
 struct SEEK4args {
@@ -2345,6 +2358,7 @@ union nfs_argop4 switch (nfs_opnum4 argop) {
  case OP_READ_PLUS:             READ_PLUS4args opreadplus;
  case OP_SEEK:                  SEEK4args opseek;
  case OP_WRITE_SAME:            WRITE_SAME4args opwritesame;
+ case OP_CLONE:                 CLONE4args opclone;
  case OP_ILLEGAL:       void;
 };
 
@@ -2411,6 +2425,7 @@ union nfs_resop4 switch (nfs_opnum4 resop){
  case OP_READ_PLUS:             READ_PLUS4res opreadplus;
  case OP_SEEK:                  SEEK4res opseek;
  case OP_WRITE_SAME:            WRITE_SAME4res opwritesame;
+ case OP_CLONE:                 CLONE4res opclone;
  case OP_ILLEGAL:       ILLEGAL4res opillegal;
 };
 
