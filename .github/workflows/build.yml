@@ -5,7 +5,10 @@ on:
 
 jobs:
   Linux-and-tests:
-    runs-on: ubuntu-latest
+    # ubuntu-latest is Ubuntu 26.04, whose uutils expr rejects GNU's ==.
+    # 24.04 still has GNU coreutils, and the kernel NFS server these tests
+    # drive. GitHub does not offer a Fedora runner.
+    runs-on: ubuntu-24.04
 
     steps:
       - uses: actions/checkout@main
