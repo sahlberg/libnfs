@@ -2590,16 +2590,15 @@ reconnect_cb_tls(struct rpc_context *rpc, int status,
 	/* Must be called only for TLS transport */
 	assert(rpc->use_tls);
 
-	/* Must be called only after TLS handshake completes/fails */
-	assert(rpc->tls_context.state == TLS_HANDSHAKE_COMPLETED ||
-	       rpc->tls_context.state == TLS_HANDSHAKE_FAILED);
-
 	/*
-	 * If handshake failed, restart the entire TCP connection not just the handshake.
-	 * This will create a new connection and perform the handshake.
+	 * Unless the handshake completed, restart the entire TCP connection
+	 * not just the handshake. Never carry on in the clear.
 	 */
-	if (rpc->tls_context.state == TLS_HANDSHAKE_FAILED) {
-		RPC_LOG(rpc, 1, "reconnect_cb_tls: TLS handshake failed, restarting connection!");
+	if (status != RPC_STATUS_SUCCESS ||
+	    rpc->tls_context.state != TLS_HANDSHAKE_COMPLETED) {
+		RPC_LOG(rpc, 1, "reconnect_cb_tls: TLS handshake failed (status %d, "
+			"state %d), restarting connection!",
+			status, rpc->tls_context.state);
 
 		if (rpc->fd != -1) {
 			close(rpc->fd);
