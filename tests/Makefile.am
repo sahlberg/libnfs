@@ -38,3 +38,6 @@ test: $(noinst_PROGRAMS)
 		echo "--------------"; \
 		echo; \
 	done
+
+check_PROGRAMS = prog_tls_reconnect
+TESTS = prog_tls_reconnect

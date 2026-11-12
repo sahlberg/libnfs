@@ -531,6 +531,9 @@ struct rpc_context {
 
 	/* Context used for performing TLS handshake with the server */
 	struct tls_context tls_context;
+
+	/* Set by reconnect_cb_tls(), acted on by rpc_service() */
+	int tls_reconnect_failed;
 #endif /* HAVE_TLS */
 
 #ifdef HAVE_LIBKRB5

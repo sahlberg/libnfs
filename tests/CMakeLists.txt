@@ -51,3 +51,8 @@ foreach(TEST ${TESTS})
            COMMAND ${TEST}
            WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
 endforeach()
+
+add_executable(prog_tls_reconnect prog_tls_reconnect.c)
+target_link_libraries(prog_tls_reconnect nfs)
+add_test(NAME prog_tls_reconnect COMMAND prog_tls_reconnect)
+set_tests_properties(prog_tls_reconnect PROPERTIES SKIP_RETURN_CODE 77)
