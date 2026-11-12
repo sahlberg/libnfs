@@ -65,6 +65,7 @@
 static bool_t global_init_done;
 static gnutls_certificate_credentials_t xcred;
 static bool_t tls_global_init_done;
+static bool_t client_cert_loaded;
 
 int tls_log_level;
 
@@ -125,8 +126,14 @@ int tls_global_init(struct rpc_context *rpc)
 	int ret;
 
 	/* All but the first successful call will be a no-op */
-	if (tls_global_init_done)
+	if (tls_global_init_done) {
+		if (rpc->wanted_xprtsec == RPC_XPRTSEC_MTLS && !client_cert_loaded) {
+			TLS_LOG(1, "tls_global_init: mtls requested but no client "
+				"cert and key were loaded");
+			return -1;
+		}
 		return 0;
+	}
 
 	/*
 	 * XXX See if we need a separate log level for gnutls, but for now
@@ -249,18 +256,21 @@ int tls_global_init(struct rpc_context *rpc)
 				client_cert_file, client_key_file, ret, gnutls_strerror(ret));
 			goto failed;
 		}
-	} else if (client_cert_file) {
-		TLS_LOG(1, "tls_global_init: Client cert specified (%s) but not key, "
-			"mtls cannot be used", client_cert_file);
-	} else if (client_key_file) {
-		TLS_LOG(1, "tls_global_init: Client key specified (%s) but not cert, "
-			"mtls cannot be used", client_key_file);
+		client_cert_loaded = TRUE;
 	} else {
-		TLS_LOG(2, "tls_global_init: Client cert and key not specified, mtls "
-			"cannot be used");
-                if (rpc->wanted_xprtsec == RPC_XPRTSEC_MTLS) {
-                        goto failed;
-                }
+		if (client_cert_file) {
+			TLS_LOG(1, "tls_global_init: Client cert specified (%s) but "
+				"not key, mtls cannot be used", client_cert_file);
+		} else if (client_key_file) {
+			TLS_LOG(1, "tls_global_init: Client key specified (%s) but "
+				"not cert, mtls cannot be used", client_key_file);
+		} else {
+			TLS_LOG(2, "tls_global_init: Client cert and key not "
+				"specified, mtls cannot be used");
+		}
+		if (rpc->wanted_xprtsec == RPC_XPRTSEC_MTLS) {
+			goto failed;
+		}
 	}
 
 	tls_global_init_done = TRUE;
