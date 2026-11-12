@@ -69,3 +69,8 @@ endforeach()
 add_executable(prog_zdr_bytes_zero prog_zdr_bytes_zero.c)
 target_link_libraries(prog_zdr_bytes_zero nfs)
 add_test(NAME zdr_bytes_zero COMMAND prog_zdr_bytes_zero)
+
+add_executable(prog_tls_reconnect prog_tls_reconnect.c)
+target_link_libraries(prog_tls_reconnect nfs)
+add_test(NAME prog_tls_reconnect COMMAND prog_tls_reconnect)
+set_tests_properties(prog_tls_reconnect PROPERTIES SKIP_RETURN_CODE 77)

@@ -51,3 +51,6 @@ noinst_PROGRAMS += prog_zdr_bytes_zero
 
 check-local: prog_zdr_bytes_zero$(EXEEXT)
 	./prog_zdr_bytes_zero$(EXEEXT)
+
+check_PROGRAMS += prog_tls_reconnect
+TESTS += prog_tls_reconnect

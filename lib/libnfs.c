@@ -958,6 +958,7 @@ rpc_connect_program_4_1_cb(struct rpc_context *rpc, int status,
 	RPC_LOG(rpc, 2, "Got AUTH_TLS response, status=%d", status);
 
 	if (status != RPC_STATUS_SUCCESS) {
+		rpc->tls_context.state = TLS_HANDSHAKE_FAILED;
 		data->cb(rpc, status, command_data, data->private_data);
 		free_tls_cb_data(data);
 		return;

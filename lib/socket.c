@@ -1605,6 +1605,21 @@ rpc_nfs4_maybe_renew_session(struct rpc_context *rpc)
 }
 #endif /* HAVE_NFS4_2 */
 
+#ifdef HAVE_TLS
+/* Restart a reconnect whose TLS setup failed, outside of any callback. */
+static int
+rpc_tls_restart(struct rpc_context *rpc)
+{
+	rpc->tls_reconnect_failed = 0;
+	if (rpc->fd != -1) {
+		close(rpc->fd);
+		rpc->fd  = -1;
+	}
+	rpc->is_connected = 0;
+	return rpc_reconnect_requeue(rpc);
+}
+#endif /* HAVE_TLS */
+
 int
 rpc_service(struct rpc_context *rpc, int revents)
 {
@@ -1621,8 +1636,16 @@ rpc_service(struct rpc_context *rpc, int revents)
 	 * connection is ready, events will be processed for that.
 	 */
 	if (rpc_timeout_scan(rpc) != 0) {
+#ifdef HAVE_TLS
+		rpc->tls_reconnect_failed = 0;
+#endif /* HAVE_TLS */
 		return rpc_reconnect_requeue(rpc);
 	}
+#ifdef HAVE_TLS
+	if (rpc->tls_reconnect_failed) {
+		return rpc_tls_restart(rpc);
+	}
+#endif /* HAVE_TLS */
 
 #ifdef HAVE_NFS4_2
 	rpc_nfs4_maybe_renew_session(rpc);
@@ -1727,6 +1750,9 @@ rpc_service(struct rpc_context *rpc, int revents)
 				/* Should not return any other status */
 				assert(0);
 		}
+		if (rpc->tls_reconnect_failed) {
+			return rpc_tls_restart(rpc);
+		}
 
 		return 0;
 	}
@@ -1758,6 +1784,10 @@ rpc_service(struct rpc_context *rpc, int revents)
 	}
 
 #ifdef HAVE_TLS
+	if (rpc->tls_reconnect_failed) {
+		return rpc_tls_restart(rpc);
+	}
+
 	/*
 	 * For secure NFS connections we should never write to the socket w/o
 	 * properly completing the TLS handshake. Note that we do allow reads
@@ -2223,23 +2253,25 @@ reconnect_cb_tls(struct rpc_context *rpc, int status,
 	/* Must be called only for TLS transport */
 	assert(rpc->use_tls);
 
-	/* Must be called only after TLS handshake completes/fails */
-	assert(rpc->tls_context.state == TLS_HANDSHAKE_COMPLETED ||
-	       rpc->tls_context.state == TLS_HANDSHAKE_FAILED);
+	/* Cancelled, or the connection is already gone: nothing to restart */
+	if (status == RPC_STATUS_CANCEL || !rpc->is_connected) {
+		return;
+	}
 
 	/*
-	 * If handshake failed, restart the entire TCP connection not just the handshake.
-	 * This will create a new connection and perform the handshake.
+	 * Never carry on in the clear. We may be inside the probe's own
+	 * completion or rpc_timeout_scan(), so leave the restart to
+	 * rpc_service().
 	 */
-	if (rpc->tls_context.state == TLS_HANDSHAKE_FAILED) {
-		RPC_LOG(rpc, 1, "reconnect_cb_tls: TLS handshake failed, restarting connection!");
+	if (status != RPC_STATUS_SUCCESS ||
+	    rpc->tls_context.state != TLS_HANDSHAKE_COMPLETED) {
+		RPC_LOG(rpc, 1, "reconnect_cb_tls: TLS handshake failed (status %d, "
+			"state %d), restarting connection!",
+			status, rpc->tls_context.state);
 
-		if (rpc->fd != -1) {
-			close(rpc->fd);
-			rpc->fd  = -1;
-		}
+		rpc->tls_context.state = TLS_HANDSHAKE_FAILED;
 		rpc->is_connected = 0;
-		rpc_reconnect_requeue(rpc);
+		rpc->tls_reconnect_failed = 1;
 		return;
 	}
 
