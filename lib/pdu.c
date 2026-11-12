@@ -1512,7 +1512,7 @@ static int rpc_process_call(struct rpc_context *rpc, ZDR *zdr)
 }
 
 static struct rpc_pdu *rpc_find_pdu_in(struct rpc_context *rpc, uint32_t xid,
-                                       int sent_only)
+                                       int sent_only, int probe_only)
 {
 	struct rpc_pdu *pdu, *prev_pdu;
 	struct rpc_queue *q;
@@ -1543,7 +1543,11 @@ static struct rpc_pdu *rpc_find_pdu_in(struct rpc_context *rpc, uint32_t xid,
 	q = &rpc->waitpdu[hash];
 	prev_pdu = NULL;
 	for (pdu=q->head; pdu; pdu=pdu->next) {
-		if (pdu->xid != xid) {
+		if (pdu->xid != xid
+#ifdef HAVE_TLS
+		    || (probe_only && !pdu->expect_starttls)
+#endif
+		    ) {
 			prev_pdu = pdu;
 			continue;
 		}
@@ -1623,7 +1627,19 @@ static struct rpc_pdu *rpc_find_pdu_in(struct rpc_context *rpc, uint32_t xid,
 
 struct rpc_pdu *rpc_find_pdu(struct rpc_context *rpc, uint32_t xid)
 {
-        return rpc_find_pdu_in(rpc, xid, 0);
+        return rpc_find_pdu_in(rpc, xid, 0, 0);
+}
+
+/* Until TLS is up the only reply we take is the one to the AUTH_TLS probe. */
+struct rpc_pdu *rpc_find_reply_pdu(struct rpc_context *rpc, uint32_t xid)
+{
+#ifdef HAVE_TLS
+        if (rpc->use_tls &&
+            rpc->tls_context.state != TLS_HANDSHAKE_COMPLETED) {
+                return rpc_find_pdu_in(rpc, xid, 1, 1);
+        }
+#endif /* HAVE_TLS */
+        return rpc_find_pdu_in(rpc, xid, 0, 0);
 }
 
 /* Unsent pdus are left alone: the outqueue head may be half written. */
@@ -1631,7 +1647,7 @@ int rpc_cancel_sent_pdu(struct rpc_context *rpc, uint32_t xid)
 {
         struct rpc_pdu *pdu;
 
-        pdu = rpc_find_pdu_in(rpc, xid, 1);
+        pdu = rpc_find_pdu_in(rpc, xid, 1, 0);
         if (pdu) {
                 rpc_free_pdu(rpc, pdu);
                 return 0;
