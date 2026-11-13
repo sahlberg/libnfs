@@ -87,3 +87,8 @@ set_tests_properties(prog_close_handle PROPERTIES SKIP_RETURN_CODE 77)
 add_executable(prog_nfs4_state_loss prog_nfs4_state_loss.c)
 target_link_libraries(prog_nfs4_state_loss nfs)
 add_test(NAME prog_nfs4_state_loss COMMAND prog_nfs4_state_loss)
+
+add_executable(prog_tls_reconnect prog_tls_reconnect.c)
+target_link_libraries(prog_tls_reconnect nfs)
+add_test(NAME prog_tls_reconnect COMMAND prog_tls_reconnect)
+set_tests_properties(prog_tls_reconnect PROPERTIES SKIP_RETURN_CODE 77)

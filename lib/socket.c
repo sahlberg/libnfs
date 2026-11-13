@@ -1911,6 +1911,10 @@ rpc_service(struct rpc_context *rpc, int revents)
 	if (rpc_timeout_scan(rpc) != 0) {
 		return rpc_reconnect_requeue(rpc);
 	}
+	if (rpc->reconnect_due) {
+		/* An AUTH_TLS probe timed out and gave up the connection */
+		return 0;
+	}
 	rpc_nfs40_maybe_renew(rpc);
 
 #ifdef HAVE_NFS4_2
@@ -2597,9 +2601,14 @@ reconnect_cb_tls(struct rpc_context *rpc, int status,
 	/* Must be called only for TLS transport */
 	assert(rpc->use_tls);
 
+	/* Cancelled, or the connection is already gone: nothing to restart */
+	if (status == RPC_STATUS_CANCEL || !rpc->is_connected) {
+		return;
+	}
+
 	/*
-	 * Unless the handshake completed, restart the entire TCP connection
-	 * not just the handshake. Never carry on in the clear.
+	 * Never carry on in the clear. We may be inside the probe's own
+	 * completion or rpc_timeout_scan(), so do not requeue from here.
 	 */
 	if (status != RPC_STATUS_SUCCESS ||
 	    rpc->tls_context.state != TLS_HANDSHAKE_COMPLETED) {
@@ -2607,12 +2616,13 @@ reconnect_cb_tls(struct rpc_context *rpc, int status,
 			"state %d), restarting connection!",
 			status, rpc->tls_context.state);
 
-		if (rpc->fd != -1) {
+		rpc->is_connected = 0;
+		if (rpc_reconnect_failed(rpc, ECONNABORTED) != 0 &&
+		    rpc->fd != -1) {
+			/* Not retrying. Nothing may be sent on this socket. */
 			close(rpc->fd);
 			rpc->fd  = -1;
 		}
-		rpc->is_connected = 0;
-		rpc_reconnect_requeue(rpc);
 		return;
 	}
 

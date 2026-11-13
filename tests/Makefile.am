@@ -62,3 +62,6 @@ prog_close_handle_CPPFLAGS = $(AM_CPPFLAGS) -I$(srcdir)/../mount -I$(srcdir)/../
 
 check_PROGRAMS += prog_nfs4_state_loss
 TESTS += prog_nfs4_state_loss
+
+check_PROGRAMS += prog_tls_reconnect
+TESTS += prog_tls_reconnect
