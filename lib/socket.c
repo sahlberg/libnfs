@@ -389,6 +389,13 @@ rpc_write_to_socket(struct rpc_context *rpc)
 		rpc_set_error(rpc, "trying to write but not connected");
 		return -1;
 	}
+#ifdef HAVE_TLS
+	/* The AUTH_TLS probe is written by rpc_queue_pdu2(), not from here. */
+	if (rpc->use_tls &&
+	    rpc->tls_context.state != TLS_HANDSHAKE_COMPLETED) {
+		return 0;
+	}
+#endif /* HAVE_TLS */
 
 #ifdef HAVE_MULTITHREADING
         if (rpc->multithreading_enabled) {
@@ -982,7 +989,7 @@ rpc_read_from_socket(struct rpc_context *rpc)
 
                                 rpc->rm_xid[1] = ntohl(rpc->rm_xid[1]);
                                 if (!rpc->is_server_context) {
-                                        rpc->pdu = rpc_find_pdu(rpc, rpc->rm_xid[1]);
+                                        rpc->pdu = rpc_find_reply_pdu(rpc, rpc->rm_xid[1]);
 
 #ifdef HAVE_LIBKRB5
                                         if (rpc->sec != RPC_SEC_KRB5P)
@@ -2174,6 +2181,11 @@ rpc_reconnect_requeue(struct rpc_context *rpc)
 	}
 	rpc->fd  = -1;
 	rpc->is_connected = 0;
+#ifdef HAVE_TLS
+	if (rpc->use_tls) {
+		tls_reset_context(rpc);
+	}
+#endif /* HAVE_TLS */
 
 	/*
 	 * The run of bytes written so far belongs to the socket we just

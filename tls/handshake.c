@@ -277,6 +277,15 @@ failed:
 	return -1;
 }
 
+void tls_reset_context(struct rpc_context *rpc)
+{
+	if (rpc->tls_context.session != NULL) {
+		gnutls_deinit(rpc->tls_context.session);
+		rpc->tls_context.session = NULL;
+	}
+	rpc->tls_context.state = TLS_HANDSHAKE_UNDEFINED;
+}
+
 /*
  * Sets nagle to 'val' and returns the existing value.
  * val==0 will turn off nagle and value==1 will turn it on.
