@@ -29,19 +29,19 @@ libtool --mode=execute valgrind --leak-check=full --error-exitcode=1 ../utils/nf
 success
 
 echo -n "test nfs_truncate() for memory leaks ... "
-libtool --mode=execute valgrind --leak-check=full --error-exitcode=1 ../examples/nfs-io trunc "${TESTURL}/copy-of-file.99?version=${VERS}" >/dev/null 2>&1 || failure
+libtool --mode=execute valgrind --leak-check=full --error-exitcode=1 ./prog_truncate "${TESTURL}/?version=${VERS}" "." copy-of-file.99 0 >/dev/null 2>&1 || failure
 success
 
 echo -n "test nfs_unlink() for memory leaks ... "
-libtool --mode=execute valgrind --leak-check=full --error-exitcode=1 ../examples/nfs-io unlink "${TESTURL}/copy-of-file.99?version=${VERS}" >/dev/null 2>&1 || failure
+libtool --mode=execute valgrind --leak-check=full --error-exitcode=1 ./prog_unlink "${TESTURL}/?version=${VERS}" "." copy-of-file.99 >/dev/null 2>&1 || failure
 success
 
 echo -n "test nfs_mkdir() for memory leaks ... "
-libtool --mode=execute valgrind --leak-check=full --error-exitcode=1 ../examples/nfs-io mkdir "${TESTURL}/testdir?version=${VERS}" >/dev/null 2>&1 || failure
+libtool --mode=execute valgrind --leak-check=full --error-exitcode=1 ./prog_mkdir "${TESTURL}/?version=${VERS}" "." testdir >/dev/null 2>&1 || failure
 success
 
 echo -n "test nfs_rmdir() for memory leaks ... "
-libtool --mode=execute valgrind --leak-check=full --error-exitcode=1 ../examples/nfs-io rmdir "${TESTURL}/testdir?version=${VERS}" >/dev/null 2>&1 || failure
+libtool --mode=execute valgrind --leak-check=full --error-exitcode=1 ./prog_rmdir "${TESTURL}/?version=${VERS}" "." testdir >/dev/null 2>&1 || failure
 success
 
 echo -n "test nfs_stat64() for memory leaks ... "
