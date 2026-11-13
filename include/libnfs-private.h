@@ -889,6 +889,7 @@ int rpc_queue_pdu2(struct rpc_context *rpc, struct rpc_pdu *pdu, int prio);
 void rpc_wakeup_service_thread(struct rpc_context *rpc);
 int rpc_process_pdu(struct rpc_context *rpc, char *buf, int size);
 struct rpc_pdu *rpc_find_pdu(struct rpc_context *rpc, uint32_t xid);
+struct rpc_pdu *rpc_find_reply_pdu(struct rpc_context *rpc, uint32_t xid);
 void rpc_error_all_pdus(struct rpc_context *rpc, const char *error);
 
 /*
@@ -1375,6 +1376,7 @@ int _nfs_mount_async(struct nfs_context *nfs, const char *server,
 
 #ifdef HAVE_TLS
 int tls_global_init(struct rpc_context *rpc);
+void tls_reset_context(struct rpc_context *rpc);
 enum tls_handshake_state do_tls_handshake(struct rpc_context *rpc);
 #endif
 
