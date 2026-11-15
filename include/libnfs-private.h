@@ -1035,6 +1035,10 @@ void rpc_set_poll_timeout(struct rpc_context *rpc, int poll_timeout);
 int rpc_get_poll_timeout(struct rpc_context *rpc);
 int rpc_add_fragment(struct rpc_context *rpc, char *data, uint32_t size);
 void rpc_free_all_fragments(struct rpc_context *rpc);
+
+/* The length of the address in ss, for sendto() and connect() */
+socklen_t rpc_sockaddr_len(const struct sockaddr_storage *ss);
+
 uint64_t rpc_current_time(void);
 uint64_t rpc_current_time_us(void);
 #ifdef HAVE_CLOCK_GETTIME

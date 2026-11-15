@@ -2987,6 +2987,24 @@ rpc_bind_udp(struct rpc_context *rpc, char *addr, int port)
 	return 0;
 }
 
+/*
+ * Some systems, such as macOS and the BSDs, reject an address length
+ * longer than the address family's own, so do not pass them
+ * sizeof(struct sockaddr_storage).
+ */
+socklen_t
+rpc_sockaddr_len(const struct sockaddr_storage *ss)
+{
+	switch (ss->ss_family) {
+#if !defined(PS3_PPU) && !defined(PS2_EE)
+	case AF_INET6:
+		return sizeof(struct sockaddr_in6);
+#endif
+	default:
+		return sizeof(struct sockaddr_in);
+	}
+}
+
 int
 rpc_set_udp_destination(struct rpc_context *rpc, char *addr, int port,
                         int is_broadcast)
@@ -3016,7 +3034,7 @@ rpc_set_udp_destination(struct rpc_context *rpc, char *addr, int port,
 	freeaddrinfo(ai);
 
         if (!is_broadcast) {
-                if (connect(rpc->fd, (struct sockaddr *)&rpc->udp_dest, sizeof(rpc->udp_dest)) != 0 && errno != EINPROGRESS) {
+                if (connect(rpc->fd, (struct sockaddr *)&rpc->udp_dest, rpc_sockaddr_len(&rpc->udp_dest)) != 0 && errno != EINPROGRESS) {
                         rpc_set_error(rpc, "connect() to UDP address failed. %s(%d)", strerror(errno), errno);
                         return -1;
                 }
