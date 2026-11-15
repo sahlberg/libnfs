@@ -75,13 +75,27 @@
 
 static const char *oom = "out of memory";
 
+/*
+ * A monotonic clock: CLOCK_MONOTONIC_COARSE where there is one, else
+ * CLOCK_MONOTONIC, as on macOS, else GetTickCount64() on Windows. Only
+ * without any of them do we fall back to time(), in whole seconds, see
+ * RPC_CLOCK_IN_SECONDS.
+ */
+#if defined(HAVE_CLOCK_GETTIME)
+#define RPC_CLOCK CLOCK_MONOTONIC_COARSE
+#elif defined(HAVE_CLOCK_MONOTONIC)
+#define RPC_CLOCK CLOCK_MONOTONIC
+#endif
+
 uint64_t rpc_current_time(void)
 {
-#ifdef HAVE_CLOCK_GETTIME
+#if defined(RPC_CLOCK)
 	struct timespec tp;
 
-	clock_gettime(CLOCK_MONOTONIC_COARSE, &tp);
+	clock_gettime(RPC_CLOCK, &tp);
 	return (uint64_t)tp.tv_sec * 1000 + tp.tv_nsec / 1000000;
+#elif defined(WIN32)
+	return GetTickCount64();
 #else
 	return (uint64_t)time(NULL) * 1000;
 #endif
@@ -89,11 +103,13 @@ uint64_t rpc_current_time(void)
 
 uint64_t rpc_current_time_us(void)
 {
-#ifdef HAVE_CLOCK_GETTIME
+#if defined(RPC_CLOCK)
 	struct timespec tp;
 
-	clock_gettime(CLOCK_MONOTONIC_COARSE, &tp);
+	clock_gettime(RPC_CLOCK, &tp);
 	return (uint64_t)tp.tv_sec * 1000000 + tp.tv_nsec / 1000;
+#elif defined(WIN32)
+	return GetTickCount64() * 1000;
 #else
 	return (uint64_t)time(NULL) * 1000000;
 #endif

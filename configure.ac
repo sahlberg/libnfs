@@ -281,6 +281,19 @@ else
   AC_MSG_NOTICE(Compiling without clock_gettime support..)
 fi
 
+# check for clock_gettime(CLOCK_MONOTONIC)
+AC_MSG_CHECKING(if clock_gettime(CLOCK_MONOTONIC) is available)
+AC_LINK_IFELSE([AC_LANG_PROGRAM([[#include <time.h>]], [[
+        struct timespec tp;
+        return clock_gettime(CLOCK_MONOTONIC, &tp);
+]])],[ac_cv_have_clock_monotonic=yes],[ac_cv_have_clock_monotonic=no])
+if test "$ac_cv_have_clock_monotonic" = yes ; then
+  AC_MSG_RESULT(yes)
+  AC_DEFINE(HAVE_CLOCK_MONOTONIC, 1, [Whether we have clock_gettime(CLOCK_MONOTONIC)])
+else
+  AC_MSG_RESULT(no)
+fi
+
 # check for tevent + talloc
 AC_CACHE_CHECK([for talloc and tevent support],libnfs_cv_HAVE_TALLOC_TEVENT,[
 AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[

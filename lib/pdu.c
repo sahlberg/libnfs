@@ -714,7 +714,7 @@ void pdu_set_timeout(struct rpc_context *rpc, struct rpc_pdu *pdu, uint64_t now_
 	 */
 	if (pdu->timeout == 0) {
 		pdu->timeout = now_msecs + rpc->timeout;
-#ifndef HAVE_CLOCK_GETTIME
+#ifdef RPC_CLOCK_IN_SECONDS
 		/* If we do not have GETTIME we fallback to time() which
 		 * has 1s granularity for its timestamps.
 		 * We thus need to bump the timeout by 1000ms
@@ -734,7 +734,7 @@ void pdu_set_timeout(struct rpc_context *rpc, struct rpc_pdu *pdu, uint64_t now_
 	if (pdu->major_timeout == 0) {
 		pdu->major_timeout = now_msecs + ((uint64_t)rpc->timeout * rpc->retrans);
 		pdu->timeout = now_msecs + rpc->timeout;
-#ifndef HAVE_CLOCK_GETTIME
+#ifdef RPC_CLOCK_IN_SECONDS
 		pdu->major_timeout += 1000;
 		pdu->timeout += 1000;
 #endif

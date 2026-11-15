@@ -208,7 +208,7 @@ wait_for_reply(struct rpc_context *rpc, struct sync_cb_data *cb_data)
 
 	if (rpc->timeout > 0) {
 		timeout = rpc_current_time() + rpc->timeout;
-#ifndef HAVE_CLOCK_GETTIME
+#ifdef RPC_CLOCK_IN_SECONDS
 		/* If we do not have GETTIME we fallback to time() which
 		 * has 1s granularity for its timestamps.
 		 * We thus need to bump the timeout by 1000ms

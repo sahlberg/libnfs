@@ -1041,6 +1041,15 @@ socklen_t rpc_sockaddr_len(const struct sockaddr_storage *ss);
 
 uint64_t rpc_current_time(void);
 uint64_t rpc_current_time_us(void);
+
+/*
+ * Without a monotonic clock, rpc_current_time() falls back to time() and
+ * steps in whole seconds.
+ */
+#if !defined(HAVE_CLOCK_GETTIME) && !defined(HAVE_CLOCK_MONOTONIC) && !defined(WIN32)
+#define RPC_CLOCK_IN_SECONDS
+#endif
+
 #ifdef HAVE_CLOCK_GETTIME
 uint64_t rpc_wallclock_time(void);
 #endif
