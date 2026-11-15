@@ -914,7 +914,7 @@ int rpc_queue_pdu2(struct rpc_context *rpc, struct rpc_pdu *pdu, int prio)
         if (rpc->is_udp && rpc->is_server_context) {
                 if (sendto(rpc->fd, pdu->zdr.buf, size, MSG_DONTWAIT,
                            (struct sockaddr *)&rpc->udp_dest,
-                           sizeof(rpc->udp_dest)) < 0) {
+                           rpc_sockaddr_len(&rpc->udp_dest)) < 0) {
                         rpc_set_error(rpc, "Sendto failed with errno %s", strerror(errno));
                         rpc_free_pdu(rpc, pdu);
                         return -1;
@@ -959,7 +959,7 @@ int rpc_queue_pdu2(struct rpc_context *rpc, struct rpc_pdu *pdu, int prio)
                 if (rpc->is_broadcast || rpc->is_server_context) {
                         if (sendto(rpc->fd, pdu->zdr.buf, size, MSG_DONTWAIT,
                                    (struct sockaddr *)&rpc->udp_dest,
-                                   sizeof(rpc->udp_dest)) < 0) {
+                                   rpc_sockaddr_len(&rpc->udp_dest)) < 0) {
                                 rpc_set_error(rpc, "Sendto failed with errno %s", strerror(errno));
                                 rpc_remove_pdu_from_queue_unlocked(rpc, &rpc->waitpdu[hash], pdu);
                                 rpc_free_pdu(rpc, pdu);
