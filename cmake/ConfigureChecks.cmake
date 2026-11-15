@@ -75,6 +75,14 @@ check_c_source_compiles("#include <time.h>
                          }"
                         HAVE_CLOCK_GETTIME)
 
+check_c_source_compiles("#include <time.h>
+                         int main(void)
+                         {
+                           struct timespec tp;
+                           return clock_gettime(CLOCK_MONOTONIC, &tp);
+                         }"
+                        HAVE_CLOCK_MONOTONIC)
+
 check_c_source_compiles("#include <sys/types.h>
                          #define LARGE_OFF_T (((off_t) 1 << 62) - 1 + ((off_t) 1 << 62))
                          int off_t_is_large[(LARGE_OFF_T % 2147483629 == 721 && LARGE_OFF_T % 2147483647 == 1) ? 1 : -1];

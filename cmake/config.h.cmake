@@ -6,6 +6,9 @@
 /* Whether we have clock_gettime */
 #cmakedefine HAVE_CLOCK_GETTIME
 
+/* Whether we have clock_gettime(CLOCK_MONOTONIC) */
+#cmakedefine HAVE_CLOCK_MONOTONIC
+
 /* Whether gnutls exports the function gnutls_transport_is_ktls_enabled() */
 #cmakedefine HAVE_GNUTLS_TRANSPORT_IS_KTLS_ENABLED
 
