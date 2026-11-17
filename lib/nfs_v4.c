@@ -1305,14 +1305,27 @@ nfs42_op_create_session(struct nfs_context *nfs, nfs_argop4 *op,
         csargs->csa_fore_chan_attrs.ca_rdma_ird.ca_rdma_ird_val = NULL;
 
         /*
-         * We run no back channel, but the server still validates the sizes we
-         * offer for it, so they have to be plausible rather than zero.
+         * The server validates the back channel sizes even when we run no
+         * back channel, so they have to be plausible rather than zero.
          */
         csargs->csa_back_chan_attrs = csargs->csa_fore_chan_attrs;
 
         csargs->csa_cb_program = 0;
         csargs->csa_sec_parms.csa_sec_parms_len = 0;
         csargs->csa_sec_parms.csa_sec_parms_val = NULL;
+
+        if (nfs->rpc->nfs4_cb_fn && !rpc_is_rdma(nfs->rpc)) {
+                static callback_sec_parms4 none = { AUTH_NONE, { { 0 } } };
+
+                csargs->csa_flags = CREATE_SESSION4_FLAG_CONN_BACK_CHAN;
+                csargs->csa_back_chan_attrs.ca_maxrequests = 1;
+                csargs->csa_back_chan_attrs.ca_maxoperations = 8;
+                csargs->csa_back_chan_attrs.ca_maxresponsesize = 16384;
+                csargs->csa_back_chan_attrs.ca_maxresponsesize_cached = 16384;
+                csargs->csa_cb_program = NFS4_CALLBACK;
+                csargs->csa_sec_parms.csa_sec_parms_len = 1;
+                csargs->csa_sec_parms.csa_sec_parms_val = &none;
+        }
 
         return 1;
 }
@@ -2253,6 +2266,8 @@ nfs42_mount_2_cb(struct rpc_context *rpc, int status, void *command_data,
                 free_nfs4_cb_data(data);
                 return;
         }
+        rpc->nfs4_cb_up = !!(csresok->csr_flags &
+                             CREATE_SESSION4_FLAG_CONN_BACK_CHAN);
 
         memset(op, 0, sizeof(op));
         i = nfs4_start_compound(nfs, op);
@@ -3099,6 +3114,12 @@ nfs4_populate_open(struct nfs4_cb_data *data, nfs_argop4 *op)
         if (access_mask & ACCESS4_MODIFY) {
                 oargs->share_access |= OPEN4_SHARE_ACCESS_WRITE;
         }
+#ifdef HAVE_NFS4_2
+        /* With a back channel the server could grant us one; we can't hold it. */
+        if (nfs_has_sessions(nfs) && nfs->rpc->nfs4_cb_fn) {
+                oargs->share_access |= OPEN4_SHARE_ACCESS_WANT_NO_DELEG;
+        }
+#endif
         oargs->share_deny = OPEN4_SHARE_DENY_NONE;
         oargs->owner.clientid = nfs->nfsi->clientid;
         oargs->owner.owner.owner_len = 4;

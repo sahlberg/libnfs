@@ -777,7 +777,8 @@ int rpc_queue_pdu2(struct rpc_context *rpc, struct rpc_pdu *pdu, int prio)
         char *buf;
 #endif /* HAVE_LIBKRB5 */
 
-        assert(prio == PDU_Q_PRIO_LOW || prio == PDU_Q_PRIO_HI);
+        assert(prio == PDU_Q_PRIO_LOW || prio == PDU_Q_PRIO_HI ||
+               prio == PDU_Q_PRIO_REPLY);
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
@@ -1008,7 +1009,14 @@ int rpc_queue_pdu2(struct rpc_context *rpc, struct rpc_pdu *pdu, int prio)
         /* Fresh PDU being queued to outqueue, num_done must be 0 */
         assert(pdu->out.num_done == 0);
 
-        if (prio == PDU_Q_PRIO_HI) {
+        if (prio == PDU_Q_PRIO_REPLY) {
+                /*
+                 * The server may be holding the slots our COMPOUNDs wait
+                 * for until it has this reply, so nothing may queue ahead.
+                 */
+                pdu->is_high_prio = TRUE;
+                rpc_add_to_outqueue_head(rpc, pdu);
+        } else if (prio == PDU_Q_PRIO_HI) {
                 rpc_add_to_outqueue_highp(rpc, pdu);
         } else {
                 rpc_add_to_outqueue_lowp(rpc, pdu);
@@ -1404,6 +1412,35 @@ static int rpc_send_error_reply(struct rpc_context *rpc,
                 return -1;
         }
         return rpc_queue_pdu(rpc, pdu);
+}
+
+/* Reply to a call the server sent us on the back channel. */
+int rpc_send_cb_reply(struct rpc_context *rpc, uint32_t xid,
+                      enum accept_stat stat, void *reply,
+                      zdrproc_t encode_fn, size_t alloc_hint)
+{
+        struct rpc_pdu *pdu;
+        struct rpc_msg res;
+
+        memset(&res, 0, sizeof(struct rpc_msg));
+        res.xid                          = xid;
+        res.direction                    = REPLY;
+        res.body.rbody.stat              = MSG_ACCEPTED;
+        res.body.rbody.reply.areply.verf = libnfs_null_auth;
+        res.body.rbody.reply.areply.stat = stat;
+        if (stat == SUCCESS) {
+                res.body.rbody.reply.areply.reply_data.results.where = reply;
+                res.body.rbody.reply.areply.reply_data.results.proc  = encode_fn;
+        } else if (stat == PROG_MISMATCH) {
+                res.body.rbody.reply.areply.reply_data.mismatch_info.low  = 1;
+                res.body.rbody.reply.areply.reply_data.mismatch_info.high = 1;
+        }
+
+        pdu = rpc_allocate_reply_pdu(rpc, &res, alloc_hint);
+        if (pdu == NULL) {
+                return -1;
+        }
+        return rpc_queue_pdu2(rpc, pdu, PDU_Q_PRIO_REPLY);
 }
 
 int rpc_send_reply(struct rpc_context *rpc,

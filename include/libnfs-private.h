@@ -452,7 +452,10 @@ struct rpc_context {
 	uint32_t inbuf_size;
 	char *inbuf;
         enum input_state state;
-        uint32_t rm_xid[2]; /* array holding the record marker and the next 4 bytes */
+        /* record marker, xid, and msg_type when a back channel is enabled */
+        uint32_t rm_xid[3];
+        /* The record being read is a CALL from the server. */
+        int reading_call;
 	uint32_t pdu_size;  /* used in rpc_read_from_socket() */
 	char *buf;          /* used in rpc_read_from_socket() */
         struct rpc_pdu *pdu;
@@ -492,6 +495,16 @@ struct rpc_context {
 	/* When the session next needs a SEQUENCE to keep its lease alive. */
 	uint64_t nfs4_renew_due;
 	int nfs4_session_valid;
+	/*
+	 * Back channel, see rpc_nfs4_enable_backchannel(). It has one slot,
+	 * and the last reply sent on it is kept for replays.
+	 */
+	rpc_nfs4_cb_fn nfs4_cb_fn;
+	void *nfs4_cb_private_data;
+	int nfs4_cb_up;
+	uint32_t nfs4_cb_seqid;
+	char *nfs4_cb_reply;
+	uint32_t nfs4_cb_reply_len;
 #ifdef HAVE_MULTITHREADING
 	/*
 	 * The slot table has a lock of its own rather than sharing rpc_mutex,
@@ -703,6 +716,8 @@ struct rpc_pdu {
          */
         #define PDU_Q_PRIO_LOW  0
         #define PDU_Q_PRIO_HI   1
+        /* A reply to a back channel call, ahead of everything. */
+        #define PDU_Q_PRIO_REPLY 2
 
         /*
          * Is this a high priority pdu, i.e., was it queued with
@@ -1418,6 +1433,11 @@ void nfs4_requeue_delayed(struct rpc_context *rpc);
 int nfs4_session_has_free_slot(struct rpc_context *rpc);
 void nfs4_session_mutex_init(struct rpc_context *rpc);
 void nfs4_session_mutex_destroy(struct rpc_context *rpc);
+int nfs4_cb_process_call(struct rpc_context *rpc, char *buf, uint32_t size);
+int rpc_send_cb_reply(struct rpc_context *rpc, uint32_t xid,
+                      enum accept_stat stat, void *reply,
+                      zdrproc_t encode_fn, size_t alloc_hint);
+void nfs4_cb_reset(struct rpc_context *rpc);
 int nfs42_umount_async(struct nfs_context *nfs, nfs_cb cb, void *private_data);
 struct rpc_pdu *rpc_nfs4_bind_conn_to_session_task(struct rpc_context *rpc,
                                                    rpc_cb cb,

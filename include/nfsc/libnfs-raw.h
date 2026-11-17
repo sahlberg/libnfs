@@ -2996,6 +2996,36 @@ rpc_nfs4_compound_task2(struct rpc_context *rpc, rpc_cb cb,
                          size_t alloc_hint);
 
 /*
+ * NFSv4.1/4.2 back channel.
+ *
+ * rpc_nfs4_enable_backchannel() asks for a back channel when the session is
+ * next created, so call it before nfs_mount(). The server's CB_NULL and
+ * CB_SEQUENCE are handled by libnfs. fn is called for every other operation
+ * in a CB_COMPOUND, from the thread that services the context, with res
+ * already set to NFS4ERR_NOTSUPP. Set res to the result before returning;
+ * arg and res are only valid during the call. Processing of the CB_COMPOUND
+ * stops at the first operation that does not return NFS4_OK.
+ *
+ * fn must not block, and must not call any *_sync() function.
+ * The context has to be serviced at all times, see README.
+ *
+ * Returns 0 on success, or -1 if this build has no NFSv4.1/4.2 support.
+ *
+ * rpc_nfs4_backchannel_is_up() returns 1 if the server accepted a back
+ * channel on the current connection.
+ */
+struct nfs_cb_argop4;
+struct nfs_cb_resop4;
+typedef void (*rpc_nfs4_cb_fn)(struct rpc_context *rpc,
+                               struct nfs_cb_argop4 *arg,
+                               struct nfs_cb_resop4 *res,
+                               void *private_data);
+EXTERN int rpc_nfs4_enable_backchannel(struct rpc_context *rpc,
+                                       rpc_nfs4_cb_fn fn,
+                                       void *private_data);
+EXTERN int rpc_nfs4_backchannel_is_up(struct rpc_context *rpc);
+
+/*
  * Call NFS4/COMPOUND for read operations
 
  * Function returns

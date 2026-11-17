@@ -708,6 +708,21 @@ rpc_write_to_socket(struct rpc_context *rpc)
 	return ret;
 }
 
+/*
+ * With a back channel the server sends CALLs on our connection, with xids of
+ * its own choosing, so the message type has to be read before the xid can be
+ * matched against our requests.
+ */
+static int rpc_may_get_calls(struct rpc_context *rpc)
+{
+#ifdef HAVE_NFS4_2
+        return !rpc->is_server_context && rpc->nfs4_cb_fn != NULL;
+#else
+        (void)rpc;
+        return 0;
+#endif
+}
+
 static int adjust_inbuf(struct rpc_context *rpc, uint32_t pdu_size)
 {
         char *buf;
@@ -814,7 +829,7 @@ rpc_read_from_socket(struct rpc_context *rpc)
 {
 	ssize_t count;
         int pos;
-        uint32_t inbuf_size;
+        uint32_t inbuf_size, prefetch;
         int saved_fd = rpc->fd;
         int saved_is_connected = rpc->is_connected;
 
@@ -942,9 +957,10 @@ rpc_read_from_socket(struct rpc_context *rpc)
                                 /*
                                  * Read record marker,
                                  * And if this is a cleint context read the next 4 bytes
-                                 * i.e. the XID on a client
+                                 * i.e. the XID on a client, and the msg_type
+                                 * after it if the server may send calls.
                                  */
-                                rpc->pdu_size = 8;
+                                rpc->pdu_size = rpc_may_get_calls(rpc) ? 12 : 8;
                                 rpc->buf = (char *)&rpc->rm_xid[0];
                                 rpc->pdu = NULL;
                                 break;
@@ -1110,10 +1126,15 @@ rpc_read_from_socket(struct rpc_context *rpc)
                                         continue;
                                 }
 
-                                if (rpc->rm_xid[0] < 8 || rpc->rm_xid[0] > MAX_FRAGMENT_SIZE) {
+                                /* Bytes read past the marker. */
+                                prefetch = rpc->pdu_size - 4;
+                                if (rpc->rm_xid[0] < (prefetch == 8 ? 12 : 8) ||
+                                    rpc->rm_xid[0] > MAX_FRAGMENT_SIZE) {
                                         rpc_set_error(rpc, "Invalid recordmarker size");
                                         return -1;
                                 }
+                                rpc->reading_call = prefetch == 8 &&
+                                        ntohl(rpc->rm_xid[2]) == CALL;
 
                                 /*
                                  * When performing zero-copy read we read just ZCRP bytes
@@ -1129,7 +1150,7 @@ rpc_read_from_socket(struct rpc_context *rpc)
                                 inbuf_size = rpc->rm_xid[0];
 
                                 rpc->rm_xid[1] = ntohl(rpc->rm_xid[1]);
-                                if (!rpc->is_server_context) {
+                                if (!rpc->is_server_context && !rpc->reading_call) {
                                         rpc->pdu = rpc_find_reply_pdu(rpc, rpc->rm_xid[1]);
 
 #ifdef HAVE_LIBKRB5
@@ -1175,17 +1196,20 @@ rpc_read_from_socket(struct rpc_context *rpc)
                                         return -1;
                                 }
 
-                                /* Copy the next 4 bytes into inbuf */
+                                /* Copy the prefetched bytes into inbuf */
                                 *((uint32_t *)(void *)rpc->inbuf) = htonl(rpc->rm_xid[1]);
+                                if (prefetch == 8) {
+                                        memcpy(rpc->inbuf + 4, &rpc->rm_xid[2], 4);
+                                }
 
                                 /* but set inpos to 0, we will update it above
-                                 * that we have already read these 4 bytes in
+                                 * that we have already read these bytes in
                                  * PAYLOAD and FRAGMENT
                                  */
-                                rpc->rm_prefetch = 4;
+                                rpc->rm_prefetch = prefetch;
                                 rpc->inpos = 0;   
 
-                                if (!rpc->is_server_context) {
+                                if (!rpc->is_server_context && !rpc->reading_call) {
                                         /* Unknown xid, either unsolicited
                                          * or an xid we have cancelled
                                          */
@@ -1216,6 +1240,30 @@ rpc_read_from_socket(struct rpc_context *rpc)
                                 } else {
                                         rpc->buf = rpc->inbuf;
                                 }
+#ifdef HAVE_NFS4_2
+                                if (rpc->reading_call) {
+                                        int ret;
+
+                                        rpc->reading_call = 0;
+                                        rpc->state = READ_RM;
+                                        rpc->inpos = 0;
+                                        ret = nfs4_cb_process_call(rpc, rpc->buf,
+                                                                   rpc->pdu_size);
+                                        if (rpc->fragments) {
+                                                free(rpc->buf);
+                                                rpc->buf = NULL;
+                                                rpc_free_all_fragments(rpc);
+                                        }
+                                        if (ret != 0) {
+                                                return -1;
+                                        }
+                                        if (rpc->fd != saved_fd ||
+                                            rpc->is_connected != saved_is_connected) {
+                                                return 0;
+                                        }
+                                        break;
+                                }
+#endif /* HAVE_NFS4_2 */
                                 if (rpc->pdu) {
                                 	/* pdu_size is the RPC message length; +4 for record marker */
                                 	rpc->pdu->resp_size = rpc->pdu_size + 4;
@@ -2591,6 +2639,7 @@ rpc_disconnect(struct rpc_context *rpc, const char *error)
          * and completes that pdu itself.
          */
         rpc->state = READ_RM;
+        rpc->reading_call = 0;
         rpc->inpos = 0;
         rpc_free_all_fragments(rpc);
 
@@ -2667,6 +2716,15 @@ bind_conn_cb(struct rpc_context *rpc, int status, void *command_data,
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
 	if (status == RPC_STATUS_SUCCESS && res && res->status == NFS4_OK) {
+		int i;
+
+		for (i = 0; i < (int)res->resarray.resarray_len; i++) {
+			nfs_resop4 *op = &res->resarray.resarray_val[i];
+
+			if (op->resop == OP_BIND_CONN_TO_SESSION) {
+				rpc->nfs4_cb_up = !!(op->nfs_resop4_u.opbindconntosession.BIND_CONN_TO_SESSION4res_u.bctsr_resok4.bctsr_dir & CDFS4_BACK);
+			}
+		}
 		RPC_LOG(rpc, 2, "NFSv4 session rebound to the new connection");
 		return;
 	}
@@ -2693,6 +2751,7 @@ rpc_nfs4_rebind_session(struct rpc_context *rpc)
 	if (!rpc_nfs4_session_is_valid(rpc)) {
 		return;
 	}
+	rpc->nfs4_cb_up = 0;
 	if (rpc_nfs4_bind_conn_to_session_task(rpc, bind_conn_cb,
 					       NULL) != NULL) {
 		return;
@@ -2888,6 +2947,7 @@ rpc_reconnect_requeue(struct rpc_context *rpc)
 
 	rpc->inpos = 0;
 	rpc->state = READ_RM;
+	rpc->reading_call = 0;
 
         /*
          * Drop all fragments on reconnect
@@ -2903,6 +2963,19 @@ rpc_reconnect_requeue(struct rpc_context *rpc)
                 nfs_mt_mutex_lock(&rpc->rpc_mutex);
         }
 #endif /* HAVE_MULTITHREADING */
+	/*
+	 * Replies to the server's back channel calls belong to the connection
+	 * the call came in on. The server sends the call again.
+	 */
+	for (pdu = rpc->outqueue.head; pdu; pdu = next) {
+		next = pdu->next;
+		if (pdu->discard_after_sending &&
+		    rpc_remove_pdu_from_queue(&rpc->outqueue, pdu)) {
+			rpc->stats.outqueue_len--;
+			rpc_free_pdu(rpc, pdu);
+		}
+	}
+
 	for (i = 0; i < rpc->num_hashes; i++) {
 		struct rpc_queue *q = &rpc->waitpdu[i];
 		for (pdu = q->head; pdu; pdu = next) {

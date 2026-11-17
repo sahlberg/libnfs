@@ -391,6 +391,7 @@ nfs4_session_init(struct rpc_context *rpc, const char *sessionid,
         rpc->nfs4_renew_due = rpc_current_time() + NFS4_SESSION_RENEW_MSECS;
         rpc->nfs4_session_valid = 1;
         nfs4_session_unlock(rpc);
+        nfs4_cb_reset(rpc);
 
         return 0;
 }
@@ -405,6 +406,7 @@ nfs4_session_destroy(struct rpc_context *rpc)
         free(rpc->nfs4_slots);
         rpc->nfs4_slots = NULL;
         nfs4_session_unlock(rpc);
+        nfs4_cb_reset(rpc);
 }
 
 /*
@@ -873,8 +875,8 @@ rpc_nfs4_bind_conn_to_session_task(struct rpc_context *rpc, rpc_cb cb,
         bargs = &op.nfs_argop4_u.opbindconntosession;
 
         memcpy(bargs->bctsa_sessid, rpc->nfs4_sessionid, sizeof(sessionid4));
-        /* We run no back channel, so only the fore channel is being bound. */
-        bargs->bctsa_dir = CDFC4_FORE;
+        bargs->bctsa_dir = rpc->nfs4_cb_fn && !rpc_is_rdma(rpc) ?
+                CDFC4_FORE_OR_BOTH : CDFC4_FORE;
         bargs->bctsa_use_conn_in_rdma_mode = 0;
 
         return nfs4_session_op_task(rpc, cb, &op, PDU_Q_PRIO_HI, private_data,
@@ -931,7 +933,301 @@ rpc_nfs4_session_is_valid(struct rpc_context *rpc)
         return rpc->nfs4_session_valid;
 }
 
+/*
+ * Back channel. The server sends CB_NULL and CB_COMPOUND calls on our
+ * connection. There is one back channel slot, so the server has at most one
+ * CB_COMPOUND outstanding, and the last reply is kept to answer a replay.
+ */
+#define NFS4_CB_MAX_OPS   8
+#define NFS4_CB_MAX_REPLY 16384
+
+struct nfs4_cb_reply {
+        nfsstat4 status;
+        utf8str_cs tag;
+        uint32_t nres;
+        nfs_cb_resop4 res[NFS4_CB_MAX_OPS];
+};
+
+/* A reply that is already encoded, the cached one or a fresh one. */
+struct nfs4_cb_raw {
+        char *buf;
+        uint32_t len;
+};
+
+void
+nfs4_cb_reset(struct rpc_context *rpc)
+{
+        rpc->nfs4_cb_up = 0;
+        rpc->nfs4_cb_seqid = 0;
+        free(rpc->nfs4_cb_reply);
+        rpc->nfs4_cb_reply = NULL;
+        rpc->nfs4_cb_reply_len = 0;
+}
+
+static int
+nfs4_cb_is_op(uint32_t op, uint32_t minorversion)
+{
+        /* CB_GETATTR .. CB_NOTIFY_DEVICEID, and CB_OFFLOAD in 4.2. */
+        return op >= OP_CB_GETATTR && op <= (minorversion >= 2 ? 15 : 14);
+}
+
+static uint32_t
+zdr_nfs4_cb_reply(ZDR *zdrs, struct nfs4_cb_reply *r)
+{
+        uint32_t i;
+
+        if (!zdr_nfsstat4(zdrs, &r->status) ||
+            !zdr_utf8str_cs(zdrs, &r->tag) ||
+            !zdr_uint32_t(zdrs, &r->nres)) {
+                return FALSE;
+        }
+        for (i = 0; i < r->nres; i++) {
+                nfs_cb_resop4 *res = &r->res[i];
+
+                switch (res->resop) {
+                case OP_CB_GETATTR:
+                case OP_CB_RECALL:
+                case OP_CB_SEQUENCE:
+                case OP_CB_ILLEGAL:
+                        if (!zdr_nfs_cb_resop4(zdrs, res)) {
+                                return FALSE;
+                        }
+                        break;
+                default:
+                        /* Only failures for ops we do not decode. */
+                        if (!zdr_uint32_t(zdrs, &res->resop) ||
+                            !zdr_nfsstat4(zdrs, &res->nfs_cb_resop4_u.opcbillegal.status)) {
+                                return FALSE;
+                        }
+                }
+        }
+        return TRUE;
+}
+
+static uint32_t
+zdr_nfs4_cb_raw(ZDR *zdrs, struct nfs4_cb_raw *raw)
+{
+        return zdr_opaque(zdrs, raw->buf, raw->len);
+}
+
+static int
+nfs4_cb_send_raw(struct rpc_context *rpc, uint32_t xid, char *buf,
+                 uint32_t len)
+{
+        struct nfs4_cb_raw raw;
+
+        raw.buf = buf;
+        raw.len = len;
+        return rpc_send_cb_reply(rpc, xid, SUCCESS, &raw,
+                                 (zdrproc_t)zdr_nfs4_cb_raw, len);
+}
+
+/*
+ * Check CB_SEQUENCE against the slot. Returns 1 for a new request, 0 for
+ * a replay of the last one, and -1 with the error in res otherwise.
+ */
+static int
+nfs4_cb_sequence(struct rpc_context *rpc, CB_SEQUENCE4args *args,
+                 CB_SEQUENCE4res *res)
+{
+        CB_SEQUENCE4resok *ok = &res->CB_SEQUENCE4res_u.csr_resok4;
+
+        if (!rpc->nfs4_session_valid ||
+            memcmp(args->csa_sessionid, rpc->nfs4_sessionid,
+                   sizeof(sessionid4))) {
+                res->csr_status = NFS4ERR_BADSESSION;
+                return -1;
+        }
+        if (args->csa_slotid != 0) {
+                res->csr_status = NFS4ERR_BADSLOT;
+                return -1;
+        }
+        /* Every new request's reply is cached, so this is a replay. */
+        if (rpc->nfs4_cb_reply && args->csa_sequenceid == rpc->nfs4_cb_seqid) {
+                return 0;
+        }
+        if (args->csa_sequenceid != rpc->nfs4_cb_seqid + 1) {
+                res->csr_status = NFS4ERR_SEQ_MISORDERED;
+                return -1;
+        }
+
+        res->csr_status = NFS4_OK;
+        memcpy(ok->csr_sessionid, args->csa_sessionid, sizeof(sessionid4));
+        ok->csr_sequenceid = args->csa_sequenceid;
+        ok->csr_slotid = 0;
+        ok->csr_highest_slotid = 0;
+        ok->csr_target_highest_slotid = 0;
+        return 1;
+}
+
+static int
+nfs4_cb_compound(struct rpc_context *rpc, ZDR *zdr, uint32_t xid)
+{
+        struct nfs4_cb_reply r;
+        nfs_cb_argop4 arg;
+        uint32_t minorversion, ident, nops, i;
+        int new_request = 0, ret;
+        char *buf;
+        ZDR out;
+
+        memset(&r, 0, sizeof(r));
+        if (!zdr_utf8str_cs(zdr, &r.tag) ||
+            !zdr_uint32_t(zdr, &minorversion) ||
+            !zdr_uint32_t(zdr, &ident) ||
+            !zdr_uint32_t(zdr, &nops)) {
+                return rpc_send_cb_reply(rpc, xid, GARBAGE_ARGS, NULL, NULL, 0);
+        }
+
+        if (minorversion != rpc->nfs4_minorversion) {
+                r.status = NFS4ERR_MINOR_VERS_MISMATCH;
+                nops = 0;
+        } else if (nops > NFS4_CB_MAX_OPS) {
+                r.status = NFS4ERR_TOO_MANY_OPS;
+                nops = 0;
+        }
+
+        for (i = 0; i < nops; i++) {
+                nfs_cb_resop4 *res = &r.res[i];
+
+                memset(&arg, 0, sizeof(arg));
+                if (!zdr_uint32_t(zdr, &arg.argop)) {
+                        return rpc_send_cb_reply(rpc, xid, GARBAGE_ARGS,
+                                                 NULL, NULL, 0);
+                }
+                r.nres++;
+                res->resop = arg.argop;
+                if (!nfs4_cb_is_op(arg.argop, minorversion)) {
+                        res->resop = OP_CB_ILLEGAL;
+                        r.status = NFS4ERR_OP_ILLEGAL;
+                } else if (i == 0 && arg.argop != OP_CB_SEQUENCE) {
+                        r.status = NFS4ERR_OP_NOT_IN_SESSION;
+                } else if (i > 0 && arg.argop == OP_CB_SEQUENCE) {
+                        r.status = NFS4ERR_SEQUENCE_POS;
+                } else if (arg.argop == OP_CB_SEQUENCE) {
+                        if (!zdr_CB_SEQUENCE4args(zdr, &arg.nfs_cb_argop4_u.opcbsequence)) {
+                                return rpc_send_cb_reply(rpc, xid, GARBAGE_ARGS,
+                                                         NULL, NULL, 0);
+                        }
+                        ret = nfs4_cb_sequence(rpc, &arg.nfs_cb_argop4_u.opcbsequence,
+                                               &res->nfs_cb_resop4_u.opcbsequence);
+                        if (ret == 0) {
+                                return nfs4_cb_send_raw(rpc, xid,
+                                                        rpc->nfs4_cb_reply,
+                                                        rpc->nfs4_cb_reply_len);
+                        }
+                        new_request = ret == 1;
+                        r.status = res->nfs_cb_resop4_u.opcbsequence.csr_status;
+                } else if (arg.argop == OP_CB_GETATTR || arg.argop == OP_CB_RECALL) {
+                        if (arg.argop == OP_CB_GETATTR ?
+                            !zdr_CB_GETATTR4args(zdr, &arg.nfs_cb_argop4_u.opcbgetattr) :
+                            !zdr_CB_RECALL4args(zdr, &arg.nfs_cb_argop4_u.opcbrecall)) {
+                                return rpc_send_cb_reply(rpc, xid, GARBAGE_ARGS,
+                                                         NULL, NULL, 0);
+                        }
+                        res->nfs_cb_resop4_u.opcbillegal.status = NFS4ERR_NOTSUPP;
+                        if (rpc->nfs4_cb_fn) {
+                                rpc->nfs4_cb_fn(rpc, &arg, res,
+                                                rpc->nfs4_cb_private_data);
+                        }
+                        res->resop = arg.argop;
+                        r.status = res->nfs_cb_resop4_u.opcbillegal.status;
+                } else {
+                        /* An op we cannot decode, so nothing after it either. */
+                        r.status = NFS4ERR_NOTSUPP;
+                }
+                if (r.status != NFS4_OK) {
+                        /* All CB results lead with their status. */
+                        res->nfs_cb_resop4_u.opcbillegal.status = r.status;
+                        break;
+                }
+        }
+
+        buf = malloc(NFS4_CB_MAX_REPLY);
+        if (buf == NULL) {
+                return rpc_send_cb_reply(rpc, xid, SYSTEM_ERR, NULL, NULL, 0);
+        }
+        zdrmem_create(&out, buf, NFS4_CB_MAX_REPLY, ZDR_ENCODE);
+        if (!zdr_nfs4_cb_reply(&out, &r)) {
+                zdr_destroy(&out);
+                free(buf);
+                return rpc_send_cb_reply(rpc, xid, SYSTEM_ERR, NULL, NULL, 0);
+        }
+        ret = nfs4_cb_send_raw(rpc, xid, buf, zdr_getpos(&out));
+        if (new_request) {
+                free(rpc->nfs4_cb_reply);
+                rpc->nfs4_cb_reply = buf;
+                rpc->nfs4_cb_reply_len = zdr_getpos(&out);
+                rpc->nfs4_cb_seqid++;
+                buf = NULL;
+        }
+        zdr_destroy(&out);
+        free(buf);
+        return ret;
+}
+
+/*
+ * A CALL from the server. Returns -1 only if the connection is unusable.
+ */
+int
+nfs4_cb_process_call(struct rpc_context *rpc, char *buf, uint32_t size)
+{
+        struct rpc_msg call;
+        ZDR zdr;
+        int ret;
+
+        memset(&call, 0, sizeof(call));
+        zdrmem_create(&zdr, buf, size, ZDR_DECODE);
+        if (!zdr_callmsg(rpc, &zdr, &call)) {
+                RPC_LOG(rpc, 1, "ignoring a malformed back channel call");
+                zdr_destroy(&zdr);
+                return 0;
+        }
+
+        if (call.body.cbody.prog != NFS4_CALLBACK) {
+                ret = rpc_send_cb_reply(rpc, call.xid, PROG_UNAVAIL, NULL,
+                                        NULL, 0);
+        } else if (call.body.cbody.vers != NFS_CB) {
+                ret = rpc_send_cb_reply(rpc, call.xid, PROG_MISMATCH, NULL,
+                                        NULL, 0);
+        } else if (call.body.cbody.proc == CB_NULL) {
+                ret = rpc_send_cb_reply(rpc, call.xid, SUCCESS, NULL,
+                                        (zdrproc_t)zdr_void, 0);
+        } else if (call.body.cbody.proc == CB_COMPOUND) {
+                ret = nfs4_cb_compound(rpc, &zdr, call.xid);
+        } else {
+                ret = rpc_send_cb_reply(rpc, call.xid, PROC_UNAVAIL, NULL,
+                                        NULL, 0);
+        }
+        zdr_destroy(&zdr);
+        return ret;
+}
+
 #endif /* HAVE_NFS4_2 */
+
+int
+rpc_nfs4_enable_backchannel(struct rpc_context *rpc, rpc_nfs4_cb_fn fn,
+                            void *private_data)
+{
+#ifdef HAVE_NFS4_2
+        rpc->nfs4_cb_fn = fn;
+        rpc->nfs4_cb_private_data = private_data;
+        return 0;
+#else
+        (void)rpc; (void)fn; (void)private_data;
+        return -1;
+#endif
+}
+
+int
+rpc_nfs4_backchannel_is_up(struct rpc_context *rpc)
+{
+#ifdef HAVE_NFS4_2
+        return rpc->nfs4_cb_up;
+#else
+        (void)rpc;
+        return 0;
+#endif
+}
 
 
 struct rpc_pdu *rpc_nfs4_null_task(struct rpc_context *rpc, rpc_cb cb,

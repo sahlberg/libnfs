@@ -237,6 +237,8 @@ rpc_nfs3_rename_task
 rpc_nfs3_link_task
 rpc_nfs4_compound_task
 rpc_nfs4_compound_task2
+rpc_nfs4_enable_backchannel
+rpc_nfs4_backchannel_is_up
 rpc_nfs4_null_task
 rpc_nlm4_null_task
 rpc_nlm4_test_task
