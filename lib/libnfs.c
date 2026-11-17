@@ -3086,8 +3086,7 @@ nfs_set_version(struct nfs_context *nfs, int version) {
 		/*
 		 * NFS_V4_2 selects a libnfs dialect, not an RPC program
 		 * version. Every NFSv4 minor version is RPC version 4; the
-		 * minor version travels inside the COMPOUND. NFSv4.1 runs
-		 * the same session based dialect, with minor version 1.
+		 * minor version travels inside the COMPOUND.
 		 */
 #ifdef HAVE_TLS
 		nfs->rpc->nfs_version = NFS_V4;
@@ -3112,11 +3111,7 @@ nfs_set_version(struct nfs_context *nfs, int version) {
 int
 nfs_get_version(struct nfs_context *nfs) {
 #ifdef HAVE_NFS4_2
-        /*
-         * nfsi->version is NFS_V4_2 for both session based minor versions.
-         * Report the real one: callers such as nfs-cp take NFS_V4_2 to mean
-         * that the 4.2-only operations are available.
-         */
+        /* nfsi->version is NFS_V4_2 for 4.1 too; report the real one. */
         if (nfs_has_sessions(nfs) && nfs->rpc->nfs4_minorversion == 1) {
                 return NFS_V4_1;
         }

@@ -60,33 +60,33 @@ static void expect_notsup(const char *what, int ret)
 
 int main(int argc, char *argv[])
 {
-	struct nfs_context *nfs;
-	struct nfsfh *nfsfh;
-	struct nfs_url *url;
+        struct nfs_context *nfs;
+        struct nfsfh *nfsfh;
+        struct nfs_url *url;
         uint64_t current;
 
-	if (argc != 4) {
-		fprintf(stderr, "Usage: prog_nfs41_notsup <url> <cwd> <path>\n");
-		exit(1);
-	}
+        if (argc != 4) {
+                fprintf(stderr, "Usage: prog_nfs41_notsup <url> <cwd> <path>\n");
+                exit(1);
+        }
 
-	nfs = nfs_init_context();
-	if (nfs == NULL) {
-		fprintf(stderr, "failed to init context\n");
-		exit(1);
-	}
+        nfs = nfs_init_context();
+        if (nfs == NULL) {
+                fprintf(stderr, "failed to init context\n");
+                exit(1);
+        }
 
-	url = nfs_parse_url_full(nfs, argv[1]);
-	if (url == NULL) {
-		fprintf(stderr, "%s\n", nfs_get_error(nfs));
-		exit(1);
-	}
+        url = nfs_parse_url_full(nfs, argv[1]);
+        if (url == NULL) {
+                fprintf(stderr, "%s\n", nfs_get_error(nfs));
+                exit(1);
+        }
 
-	if (nfs_mount(nfs, url->server, url->path) != 0) {
- 		fprintf(stderr, "Failed to mount nfs share : %s\n",
-			nfs_get_error(nfs));
-		exit(1);
-	}
+        if (nfs_mount(nfs, url->server, url->path) != 0) {
+                fprintf(stderr, "Failed to mount nfs share : %s\n",
+                        nfs_get_error(nfs));
+                exit(1);
+        }
 
         if (nfs_get_version(nfs) != NFS_V4_1) {
                 fprintf(stderr, "nfs_get_version() returned %d, expected "
@@ -95,17 +95,17 @@ int main(int argc, char *argv[])
         }
         printf("nfs_get_version() is NFS_V4_1\n");
 
-	if (nfs_chdir(nfs, argv[2]) != 0) {
- 		fprintf(stderr, "Failed to chdir to \"%s\" : %s\n",
-			argv[2], nfs_get_error(nfs));
+        if (nfs_chdir(nfs, argv[2]) != 0) {
+                fprintf(stderr, "Failed to chdir to \"%s\" : %s\n",
+                        argv[2], nfs_get_error(nfs));
                 exit(1);
-	}
+        }
 
-	if (nfs_open(nfs, argv[3], O_RDWR, &nfsfh)) {
- 		fprintf(stderr, "Failed to open file : %s\n",
-			nfs_get_error(nfs));
-		exit(1);
-	}
+        if (nfs_open(nfs, argv[3], O_RDWR, &nfsfh)) {
+                fprintf(stderr, "Failed to open file : %s\n",
+                        nfs_get_error(nfs));
+                exit(1);
+        }
 
         /*
          * The async calls refuse the request before queueing it, so the
@@ -137,9 +137,9 @@ int main(int argc, char *argv[])
         }
         printf("lseek(SEEK_END) still works\n");
 
-	nfs_close(nfs, nfsfh);
-	nfs_destroy_url(url);
-	nfs_destroy_context(nfs);
+        nfs_close(nfs, nfsfh);
+        nfs_destroy_url(url);
+        nfs_destroy_context(nfs);
 
-	return 0;
+        return 0;
 }
