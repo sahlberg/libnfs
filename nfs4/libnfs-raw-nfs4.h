@@ -994,6 +994,13 @@ typedef struct nfs_space_limit4 nfs_space_limit4;
 #define OPEN4_SHARE_ACCESS_READ 0x00000001
 #define OPEN4_SHARE_ACCESS_WRITE 0x00000002
 #define OPEN4_SHARE_ACCESS_BOTH 0x00000003
+#define OPEN4_SHARE_ACCESS_WANT_DELEG_MASK 0xFF00
+#define OPEN4_SHARE_ACCESS_WANT_NO_PREFERENCE 0x0000
+#define OPEN4_SHARE_ACCESS_WANT_READ_DELEG 0x0100
+#define OPEN4_SHARE_ACCESS_WANT_WRITE_DELEG 0x0200
+#define OPEN4_SHARE_ACCESS_WANT_ANY_DELEG 0x0300
+#define OPEN4_SHARE_ACCESS_WANT_NO_DELEG 0x0400
+#define OPEN4_SHARE_ACCESS_WANT_CANCEL 0x0500
 #define OPEN4_SHARE_DENY_NONE 0x00000000
 #define OPEN4_SHARE_DENY_READ 0x00000001
 #define OPEN4_SHARE_DENY_WRITE 0x00000002
@@ -1003,6 +1010,7 @@ enum open_delegation_type4 {
 	OPEN_DELEGATE_NONE = 0,
 	OPEN_DELEGATE_READ = 1,
 	OPEN_DELEGATE_WRITE = 2,
+	OPEN_DELEGATE_NONE_EXT = 3,
 };
 typedef enum open_delegation_type4 open_delegation_type4;
 
@@ -1060,11 +1068,34 @@ struct open_write_delegation4 {
 };
 typedef struct open_write_delegation4 open_write_delegation4;
 
+enum why_no_delegation4 {
+	WND4_NOT_WANTED = 0,
+	WND4_CONTENTION = 1,
+	WND4_RESOURCE = 2,
+	WND4_NOT_SUPP_FTYPE = 3,
+	WND4_WRITE_DELEG_NOT_SUPP_FTYPE = 4,
+	WND4_NOT_SUPP_UPGRADE = 5,
+	WND4_NOT_SUPP_DOWNGRADE = 6,
+	WND4_CANCELLED = 7,
+	WND4_IS_DIR = 8,
+};
+typedef enum why_no_delegation4 why_no_delegation4;
+
+struct open_none_delegation4 {
+	why_no_delegation4 ond_why;
+	union {
+		uint32_t ond_server_will_push_deleg;
+		uint32_t ond_server_will_signal_avail;
+	} open_none_delegation4_u;
+};
+typedef struct open_none_delegation4 open_none_delegation4;
+
 struct open_delegation4 {
 	open_delegation_type4 delegation_type;
 	union {
 		open_read_delegation4 read;
 		open_write_delegation4 write;
+		open_none_delegation4 od_whynone;
 	} open_delegation4_u;
 };
 typedef struct open_delegation4 open_delegation4;
@@ -2439,6 +2470,51 @@ struct CB_RECALL4res {
 };
 typedef struct CB_RECALL4res CB_RECALL4res;
 
+struct referring_call4 {
+	sequenceid4 rc_sequenceid;
+	slotid4 rc_slotid;
+};
+typedef struct referring_call4 referring_call4;
+
+struct referring_call_list4 {
+	sessionid4 rcl_sessionid;
+	struct {
+		uint32_t rcl_referring_calls_len;
+		referring_call4 *rcl_referring_calls_val;
+	} rcl_referring_calls;
+};
+typedef struct referring_call_list4 referring_call_list4;
+
+struct CB_SEQUENCE4args {
+	sessionid4 csa_sessionid;
+	sequenceid4 csa_sequenceid;
+	slotid4 csa_slotid;
+	slotid4 csa_highest_slotid;
+	uint32_t csa_cachethis;
+	struct {
+		uint32_t csa_referring_call_lists_len;
+		referring_call_list4 *csa_referring_call_lists_val;
+	} csa_referring_call_lists;
+};
+typedef struct CB_SEQUENCE4args CB_SEQUENCE4args;
+
+struct CB_SEQUENCE4resok {
+	sessionid4 csr_sessionid;
+	sequenceid4 csr_sequenceid;
+	slotid4 csr_slotid;
+	slotid4 csr_highest_slotid;
+	slotid4 csr_target_highest_slotid;
+};
+typedef struct CB_SEQUENCE4resok CB_SEQUENCE4resok;
+
+struct CB_SEQUENCE4res {
+	nfsstat4 csr_status;
+	union {
+		CB_SEQUENCE4resok csr_resok4;
+	} CB_SEQUENCE4res_u;
+};
+typedef struct CB_SEQUENCE4res CB_SEQUENCE4res;
+
 struct CB_ILLEGAL4res {
 	nfsstat4 status;
 };
@@ -2447,6 +2523,7 @@ typedef struct CB_ILLEGAL4res CB_ILLEGAL4res;
 enum nfs_cb_opnum4 {
 	OP_CB_GETATTR = 3,
 	OP_CB_RECALL = 4,
+	OP_CB_SEQUENCE = 11,
 	OP_CB_ILLEGAL = 10044,
 };
 typedef enum nfs_cb_opnum4 nfs_cb_opnum4;
@@ -2456,6 +2533,7 @@ struct nfs_cb_argop4 {
 	union {
 		CB_GETATTR4args opcbgetattr;
 		CB_RECALL4args opcbrecall;
+		CB_SEQUENCE4args opcbsequence;
 	} nfs_cb_argop4_u;
 };
 typedef struct nfs_cb_argop4 nfs_cb_argop4;
@@ -2465,6 +2543,7 @@ struct nfs_cb_resop4 {
 	union {
 		CB_GETATTR4res opcbgetattr;
 		CB_RECALL4res opcbrecall;
+		CB_SEQUENCE4res opcbsequence;
 		CB_ILLEGAL4res opcbillegal;
 	} nfs_cb_resop4_u;
 };
@@ -2769,6 +2848,8 @@ extern  uint32_t zdr_open_claim4 (ZDR *, open_claim4*);
 extern  uint32_t zdr_OPEN4args (ZDR *, OPEN4args*);
 extern  uint32_t zdr_open_read_delegation4 (ZDR *, open_read_delegation4*);
 extern  uint32_t zdr_open_write_delegation4 (ZDR *, open_write_delegation4*);
+extern  uint32_t zdr_why_no_delegation4 (ZDR *, why_no_delegation4*);
+extern  uint32_t zdr_open_none_delegation4 (ZDR *, open_none_delegation4*);
 extern  uint32_t zdr_open_delegation4 (ZDR *, open_delegation4*);
 extern  uint32_t zdr_OPEN4resok (ZDR *, OPEN4resok*);
 extern  uint32_t zdr_OPEN4res (ZDR *, OPEN4res*);
@@ -2928,6 +3009,11 @@ extern  uint32_t zdr_CB_GETATTR4resok (ZDR *, CB_GETATTR4resok*);
 extern  uint32_t zdr_CB_GETATTR4res (ZDR *, CB_GETATTR4res*);
 extern  uint32_t zdr_CB_RECALL4args (ZDR *, CB_RECALL4args*);
 extern  uint32_t zdr_CB_RECALL4res (ZDR *, CB_RECALL4res*);
+extern  uint32_t zdr_referring_call4 (ZDR *, referring_call4*);
+extern  uint32_t zdr_referring_call_list4 (ZDR *, referring_call_list4*);
+extern  uint32_t zdr_CB_SEQUENCE4args (ZDR *, CB_SEQUENCE4args*);
+extern  uint32_t zdr_CB_SEQUENCE4resok (ZDR *, CB_SEQUENCE4resok*);
+extern  uint32_t zdr_CB_SEQUENCE4res (ZDR *, CB_SEQUENCE4res*);
 extern  uint32_t zdr_CB_ILLEGAL4res (ZDR *, CB_ILLEGAL4res*);
 extern  uint32_t zdr_nfs_cb_opnum4 (ZDR *, nfs_cb_opnum4*);
 extern  uint32_t zdr_nfs_cb_argop4 (ZDR *, nfs_cb_argop4*);
@@ -3110,6 +3196,8 @@ extern uint32_t zdr_open_claim4 ();
 extern uint32_t zdr_OPEN4args ();
 extern uint32_t zdr_open_read_delegation4 ();
 extern uint32_t zdr_open_write_delegation4 ();
+extern uint32_t zdr_why_no_delegation4 ();
+extern uint32_t zdr_open_none_delegation4 ();
 extern uint32_t zdr_open_delegation4 ();
 extern uint32_t zdr_OPEN4resok ();
 extern uint32_t zdr_OPEN4res ();
@@ -3269,6 +3357,11 @@ extern uint32_t zdr_CB_GETATTR4resok ();
 extern uint32_t zdr_CB_GETATTR4res ();
 extern uint32_t zdr_CB_RECALL4args ();
 extern uint32_t zdr_CB_RECALL4res ();
+extern uint32_t zdr_referring_call4 ();
+extern uint32_t zdr_referring_call_list4 ();
+extern uint32_t zdr_CB_SEQUENCE4args ();
+extern uint32_t zdr_CB_SEQUENCE4resok ();
+extern uint32_t zdr_CB_SEQUENCE4res ();
 extern uint32_t zdr_CB_ILLEGAL4res ();
 extern uint32_t zdr_nfs_cb_opnum4 ();
 extern uint32_t zdr_nfs_cb_argop4 ();

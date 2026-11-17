@@ -195,6 +195,7 @@ static const struct decoder_entry decoders[] = {
 	{ (zdrproc_t)zdr_COMPOUND4res, sizeof(COMPOUND4res) },
 	{ (zdrproc_t)zdr_CB_GETATTR4res, sizeof(CB_GETATTR4res) },
 	{ (zdrproc_t)zdr_CB_RECALL4res, sizeof(CB_RECALL4res) },
+	{ (zdrproc_t)zdr_CB_SEQUENCE4res, sizeof(CB_SEQUENCE4res) },
 	{ (zdrproc_t)zdr_CB_ILLEGAL4res, sizeof(CB_ILLEGAL4res) },
 	{ (zdrproc_t)zdr_nfs_cb_resop4, sizeof(nfs_cb_resop4) },
 	{ (zdrproc_t)zdr_CB_COMPOUND4res, sizeof(CB_COMPOUND4res) },

@@ -994,6 +994,14 @@ const OPEN4_SHARE_ACCESS_READ   = 0x00000001;
 const OPEN4_SHARE_ACCESS_WRITE  = 0x00000002;
 const OPEN4_SHARE_ACCESS_BOTH   = 0x00000003;
 
+const OPEN4_SHARE_ACCESS_WANT_DELEG_MASK        = 0xFF00;
+const OPEN4_SHARE_ACCESS_WANT_NO_PREFERENCE     = 0x0000;
+const OPEN4_SHARE_ACCESS_WANT_READ_DELEG        = 0x0100;
+const OPEN4_SHARE_ACCESS_WANT_WRITE_DELEG       = 0x0200;
+const OPEN4_SHARE_ACCESS_WANT_ANY_DELEG         = 0x0300;
+const OPEN4_SHARE_ACCESS_WANT_NO_DELEG          = 0x0400;
+const OPEN4_SHARE_ACCESS_WANT_CANCEL            = 0x0500;
+
 const OPEN4_SHARE_DENY_NONE     = 0x00000000;
 const OPEN4_SHARE_DENY_READ     = 0x00000001;
 const OPEN4_SHARE_DENY_WRITE    = 0x00000002;
@@ -1002,7 +1010,8 @@ const OPEN4_SHARE_DENY_BOTH     = 0x00000003;
 enum open_delegation_type4 {
         OPEN_DELEGATE_NONE      = 0,
         OPEN_DELEGATE_READ      = 1,
-        OPEN_DELEGATE_WRITE     = 2
+        OPEN_DELEGATE_WRITE     = 2,
+        OPEN_DELEGATE_NONE_EXT  = 3
 };
 
 enum open_claim_type4 {
@@ -1122,6 +1131,28 @@ struct open_write_delegation4 {
                                            open. */
 };
 
+enum why_no_delegation4 {
+        WND4_NOT_WANTED                 = 0,
+        WND4_CONTENTION                 = 1,
+        WND4_RESOURCE                   = 2,
+        WND4_NOT_SUPP_FTYPE             = 3,
+        WND4_WRITE_DELEG_NOT_SUPP_FTYPE = 4,
+        WND4_NOT_SUPP_UPGRADE           = 5,
+        WND4_NOT_SUPP_DOWNGRADE         = 6,
+        WND4_CANCELLED                  = 7,
+        WND4_IS_DIR                     = 8
+};
+
+union open_none_delegation4
+switch (why_no_delegation4 ond_why) {
+        case WND4_CONTENTION:
+                bool ond_server_will_push_deleg;
+        case WND4_RESOURCE:
+                bool ond_server_will_signal_avail;
+        default:
+                void;
+};
+
 union open_delegation4
 switch (open_delegation_type4 delegation_type) {
         case OPEN_DELEGATE_NONE:
@@ -1130,6 +1161,8 @@ switch (open_delegation_type4 delegation_type) {
                 open_read_delegation4 read;
         case OPEN_DELEGATE_WRITE:
                 open_write_delegation4 write;
+        case OPEN_DELEGATE_NONE_EXT:
+                open_none_delegation4 od_whynone;
 };
 /*
  * Result flags
@@ -2494,6 +2527,43 @@ struct CB_RECALL4res {
 };
 
 /*
+ * CB_SEQUENCE: Supply Back Channel Sequencing and Control
+ */
+struct referring_call4 {
+        sequenceid4     rc_sequenceid;
+        slotid4         rc_slotid;
+};
+
+struct referring_call_list4 {
+        sessionid4      rcl_sessionid;
+        referring_call4 rcl_referring_calls<>;
+};
+
+struct CB_SEQUENCE4args {
+        sessionid4           csa_sessionid;
+        sequenceid4          csa_sequenceid;
+        slotid4              csa_slotid;
+        slotid4              csa_highest_slotid;
+        bool                 csa_cachethis;
+        referring_call_list4 csa_referring_call_lists<>;
+};
+
+struct CB_SEQUENCE4resok {
+        sessionid4      csr_sessionid;
+        sequenceid4     csr_sequenceid;
+        slotid4         csr_slotid;
+        slotid4         csr_highest_slotid;
+        slotid4         csr_target_highest_slotid;
+};
+
+union CB_SEQUENCE4res switch (nfsstat4 csr_status) {
+ case NFS4_OK:
+         CB_SEQUENCE4resok      csr_resok4;
+ default:
+         void;
+};
+
+/*
  * CB_ILLEGAL: Response for illegal operation numbers
  */
 struct CB_ILLEGAL4res {
@@ -2506,18 +2576,21 @@ struct CB_ILLEGAL4res {
 enum nfs_cb_opnum4 {
         OP_CB_GETATTR           = 3,
         OP_CB_RECALL            = 4,
+        OP_CB_SEQUENCE          = 11,
         OP_CB_ILLEGAL           = 10044
 };
 
 union nfs_cb_argop4 switch (unsigned argop) {
  case OP_CB_GETATTR:    CB_GETATTR4args opcbgetattr;
  case OP_CB_RECALL:     CB_RECALL4args  opcbrecall;
+ case OP_CB_SEQUENCE:   CB_SEQUENCE4args opcbsequence;
  case OP_CB_ILLEGAL:    void;
 };
 
 union nfs_cb_resop4 switch (unsigned resop){
  case OP_CB_GETATTR:    CB_GETATTR4res  opcbgetattr;
  case OP_CB_RECALL:     CB_RECALL4res   opcbrecall;
+ case OP_CB_SEQUENCE:   CB_SEQUENCE4res opcbsequence;
  case OP_CB_ILLEGAL:    CB_ILLEGAL4res  opcbillegal;
 };
 

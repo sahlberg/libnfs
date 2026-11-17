@@ -1693,6 +1693,34 @@ zdr_open_write_delegation4 (ZDR *zdrs, open_write_delegation4 *objp)
 }
 
 uint32_t
+zdr_why_no_delegation4 (ZDR *zdrs, why_no_delegation4 *objp)
+{
+	 if (!zdr_enum (zdrs, (enum_t *) objp))
+		 return FALSE;
+	return TRUE;
+}
+
+uint32_t
+zdr_open_none_delegation4 (ZDR *zdrs, open_none_delegation4 *objp)
+{
+	 if (!zdr_why_no_delegation4 (zdrs, &objp->ond_why))
+		 return FALSE;
+	switch (objp->ond_why) {
+	case WND4_CONTENTION:
+		 if (!zdr_bool (zdrs, &objp->open_none_delegation4_u.ond_server_will_push_deleg))
+			 return FALSE;
+		break;
+	case WND4_RESOURCE:
+		 if (!zdr_bool (zdrs, &objp->open_none_delegation4_u.ond_server_will_signal_avail))
+			 return FALSE;
+		break;
+	default:
+		break;
+	}
+	return TRUE;
+}
+
+uint32_t
 zdr_open_delegation4 (ZDR *zdrs, open_delegation4 *objp)
 {
 	 if (!zdr_open_delegation_type4 (zdrs, &objp->delegation_type))
@@ -1706,6 +1734,10 @@ zdr_open_delegation4 (ZDR *zdrs, open_delegation4 *objp)
 		break;
 	case OPEN_DELEGATE_WRITE:
 		 if (!zdr_open_write_delegation4 (zdrs, &objp->open_delegation4_u.write))
+			 return FALSE;
+		break;
+	case OPEN_DELEGATE_NONE_EXT:
+		 if (!zdr_open_none_delegation4 (zdrs, &objp->open_delegation4_u.od_whynone))
 			 return FALSE;
 		break;
 	default:
@@ -4198,6 +4230,78 @@ zdr_CB_RECALL4res (ZDR *zdrs, CB_RECALL4res *objp)
 }
 
 uint32_t
+zdr_referring_call4 (ZDR *zdrs, referring_call4 *objp)
+{
+	 if (!zdr_sequenceid4 (zdrs, &objp->rc_sequenceid))
+		 return FALSE;
+	 if (!zdr_slotid4 (zdrs, &objp->rc_slotid))
+		 return FALSE;
+	return TRUE;
+}
+
+uint32_t
+zdr_referring_call_list4 (ZDR *zdrs, referring_call_list4 *objp)
+{
+	 if (!zdr_sessionid4 (zdrs, objp->rcl_sessionid))
+		 return FALSE;
+	 if (!zdr_array (zdrs, (char **)&objp->rcl_referring_calls.rcl_referring_calls_val, &objp->rcl_referring_calls.rcl_referring_calls_len, ~0,
+		sizeof (referring_call4), (zdrproc_t) zdr_referring_call4))
+		 return FALSE;
+	return TRUE;
+}
+
+uint32_t
+zdr_CB_SEQUENCE4args (ZDR *zdrs, CB_SEQUENCE4args *objp)
+{
+	 if (!zdr_sessionid4 (zdrs, objp->csa_sessionid))
+		 return FALSE;
+	 if (!zdr_sequenceid4 (zdrs, &objp->csa_sequenceid))
+		 return FALSE;
+	 if (!zdr_slotid4 (zdrs, &objp->csa_slotid))
+		 return FALSE;
+	 if (!zdr_slotid4 (zdrs, &objp->csa_highest_slotid))
+		 return FALSE;
+	 if (!zdr_bool (zdrs, &objp->csa_cachethis))
+		 return FALSE;
+	 if (!zdr_array (zdrs, (char **)&objp->csa_referring_call_lists.csa_referring_call_lists_val, &objp->csa_referring_call_lists.csa_referring_call_lists_len, ~0,
+		sizeof (referring_call_list4), (zdrproc_t) zdr_referring_call_list4))
+		 return FALSE;
+	return TRUE;
+}
+
+uint32_t
+zdr_CB_SEQUENCE4resok (ZDR *zdrs, CB_SEQUENCE4resok *objp)
+{
+	 if (!zdr_sessionid4 (zdrs, objp->csr_sessionid))
+		 return FALSE;
+	 if (!zdr_sequenceid4 (zdrs, &objp->csr_sequenceid))
+		 return FALSE;
+	 if (!zdr_slotid4 (zdrs, &objp->csr_slotid))
+		 return FALSE;
+	 if (!zdr_slotid4 (zdrs, &objp->csr_highest_slotid))
+		 return FALSE;
+	 if (!zdr_slotid4 (zdrs, &objp->csr_target_highest_slotid))
+		 return FALSE;
+	return TRUE;
+}
+
+uint32_t
+zdr_CB_SEQUENCE4res (ZDR *zdrs, CB_SEQUENCE4res *objp)
+{
+	 if (!zdr_nfsstat4 (zdrs, &objp->csr_status))
+		 return FALSE;
+	switch (objp->csr_status) {
+	case NFS4_OK:
+		 if (!zdr_CB_SEQUENCE4resok (zdrs, &objp->CB_SEQUENCE4res_u.csr_resok4))
+			 return FALSE;
+		break;
+	default:
+		break;
+	}
+	return TRUE;
+}
+
+uint32_t
 zdr_CB_ILLEGAL4res (ZDR *zdrs, CB_ILLEGAL4res *objp)
 {
 	 if (!zdr_nfsstat4 (zdrs, &objp->status))
@@ -4227,6 +4331,10 @@ zdr_nfs_cb_argop4 (ZDR *zdrs, nfs_cb_argop4 *objp)
 		 if (!zdr_CB_RECALL4args (zdrs, &objp->nfs_cb_argop4_u.opcbrecall))
 			 return FALSE;
 		break;
+	case OP_CB_SEQUENCE:
+		 if (!zdr_CB_SEQUENCE4args (zdrs, &objp->nfs_cb_argop4_u.opcbsequence))
+			 return FALSE;
+		break;
 	case OP_CB_ILLEGAL:
 		break;
 	default:
@@ -4247,6 +4355,10 @@ zdr_nfs_cb_resop4 (ZDR *zdrs, nfs_cb_resop4 *objp)
 		break;
 	case OP_CB_RECALL:
 		 if (!zdr_CB_RECALL4res (zdrs, &objp->nfs_cb_resop4_u.opcbrecall))
+			 return FALSE;
+		break;
+	case OP_CB_SEQUENCE:
+		 if (!zdr_CB_SEQUENCE4res (zdrs, &objp->nfs_cb_resop4_u.opcbsequence))
 			 return FALSE;
 		break;
 	case OP_CB_ILLEGAL:
