@@ -434,12 +434,21 @@ EXTERN void nfs_set_readdir_max_buffer_size(struct nfs_context *nfs, uint32_t di
  * NFSv3 and NFSv4.0 have no sessions and are not affected by any of this.
  */
 #define NFS_V4_2 42
+/*
+ * NFSv4.1, i.e. NFSv4 minor version 1. It uses the same sessions as NFSv4.2,
+ * so everything said above about slots applies, but it can not use the calls
+ * that only NFSv4.2 defines (fallocate(), SEEK_HOLE and SEEK_DATA in lseek(),
+ * and so on). Those fail with -ENOTSUP.
+ */
+#define NFS_V4_1 41
 #endif /* LIBNFS_FEATURE_NFS4_2 */
 
 /*
  * Set NFS version. Supported versions are
  * NFS_V3 (default)
  * NFS_V4     NFSv4.0
+ * NFS_V4_1   NFSv4.1, where LIBNFS_FEATURE_NFS4_2 is defined and the library
+ *            was built with NFSv4.2 support
  * NFS_V4_2   NFSv4.2, where LIBNFS_FEATURE_NFS4_2 is defined and the library
  *            was built with NFSv4.2 support
  */
@@ -448,6 +457,8 @@ EXTERN int nfs_set_version(struct nfs_context *nfs, int version);
  * Get NFS version of a connected share. Supported versions are
  * NFS_V3
  * NFS_V4
+ * NFS_V4_1
+ * NFS_V4_2
  */
 EXTERN int nfs_get_version(struct nfs_context *nfs);
 

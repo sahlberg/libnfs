@@ -463,7 +463,7 @@ struct rpc_context {
 #ifdef HAVE_NFS4_2
 	/*
 	 * NFSv4 minor version stamped into every COMPOUND4args. 0 for
-	 * NFSv4.0, 2 for NFSv4.2. Unrelated to the RPC program version,
+	 * NFSv4.0, 1 for NFSv4.1, 2 for NFSv4.2. Unrelated to the RPC program version,
 	 * which is 4 for every NFSv4 minor version.
 	 */
 	uint32_t nfs4_minorversion;
@@ -1130,6 +1130,22 @@ struct nfs_context {
        struct nfs_context *master_ctx;
 #endif /* HAVE_MULTITHREADING */
 };
+
+/*
+ * NFS_V4_2 in nfsi->version selects the session based NFSv4 dialect, which
+ * serves both minor version 1 and 2. Calls that only minor version 2 defines
+ * must test this, not nfsi->version.
+ */
+static inline int nfs_is_v4_2(struct nfs_context *nfs)
+{
+#ifdef HAVE_NFS4_2
+       return nfs->nfsi->version == NFS_V4_2 &&
+              nfs->rpc->nfs4_minorversion == 2;
+#else
+       (void)nfs;
+       return 0;
+#endif
+}
 
 #ifdef HAVE_MULTITHREADING
 struct nfs_thread_context {

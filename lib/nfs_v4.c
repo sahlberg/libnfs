@@ -5355,7 +5355,7 @@ nfs42_read_plus_async(struct nfs_context *nfs, struct nfsfh *fh,
         struct nfs4_cb_data *data;
         int i;
 
-        if (nfs->nfsi->version != NFS_V4_2) {
+        if (!nfs_is_v4_2(nfs)) {
                 nfs_set_error(nfs, "%s requires NFSv4.2", __FUNCTION__);
                 return -ENOTSUP;
         }
@@ -5425,7 +5425,7 @@ nfs42_write_same_async(struct nfs_context *nfs, struct nfsfh *fh,
         struct nfs4_cb_data *data;
         int i;
 
-        if (nfs->nfsi->version != NFS_V4_2) {
+        if (!nfs_is_v4_2(nfs)) {
                 nfs_set_error(nfs, "%s requires NFSv4.2", __FUNCTION__);
                 return -ENOTSUP;
         }
@@ -5570,7 +5570,7 @@ nfs4_lseek_async(struct nfs_context *nfs, struct nfsfh *fh, int64_t offset,
          * and only NFSv4.2 can ask it.
          */
         if (whence == SEEK_HOLE || whence == SEEK_DATA) {
-                if (nfs->nfsi->version != NFS_V4_2) {
+                if (!nfs_is_v4_2(nfs)) {
                         nfs_set_error(nfs, "lseek(SEEK_%s) requires NFSv4.2",
                                       whence == SEEK_HOLE ? "HOLE" : "DATA");
                         return -ENOTSUP;
