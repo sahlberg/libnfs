@@ -25,7 +25,7 @@ libtool --mode=execute valgrind --leak-check=full --error-exitcode=1 ../utils/nf
 success
 
 echo -n "test nfs-cp for memory leaks ... "
-libtool --mode=execute valgrind --leak-check=full --error-exitcode=1 ../utils/nfs-cp "${TESTURL}/file.99?version=${VERS}" "${TESTURL}/copy-of-file.99" >/dev/null 2>&1 || failure
+libtool --mode=execute valgrind --leak-check=full --error-exitcode=1 ../utils/nfs-cp "${TESTURL}/file.99?version=${VERS}" "${TESTURL}/copy-of-file.99?version=${VERS}" >/dev/null 2>&1 || failure
 success
 
 echo -n "test nfs_truncate() for memory leaks ... "

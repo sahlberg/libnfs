@@ -11,7 +11,7 @@ dd if=/dev/urandom of="${TESTDIR}/file" bs=1 count=12 2>/dev/null || failure
 success
 
 echo -n "Verify how offset is updated "
-./prog_read_update_pos "${TESTURL}/file" >/dev/null || failure
+./prog_read_update_pos "${TESTURL}/file?version=${VERS}" >/dev/null || failure
 success
 
 stop_share
