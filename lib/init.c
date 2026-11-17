@@ -602,6 +602,21 @@ static void rpc_purge_all_pdus(struct rpc_context *rpc, int status, const char *
 	assert(!rpc->outqueue.head);
 }
 
+/* The reply being read is in no queue, so the purge does not see it. */
+void rpc_fail_reading_pdu(struct rpc_context *rpc, int status, const char *error)
+{
+	struct rpc_pdu *pdu = rpc->pdu;
+
+	if (pdu == NULL) {
+		return;
+	}
+	rpc->pdu = NULL;
+	if (pdu->cb) {
+		pdu->cb(rpc, status, (void *) error, pdu->private_data);
+	}
+	rpc_free_pdu(rpc, pdu);
+}
+
 void rpc_error_all_pdus(struct rpc_context *rpc, const char *error)
 {
 	rpc_purge_all_pdus(rpc, RPC_STATUS_ERROR, error);
@@ -657,6 +672,7 @@ void rpc_destroy_context(struct rpc_context *rpc)
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
 	rpc_nfs40_stop_renew(rpc);
+	rpc_fail_reading_pdu(rpc, RPC_STATUS_CANCEL, NULL);
 	rpc_purge_all_pdus(rpc, RPC_STATUS_CANCEL, NULL);
 	if (rpc->nfs40_renew_auth) {
 		auth_destroy(rpc->nfs40_renew_auth);

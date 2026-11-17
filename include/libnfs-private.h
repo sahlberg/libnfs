@@ -930,6 +930,7 @@ struct rpc_pdu *rpc_find_pdu(struct rpc_context *rpc, uint32_t xid);
 struct rpc_pdu *rpc_find_reply_pdu(struct rpc_context *rpc, uint32_t xid);
 int rpc_cancel_sent_pdu(struct rpc_context *rpc, uint32_t xid);
 void rpc_error_all_pdus(struct rpc_context *rpc, const char *error);
+void rpc_fail_reading_pdu(struct rpc_context *rpc, int status, const char *error);
 int rpc_read_reply_ok(struct rpc_context *rpc, struct rpc_pdu *pdu);
 int rpc_outqueue_sent(struct rpc_context *rpc, struct rpc_pdu *pdu);
 void rpc_finished_pdu(struct rpc_context *rpc);

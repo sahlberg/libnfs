@@ -2847,6 +2847,8 @@ rpc_reconnect_requeue(struct rpc_context *rpc)
 
 	if (rpc->auto_reconnect == 0) {
 		RPC_LOG(rpc, 1, "reconnect is disabled");
+		rpc_fail_reading_pdu(rpc, RPC_STATUS_ERROR,
+				     "RPC ERROR: Failed to reconnect async");
 		return rpc_reconnect_failed(rpc, 0);
 	}
 
