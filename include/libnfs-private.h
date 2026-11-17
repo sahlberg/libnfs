@@ -1133,14 +1133,29 @@ struct nfs_context {
 
 /*
  * NFS_V4_2 in nfsi->version selects the session based NFSv4 dialect, which
- * serves both minor version 1 and 2. Calls that only minor version 2 defines
- * must test this, not nfsi->version.
+ * serves both minor version 1 and 2. Test for what you mean:
+ *
+ * nfs_has_sessions()  the context talks NFSv4.1 or NFSv4.2: EXCHANGE_ID,
+ *                     CREATE_SESSION and a SEQUENCE in every COMPOUND.
+ * nfs_is_v4_2()       the context talks NFSv4.2, so the operations that only
+ *                     minor version 2 defines may be sent.
+ *
+ * Do not compare nfsi->version with NFS_V4_2 directly.
  */
+static inline int nfs_has_sessions(struct nfs_context *nfs)
+{
+#ifdef HAVE_NFS4_2
+       return nfs->nfsi->version == NFS_V4_2;
+#else
+       (void)nfs;
+       return 0;
+#endif
+}
+
 static inline int nfs_is_v4_2(struct nfs_context *nfs)
 {
 #ifdef HAVE_NFS4_2
-       return nfs->nfsi->version == NFS_V4_2 &&
-              nfs->rpc->nfs4_minorversion == 2;
+       return nfs_has_sessions(nfs) && nfs->rpc->nfs4_minorversion == 2;
 #else
        (void)nfs;
        return 0;

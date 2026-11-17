@@ -1450,7 +1450,7 @@ nfs4_start_compound(struct nfs_context *nfs, nfs_argop4 *op)
          * Only once the session exists. The COMPOUNDs that build it run
          * before there is anything to sequence against.
          */
-        if (nfs->nfsi->version == NFS_V4_2 && nfs->rpc->nfs4_session_valid) {
+        if (nfs_has_sessions(nfs) && nfs->rpc->nfs4_session_valid) {
                 return nfs42_op_sequence(nfs, op);
         }
 #endif /* HAVE_NFS4_2 */
@@ -2483,7 +2483,7 @@ nfs4_mount_async(struct nfs_context *nfs, const char *server,
 
         port = nfs_nfsport(nfs) ? nfs_nfsport(nfs) : 2049;
 #ifdef HAVE_NFS4_2
-        if (nfs->nfsi->version == NFS_V4_2) {
+        if (nfs_has_sessions(nfs)) {
                 connect_cb = nfs42_mount_start;
         }
 #endif

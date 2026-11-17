@@ -3112,7 +3112,12 @@ nfs_set_version(struct nfs_context *nfs, int version) {
 int
 nfs_get_version(struct nfs_context *nfs) {
 #ifdef HAVE_NFS4_2
-        if (nfs->nfsi->version == NFS_V4_2 && nfs->rpc->nfs4_minorversion == 1) {
+        /*
+         * nfsi->version is NFS_V4_2 for both session based minor versions.
+         * Report the real one: callers such as nfs-cp take NFS_V4_2 to mean
+         * that the 4.2-only operations are available.
+         */
+        if (nfs_has_sessions(nfs) && nfs->rpc->nfs4_minorversion == 1) {
                 return NFS_V4_1;
         }
 #endif
