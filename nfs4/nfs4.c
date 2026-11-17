@@ -660,7 +660,7 @@ nfs4_pdu_retry_delay(struct rpc_context *rpc, struct rpc_pdu *pdu,
         uint32_t count, delay, pos;
 
         /* Leave v4.0, GSS, zero-copy I/O and SEQUENCE errors unchanged. */
-        if (!pdu->nfs4_delay_maxres || rpc->nfs4_minorversion != 2 ||
+        if (!pdu->nfs4_delay_maxres || rpc->nfs4_minorversion == 0 ||
             rpc->is_udp || pdu->msg.body.cbody.cred.oa_flavor != AUTH_SYS || pdu->in.base ||
             pdu->do_not_retry || !pdu->nfs4_slot_held || !res ||
             res->status != NFS4ERR_DELAY ||

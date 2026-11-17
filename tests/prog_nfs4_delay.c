@@ -47,6 +47,7 @@ struct fixture {
         struct rpc_context *rpc;
         int peer;
         struct scenario scenario;
+        uint32_t minorversion;
         struct job job[MAX_JOBS];
         uint32_t sequences[2];
 };
@@ -145,7 +146,7 @@ static void serve(struct fixture *f)
         zdrmem_create(&decoder, request, size, ZDR_DECODE);
         CHECK(zdr_callmsg(f->rpc, &decoder, &call), "decode RPC call");
         CHECK(zdr_COMPOUND4args(&decoder, &args), "decode NFS compound");
-        CHECK(args.minorversion == 2 && args.argarray.argarray_len <= 8,
+        CHECK(args.minorversion == f->minorversion && args.argarray.argarray_len <= 8,
               "unexpected minor version or op count");
         CHECK(args.tag.utf8string_len == 1, "job tag missing");
         id = (unsigned char)args.tag.utf8string_val[0] - 'A';
@@ -257,7 +258,7 @@ static void submit(struct fixture *f, int id)
         CHECK(f->job[id].pdu, "queue compound: %s", rpc_get_error(f->rpc));
 }
 
-static void run(struct scenario scenario)
+static void run(struct scenario scenario, uint32_t minorversion)
 {
         struct fixture f = {0};
         int pair[2], i, done, cancelled = 0;
@@ -266,6 +267,7 @@ static void run(struct scenario scenario)
         struct timeval timeout = {.tv_sec = 2};
 
         f.scenario = scenario;
+        f.minorversion = minorversion;
         CHECK(socketpair(AF_UNIX, SOCK_STREAM, 0, pair) == 0, "socketpair");
         CHECK(fcntl(pair[0], F_SETFL, O_NONBLOCK) == 0, "nonblocking client");
         CHECK(setsockopt(pair[1], SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout)) == 0,
@@ -277,7 +279,7 @@ static void run(struct scenario scenario)
         f.rpc->is_connected = 1;
         f.rpc->program = NFS4_PROGRAM;
         f.rpc->version = NFS_V4;
-        f.rpc->nfs4_minorversion = 2;
+        f.rpc->nfs4_minorversion = minorversion;
         CHECK(nfs4_session_init(f.rpc, session, 2) == 0, "create session");
         rpc_set_uid(f.rpc, 1001);
         rpc_set_gid(f.rpc, 1001);
@@ -340,7 +342,7 @@ static void run(struct scenario scenario)
                 rpc_destroy_context(f.rpc);
         }
         close(f.peer);
-        printf("PASS: %s (%llu ms)\n", scenario.name,
+        printf("PASS: %s, NFSv4.%u (%llu ms)\n", scenario.name, minorversion,
                (unsigned long long)(rpc_current_time() - start));
 }
 
@@ -360,8 +362,13 @@ int main(void)
                 {"destroy-during-delay", OP_OPEN, OP_OPEN, NFS4ERR_DELAY, NFS4_OK, 1, 1, 2, 0}
         };
         size_t i;
-        for (i = 0; i < sizeof(scenarios) / sizeof(scenarios[0]); i++) run(scenarios[i]);
-        puts("PASS: all NFSv4.2 DELAY regression cases");
+        uint32_t minorversion;
+        for (minorversion = 1; minorversion <= 2; minorversion++) {
+                for (i = 0; i < sizeof(scenarios) / sizeof(scenarios[0]); i++) {
+                        run(scenarios[i], minorversion);
+                }
+        }
+        puts("PASS: all NFSv4.1 and NFSv4.2 DELAY regression cases");
         return 0;
 }
 #endif
