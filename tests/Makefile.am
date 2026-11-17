@@ -41,3 +41,6 @@ test: $(noinst_PROGRAMS)
 
 check_PROGRAMS = prog_tls_reconnect
 TESTS = prog_tls_reconnect
+
+check_PROGRAMS += prog_nfs3_read_reply
+TESTS += prog_nfs3_read_reply

@@ -52,6 +52,10 @@ foreach(TEST ${TESTS})
            WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
 endforeach()
 
+add_executable(prog_nfs3_read_reply prog_nfs3_read_reply.c)
+target_link_libraries(prog_nfs3_read_reply nfs)
+add_test(NAME prog_nfs3_read_reply COMMAND prog_nfs3_read_reply)
+
 add_executable(prog_tls_reconnect prog_tls_reconnect.c)
 target_link_libraries(prog_tls_reconnect nfs)
 add_test(NAME prog_tls_reconnect COMMAND prog_tls_reconnect)
