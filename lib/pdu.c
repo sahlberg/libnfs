@@ -1622,7 +1622,8 @@ int rpc_process_pdu(struct rpc_context *rpc, char *buf, int size)
          * skipped, and the caller's buffer untouched while the callback still
          * reported success.
          */
-        if (rpc->pdu && rpc->pdu->in.base) {
+        /* Only a reply still pending in rpc_process_reply() has a payload. */
+        if (rpc->pdu && rpc->pdu->in.base && rpc->pdu->free_pdu) {
                 memcpy(&rpc->pdu->zdr, &zdr, sizeof(zdr));
                 rpc->pdu->free_zdr = 1;
         } else {

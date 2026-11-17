@@ -1326,8 +1326,18 @@ rpc_read_from_socket(struct rpc_context *rpc)
                                         free(rpc->buf);
                                         rpc->buf = NULL;
                                         rpc_free_all_fragments(rpc);
+                                        count = 0;
+                                } else {
+                                        /* Unread tail of a zero-copy reply we did not copy */
+                                        count = rpc->rm_xid[0] - rpc->pdu_size;
                                 }
                                 rpc_finished_pdu(rpc);
+                                if (count > 0 && rpc->fd == saved_fd) {
+                                        rpc->rm_xid[0] = count;
+                                        rpc->state = READ_PADDING;
+                                        rpc->inpos = 0;
+                                        continue;
+                                }
                                 break;
                         case READ_IOVEC:
                                 rpc->pdu->read_count -= rpc->pdu_size;
