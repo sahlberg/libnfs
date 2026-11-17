@@ -82,6 +82,10 @@ add_executable(prog_server_reply prog_server_reply.c)
 target_link_libraries(prog_server_reply nfs)
 add_test(NAME prog_server_reply COMMAND prog_server_reply)
 
+add_executable(prog_nfs3_read_reply prog_nfs3_read_reply.c)
+target_link_libraries(prog_nfs3_read_reply nfs)
+add_test(NAME prog_nfs3_read_reply COMMAND prog_nfs3_read_reply)
+
 add_executable(prog_close_handle prog_close_handle.c)
 target_include_directories(prog_close_handle PRIVATE ../mount ../portmap)
 target_link_libraries(prog_close_handle nfs)
