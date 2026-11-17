@@ -60,6 +60,7 @@ jobs:
       - run: sudo bash -c "cd build/tests;./test_0420_fchown.sh"
       - run: sudo bash -c "cd build/tests;./test_0450_utimes.sh"
       - run: sudo bash -c "cd build/tests;./test_0460_opendir.sh"
+      - run: sudo bash -c "cd build/tests;VERSION=4.1 ./test_0471_nfs41_notsup.sh"
       - run: sudo bash -c "cd build/tests;./test_1000_mount_paths.sh"
       - run: sudo bash -c "cd build/tests;./test_1010_chdir_paths.sh"
 
