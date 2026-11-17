@@ -114,6 +114,21 @@ Utility programs for LibNFS
 %{_mandir}/man1/nfs-ls.1.gz
 
 %changelog
+* Wed Nov 18 2026 : Version 8.0.1
+- Bugfix release, ABI compatible with 8.0.0. The SONAME stays at 18 and
+  only the libtool revision is bumped, 18.0.0 -> 18.1.0
+- socket: do not copy a zero-copy READ payload after an error reply.
+  A reply that did not decode crashed the client on a NULL pointer, and
+  after MSG_DENIED or a failed accept_stat the bytes that followed were
+  copied into the caller's buffer after the callback had reported the
+  error. nfs_pread() uses this path, so a malicious or impersonated
+  server could crash any client or write into a freed buffer.
+  Reported by Kun-Wei Wu
+- socket: free the reassembly buffer when a fragmented READ reply ends
+  early
+- tls: fail closed when the AUTH_TLS probe fails on reconnect, send
+  nothing but the probe until TLS is up, and do not fall back to one-way
+  TLS when mtls was asked for
 * Sun Sep 20 2026 : Version 8.0.0
 - NFSv4.2 support. nfs_set_version(nfs, NFS_V4_2), or "version=4.2" in
   the URL, selects the new dialect. It establishes a session and
