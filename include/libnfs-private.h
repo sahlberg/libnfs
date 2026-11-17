@@ -463,7 +463,7 @@ struct rpc_context {
 #ifdef HAVE_NFS4_2
 	/*
 	 * NFSv4 minor version stamped into every COMPOUND4args. 0 for
-	 * NFSv4.0, 2 for NFSv4.2. Unrelated to the RPC program version,
+	 * NFSv4.0, 1 for NFSv4.1, 2 for NFSv4.2. Unrelated to the RPC program version,
 	 * which is 4 for every NFSv4 minor version.
 	 */
 	uint32_t nfs4_minorversion;
@@ -1145,6 +1145,30 @@ struct nfs_context {
        struct nfs_context *master_ctx;
 #endif /* HAVE_MULTITHREADING */
 };
+
+/*
+ * nfsi->version is NFS_V4_2 for both NFSv4.1 and NFSv4.2. Sessions are used by
+ * either; the 4.2-only operations need minor version 2.
+ */
+static inline int nfs_has_sessions(struct nfs_context *nfs)
+{
+#ifdef HAVE_NFS4_2
+        return nfs->nfsi->version == NFS_V4_2;
+#else
+        (void)nfs;
+        return 0;
+#endif
+}
+
+static inline int nfs_is_v4_2(struct nfs_context *nfs)
+{
+#ifdef HAVE_NFS4_2
+        return nfs_has_sessions(nfs) && nfs->rpc->nfs4_minorversion == 2;
+#else
+        (void)nfs;
+        return 0;
+#endif
+}
 
 #ifdef HAVE_MULTITHREADING
 struct nfs_thread_context {

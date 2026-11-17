@@ -15,7 +15,7 @@ noinst_PROGRAMS = prog_access prog_access2 prog_chmod prog_chown \
 	prog_rename prog_rmdir prog_stat prog_statvfs prog_symlink \
 	prog_timeout prog_truncate prog_unlink prog_utimes \
 	prog_read_update_pos prog_readonly prog_parse_url_full \
-	prog_nfs4_stat
+	prog_nfs4_stat prog_nfs41_notsup
 
 EXTRA_PROGRAMS = ld_timeout
 CLEANFILES = ld_timeout.o ld_timeout.so

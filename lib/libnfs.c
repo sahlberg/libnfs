@@ -403,9 +403,9 @@ nfs_set_context_args(struct nfs_context *nfs, const char *arg, const char *val)
 		 */
 		int v;
 
-		if (!strcmp(val, "4.2")) {
+		if (!strcmp(val, "4.2") || !strcmp(val, "4.1")) {
 #ifdef LIBNFS_FEATURE_NFS4_2
-			v = NFS_V4_2;
+			v = !strcmp(val, "4.1") ? NFS_V4_1 : NFS_V4_2;
 #else
 			nfs_set_error(nfs, "NFS version %s is not supported",
 				      val);
@@ -2459,7 +2459,7 @@ nfs_fallocate_async(struct nfs_context *nfs, struct nfsfh *nfsfh, int mode,
                     uint64_t offset, uint64_t length,
                     nfs_cb cb, void *private_data)
 {
-        if (nfs->nfsi->version != NFS_V4_2) {
+        if (!nfs_is_v4_2(nfs)) {
                 nfs_set_error(nfs, "%s requires NFSv4.2", __FUNCTION__);
                 return -ENOTSUP;
         }
@@ -2489,15 +2489,10 @@ nfs_lseek_async(struct nfs_context *nfs, struct nfsfh *nfsfh, int64_t offset,
          */
         if (whence == SEEK_HOLE || whence == SEEK_DATA) {
                 /*
-                 * NFS_V4_2 does not exist on the platforms that compile the
-                 * dialect out entirely, so the version can not be compared
-                 * against it there.
+                 * NFSv4.1 shares the session dialect with NFSv4.2 but can not
+                 * ask the server for holes, so test the minor version.
                  */
-#ifdef LIBNFS_FEATURE_NFS4_2
-                const int is_v4_2 = (nfs->nfsi->version == NFS_V4_2);
-#else
-                const int is_v4_2 = 0;
-#endif
+                const int is_v4_2 = nfs_is_v4_2(nfs);
 
                 if (!is_v4_2) {
                         nfs_set_error(nfs, "lseek(SEEK_%s) requires NFSv4.2",
@@ -3086,6 +3081,7 @@ nfs_set_version(struct nfs_context *nfs, int version) {
 #endif
 		break;
 #ifdef LIBNFS_FEATURE_NFS4_2
+	case NFS_V4_1:
 	case NFS_V4_2:
 #ifdef HAVE_NFS4_2
 		/*
@@ -3098,7 +3094,7 @@ nfs_set_version(struct nfs_context *nfs, int version) {
 #endif
 		nfs->nfsi->version = NFS_V4_2;
 		nfs->nfsi->default_version = 0;
-		nfs->rpc->nfs4_minorversion = 2;
+		nfs->rpc->nfs4_minorversion = (version == NFS_V4_1) ? 1 : 2;
 		break;
 #else
 		nfs_set_error(nfs, "NFSv4.2 support was not built into this "
@@ -3115,6 +3111,12 @@ nfs_set_version(struct nfs_context *nfs, int version) {
 
 int
 nfs_get_version(struct nfs_context *nfs) {
+#ifdef HAVE_NFS4_2
+        /* nfsi->version is NFS_V4_2 for 4.1 too; report the real one. */
+        if (nfs_has_sessions(nfs) && nfs->rpc->nfs4_minorversion == 1) {
+                return NFS_V4_1;
+        }
+#endif
         return nfs->nfsi->version;
 }
 

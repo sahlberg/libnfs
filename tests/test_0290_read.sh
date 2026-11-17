@@ -11,7 +11,7 @@ dd if=/dev/urandom of="${TESTDIR}/orig" bs=1M count=10 2>/dev/null || failure
 success
 
 echo -n "Copy file from the NFS server ... "
-../utils/nfs-cp "${TESTURL}/orig" "${TESTDIR}/copy" >/dev/null || failure
+../utils/nfs-cp "${TESTURL}/orig?version=${VERS}" "${TESTDIR}/copy" >/dev/null || failure
 success
 
 echo -n "Verify the files are identical  ... "
