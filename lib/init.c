@@ -670,6 +670,13 @@ void rpc_destroy_context(struct rpc_context *rpc)
 
 	rpc_free_all_fragments(rpc);
 
+        while (rpc->endpoints) {
+                struct rpc_endpoint *next = rpc->endpoints->next;
+
+                free(rpc->endpoints);
+                rpc->endpoints = next;
+        }
+
         if (rpc->auth) {
                 auth_destroy(rpc->auth);
                 rpc->auth =NULL;
