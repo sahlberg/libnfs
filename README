@@ -89,6 +89,98 @@ well be faster for that shape of workload.
 
 NFSv3 and NFSv4.0 have no sessions and none of this applies to them.
 
+NFSv4.1/4.2 BACK CHANNEL:
+-------------------------
+From NFSv4 minor version 1 onwards the server can send requests to the
+client, callbacks, over the client's own connection. Delegations depend on
+this: a server only grants one when it can recall it with CB_RECALL.
+
+libnfs supports a back channel through the raw API only, and it is off by
+default. Enable it before the session is created, i.e. before nfs_mount():
+
+    rpc_nfs4_enable_backchannel(nfs_get_rpc_context(nfs), my_cb, my_data);
+
+libnfs answers CB_NULL and CB_SEQUENCE, including replays, itself. my_cb is
+called for each other operation in a CB_COMPOUND, with the result preset to
+NFS4ERR_NOTSUPP, and sets the result. rpc_nfs4_backchannel_is_up() says
+whether the server accepted the back channel.
+
+Restrictions:
+- NFSv4.1 and NFSv4.2 only. NFSv4.0 callbacks would need the client to accept
+  connections from the server.
+- TCP and TLS only, not RDMA.
+- The back channel uses AUTH_NONE, also on a krb5 mount.
+- One callback at a time (one back channel slot).
+- The callback must set the result before it returns and must not block.
+  Do follow-up work, such as DELEGRETURN after CB_RECALL, afterwards.
+  Its arguments are only valid during the call.
+- With a back channel the high-level API asks for no delegations on OPEN,
+  as it cannot handle them. Delegations are only obtained with raw calls.
+- The application has to service the context all the time, not only while
+  its own requests are in flight. The server expects an answer to a callback
+  within the lease period and otherwise revokes the delegation. The sync API
+  only reads the socket while one of its calls runs, so on its own it is not
+  enough. Use one of the two ways below.
+
+1, An event loop (async API)
+Keep the context in the event loop permanently. Get the fd and the events
+again each time round, they change on reconnect, and wake up at least every
+100ms or so to call nfs_service() even without events, as the lease
+keepalive and the timeouts run from there.
+
+    static void my_cb(struct rpc_context *rpc, struct nfs_cb_argop4 *arg,
+                      struct nfs_cb_resop4 *res, void *private_data)
+    {
+            struct my_state *s = private_data;
+
+            if (arg->argop == OP_CB_RECALL) {
+                    s->stateid = arg->nfs_cb_argop4_u.opcbrecall.stateid;
+                    s->recall_pending = 1;
+                    res->nfs_cb_resop4_u.opcbrecall.status = NFS4_OK;
+            }
+    }
+
+    rpc_nfs4_enable_backchannel(nfs_get_rpc_context(nfs), my_cb, &state);
+    nfs_mount_async(nfs, server, export, mount_cb, &state);
+    for (;;) {
+            struct pollfd pfd = { nfs_get_fd(nfs), nfs_which_events(nfs), 0 };
+
+            if (poll(&pfd, 1, 100) < 0 || nfs_service(nfs, pfd.revents) < 0) {
+                    break;
+            }
+            if (state.recall_pending) {
+                    state.recall_pending = 0;
+                    /* your code: PUTFH + DELEGRETURN with rpc_nfs4_compound_task() */
+                    send_delegreturn(nfs_get_rpc_context(nfs), &state);
+            }
+    }
+
+2, The service thread (sync API)
+nfs_mt_service_thread_start() services the context from a thread of its own,
+see README.multithreading. The callback then runs on that thread. It must not
+call any *_sync() function, which would wait for the very thread it runs on.
+It may queue raw *_task() calls.
+
+    static void my_cb(struct rpc_context *rpc, struct nfs_cb_argop4 *arg,
+                      struct nfs_cb_resop4 *res, void *private_data)
+    {
+            if (arg->argop == OP_CB_RECALL) {
+                    res->nfs_cb_resop4_u.opcbrecall.status = NFS4_OK;
+                    send_delegreturn(rpc, &arg->nfs_cb_argop4_u.opcbrecall.stateid);
+            }
+    }
+
+    nfs = nfs_init_context();
+    nfs_set_version(nfs, NFS_V4_2);
+    rpc_nfs4_enable_backchannel(nfs_get_rpc_context(nfs), my_cb, NULL);
+    if (nfs_mount(nfs, server, export) || nfs_mt_service_thread_start(nfs)) {
+            ...
+    }
+    /* use the sync API from any thread */
+    nfs_mt_service_thread_stop(nfs);
+    nfs_umount(nfs);
+    nfs_destroy_context(nfs);
+
 SERVER SUPPORT:
 ===============
 Libnfs supports building RPC servers.
