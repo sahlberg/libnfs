@@ -52,16 +52,22 @@ ranges, lseek() with SEEK_HOLE and SEEK_DATA, and the READ_PLUS and
 WRITE_SAME operations. NFSv4.2 support is built by default and can be left
 out with --disable-nfs4-2 (autoconf) or -DENABLE_NFS4_2=OFF (cmake).
 
+NFSv4.1 is selected with version=4.1 or nfs_set_version(nfs, NFS_V4_1). It uses
+the same sessions as NFSv4.2 but not the sparse file operations:
+nfs_fallocate() and lseek() with SEEK_HOLE or SEEK_DATA fail with -ENOTSUP. It
+is built with NFSv4.2, so the options above remove both and
+nfs_set_version(nfs, NFS_V4_1) then fails at run time as well.
+
 Applications compile against it behind LIBNFS_FEATURE_NFS4_2, which libnfs.h
 defines wherever the dialect exists at all. As with the other
 LIBNFS_FEATURE_ macros that says the API is there rather than that this
 particular build has it, so a build that dropped the dialect still reports
 that only at run time, by failing nfs_set_version(nfs, NFS_V4_2).
 
-CONCURRENCY AND NFSv4.2:
-------------------------
+CONCURRENCY AND NFSv4.1/4.2:
+----------------------------
 This matters if you drive libnfs hard, and it is the one place where the
-NFSv4.2 dialect behaves differently from NFSv3 and NFSv4.0.
+NFSv4.1 and NFSv4.2 dialect behaves differently from NFSv3 and NFSv4.0.
 
 From NFSv4 minor version 1 onwards every request travels in a session slot,
 and a slot carries one request at a time because the server's reply cache is
@@ -75,11 +81,11 @@ over, so queueing tens of thousands of async calls behaves exactly as it does
 on NFSv3 and NFSv4.0; they are simply released onto the connection as slots
 free up, and nothing is rejected or blocked at submission time.
 
-What it does mean is that NFSv4.2 cannot keep more than the granted number of
-requests at the server simultaneously, where NFSv4.0 has no such bound. If
-your throughput comes from very deep request pipelining rather than from
-large transfers, measure both dialects before choosing; NFSv4.0 may well be
-faster for that shape of workload.
+What it does mean is that NFSv4.1 and NFSv4.2 cannot keep more than the
+granted number of requests at the server simultaneously, where NFSv4.0 has no
+such bound. If your throughput comes from very deep request pipelining rather
+than from large transfers, measure both dialects before choosing; NFSv4.0 may
+well be faster for that shape of workload.
 
 NFSv3 and NFSv4.0 have no sessions and none of this applies to them.
 
@@ -168,10 +174,11 @@ Arguments supported by libnfs are :
                      failing immediately. Keep servicing RPC timers during the
                      outage. This does not recover expired NFSv4 lease/open state.
  if=<interface>    : Interface name (e.g., eth1) to bind; requires `root`
- version=<3|4|4.2> : NFS Version. Default is 3. 4 is NFSv4.0 and 4.2 is
-                     NFSv4.2; see the NFSv4 section above for what 4.2 adds
-                     and for how its session slots interact with very high
-                     request concurrency.
+ version=<3|4|4.1|4.2>
+                   : NFS Version. Default is 3. 4 is NFSv4.0, 4.1 is NFSv4.1
+                     and 4.2 is NFSv4.2; see the NFSv4 section above for what
+                     4.2 adds and for how the session slots of 4.1 and 4.2
+                     interact with very high request concurrency.
  nfsport=<port>    : Use this port for NFS instead of using the portmapper.
  mountport=<port>  : Use this port for the MOUNT protocol instead of
                      using portmapper. This argument is ignored for NFSv4
