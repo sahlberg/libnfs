@@ -630,6 +630,10 @@ static bool_t libnfs_accepted_reply(struct rpc_context *rpc, ZDR *zdrs,
 
 	switch (ar->stat) {
 	case SUCCESS:
+		if (ar->reply_data.results.proc == NULL) {
+			rpc_set_error(rpc, "No decoder for accepted reply");
+			return FALSE;
+		}
 #ifdef HAVE_LIBKRB5
                 if (zdrs->x_op ==ZDR_DECODE && ar->reply_data.results.krb5p) {
                         if (!libnfs_zdr_u_int(zdrs, &len)) {
