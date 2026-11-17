@@ -1458,6 +1458,10 @@ static int rpc_process_call(struct rpc_context *rpc, ZDR *zdr)
 	if (zdr_callmsg(rpc, zdr, &c.call) == 0) {
 		rpc_set_error(rpc, "Failed to decode CALL message. %s",
                               rpc_get_error(rpc));
+                /* Never answer a reply, two servers would ping-pong. */
+                if (c.call.direction != CALL) {
+                        return 0;
+                }
                 return rpc_send_error_reply(rpc, &c.call, GARBAGE_ARGS, 0, 0);
         }
         for (endpoint = rpc->endpoints; endpoint; endpoint = endpoint->next) {

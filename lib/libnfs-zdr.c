@@ -777,7 +777,8 @@ static bool_t libnfs_rpc_reply_body(struct rpc_context *rpc, ZDR *zdrs, struct r
 	return FALSE;
 }
 
-static bool_t libnfs_rpc_msg(struct rpc_context *rpc, ZDR *zdrs, struct rpc_msg *msg)
+static bool_t libnfs_rpc_msg(struct rpc_context *rpc, ZDR *zdrs,
+                             struct rpc_msg *msg, uint32_t direction)
 {
 	int ret;
 
@@ -788,6 +789,11 @@ static bool_t libnfs_rpc_msg(struct rpc_context *rpc, ZDR *zdrs, struct rpc_msg 
 
 	if (!libnfs_zdr_u_int(zdrs, &msg->direction)) {
 		rpc_set_error(rpc, "libnfs_rpc_msg failed to decode DIRECTION");
+		return FALSE;
+	}
+	if (msg->direction != direction) {
+		rpc_set_error(rpc, "libnfs_rpc_msg unexpected DIRECTION %u",
+			      msg->direction);
 		return FALSE;
 	}
 
@@ -815,12 +821,12 @@ static bool_t libnfs_rpc_msg(struct rpc_context *rpc, ZDR *zdrs, struct rpc_msg 
 
 bool_t libnfs_zdr_callmsg(struct rpc_context *rpc, ZDR *zdrs, struct rpc_msg *msg)
 {
-	return libnfs_rpc_msg(rpc, zdrs, msg);
+	return libnfs_rpc_msg(rpc, zdrs, msg, CALL);
 }
 
 bool_t libnfs_zdr_replymsg(struct rpc_context *rpc, ZDR *zdrs, struct rpc_msg *msg)
 {
-	return libnfs_rpc_msg(rpc, zdrs, msg);
+	return libnfs_rpc_msg(rpc, zdrs, msg, REPLY);
 }
 
 struct AUTH *authnone_create(void)

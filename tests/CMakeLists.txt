@@ -78,6 +78,10 @@ add_executable(prog_service_error prog_service_error.c)
 target_link_libraries(prog_service_error nfs)
 add_test(NAME prog_service_error COMMAND prog_service_error)
 
+add_executable(prog_server_reply prog_server_reply.c)
+target_link_libraries(prog_server_reply nfs)
+add_test(NAME prog_server_reply COMMAND prog_server_reply)
+
 add_executable(prog_close_handle prog_close_handle.c)
 target_include_directories(prog_close_handle PRIVATE ../mount ../portmap)
 target_link_libraries(prog_close_handle nfs)

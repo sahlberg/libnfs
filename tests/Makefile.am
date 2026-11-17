@@ -56,6 +56,9 @@ check-local: prog_zdr_bytes_zero$(EXEEXT) prog_zdr_maxsize$(EXEEXT)
 check_PROGRAMS += prog_service_error
 TESTS += prog_service_error
 
+check_PROGRAMS += prog_server_reply
+TESTS += prog_server_reply
+
 check_PROGRAMS += prog_close_handle
 TESTS += prog_close_handle
 prog_close_handle_CPPFLAGS = $(AM_CPPFLAGS) -I$(srcdir)/../mount -I$(srcdir)/../portmap
