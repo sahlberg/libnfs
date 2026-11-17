@@ -1146,8 +1146,14 @@ rpc_read_from_socket(struct rpc_context *rpc)
                                          * pdu->read_count is the amount of read data returned by
                                          * the server in this RPC response.
                                          */
-                                        if (!zdr_uint32_t(&rpc->pdu->zdr, &rpc->pdu->read_count))
+                                        if (!zdr_uint32_t(&rpc->pdu->zdr, &rpc->pdu->read_count)) {
+                                                if (rpc->fragments) {
+                                                        free(rpc->buf);
+                                                        rpc->buf = NULL;
+                                                        rpc_free_all_fragments(rpc);
+                                                }
                                                 return -1;
+                                        }
 
                                         /*
                                          * Now pos is pointing at the start of data, and
