@@ -18,8 +18,5 @@ nlm-stamp : nlm.x
 	rm -f $(nlm_GENERATED)
 	touch nlm-stamp
 
-compile_rpc:	
-	cat nlm.x | head -29 >libnfs-raw-nlm.h
-	rpcgen -h nlm.x | sed -e "s/#include <rpc\/rpc.h>/#include <nfsc\/libnfs-zdr.h>/" | sed -e "s/xdr/zdr/g" -e "s/XDR/ZDR/g" -e "s/ CLIENT / void /g" -e "s/SVCXPRT /void /g" -e "s/bool_t/uint32_t/g" >> libnfs-raw-nlm.h
-	cat nlm.x | head -29 >libnfs-raw-nlm.c
-	rpcgen -c nlm.x | sed -e "s/#include \".*nlm.h\"/#include \"libnfs-xdr.h\"\n#include \"libnfs-raw-nlm.h\"/" -e "s/xdr/zdr/g" -e "s/XDR/ZDR/g" -e "s/register int32_t \*buf;/register int32_t *buf;\n	buf = NULL;/" -e "s/bool_t/uint32_t/g" >> libnfs-raw-nlm.c
+compile_rpc:
+	cd $(srcdir) && python3 ../tools/zdrgen.py nlm.x libnfs-raw-nlm.h libnfs-raw-nlm.c

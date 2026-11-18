@@ -48,9 +48,3 @@ EXTERN int nfs3_getacl(struct nfs_context *nfs, struct nfsfh *nfsfh,
                        fattr3_acl *nfs3acl);
 
 EXTERN void nfs3_acl_free(fattr3_acl *nfs3acl);
-
-#ifdef __cplusplus
-}
-#endif
-
-#endif /* !_NFS_H_RPCGEN */

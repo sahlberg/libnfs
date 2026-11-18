@@ -19,7 +19,4 @@ rquota-stamp : rquota.x
 	touch rquota-stamp
 
 compile_rpc:
-	cat rquota.x | head -29 >libnfs-raw-rquota.h
-	rpcgen -h rquota.x | sed -e "s/#include <rpc\/rpc.h>/#include <nfsc\/libnfs-zdr.h>/" | sed -e "s/xdr/zdr/g" -e "s/XDR/ZDR/g" -e "s/ CLIENT / void /g" -e "s/SVCXPRT /void /g" -e "s/bool_t/uint32_t/g" >> libnfs-raw-rquota.h
-	cat rquota.x | head -29 >libnfs-raw-rquota.c
-	rpcgen -c rquota.x | sed -e "s/#include \".*rquota.h\"/#include \"libnfs-xdr.h\"\n#include \"libnfs-raw-rquota.h\"/" -e "s/xdr/zdr/g" -e "s/XDR/ZDR/g" -e "s/register int32_t \*buf;/register int32_t *buf;\n	buf = NULL;/" -e "s/bool_t/uint32_t/g" >> libnfs-raw-rquota.c
+	cd $(srcdir) && python3 ../tools/zdrgen.py rquota.x libnfs-raw-rquota.h libnfs-raw-rquota.c

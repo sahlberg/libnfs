@@ -234,9 +234,3 @@ EXTERN int nfs42_write_same_async(struct nfs_context *nfs, struct nfsfh *nfsfh,
  */
 EXTERN int nfs42_write_same(struct nfs_context *nfs, struct nfsfh *nfsfh,
                             app_data_block4 *adb, int stable, uint64_t *count);
-
-#ifdef __cplusplus
-}
-#endif
-
-#endif /* !_NFS4_H_RPCGEN */
