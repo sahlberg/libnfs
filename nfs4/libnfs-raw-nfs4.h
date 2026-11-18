@@ -1001,6 +1001,8 @@ typedef struct nfs_space_limit4 nfs_space_limit4;
 #define OPEN4_SHARE_ACCESS_WANT_ANY_DELEG 0x0300
 #define OPEN4_SHARE_ACCESS_WANT_NO_DELEG 0x0400
 #define OPEN4_SHARE_ACCESS_WANT_CANCEL 0x0500
+#define OPEN4_SHARE_ACCESS_WANT_SIGNAL_DELEG_WHEN_RESRC_AVAIL 0x10000
+#define OPEN4_SHARE_ACCESS_WANT_PUSH_DELEG_WHEN_UNCONTENDED 0x20000
 #define OPEN4_SHARE_DENY_NONE 0x00000000
 #define OPEN4_SHARE_DENY_READ 0x00000001
 #define OPEN4_SHARE_DENY_WRITE 0x00000002
@@ -2470,6 +2472,44 @@ struct CB_RECALL4res {
 };
 typedef struct CB_RECALL4res CB_RECALL4res;
 
+struct CB_PUSH_DELEG4args {
+	nfs_fh4 cpda_fh;
+	open_delegation4 cpda_delegation;
+};
+typedef struct CB_PUSH_DELEG4args CB_PUSH_DELEG4args;
+
+struct CB_PUSH_DELEG4res {
+	nfsstat4 cpdr_status;
+};
+typedef struct CB_PUSH_DELEG4res CB_PUSH_DELEG4res;
+#define RCA4_TYPE_MASK_RDATA_DLG 0
+#define RCA4_TYPE_MASK_WDATA_DLG 1
+#define RCA4_TYPE_MASK_DIR_DLG 2
+#define RCA4_TYPE_MASK_FILE_LAYOUT 3
+#define RCA4_TYPE_MASK_BLK_LAYOUT 4
+#define RCA4_TYPE_MASK_OBJ_LAYOUT_MIN 8
+#define RCA4_TYPE_MASK_OBJ_LAYOUT_MAX 9
+#define RCA4_TYPE_MASK_OTHER_LAYOUT_MIN 12
+#define RCA4_TYPE_MASK_OTHER_LAYOUT_MAX 15
+
+struct CB_RECALL_ANY4args {
+	uint32_t craa_objects_to_keep;
+	bitmap4 craa_type_mask;
+};
+typedef struct CB_RECALL_ANY4args CB_RECALL_ANY4args;
+
+struct CB_RECALL_ANY4res {
+	nfsstat4 crar_status;
+};
+typedef struct CB_RECALL_ANY4res CB_RECALL_ANY4res;
+
+typedef CB_RECALL_ANY4args CB_RECALLABLE_OBJ_AVAIL4args;
+
+struct CB_RECALLABLE_OBJ_AVAIL4res {
+	nfsstat4 croa_status;
+};
+typedef struct CB_RECALLABLE_OBJ_AVAIL4res CB_RECALLABLE_OBJ_AVAIL4res;
+
 struct referring_call4 {
 	sequenceid4 rc_sequenceid;
 	slotid4 rc_slotid;
@@ -2523,6 +2563,9 @@ typedef struct CB_ILLEGAL4res CB_ILLEGAL4res;
 enum nfs_cb_opnum4 {
 	OP_CB_GETATTR = 3,
 	OP_CB_RECALL = 4,
+	OP_CB_PUSH_DELEG = 7,
+	OP_CB_RECALL_ANY = 8,
+	OP_CB_RECALLABLE_OBJ_AVAIL = 9,
 	OP_CB_SEQUENCE = 11,
 	OP_CB_ILLEGAL = 10044,
 };
@@ -2533,6 +2576,9 @@ struct nfs_cb_argop4 {
 	union {
 		CB_GETATTR4args opcbgetattr;
 		CB_RECALL4args opcbrecall;
+		CB_PUSH_DELEG4args opcbpush_deleg;
+		CB_RECALL_ANY4args opcbrecall_any;
+		CB_RECALLABLE_OBJ_AVAIL4args opcbrecallable_obj_avail;
 		CB_SEQUENCE4args opcbsequence;
 	} nfs_cb_argop4_u;
 };
@@ -2543,6 +2589,9 @@ struct nfs_cb_resop4 {
 	union {
 		CB_GETATTR4res opcbgetattr;
 		CB_RECALL4res opcbrecall;
+		CB_PUSH_DELEG4res opcbpush_deleg;
+		CB_RECALL_ANY4res opcbrecall_any;
+		CB_RECALLABLE_OBJ_AVAIL4res opcbrecallable_obj_avail;
 		CB_SEQUENCE4res opcbsequence;
 		CB_ILLEGAL4res opcbillegal;
 	} nfs_cb_resop4_u;
@@ -3009,6 +3058,12 @@ extern  uint32_t zdr_CB_GETATTR4resok (ZDR *, CB_GETATTR4resok*);
 extern  uint32_t zdr_CB_GETATTR4res (ZDR *, CB_GETATTR4res*);
 extern  uint32_t zdr_CB_RECALL4args (ZDR *, CB_RECALL4args*);
 extern  uint32_t zdr_CB_RECALL4res (ZDR *, CB_RECALL4res*);
+extern  uint32_t zdr_CB_PUSH_DELEG4args (ZDR *, CB_PUSH_DELEG4args*);
+extern  uint32_t zdr_CB_PUSH_DELEG4res (ZDR *, CB_PUSH_DELEG4res*);
+extern  uint32_t zdr_CB_RECALL_ANY4args (ZDR *, CB_RECALL_ANY4args*);
+extern  uint32_t zdr_CB_RECALL_ANY4res (ZDR *, CB_RECALL_ANY4res*);
+extern  uint32_t zdr_CB_RECALLABLE_OBJ_AVAIL4args (ZDR *, CB_RECALLABLE_OBJ_AVAIL4args*);
+extern  uint32_t zdr_CB_RECALLABLE_OBJ_AVAIL4res (ZDR *, CB_RECALLABLE_OBJ_AVAIL4res*);
 extern  uint32_t zdr_referring_call4 (ZDR *, referring_call4*);
 extern  uint32_t zdr_referring_call_list4 (ZDR *, referring_call_list4*);
 extern  uint32_t zdr_CB_SEQUENCE4args (ZDR *, CB_SEQUENCE4args*);
@@ -3357,6 +3412,12 @@ extern uint32_t zdr_CB_GETATTR4resok ();
 extern uint32_t zdr_CB_GETATTR4res ();
 extern uint32_t zdr_CB_RECALL4args ();
 extern uint32_t zdr_CB_RECALL4res ();
+extern uint32_t zdr_CB_PUSH_DELEG4args ();
+extern uint32_t zdr_CB_PUSH_DELEG4res ();
+extern uint32_t zdr_CB_RECALL_ANY4args ();
+extern uint32_t zdr_CB_RECALL_ANY4res ();
+extern uint32_t zdr_CB_RECALLABLE_OBJ_AVAIL4args ();
+extern uint32_t zdr_CB_RECALLABLE_OBJ_AVAIL4res ();
 extern uint32_t zdr_referring_call4 ();
 extern uint32_t zdr_referring_call_list4 ();
 extern uint32_t zdr_CB_SEQUENCE4args ();

@@ -1002,6 +1002,9 @@ const OPEN4_SHARE_ACCESS_WANT_ANY_DELEG         = 0x0300;
 const OPEN4_SHARE_ACCESS_WANT_NO_DELEG          = 0x0400;
 const OPEN4_SHARE_ACCESS_WANT_CANCEL            = 0x0500;
 
+const OPEN4_SHARE_ACCESS_WANT_SIGNAL_DELEG_WHEN_RESRC_AVAIL = 0x10000;
+const OPEN4_SHARE_ACCESS_WANT_PUSH_DELEG_WHEN_UNCONTENDED   = 0x20000;
+
 const OPEN4_SHARE_DENY_NONE     = 0x00000000;
 const OPEN4_SHARE_DENY_READ     = 0x00000001;
 const OPEN4_SHARE_DENY_WRITE    = 0x00000002;
@@ -2527,6 +2530,49 @@ struct CB_RECALL4res {
 };
 
 /*
+ * CB_PUSH_DELEG: Offer Previously Requested Delegation to Client
+ */
+struct CB_PUSH_DELEG4args {
+        nfs_fh4          cpda_fh;
+        open_delegation4 cpda_delegation;
+};
+
+struct CB_PUSH_DELEG4res {
+        nfsstat4 cpdr_status;
+};
+
+/*
+ * CB_RECALL_ANY: Keep Any N Recallable Objects
+ */
+const RCA4_TYPE_MASK_RDATA_DLG          = 0;
+const RCA4_TYPE_MASK_WDATA_DLG          = 1;
+const RCA4_TYPE_MASK_DIR_DLG            = 2;
+const RCA4_TYPE_MASK_FILE_LAYOUT        = 3;
+const RCA4_TYPE_MASK_BLK_LAYOUT         = 4;
+const RCA4_TYPE_MASK_OBJ_LAYOUT_MIN     = 8;
+const RCA4_TYPE_MASK_OBJ_LAYOUT_MAX     = 9;
+const RCA4_TYPE_MASK_OTHER_LAYOUT_MIN   = 12;
+const RCA4_TYPE_MASK_OTHER_LAYOUT_MAX   = 15;
+
+struct CB_RECALL_ANY4args {
+        uint32_t        craa_objects_to_keep;
+        bitmap4         craa_type_mask;
+};
+
+struct CB_RECALL_ANY4res {
+        nfsstat4        crar_status;
+};
+
+/*
+ * CB_RECALLABLE_OBJ_AVAIL: Signal Resources for Recallable Objects
+ */
+typedef CB_RECALL_ANY4args CB_RECALLABLE_OBJ_AVAIL4args;
+
+struct CB_RECALLABLE_OBJ_AVAIL4res {
+        nfsstat4        croa_status;
+};
+
+/*
  * CB_SEQUENCE: Supply Back Channel Sequencing and Control
  */
 struct referring_call4 {
@@ -2576,6 +2622,9 @@ struct CB_ILLEGAL4res {
 enum nfs_cb_opnum4 {
         OP_CB_GETATTR           = 3,
         OP_CB_RECALL            = 4,
+        OP_CB_PUSH_DELEG        = 7,
+        OP_CB_RECALL_ANY        = 8,
+        OP_CB_RECALLABLE_OBJ_AVAIL = 9,
         OP_CB_SEQUENCE          = 11,
         OP_CB_ILLEGAL           = 10044
 };
@@ -2583,6 +2632,10 @@ enum nfs_cb_opnum4 {
 union nfs_cb_argop4 switch (unsigned argop) {
  case OP_CB_GETATTR:    CB_GETATTR4args opcbgetattr;
  case OP_CB_RECALL:     CB_RECALL4args  opcbrecall;
+ case OP_CB_PUSH_DELEG: CB_PUSH_DELEG4args opcbpush_deleg;
+ case OP_CB_RECALL_ANY: CB_RECALL_ANY4args opcbrecall_any;
+ case OP_CB_RECALLABLE_OBJ_AVAIL:
+                        CB_RECALLABLE_OBJ_AVAIL4args opcbrecallable_obj_avail;
  case OP_CB_SEQUENCE:   CB_SEQUENCE4args opcbsequence;
  case OP_CB_ILLEGAL:    void;
 };
@@ -2590,6 +2643,10 @@ union nfs_cb_argop4 switch (unsigned argop) {
 union nfs_cb_resop4 switch (unsigned resop){
  case OP_CB_GETATTR:    CB_GETATTR4res  opcbgetattr;
  case OP_CB_RECALL:     CB_RECALL4res   opcbrecall;
+ case OP_CB_PUSH_DELEG: CB_PUSH_DELEG4res opcbpush_deleg;
+ case OP_CB_RECALL_ANY: CB_RECALL_ANY4res opcbrecall_any;
+ case OP_CB_RECALLABLE_OBJ_AVAIL:
+                        CB_RECALLABLE_OBJ_AVAIL4res opcbrecallable_obj_avail;
  case OP_CB_SEQUENCE:   CB_SEQUENCE4res opcbsequence;
  case OP_CB_ILLEGAL:    CB_ILLEGAL4res  opcbillegal;
 };

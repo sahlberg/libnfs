@@ -4230,6 +4230,58 @@ zdr_CB_RECALL4res (ZDR *zdrs, CB_RECALL4res *objp)
 }
 
 uint32_t
+zdr_CB_PUSH_DELEG4args (ZDR *zdrs, CB_PUSH_DELEG4args *objp)
+{
+	 if (!zdr_nfs_fh4 (zdrs, &objp->cpda_fh))
+		 return FALSE;
+	 if (!zdr_open_delegation4 (zdrs, &objp->cpda_delegation))
+		 return FALSE;
+	return TRUE;
+}
+
+uint32_t
+zdr_CB_PUSH_DELEG4res (ZDR *zdrs, CB_PUSH_DELEG4res *objp)
+{
+	 if (!zdr_nfsstat4 (zdrs, &objp->cpdr_status))
+		 return FALSE;
+	return TRUE;
+}
+
+uint32_t
+zdr_CB_RECALL_ANY4args (ZDR *zdrs, CB_RECALL_ANY4args *objp)
+{
+	 if (!zdr_uint32_t (zdrs, &objp->craa_objects_to_keep))
+		 return FALSE;
+	 if (!zdr_bitmap4 (zdrs, &objp->craa_type_mask))
+		 return FALSE;
+	return TRUE;
+}
+
+uint32_t
+zdr_CB_RECALL_ANY4res (ZDR *zdrs, CB_RECALL_ANY4res *objp)
+{
+	 if (!zdr_nfsstat4 (zdrs, &objp->crar_status))
+		 return FALSE;
+	return TRUE;
+}
+
+uint32_t
+zdr_CB_RECALLABLE_OBJ_AVAIL4args (ZDR *zdrs, CB_RECALLABLE_OBJ_AVAIL4args *objp)
+{
+	 if (!zdr_CB_RECALL_ANY4args (zdrs, objp))
+		 return FALSE;
+	return TRUE;
+}
+
+uint32_t
+zdr_CB_RECALLABLE_OBJ_AVAIL4res (ZDR *zdrs, CB_RECALLABLE_OBJ_AVAIL4res *objp)
+{
+	 if (!zdr_nfsstat4 (zdrs, &objp->croa_status))
+		 return FALSE;
+	return TRUE;
+}
+
+uint32_t
 zdr_referring_call4 (ZDR *zdrs, referring_call4 *objp)
 {
 	 if (!zdr_sequenceid4 (zdrs, &objp->rc_sequenceid))
@@ -4331,6 +4383,18 @@ zdr_nfs_cb_argop4 (ZDR *zdrs, nfs_cb_argop4 *objp)
 		 if (!zdr_CB_RECALL4args (zdrs, &objp->nfs_cb_argop4_u.opcbrecall))
 			 return FALSE;
 		break;
+	case OP_CB_PUSH_DELEG:
+		 if (!zdr_CB_PUSH_DELEG4args (zdrs, &objp->nfs_cb_argop4_u.opcbpush_deleg))
+			 return FALSE;
+		break;
+	case OP_CB_RECALL_ANY:
+		 if (!zdr_CB_RECALL_ANY4args (zdrs, &objp->nfs_cb_argop4_u.opcbrecall_any))
+			 return FALSE;
+		break;
+	case OP_CB_RECALLABLE_OBJ_AVAIL:
+		 if (!zdr_CB_RECALLABLE_OBJ_AVAIL4args (zdrs, &objp->nfs_cb_argop4_u.opcbrecallable_obj_avail))
+			 return FALSE;
+		break;
 	case OP_CB_SEQUENCE:
 		 if (!zdr_CB_SEQUENCE4args (zdrs, &objp->nfs_cb_argop4_u.opcbsequence))
 			 return FALSE;
@@ -4355,6 +4419,18 @@ zdr_nfs_cb_resop4 (ZDR *zdrs, nfs_cb_resop4 *objp)
 		break;
 	case OP_CB_RECALL:
 		 if (!zdr_CB_RECALL4res (zdrs, &objp->nfs_cb_resop4_u.opcbrecall))
+			 return FALSE;
+		break;
+	case OP_CB_PUSH_DELEG:
+		 if (!zdr_CB_PUSH_DELEG4res (zdrs, &objp->nfs_cb_resop4_u.opcbpush_deleg))
+			 return FALSE;
+		break;
+	case OP_CB_RECALL_ANY:
+		 if (!zdr_CB_RECALL_ANY4res (zdrs, &objp->nfs_cb_resop4_u.opcbrecall_any))
+			 return FALSE;
+		break;
+	case OP_CB_RECALLABLE_OBJ_AVAIL:
+		 if (!zdr_CB_RECALLABLE_OBJ_AVAIL4res (zdrs, &objp->nfs_cb_resop4_u.opcbrecallable_obj_avail))
 			 return FALSE;
 		break;
 	case OP_CB_SEQUENCE:
