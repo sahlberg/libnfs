@@ -34,7 +34,7 @@ static struct rpc_context *rpc;
 static int peer;
 static uint32_t minorversion;
 static sessionid4 session = { 7 };
-static int handler_calls, handler_op;
+static int handler_calls, handler_op, handler_ops[8];
 static nfsstat4 handler_status;
 static int fore_calls, fore_status;
 
@@ -47,10 +47,34 @@ static void handler(struct rpc_context *r, struct nfs_cb_argop4 *arg,
         CHECK(res->nfs_cb_resop4_u.opcbrecall.status == NFS4ERR_NOTSUPP);
         handler_calls++;
         handler_op = arg->argop;
-        if (arg->argop == OP_CB_RECALL) {
+        switch (arg->argop) {
+        case OP_CB_RECALL:
                 CHECK(arg->nfs_cb_argop4_u.opcbrecall.stateid.seqid == 42);
                 CHECK(arg->nfs_cb_argop4_u.opcbrecall.fh.nfs_fh4_len == 3);
+                break;
+        case OP_CB_PUSH_DELEG: {
+                CB_PUSH_DELEG4args *a = &arg->nfs_cb_argop4_u.opcbpush_deleg;
+
+                CHECK(a->cpda_fh.nfs_fh4_len == 3);
+                CHECK(!memcmp(a->cpda_fh.nfs_fh4_val, "abc", 3));
+                CHECK(a->cpda_delegation.delegation_type == OPEN_DELEGATE_READ);
+                CHECK(a->cpda_delegation.open_delegation4_u.read.stateid.seqid == 9);
+                break;
         }
+        case OP_CB_RECALL_ANY:
+        case OP_CB_RECALLABLE_OBJ_AVAIL: {
+                CB_RECALL_ANY4args *a = &arg->nfs_cb_argop4_u.opcbrecall_any;
+
+                CHECK(a->craa_objects_to_keep == 2);
+                CHECK(a->craa_type_mask.bitmap4_len == 1);
+                CHECK(a->craa_type_mask.bitmap4_val[0] ==
+                      (1 << RCA4_TYPE_MASK_RDATA_DLG));
+                break;
+        }
+        default:
+                CHECK(0);
+        }
+        handler_ops[handler_calls - 1] = arg->argop;
         res->nfs_cb_resop4_u.opcbrecall.status = handler_status;
 }
 
@@ -468,6 +492,64 @@ static void test_calls(void)
         teardown();
 }
 
+/* The delegation callbacks reach the handler with their arguments. */
+static void test_delegation_ops(void)
+{
+        static const uint32_t ops[] = {
+                OP_CB_SEQUENCE, OP_CB_PUSH_DELEG, OP_CB_RECALL_ANY,
+                OP_CB_RECALLABLE_OBJ_AVAIL
+        };
+        uint32_t ident = 1, n = 4, mask = 1 << RCA4_TYPE_MASK_RDATA_DLG, i, len;
+        utf8str_cs tag = { 0, NULL };
+        nfs_cb_argop4 arg;
+        struct cb_res res;
+        char body[1024];
+        ZDR zdr;
+
+        setup(2);
+        zdrmem_create(&zdr, body, sizeof(body), ZDR_ENCODE);
+        CHECK(zdr_utf8str_cs(&zdr, &tag));
+        CHECK(zdr_uint32_t(&zdr, &minorversion));
+        CHECK(zdr_uint32_t(&zdr, &ident));
+        CHECK(zdr_uint32_t(&zdr, &n));
+        for (i = 0; i < n; i++) {
+                memset(&arg, 0, sizeof(arg));
+                arg.argop = ops[i];
+                switch (ops[i]) {
+                case OP_CB_SEQUENCE:
+                        memcpy(arg.nfs_cb_argop4_u.opcbsequence.csa_sessionid,
+                               session, sizeof(sessionid4));
+                        arg.nfs_cb_argop4_u.opcbsequence.csa_sequenceid = 1;
+                        break;
+                case OP_CB_PUSH_DELEG:
+                        arg.nfs_cb_argop4_u.opcbpush_deleg.cpda_fh.nfs_fh4_val = "abc";
+                        arg.nfs_cb_argop4_u.opcbpush_deleg.cpda_fh.nfs_fh4_len = 3;
+                        arg.nfs_cb_argop4_u.opcbpush_deleg.cpda_delegation.delegation_type =
+                                OPEN_DELEGATE_READ;
+                        arg.nfs_cb_argop4_u.opcbpush_deleg.cpda_delegation.open_delegation4_u.read.stateid.seqid = 9;
+                        break;
+                default:
+                        arg.nfs_cb_argop4_u.opcbrecall_any.craa_objects_to_keep = 2;
+                        arg.nfs_cb_argop4_u.opcbrecall_any.craa_type_mask.bitmap4_len = 1;
+                        arg.nfs_cb_argop4_u.opcbrecall_any.craa_type_mask.bitmap4_val = &mask;
+                }
+                CHECK(zdr_nfs_cb_argop4(&zdr, &arg));
+        }
+        len = zdr_getpos(&zdr);
+        zdr_destroy(&zdr);
+
+        send_call(0x400, NFS4_CALLBACK, NFS_CB, CB_COMPOUND, body, len, 0);
+        service();
+        CHECK(read_reply(0x400, &res, NULL, NULL) == SUCCESS);
+        CHECK(res.status == NFS4_OK && res.nres == 4);
+        CHECK(handler_calls == 3);
+        for (i = 1; i < n; i++) {
+                CHECK(handler_ops[i - 1] == (int)ops[i]);
+                CHECK(res.resop[i] == ops[i] && res.opstatus[i] == NFS4_OK);
+        }
+        teardown();
+}
+
 /* A call whose xid is the same as one of our outstanding requests. */
 static void test_xid_collision(void)
 {
@@ -528,6 +610,7 @@ int main(void)
 {
         for (minorversion = 1; minorversion <= 2; minorversion++) {
                 test_calls();
+                test_delegation_ops();
                 test_xid_collision();
                 test_reply_jumps_queue();
         }

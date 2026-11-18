@@ -101,9 +101,17 @@ default. Enable it before the session is created, i.e. before nfs_mount():
     rpc_nfs4_enable_backchannel(nfs_get_rpc_context(nfs), my_cb, my_data);
 
 libnfs answers CB_NULL and CB_SEQUENCE, including replays, itself. my_cb is
-called for each other operation in a CB_COMPOUND, with the result preset to
-NFS4ERR_NOTSUPP, and sets the result. rpc_nfs4_backchannel_is_up() says
-whether the server accepted the back channel.
+called for CB_GETATTR, CB_RECALL, CB_PUSH_DELEG, CB_RECALL_ANY and
+CB_RECALLABLE_OBJ_AVAIL, with the result preset to NFS4ERR_NOTSUPP, and sets
+the result. Other operations get NFS4ERR_NOTSUPP. rpc_nfs4_backchannel_is_up()
+says whether the server accepted the back channel.
+
+To ask for a delegation, send OPEN with the OPEN4_SHARE_ACCESS_WANT_* flags,
+or WANT_DELEGATION, through rpc_nfs4_compound_task(). A server that has none
+to give may push one later with CB_PUSH_DELEG, if the OPEN had
+OPEN4_SHARE_ACCESS_WANT_PUSH_DELEG_WHEN_UNCONTENDED, or say with
+CB_RECALLABLE_OBJ_AVAIL that it is worth asking again, if it had
+OPEN4_SHARE_ACCESS_WANT_SIGNAL_DELEG_WHEN_RESRC_AVAIL.
 
 Restrictions:
 - NFSv4.1 and NFSv4.2 only. NFSv4.0 callbacks would need the client to accept

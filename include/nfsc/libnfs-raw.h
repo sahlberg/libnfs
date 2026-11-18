@@ -3000,9 +3000,10 @@ rpc_nfs4_compound_task2(struct rpc_context *rpc, rpc_cb cb,
  *
  * rpc_nfs4_enable_backchannel() asks for a back channel when the session is
  * next created, so call it before nfs_mount(). The server's CB_NULL and
- * CB_SEQUENCE are handled by libnfs. fn is called for every other operation
- * in a CB_COMPOUND, from the thread that services the context, with res
- * already set to NFS4ERR_NOTSUPP. Set res to the result before returning;
+ * CB_SEQUENCE are handled by libnfs. fn is called for CB_GETATTR, CB_RECALL,
+ * CB_PUSH_DELEG, CB_RECALL_ANY and CB_RECALLABLE_OBJ_AVAIL, from the thread
+ * that services the context, with res already set to NFS4ERR_NOTSUPP; other
+ * operations get NFS4ERR_NOTSUPP. Set res to the result before returning;
  * arg and res are only valid during the call. Processing of the CB_COMPOUND
  * stops at the first operation that does not return NFS4_OK.
  *

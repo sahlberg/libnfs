@@ -971,6 +971,21 @@ nfs4_cb_is_op(uint32_t op, uint32_t minorversion)
         return op >= OP_CB_GETATTR && op <= (minorversion >= 2 ? 15 : 14);
 }
 
+/* The ops we decode and hand to the application. */
+static int
+nfs4_cb_app_op(uint32_t op)
+{
+        switch (op) {
+        case OP_CB_GETATTR:
+        case OP_CB_RECALL:
+        case OP_CB_PUSH_DELEG:
+        case OP_CB_RECALL_ANY:
+        case OP_CB_RECALLABLE_OBJ_AVAIL:
+                return 1;
+        }
+        return 0;
+}
+
 static uint32_t
 zdr_nfs4_cb_reply(ZDR *zdrs, struct nfs4_cb_reply *r)
 {
@@ -984,21 +999,16 @@ zdr_nfs4_cb_reply(ZDR *zdrs, struct nfs4_cb_reply *r)
         for (i = 0; i < r->nres; i++) {
                 nfs_cb_resop4 *res = &r->res[i];
 
-                switch (res->resop) {
-                case OP_CB_GETATTR:
-                case OP_CB_RECALL:
-                case OP_CB_SEQUENCE:
-                case OP_CB_ILLEGAL:
+                if (nfs4_cb_app_op(res->resop) ||
+                    res->resop == OP_CB_SEQUENCE ||
+                    res->resop == OP_CB_ILLEGAL) {
                         if (!zdr_nfs_cb_resop4(zdrs, res)) {
                                 return FALSE;
                         }
-                        break;
-                default:
+                } else if (!zdr_uint32_t(zdrs, &res->resop) ||
+                           !zdr_nfsstat4(zdrs, &res->nfs_cb_resop4_u.opcbillegal.status)) {
                         /* Only failures for ops we do not decode. */
-                        if (!zdr_uint32_t(zdrs, &res->resop) ||
-                            !zdr_nfsstat4(zdrs, &res->nfs_cb_resop4_u.opcbillegal.status)) {
-                                return FALSE;
-                        }
+                        return FALSE;
                 }
         }
         return TRUE;
@@ -1065,7 +1075,7 @@ nfs4_cb_compound(struct rpc_context *rpc, ZDR *zdr, uint32_t xid)
 {
         struct nfs4_cb_reply r;
         nfs_cb_argop4 arg;
-        uint32_t minorversion, ident, nops, i;
+        uint32_t minorversion, ident, nops, i, pos;
         int new_request = 0, ret;
         char *buf;
         ZDR out;
@@ -1090,6 +1100,7 @@ nfs4_cb_compound(struct rpc_context *rpc, ZDR *zdr, uint32_t xid)
                 nfs_cb_resop4 *res = &r.res[i];
 
                 memset(&arg, 0, sizeof(arg));
+                pos = zdr_getpos(zdr);
                 if (!zdr_uint32_t(zdr, &arg.argop)) {
                         return rpc_send_cb_reply(rpc, xid, GARBAGE_ARGS,
                                                  NULL, NULL, 0);
@@ -1117,10 +1128,9 @@ nfs4_cb_compound(struct rpc_context *rpc, ZDR *zdr, uint32_t xid)
                         }
                         new_request = ret == 1;
                         r.status = res->nfs_cb_resop4_u.opcbsequence.csr_status;
-                } else if (arg.argop == OP_CB_GETATTR || arg.argop == OP_CB_RECALL) {
-                        if (arg.argop == OP_CB_GETATTR ?
-                            !zdr_CB_GETATTR4args(zdr, &arg.nfs_cb_argop4_u.opcbgetattr) :
-                            !zdr_CB_RECALL4args(zdr, &arg.nfs_cb_argop4_u.opcbrecall)) {
+                } else if (nfs4_cb_app_op(arg.argop)) {
+                        zdr_setpos(zdr, pos);
+                        if (!zdr_nfs_cb_argop4(zdr, &arg)) {
                                 return rpc_send_cb_reply(rpc, xid, GARBAGE_ARGS,
                                                          NULL, NULL, 0);
                         }
