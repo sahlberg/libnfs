@@ -145,6 +145,25 @@ struct NLM4_GRANTEDres {
 	nlmstat4 status;
 };
 
+struct NLM4_SHAREargs {
+	nlm_cookie cookie;
+	nlm4_share share;
+	bool reclaim;
+};
+typedef NLM4_SHAREargs NLM4_UNSHAREargs;
+
+struct NLM4_SHAREres {
+	nlm_cookie cookie;
+	nlmstat4 status;
+	int32_t sequence;
+};
+
+struct NLM4_UNSHAREres {
+	nlm_cookie cookie;
+	nlmstat4 status;
+	int32_t sequence;
+};
+
 program NLM_PROGRAM {
 	version NLM_V4 {
 		void
@@ -195,11 +214,11 @@ program NLM_PROGRAM {
 		void
 		NLM4_GRANT_RES(NLM4_GRANTEDres)      = 15;
 
-/*		nlm4_shareres			*/
-/*		NLM4_SHARE(nlm4_shareargs)      = 20;	*/
+		NLM4_SHAREres
+		NLM4_SHARE(NLM4_SHAREargs)      = 20;
 
-/*		nlm4_shareres			*/
-/*		NLM4_UNSHARE(nlm4_shareargs)    = 21;	*/
+		NLM4_UNSHAREres
+		NLM4_UNSHARE(NLM4_UNSHAREargs)  = 21;
 
 /*		nlm4_res			*/
 /*		NLM4_NM_LOCK(nlm4_lockargs)     = 22;	*/
