@@ -232,6 +232,16 @@ void rpc_return_to_outqueue(struct rpc_context *rpc, struct rpc_pdu *pdu)
          */
         pdu->out.num_done = 0;
         rpc_reset_cursor(rpc, &pdu->in);
+
+        /* Forget a zero-copy reply that was cut off */
+        if (pdu->free_zdr) {
+                zdr_destroy(&pdu->zdr);
+                pdu->free_zdr = 0;
+        }
+        pdu->free_pdu = 0;
+        pdu->zero_copy_error = NULL;
+        pdu->read_count = 0;
+        pdu->zdr_decode_buf = NULL;
 }
 
 /*
@@ -1077,6 +1087,8 @@ static int rpc_process_reply(struct rpc_context *rpc, ZDR *zdr)
 	msg.body.rbody.reply.areply.verf = libnfs_null_auth;
 	if (pdu->zdr_decode_bufsize > 0) {
 		pdu->zdr_decode_buf = (char *)pdu + PAD_TO_8_BYTES(sizeof(struct rpc_pdu));
+		/* zdr_bytes() copies into a buffer it finds already set */
+		memset(pdu->zdr_decode_buf, 0, pdu->zdr_decode_bufsize);
 	}
 	msg.body.rbody.reply.areply.reply_data.results.where = pdu->zdr_decode_buf;
 	msg.body.rbody.reply.areply.reply_data.results.proc  = pdu->zdr_decode_fn;

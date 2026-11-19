@@ -70,6 +70,9 @@ TESTS += prog_nfs3_read_reply
 check_PROGRAMS += prog_reading_pdu
 TESTS += prog_reading_pdu
 
+check_PROGRAMS += prog_read_reconnect
+TESTS += prog_read_reconnect
+
 check_PROGRAMS += prog_close_handle
 TESTS += prog_close_handle
 prog_close_handle_CPPFLAGS = $(AM_CPPFLAGS) -I$(srcdir)/../mount -I$(srcdir)/../portmap
