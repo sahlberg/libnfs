@@ -44,3 +44,5 @@ TESTS = prog_tls_reconnect
 
 check_PROGRAMS += prog_nfs3_read_reply
 TESTS += prog_nfs3_read_reply
+check_PROGRAMS += prog_read_reconnect
+TESTS += prog_read_reconnect
