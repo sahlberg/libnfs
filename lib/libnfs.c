@@ -509,12 +509,36 @@ tohex(char ch)
         return -1;
 }
 
+/* Undo %XX escapes in place; fails on an escaped NUL */
+static int
+nfs_url_unescape(struct nfs_context *nfs, char *str)
+{
+        char *r = str, *w = str;
+
+        while (str && *r) {
+                if (r[0] == '%' && tohex(r[1]) >= 0 && tohex(r[2]) >= 0) {
+                        *w = (char)((tohex(r[1]) << 4) | tohex(r[2]));
+                        if (*w == 0) {
+                                nfs_set_error(nfs, "Invalid URL: escaped NUL");
+                                return -1;
+                        }
+                        w++;
+                        r += 3;
+                } else {
+                        *w++ = *r++;
+                }
+        }
+        if (str) {
+                *w = 0;
+        }
+        return 0;
+}
+
 static struct nfs_url *
 nfs_parse_url(struct nfs_context *nfs, const char *url, int dir, int incomplete)
 {
 	struct nfs_url *urls;
-	char *strp, *flagsp, *strp2, ch, *original_server, *port_str, *slash_pos, *end_ptr;
-        int tmp;
+	char *strp, *flagsp, *strp2, *original_server, *port_str, *slash_pos, *end_ptr;
         size_t port_len;
 
 	if (strncmp(url, "nfs://", 6)) {
@@ -535,30 +559,6 @@ nfs_parse_url(struct nfs_context *nfs, const char *url, int dir, int incomplete)
 		return NULL;
 	}
 
-        /* unescape all % hex hex characters */
-        strp = urls->server;
-        while (strp && *strp) {
-                strp = strchr(strp, '%');
-                if (strp == NULL) {
-                        break;
-                }
-                tmp = tohex(strp[1]);
-                if (tmp < 0) {
-                        strp++;
-                        continue;
-                }
-                ch = (tmp & 0x0f) << 4;
-                tmp = tohex(strp[2]);
-                if (tmp < 0) {
-                        strp++;
-                        continue;
-                }
-                ch |= tmp & 0x0f;
-                *strp = ch;
-                memmove(strp + 1, strp + 3, strlen(strp + 3) + 1);
-                strp++;
-        }
-
 	if (urls->server[0] == '/' || urls->server[0] == '\0' ||
 		urls->server[0] == '?') {
 		if (incomplete) {
@@ -570,7 +570,12 @@ nfs_parse_url(struct nfs_context *nfs, const char *url, int dir, int incomplete)
 		return NULL;
 	}
 
+	/* A port can only follow the host, not appear in the path */
 	strp = strchr(urls->server, ':');
+	slash_pos = strchr(urls->server, '/');
+	if (strp && slash_pos && strp > slash_pos) {
+		strp = NULL;
+	}
         if (strp) {
                 strp++;
                 slash_pos = strchr(strp, '/');
@@ -677,12 +682,18 @@ flags:
 		if (strp2) {
 			*strp2 = 0;
 			strp2++;
+			if (nfs_url_unescape(nfs, strp) ||
+			    nfs_url_unescape(nfs, strp2)) {
+                                nfs_destroy_url(urls);
+				return NULL;
+			}
 			if (nfs_set_context_args(nfs, strp, strp2) != 0) {
                                 nfs_destroy_url(urls);
 				return NULL;
                         }
 		} else {
-			if (nfs_set_context_args_no_val(nfs, strp) != 0) {
+			if (nfs_url_unescape(nfs, strp) ||
+			    nfs_set_context_args_no_val(nfs, strp) != 0) {
                                 nfs_destroy_url(urls);
 				return NULL;
                         }
@@ -692,7 +703,8 @@ flags:
         strp =strchr(urls->server, '@');
         if (strp && nfs->rpc) {
                 *strp++ = '\0';
-                if (rpc_set_username(nfs->rpc, urls->server) != 0) {
+                if (nfs_url_unescape(nfs, urls->server) ||
+                    rpc_set_username(nfs->rpc, urls->server) != 0) {
                         nfs_destroy_url(urls);
                         return NULL;
                 }
@@ -708,6 +720,12 @@ flags:
 		}
                 free(original_server);
         }
+	if (nfs_url_unescape(nfs, urls->server) ||
+	    nfs_url_unescape(nfs, urls->path) ||
+	    nfs_url_unescape(nfs, urls->file)) {
+		nfs_destroy_url(urls);
+		return NULL;
+	}
 	if (urls->server && strlen(urls->server) <= 1) {
 		free(urls->server);
 		urls->server = NULL;
