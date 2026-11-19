@@ -119,6 +119,7 @@ typedef int (*op_filler)(struct nfs4_cb_data *data, nfs_argop4 *op);
 
 struct lookup_link_data {
         unsigned int idx;
+        unsigned int count;
 };
 
 typedef void (*blob_free)(void *);
@@ -1254,6 +1255,19 @@ nfs4_lookup_path_async(struct nfs_context *nfs,
                        struct nfs4_cb_data *data,
                        rpc_cb cb);
 
+/* Fails and completes data once a lookup has followed too many symlinks */
+static int
+nfs4_follow_link(struct nfs_context *nfs, struct nfs4_cb_data *data)
+{
+        if (data->link.count++ < MAX_LINK_COUNT) {
+                return 0;
+        }
+        nfs_set_error(nfs, "Too many levels of symbolic links");
+        data->cb(-ELOOP, nfs, nfs_get_error(nfs), data->private_data);
+        free_nfs4_cb_data(data);
+        return -1;
+}
+
 static void
 nfs4_lookup_path_2_cb(struct rpc_context *rpc, int status, void *command_data,
                 void *private_data)
@@ -1268,6 +1282,9 @@ nfs4_lookup_path_2_cb(struct rpc_context *rpc, int status, void *command_data,
         assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
         if (check_nfs4_error(nfs, status, data, res, "READLINK")) {
+                return;
+        }
+        if (nfs4_follow_link(nfs, data) < 0) {
                 return;
         }
 
@@ -1329,7 +1346,7 @@ nfs4_lookup_path_2_cb(struct rpc_context *rpc, int status, void *command_data,
         data->path = tmp;
 
         if (nfs4_lookup_path_async(nfs, data, data->continue_cb) < 0) {
-                data->cb(-ENOMEM, nfs, res, data->private_data);
+                data->cb(-ENOMEM, nfs, nfs_get_error(nfs), data->private_data);
                 free_nfs4_cb_data(data);
                 return;
         }
@@ -2535,6 +2552,9 @@ nfs4_open_readlink_cb(struct rpc_context *rpc, int status, void *command_data,
         assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
         if (check_nfs4_error(nfs, status, data, res, "READLINK")) {
+                return;
+        }
+        if (nfs4_follow_link(nfs, data) < 0) {
                 return;
         }
 
