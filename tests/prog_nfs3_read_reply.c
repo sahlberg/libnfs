@@ -144,6 +144,21 @@ int main(void)
                 CHECK(buf[i] == 0x55);
         }
 
+        /* A reply short of the data it declares, then the next record. */
+        send_read(rpc, sv[1], ok[0] = 0x1005);
+        len = build(msg, ok, 11, 100, 0x41);
+        ok[0] = 0x1006;
+        len += build(msg + len, ok, 11, BUFLEN, 0x42);
+        calls = 0;
+        memset(buf, 0, sizeof(buf));
+        CHECK(write(sv[1], msg, len) == (ssize_t)len);
+        rpc_service(rpc, POLLIN);
+        CHECK(calls == 1);
+        CHECK(last_status == RPC_STATUS_ERROR);
+        for (i = 100; i < BUFLEN; i++) {
+                CHECK(buf[i] == 0);
+        }
+
         rpc_destroy_context(rpc);
         close(sv[1]);
         return 0;

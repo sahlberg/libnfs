@@ -1411,6 +1411,13 @@ rpc_read_from_socket(struct rpc_context *rpc)
                                                 rpc_free_all_fragments(rpc);
                                                 return -1;
                                         } else {
+                                                if (rpc->pdu->read_count - count >
+                                                    rpc->rm_xid[0] - (pos + count)) {
+                                                        rpc_set_error(rpc, "READ reply declares "
+                                                                      "more data than its "
+                                                                      "record holds");
+                                                        return -1;
+                                                }
                                                 rpc->pdu->read_count -= count;
                                                 rpc->state = READ_IOVEC;
                                                 rpc->inpos  = 0;
