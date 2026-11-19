@@ -144,12 +144,11 @@ static void do_accept(struct tevent_context *ev, struct tevent_fd *fde, uint16_t
         struct libnfs_server *server;
         int i, fd;
 
-        server = talloc(servers, struct libnfs_server);
+        server = talloc_zero(servers, struct libnfs_server);
         if (server == NULL) {
                 return;
         }
         talloc_set_destructor(server, server_destructor);
-        server->tfd = NULL;
 
         if ((fd = accept4(servers->listen_fd, (struct sockaddr *)&ss, &len, SOCK_NONBLOCK | SOCK_CLOEXEC)) < 0) {
                 printf("Failed to accept incoming connection\n");
@@ -327,7 +326,6 @@ struct ev_data {
 static void _pmap4_set_cb(struct rpc_context *rpc, int status, void *data, void *private_data)
 {
         struct ev_data *evd = private_data;
-	uint32_t res = *(uint32_t *)data;
 
         if (status != RPC_STATUS_SUCCESS) {
                 evd->status = -1;

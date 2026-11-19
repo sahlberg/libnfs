@@ -134,7 +134,7 @@ static char *client_address(struct rpc_context *rpc)
         if (rpc_is_udp_socket(rpc)) {
                 ss = (struct sockaddr_storage *)rpc_get_udp_src_sockaddr(rpc);
         } else {
-                socklen_t ss_len;
+                socklen_t ss_len = sizeof(tcp_ss);
 
                 if (getpeername(rpc_get_fd(rpc), (struct sockaddr *)&tcp_ss, &ss_len)) {
                         return NULL;
@@ -158,7 +158,7 @@ static int mount3_mnt_proc(struct rpc_context *rpc, struct rpc_msg *call, void *
         struct mountd_state *mountd = (struct mountd_state *)opaque;
         MOUNT3MNTargs *args = call->body.cbody.args;
         MOUNT3MNTres res;
-        struct mountd_client *client;
+        struct mountd_client *client, *c;
         struct mountd_export *e;
         int rc;
         uint32_t auth_flavors[] = { AUTH_UNIX };
@@ -199,9 +199,17 @@ static int mount3_mnt_proc(struct rpc_context *rpc, struct rpc_msg *call, void *
         }
 
         pthread_mutex_lock(&mountd->clients_mutex);
-        LIST_ADD(&mountd->clients, client, next);
+        for (c = mountd->clients; c; c = c->next) {
+                if (!strcmp(c->client, client->client) &&
+                    !strcmp(c->path, client->path)) {
+                        break;
+                }
+        }
+        if (c == NULL) {
+                LIST_ADD(&mountd->clients, client, next);
+                client = NULL;
+        }
         pthread_mutex_unlock(&mountd->clients_mutex);
-        client = NULL;
         res.fhs_status = MNT3_OK;
         res.mountres3_u.mountinfo.fhandle.fhandle3_len = e->fh.data.data_len;
         res.mountres3_u.mountinfo.fhandle.fhandle3_val = e->fh.data.data_val;
@@ -244,9 +252,8 @@ static int mount3_umnt_proc(struct rpc_context *rpc, struct rpc_msg *call, void 
 static int mount3_umntall_proc(struct rpc_context *rpc, struct rpc_msg *call, void *opaque)
 {
         struct mountd_state *mountd = (struct mountd_state *)opaque;
-        struct mountd_client *c, *nl = NULL;
+        struct mountd_client *c, *n;
         char *addr;
-        int rc;
         
         addr = client_address(rpc);
         if (addr == NULL) {
@@ -254,16 +261,14 @@ static int mount3_umntall_proc(struct rpc_context *rpc, struct rpc_msg *call, vo
         }
         
         pthread_mutex_lock(&mountd->clients_mutex);
-        for (c = mountd->clients; c; c = c->next) {
-                LIST_REMOVE(&mountd->clients, c, next);
+        for (c = mountd->clients; c; c = n) {
+                n = c->next;
                 if (!strcmp(c->client, addr)) {
+                        LIST_REMOVE(&mountd->clients, c, next);
                         talloc_free(c);
-                        continue;
                 }
-                LIST_ADD(&nl, c, next);
         }
         pthread_mutex_unlock(&mountd->clients_mutex);
-        mountd->clients = nl;
         return rpc_send_reply(rpc, call, NULL, (zdrproc_t)zdr_void, 0);
 }
 
@@ -274,7 +279,7 @@ static int mount3_dump_proc(struct rpc_context *rpc, struct rpc_msg *call, void 
         TALLOC_CTX *tmp_ctx;
         MOUNT3DUMPres *res = NULL, *tmp;
         struct mountd_client *c;
-        int rc;
+        int rc = -1;
 
         tmp_ctx = talloc_new(NULL);
         if (tmp_ctx == NULL) {
