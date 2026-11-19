@@ -25,6 +25,15 @@ def u32(*v):
     return struct.pack(">%dI" % len(v), *v)
 
 
+def u64(v):
+    return struct.pack(">Q", v)
+
+
+def opaque(b):
+    """XDR variable-length opaque / string: length, bytes, pad to 4."""
+    return u32(len(b)) + b + bytes(-len(b) % 4)
+
+
 def record(msg):
     """One record-marked message, sent as a single last fragment."""
     return u32(0x80000000 | len(msg)) + msg
@@ -95,8 +104,77 @@ def reply_stream_seeds():
     return seeds
 
 
+def server_call_seeds():
+    """libnfs_rpc_server_call_fuzzer: [chunk][stream of CALLs]."""
+    none = u32(0, 0)  # AUTH_NONE, length 0
+    # AUTH_UNIX: flavor 1, body = stamp, machine name, uid, gid, 1 aux gid
+    unix = u32(1) + opaque(u32(0) + opaque(b"fuzz") + u32(1000, 1000, 1, 1000))
+
+    def call(prog, vers, proc, args=b"", cred=none, xid=XID, rpcvers=2):
+        return u32(xid, 0, rpcvers, prog, vers, proc) + cred + none + args
+
+    NFS, MNT, PMAP, NLM = 100003, 100005, 100000, 100021
+    RQ, NSM, ACL = 100011, 100024, 100227
+    fh = opaque(FH)
+    sattr = u32(1, 0o644, 0, 0, 0, 0, 0)  # sattr3: set mode only
+    lock = (opaque(b"client") + fh + opaque(b"owner") + u32(1) + u64(0)
+            + u64(100))
+    # PUTROOTFH, GETATTR
+    compound = opaque(b"") + u32(0, 2) + u32(24) + u32(9, 1, 0x0010011a)
+    calls = {
+        "nfs3_null": call(NFS, 3, 0),
+        "nfs3_getattr": call(NFS, 3, 1, fh),
+        "nfs3_getattr_unix": call(NFS, 3, 1, fh, cred=unix),
+        "nfs3_setattr": call(NFS, 3, 2, fh + sattr + u32(0)),
+        "nfs3_lookup": call(NFS, 3, 3, fh + opaque(b"name")),
+        "nfs3_access": call(NFS, 3, 4, fh + u32(0x3f)),
+        "nfs3_read": call(NFS, 3, 6, fh + u64(0) + u32(4096)),
+        "nfs3_write": call(NFS, 3, 7,
+                           fh + u64(0) + u32(5, 2) + opaque(b"hello")),
+        "nfs3_create": call(NFS, 3, 8, fh + opaque(b"f") + u32(0) + sattr),
+        "nfs3_rename": call(NFS, 3, 14, fh + opaque(b"a") + fh + opaque(b"b")),
+        "nfs3_readdirplus": call(NFS, 3, 17,
+                                 fh + u64(0) + bytes(8) + u32(4096, 8192)),
+        "nfs3_commit": call(NFS, 3, 21, fh + u64(0) + u32(0)),
+        "nfs2_getattr": call(NFS, 2, 1, bytes(32)),
+        "nfs4_compound": call(NFS, 4, 1, compound),
+        "nfsacl_getacl": call(ACL, 3, 1, fh + u32(0xf)),
+        "mnt3_mnt": call(MNT, 3, 1, opaque(b"/export")),
+        "mnt3_export": call(MNT, 3, 5),
+        "mnt1_umnt": call(MNT, 1, 3, opaque(b"/export")),
+        "pmap2_getport": call(PMAP, 2, 3, u32(NFS, 3, 6, 0)),
+        "pmap2_callit": call(PMAP, 2, 5, u32(NFS, 3, 0) + opaque(b"")),
+        "pmap3_getaddr": call(PMAP, 3, 3, u32(NFS, 3) + opaque(b"tcp")
+                              + opaque(b"") + opaque(b"")),
+        "pmap4_getversaddr": call(PMAP, 4, 9, u32(NFS, 3) + opaque(b"tcp")
+                                  + opaque(b"") + opaque(b"")),
+        "nlm4_test": call(NLM, 4, 1, opaque(b"ck") + u32(1) + lock),
+        "nlm4_lock": call(NLM, 4, 2,
+                          opaque(b"ck") + u32(0, 1) + lock + u32(0, 1)),
+        "nsm1_stat": call(NSM, 1, 1, opaque(b"host")),
+        "rquota1_getquota": call(RQ, 1, 1, opaque(b"/export") + u32(1000)),
+        # error replies
+        "prog_mismatch": call(NFS, 5, 0),
+        "prog_unavail": call(123456, 1, 0),
+        "proc_unavail": call(NFS, 3, 99),
+        "rpc_mismatch": call(NFS, 3, 0, rpcvers=3),
+        "garbage_args": call(NFS, 3, 3, u32(64)),
+    }
+    # chunk 0: write all at once
+    seeds = {name: bytes([0]) + record(msg) for name, msg in calls.items()}
+    two = (record(call(NFS, 3, 1, fh))
+           + record(call(MNT, 3, 1, opaque(b"/x"), xid=2)))
+    seeds["two_calls"] = bytes([0]) + two
+    # 3-byte writes split every field
+    seeds["two_calls_chunk3"] = bytes([3]) + two
+    seeds["frag_lookup"] = bytes([0]) + fragments(
+        call(NFS, 3, 3, fh + opaque(b"name")), 20)
+    return seeds
+
+
 CORPORA = {
     "seeds_rpc_reply_stream": reply_stream_seeds,
+    "seeds_rpc_server_call": server_call_seeds,
 }
 
 
