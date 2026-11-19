@@ -55,5 +55,7 @@ check-local: prog_zdr_bytes_zero$(EXEEXT)
 check_PROGRAMS += prog_nfs3_read_reply
 TESTS += prog_nfs3_read_reply
 
+check_PROGRAMS += prog_read_reconnect
+TESTS += prog_read_reconnect
 check_PROGRAMS += prog_tls_reconnect
 TESTS += prog_tls_reconnect
