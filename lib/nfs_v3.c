@@ -4318,6 +4318,9 @@ nfs3_pwrite_mcb(struct rpc_context *rpc, int status, void *command_data,
 		} else  {
 			size_t count = res->WRITE3res_u.resok.count;
 
+			if (count > mdata->count) {
+				count = mdata->count;
+			}
 			if (count < mdata->count) {
 				if (count == 0) {
 					nfs_set_error(nfs, "NFS: Write failed. No bytes written!");
@@ -4523,7 +4526,7 @@ nfs3_pread_cb(struct rpc_context *rpc, int status, void *command_data,
 	struct nfs_cb_data *data = private_data;
 	struct nfs_context *nfs = data->nfs;
 	READ3res *res;
-	int count;
+	uint32_t count;
 
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
@@ -4542,13 +4545,12 @@ nfs3_pread_cb(struct rpc_context *rpc, int status, void *command_data,
 		return;
         }
 
-        count = (int)res->READ3res_u.resok.count;
-        if (data->update_pos) {
-                data->nfsfh->offset = data->offset + count;
-        }
-
+        count = res->READ3res_u.resok.data.data_len;
         if (count > rpc->pdu->requested_read_count) {
                 count = rpc->pdu->requested_read_count;
+        }
+        if (data->update_pos) {
+                data->nfsfh->offset = data->offset + count;
         }
 
 	data->cb(count, nfs, NULL, data->private_data);

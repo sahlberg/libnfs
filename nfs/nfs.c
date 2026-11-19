@@ -242,12 +242,19 @@ struct rpc_pdu *rpc_nfs3_access_task(struct rpc_context *rpc, rpc_cb cb,
 uint32_t
 zdr_READ3resok_zero_copy (ZDR *zdrs, READ3resok *objp)
 {
+        uint32_t pos;
+
         if (!zdr_post_op_attr (zdrs, &objp->file_attributes))
                 return FALSE;
         if (!zdr_count3 (zdrs, &objp->count))
                 return FALSE;
         if (!zdr_bool (zdrs, &objp->eof))
                 return FALSE;
+        /* Peek at the data length, the data itself goes to the caller's buffers */
+        pos = zdr_getpos(zdrs);
+        if (!zdr_uint32_t (zdrs, &objp->data.data_len))
+                return FALSE;
+        zdr_setpos(zdrs, pos);
 	return TRUE;
 }
 

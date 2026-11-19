@@ -158,6 +158,7 @@ struct lookup_filler {
 
 struct rw_data {
         uint64_t offset;
+        uint32_t count;
         int update_pos;
 };
 
@@ -3629,7 +3630,8 @@ nfs4_pread_cb(struct rpc_context *rpc, int status, void *command_data,
         COMPOUND4res *res = command_data;
         READ4resok *rres = NULL;
         struct nfsfh *nfsfh;
-        int i, count;
+        uint32_t count;
+        int i;
 
         assert(rpc->magic == RPC_CONTEXT_MAGIC);
 
@@ -3644,14 +3646,12 @@ nfs4_pread_cb(struct rpc_context *rpc, int status, void *command_data,
         }
         rres = &res->resarray.resarray_val[i].nfs_resop4_u.opread.READ4res_u.resok4;
 
-        if (data->rw_data.update_pos) {
-                nfsfh->offset = data->rw_data.offset + rres->data.data_len;
-        }
-
         count = rres->data.data_len;
-
         if (count > rpc->pdu->requested_read_count) {
                 count = rpc->pdu->requested_read_count;
+        }
+        if (data->rw_data.update_pos) {
+                nfsfh->offset = data->rw_data.offset + count;
         }
 
         data->cb(count, nfs, NULL, data->private_data);
@@ -3902,6 +3902,7 @@ nfs4_pwrite_cb(struct rpc_context *rpc, int status, void *command_data,
         COMPOUND4res *res = command_data;
         WRITE4resok *wres = NULL;
         struct nfsfh *nfsfh;
+        uint32_t count;
         int i;
 
         assert(rpc->magic == RPC_CONTEXT_MAGIC);
@@ -3917,11 +3918,15 @@ nfs4_pwrite_cb(struct rpc_context *rpc, int status, void *command_data,
         }
         wres = &res->resarray.resarray_val[i].nfs_resop4_u.opwrite.WRITE4res_u.resok4;
 
+        count = wres->count;
+        if (count > data->rw_data.count) {
+                count = data->rw_data.count;
+        }
         if (data->rw_data.update_pos) {
-                nfsfh->offset = data->rw_data.offset + wres->count;
+                nfsfh->offset = data->rw_data.offset + count;
         }
 
-        data->cb(wres->count, nfs, NULL, data->private_data);
+        data->cb(count, nfs, NULL, data->private_data);
         free_nfs4_cb_data(data);
 }
 
@@ -3949,6 +3954,7 @@ nfs4_pwrite_async_internal(struct nfs_context *nfs, struct nfsfh *nfsfh,
         data->filler.blob0.val  = nfsfh;
         data->filler.blob0.free = NULL;
         data->rw_data.offset = offset;
+        data->rw_data.count = (uint32_t)count;
         data->rw_data.update_pos = update_pos;
 
         memset(op, 0, sizeof(op));
