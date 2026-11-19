@@ -36,6 +36,7 @@
 #include <poll.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/socket.h>
 #include <sys/stat.h>
 #include <talloc.h>
 #include <tevent.h>
@@ -587,6 +588,36 @@ static int pmap2_dump_proc(struct rpc_context *rpc, struct rpc_msg *call, void *
 }
 
 
+/* Only local processes may change the registrations, as rpcbind(8) does */
+static int local_caller(struct rpc_context *rpc)
+{
+        struct sockaddr_storage tcp_ss, *ss;
+        socklen_t len = sizeof(tcp_ss);
+        const unsigned char *a;
+
+        if (rpc_is_udp_socket(rpc)) {
+                ss = (struct sockaddr_storage *)rpc_get_udp_src_sockaddr(rpc);
+        } else {
+                if (getpeername(rpc_get_fd(rpc), (struct sockaddr *)&tcp_ss, &len)) {
+                        return 0;
+                }
+                ss = &tcp_ss;
+        }
+        switch (ss->ss_family) {
+        case AF_UNIX:
+                return 1;
+        case AF_INET:
+                return (ntohl(((struct sockaddr_in *)ss)->sin_addr.s_addr) >> 24) == 127;
+        case AF_INET6:
+                a = ((struct sockaddr_in6 *)ss)->sin6_addr.s6_addr;
+                if (IN6_IS_ADDR_LOOPBACK(&((struct sockaddr_in6 *)ss)->sin6_addr)) {
+                        return 1;
+                }
+                return IN6_IS_ADDR_V4MAPPED(&((struct sockaddr_in6 *)ss)->sin6_addr) && a[12] == 127;
+        }
+        return 0;
+}
+
 /*
  * v2 SET
  * This procedure is used to register and endpoint with portmapper.
@@ -598,6 +629,12 @@ static int pmap2_set_proc(struct rpc_context *rpc, struct rpc_msg *call, void *o
         char *prot;
         char addr[24];
         uint32_t response = 1;
+
+        if (!local_caller(rpc)) {
+                response = 0;
+                rpc_send_reply(rpc, call, &response, (zdrproc_t)zdr_uint32_t, sizeof(uint32_t));
+                return 0;
+        }
 
         if (args->prot == IPPROTO_TCP) {
                 prot = "tcp";
@@ -639,6 +676,12 @@ static int pmap2_unset_proc(struct rpc_context *rpc, struct rpc_msg *call, void 
         char *prot;
         char *addr;
         uint32_t response = 1;
+
+        if (!local_caller(rpc)) {
+                response = 0;
+                rpc_send_reply(rpc, call, &response, (zdrproc_t)zdr_uint32_t, sizeof(uint32_t));
+                return 0;
+        }
 
         if (args->prot == IPPROTO_TCP) {
                 prot = "tcp";
@@ -684,6 +727,12 @@ static int pmap3_set_proc(struct rpc_context *rpc, struct rpc_msg *call, void *o
         PMAP3UNSETargs *args = call->body.cbody.args;
         uint32_t response = 1;
 
+        if (!local_caller(rpc)) {
+                response = 0;
+                rpc_send_reply(rpc, call, &response, (zdrproc_t)zdr_uint32_t, sizeof(uint32_t));
+                return 0;
+        }
+
         /* Don't update if we already have a mapping */
         if (map_lookup(pmap, args->prog, args->vers, args->netid)) {
                 response = 0;
@@ -711,6 +760,12 @@ static int pmap3_unset_proc(struct rpc_context *rpc, struct rpc_msg *call, void 
         struct pmap_state *pmap = opaque;
         PMAP3UNSETargs *args = call->body.cbody.args;
         uint32_t response = 1;
+
+        if (!local_caller(rpc)) {
+                response = 0;
+                rpc_send_reply(rpc, call, &response, (zdrproc_t)zdr_uint32_t, sizeof(uint32_t));
+                return 0;
+        }
 
         map_remove(pmap, args->prog, args->vers, args->netid);
 
