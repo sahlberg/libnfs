@@ -31,9 +31,9 @@ libnfs_la_SOURCES = \
 	socket.c \
 	../win32/win32_compat.c
 
-SOCURRENT=18
+SOCURRENT=19
 SOREVISION=0
-SOAGE=0
+SOAGE=1
 libnfs_la_LDFLAGS = -version-info $(SOCURRENT):$(SOREVISION):$(SOAGE) \
 	$(MAYBE_LIBKRB5)
 if HAVE_WIN32
