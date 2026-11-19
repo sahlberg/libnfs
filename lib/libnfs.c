@@ -1237,6 +1237,14 @@ rpc_connect_program_3_cb(struct rpc_context *rpc, int status,
 		free_rpc_cb_data(data);
 		return;
 	}
+	if (rpc_port > 65535) {
+		rpc_set_error(rpc, "RPC error. Portmapper on %s returned "
+			      "invalid port %u", data->server, rpc_port);
+		data->cb(rpc, RPC_STATUS_ERROR, rpc_get_error(rpc),
+			 data->private_data);
+		free_rpc_cb_data(data);
+		return;
+	}
 
 	rpc_disconnect(rpc, "normal disconnect");
         rpc->program = data->program;

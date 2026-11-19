@@ -901,6 +901,11 @@ rpc_read_from_socket(struct rpc_context *rpc)
                                       strerror(errno));
 			return -1;
 		}
+		/* Too short to hold an xid */
+		if (count < 4) {
+			free(buf);
+			return 0;
+		}
 		if (!rpc->is_server_context) {
 			rpc->rm_xid[0] = count;
 			rpc->rm_xid[1] = ntohl(*(uint32_t *)(void *)&buf[0]);
