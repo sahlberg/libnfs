@@ -47,11 +47,12 @@ test: $(noinst_PROGRAMS)
 		echo; \
 	done
 
-noinst_PROGRAMS += prog_zdr_bytes_zero prog_zdr_maxsize
+noinst_PROGRAMS += prog_zdr_bytes_zero prog_zdr_maxsize prog_zdr_unaligned
 
-check-local: prog_zdr_bytes_zero$(EXEEXT) prog_zdr_maxsize$(EXEEXT)
+check-local: prog_zdr_bytes_zero$(EXEEXT) prog_zdr_maxsize$(EXEEXT) prog_zdr_unaligned$(EXEEXT)
 	./prog_zdr_bytes_zero$(EXEEXT)
 	./prog_zdr_maxsize$(EXEEXT)
+	./prog_zdr_unaligned$(EXEEXT)
 
 check_PROGRAMS += prog_service_error
 TESTS += prog_service_error

@@ -166,14 +166,8 @@ void libnfs_zdr_destroy(ZDR *zdrs)
 
 bool_t libnfs_zdr_u_int(ZDR *zdrs, uint32_t *u)
 {
-        /* zdrs->buf is guaranteed to be at least uint32_t aligned
-         * and zdrs->pos should always increment in multiples of 4
-         * as the ZDR atoms are uint32_t unless zdrs/zdrs->pos has become
-         * corrupted.
-         */
-        assert((zdrs->pos & 0x03) == 0);
-
-	if (zdrs->pos + 4 > zdrs->size) {
+        /* pos is unaligned only after pad4 clamped it to an unaligned size */
+	if ((zdrs->pos & 0x03) || zdrs->pos + 4 > zdrs->size) {
 		return FALSE;
 	}
 
@@ -198,7 +192,7 @@ bool_t libnfs_zdr_int(ZDR *zdrs, int32_t *i)
 
 bool_t libnfs_zdr_uint64_t(ZDR *zdrs, uint64_t *u)
 {
-	if (zdrs->pos + 8 > zdrs->size) {
+	if ((zdrs->pos & 0x03) || zdrs->pos + 8 > zdrs->size) {
 		return FALSE;
 	}
 

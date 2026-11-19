@@ -75,6 +75,10 @@ add_executable(prog_zdr_maxsize prog_zdr_maxsize.c)
 target_link_libraries(prog_zdr_maxsize nfs)
 add_test(NAME zdr_maxsize COMMAND prog_zdr_maxsize)
 
+add_executable(prog_zdr_unaligned prog_zdr_unaligned.c)
+target_link_libraries(prog_zdr_unaligned nfs)
+add_test(NAME zdr_unaligned COMMAND prog_zdr_unaligned)
+
 add_executable(prog_service_error prog_service_error.c)
 target_link_libraries(prog_service_error nfs)
 add_test(NAME prog_service_error COMMAND prog_service_error)
