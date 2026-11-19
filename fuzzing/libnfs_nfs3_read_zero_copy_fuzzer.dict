@@ -1,0 +1,8 @@
+# XID used by the fuzzer, record marker last-fragment bit, REPLY, zero,
+# a 1 KiB READ count, large length.
+"\x11\x22\x33\x44"
+"\x80\x00\x00\x00"
+"\x00\x00\x00\x01"
+"\x00\x00\x00\x00"
+"\x00\x00\x04\x00"
+"\x7f\xff\xff\xff"
