@@ -44,13 +44,17 @@ same way they would from a real peer:
   (rpc_init_server_context). The NFS, mount, portmap, NLM, NSM, rquota and
   NFSACL programs are registered, and the input is the client's stream of
   CALLs.
+- libnfs_nfs3_read_zero_copy_fuzzer: the client zero-copy READ path
+  (rpc_nfs3_readv_task), where the reply data is placed straight into the
+  caller's iovecs. The input is the server's reply to one READ.
 
 The first input bytes are control bytes, such as how the input is
 chunked into writes; see the "Input layout" comment at the top of each
 file. With libnfs built as above:
 
     for f in libnfs_rpc_reply_stream_fuzzer \
-             libnfs_rpc_server_call_fuzzer; do
+             libnfs_rpc_server_call_fuzzer \
+             libnfs_nfs3_read_zero_copy_fuzzer; do
       clang -std=c11 -g -fsanitize=fuzzer,address -fno-omit-frame-pointer \
         -I include -I include/nfsc -I nfs -I nfs4 -I mount -I portmap \
         -I nlm -I nsm -I rquota -I build \

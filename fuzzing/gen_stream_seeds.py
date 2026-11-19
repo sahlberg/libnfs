@@ -172,9 +172,65 @@ def server_call_seeds():
     return seeds
 
 
+def zero_copy_seeds():
+    """libnfs_nfs3_read_zero_copy_fuzzer:
+    [iovcnt-1][chunk hi][chunk lo][4 iovec lengths][stream].
+
+    iovec length = 1 + byte * 16. The reply is a READ3res: status,
+    post_op_attr, count, eof, opaque data.
+    """
+    ok = ACCEPTED_OK
+    # attributes_follow + fattr3
+    attr = u32(1) + u32(1, 0o644, 1, 0, 0) + bytes(64)
+
+    def read_ok(n, attrs=True):  # NFS3_OK, attrs, count, eof, data, pad
+        body = u32(0) + (attr if attrs else u32(0))
+        body += u32(n, 1, n) + bytes((i * 7) & 0xff for i in range(n))
+        return ok + body + bytes(-n % 4)
+
+    def rec(body):
+        return record(u32(XID) + body)
+
+    def frags(body, cut):
+        return fragments(u32(XID) + body, cut)
+
+    def hdr(niov, chunk, lens):
+        lens = (lens + [0, 0, 0, 0])[:4]
+        return bytes([niov - 1, chunk >> 8, chunk & 0xff] + lens)
+
+    seeds = {
+        # small read: all data arrives in the first (ZCRP-clamped) recv
+        "small_1iov": (hdr(1, 0, [15]), rec(read_ok(200))),
+        # odd length -> XDR padding after the data
+        "small_pad": (hdr(2, 0, [3, 3]), rec(read_ok(97))),
+        # > ZCRP: rest of the data is readv()'d into the iovecs, then padding
+        "big_iovec": (hdr(4, 0, [64, 64, 64, 64]), rec(read_ok(4000 - 3))),
+        "big_iovec_chunk": (hdr(3, 300, [100, 20, 150]),
+                            rec(read_ok(4100 + 1))),
+        "big_chunk7": (hdr(2, 7, [200, 200]), rec(read_ok(3000 + 2))),
+        # short read: server returns less than requested (rpc_shrink_cursor)
+        "short_read": (hdr(4, 0, [255, 255, 255, 255]), rec(read_ok(1500))),
+        # server returns more than requested (clamped, extra discarded)
+        "over_read": (hdr(1, 0, [10]), rec(read_ok(2000))),
+        # no post_op_attr
+        "noattr": (hdr(2, 0, [40, 40]), rec(read_ok(1200, attrs=False))),
+        # fragmented record: reassembly branch
+        "frag": (hdr(2, 0, [64, 64]), frags(read_ok(1800), 100)),
+        "frag_small": (hdr(1, 5, [16]), frags(read_ok(100), 40)),
+        # READ error: NFS3ERR_IO, no attrs
+        "read_err": (hdr(1, 0, [16]), rec(ok + u32(5, 0))),
+        # a reply with an unknown xid first, then the READ reply
+        "unknown_then_read": (hdr(1, 0, [16]),
+                              u32(0x80000000 | 8) + u32(0xdeadbeef, 1)
+                              + rec(read_ok(150))),
+    }
+    return {name: h + stream for name, (h, stream) in seeds.items()}
+
+
 CORPORA = {
     "seeds_rpc_reply_stream": reply_stream_seeds,
     "seeds_rpc_server_call": server_call_seeds,
+    "seeds_nfs3_read_zero_copy": zero_copy_seeds,
 }
 
 
