@@ -79,6 +79,11 @@ add_executable(prog_zdr_unaligned prog_zdr_unaligned.c)
 target_link_libraries(prog_zdr_unaligned nfs)
 add_test(NAME zdr_unaligned COMMAND prog_zdr_unaligned)
 
+add_executable(prog_zdr_mount_list prog_zdr_mount_list.c)
+target_include_directories(prog_zdr_mount_list PRIVATE ../mount)
+target_link_libraries(prog_zdr_mount_list nfs)
+add_test(NAME zdr_mount_list COMMAND prog_zdr_mount_list)
+
 add_executable(prog_service_error prog_service_error.c)
 target_link_libraries(prog_service_error nfs)
 add_test(NAME prog_service_error COMMAND prog_service_error)

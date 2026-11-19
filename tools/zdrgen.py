@@ -321,12 +321,13 @@ class Generator:
                         if d.kind in ('struct', 'union', 'enum', 'typedef')}
         self.lists = {d.name for d in defs if self.is_list(d)}
 
-    @staticmethod
-    def is_list(d):
+    def is_list(self, d):
         """A struct whose last member points to the next one of its kind."""
         if d.kind != 'struct' or not d.members:
             return False
         last = d.members[-1]
+        if last.rel == 'alias' and last.type in self.typedefs:
+            last = self.typedefs[last.type]
         return last.rel == 'pointer' and last.type == d.name
 
     def sizeof(self, decl):

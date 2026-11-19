@@ -47,12 +47,16 @@ test: $(noinst_PROGRAMS)
 		echo; \
 	done
 
-noinst_PROGRAMS += prog_zdr_bytes_zero prog_zdr_maxsize prog_zdr_unaligned
+noinst_PROGRAMS += prog_zdr_bytes_zero prog_zdr_maxsize prog_zdr_unaligned \
+	prog_zdr_mount_list
+prog_zdr_mount_list_CPPFLAGS = $(AM_CPPFLAGS) -I$(srcdir)/../mount
 
-check-local: prog_zdr_bytes_zero$(EXEEXT) prog_zdr_maxsize$(EXEEXT) prog_zdr_unaligned$(EXEEXT)
+check-local: prog_zdr_bytes_zero$(EXEEXT) prog_zdr_maxsize$(EXEEXT) \
+	prog_zdr_unaligned$(EXEEXT) prog_zdr_mount_list$(EXEEXT)
 	./prog_zdr_bytes_zero$(EXEEXT)
 	./prog_zdr_maxsize$(EXEEXT)
 	./prog_zdr_unaligned$(EXEEXT)
+	./prog_zdr_mount_list$(EXEEXT)
 
 check_PROGRAMS += prog_service_error
 TESTS += prog_service_error
