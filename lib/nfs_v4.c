@@ -5943,6 +5943,7 @@ nfs4_fcntl_stat_cb(struct rpc_context *rpc, int status, void *command_data,
                                  garesok->obj_attributes.attr_vals.attrlist4_len) < 0) {
                 data->cb(-EINVAL, nfs, nfs_get_error(nfs), data->private_data);
                 free_nfs4_cb_data(data);
+                return;
         }
 
         switch (cmd) {
