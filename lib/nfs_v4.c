@@ -252,6 +252,11 @@ nfs4_resolve_path(struct nfs_context *nfs, const char *path)
                 free(new_path);
                 return NULL;
         }
+        /* "/." and "/x/.." normalize to "" */
+        if (new_path[0] == '\0') {
+                new_path[0] = '/';
+                new_path[1] = '\0';
+        }
 
         return new_path;
 }
