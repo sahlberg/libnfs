@@ -2407,6 +2407,10 @@ nfs4_open_readlink(struct rpc_context *rpc, COMPOUND4res *res,
         struct nfs_context *nfs = data->nfs;
         int i;
 
+        if (data->filler.func != nfs4_populate_open) {
+                return 0;
+        }
+
         for (i = 0; i < (int)res->resarray.resarray_len; i++) {
                 OPEN4res *ores;
 
