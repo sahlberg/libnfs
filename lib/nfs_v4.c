@@ -1750,6 +1750,16 @@ nfs4_lookup_path_1_cb(struct rpc_context *rpc, int status, void *command_data,
          * the symlink and zero it out.
          */
         if (!resolve_link) {
+                /* The root can not be a symlink */
+                if (data->link.idx == 0) {
+                        nfs_set_error(nfs, "Symlink index does not "
+                                      "match path.");
+                        data->cb(-EFAULT, nfs, nfs_get_error(nfs),
+                                 data->private_data);
+                        free_nfs4_cb_data(data);
+                        free(path);
+                        return;
+                }
                 tmp = path;
                 for (i = 0; i < (int)data->link.idx; i++) {
                         tmp = strchr(tmp + 1, '/');
