@@ -3802,6 +3802,15 @@ nfs3_getacl_cb(struct rpc_context *rpc, int status, void *command_data,
 	}
         memset(&acl, 0, sizeof(acl));
         resok = &res->GETACL3res_u.resok;
+        if (resok->ace_count > resok->ace.ace_len ||
+            resok->default_ace_count >
+            resok->default_ace.default_ace_len) {
+                nfs_set_error(nfs, "NFS: GETACL of %s returned more ACEs "
+                              "than it carried", data->saved_path);
+                data->cb(-EIO, nfs, nfs_get_error(nfs), data->private_data);
+                free_nfs_cb_data(data);
+                return;
+        }
         acl.ace_count = resok->ace_count;
         if (acl.ace_count) {
                 acl.ace = calloc(acl.ace_count, sizeof(struct nfsacl_ace));
