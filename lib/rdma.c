@@ -37,6 +37,127 @@
 #include "libnfs-raw.h"
 #include "libnfs-private.h"
 
+#include <dlfcn.h>
+#if defined(HAVE_PTHREAD) || defined(HAVE_MULTITHREADING)
+#include <pthread.h>
+#endif
+
+/*
+ * librdmacm and libibverbs are loaded with dlopen() the first time an RDMA
+ * transport is set up, instead of being linked into libnfs. A libnfs built
+ * with RDMA support therefore still loads on hosts without rdma-core, and
+ * only proto=rdma fails there. The ibv_post_send/ibv_post_recv/ibv_poll_cq/
+ * ibv_req_notify_cq helpers are static inlines in verbs.h and need no symbol.
+ */
+#define RDMA_CMA_SYMS(X) \
+        X(rdma_create_event_channel) X(rdma_destroy_event_channel) \
+        X(rdma_create_id) X(rdma_destroy_id) X(rdma_resolve_addr) \
+        X(rdma_resolve_route) X(rdma_create_qp) X(rdma_destroy_qp) \
+        X(rdma_connect) X(rdma_disconnect) X(rdma_get_cm_event) \
+        X(rdma_ack_cm_event) X(rdma_event_str)
+
+#define RDMA_VERBS_SYMS(X) \
+        X(ibv_alloc_pd) X(ibv_dealloc_pd) X(ibv_create_comp_channel) \
+        X(ibv_destroy_comp_channel) X(ibv_create_cq) X(ibv_destroy_cq) \
+        X(ibv_reg_mr) X(ibv_dereg_mr) X(ibv_query_device) \
+        X(ibv_get_cq_event) X(ibv_ack_cq_events) X(ibv_wc_status_str)
+
+#define RDMA_DECLARE(name) __typeof__(name) *name##_fn;
+static struct {
+        int loaded;
+        RDMA_CMA_SYMS(RDMA_DECLARE)
+        RDMA_VERBS_SYMS(RDMA_DECLARE)
+} rdma_sym;
+#undef RDMA_DECLARE
+
+#if defined(HAVE_PTHREAD) || defined(HAVE_MULTITHREADING)
+static pthread_mutex_t rdma_sym_mutex = PTHREAD_MUTEX_INITIALIZER;
+#endif
+
+static int
+rdma_load_lib(struct rpc_context *rpc, const char *soname, void **handle)
+{
+        *handle = dlopen(soname, RTLD_NOW | RTLD_LOCAL);
+        if (*handle == NULL) {
+                const char *e = dlerror();
+                rpc_set_error(rpc, "RDMA is not available: failed to load "
+                              "%s (%s). Is rdma-core installed?",
+                              soname, e ? e : "unknown error");
+                return -1;
+        }
+        return 0;
+}
+
+static int
+rdma_load(struct rpc_context *rpc)
+{
+        void *cma = NULL, *verbs = NULL;
+        int ret = -1;
+
+#if defined(HAVE_PTHREAD) || defined(HAVE_MULTITHREADING)
+        pthread_mutex_lock(&rdma_sym_mutex);
+#endif
+        if (rdma_sym.loaded) {
+                ret = 0;
+                goto out;
+        }
+        /* The handles are kept for the life of the process. */
+        if (rdma_load_lib(rpc, "libibverbs.so.1", &verbs) ||
+            rdma_load_lib(rpc, "librdmacm.so.1", &cma)) {
+                goto out;
+        }
+#define RDMA_RESOLVE(handle, name) \
+        rdma_sym.name##_fn = (__typeof__(name) *)dlsym(handle, #name); \
+        if (rdma_sym.name##_fn == NULL) { \
+                rpc_set_error(rpc, "RDMA is not available: %s not found " \
+                              "in the installed rdma-core", #name); \
+                goto out; \
+        }
+#define RDMA_RESOLVE_CMA(name) RDMA_RESOLVE(cma, name)
+#define RDMA_RESOLVE_VERBS(name) RDMA_RESOLVE(verbs, name)
+        RDMA_CMA_SYMS(RDMA_RESOLVE_CMA)
+        RDMA_VERBS_SYMS(RDMA_RESOLVE_VERBS)
+#undef RDMA_RESOLVE_CMA
+#undef RDMA_RESOLVE_VERBS
+#undef RDMA_RESOLVE
+        rdma_sym.loaded = 1;
+        ret = 0;
+out:
+#if defined(HAVE_PTHREAD) || defined(HAVE_MULTITHREADING)
+        pthread_mutex_unlock(&rdma_sym_mutex);
+#endif
+        return ret;
+}
+
+/* Route every call below through the pointers resolved by rdma_load(). */
+#define RDMA_CALL(name) (rdma_sym.name##_fn)
+#undef ibv_reg_mr
+#define rdma_create_event_channel RDMA_CALL(rdma_create_event_channel)
+#define rdma_destroy_event_channel RDMA_CALL(rdma_destroy_event_channel)
+#define rdma_create_id RDMA_CALL(rdma_create_id)
+#define rdma_destroy_id RDMA_CALL(rdma_destroy_id)
+#define rdma_resolve_addr RDMA_CALL(rdma_resolve_addr)
+#define rdma_resolve_route RDMA_CALL(rdma_resolve_route)
+#define rdma_create_qp RDMA_CALL(rdma_create_qp)
+#define rdma_destroy_qp RDMA_CALL(rdma_destroy_qp)
+#define rdma_connect RDMA_CALL(rdma_connect)
+#define rdma_disconnect RDMA_CALL(rdma_disconnect)
+#define rdma_get_cm_event RDMA_CALL(rdma_get_cm_event)
+#define rdma_ack_cm_event RDMA_CALL(rdma_ack_cm_event)
+#define rdma_event_str RDMA_CALL(rdma_event_str)
+#define ibv_alloc_pd RDMA_CALL(ibv_alloc_pd)
+#define ibv_dealloc_pd RDMA_CALL(ibv_dealloc_pd)
+#define ibv_create_comp_channel RDMA_CALL(ibv_create_comp_channel)
+#define ibv_destroy_comp_channel RDMA_CALL(ibv_destroy_comp_channel)
+#define ibv_create_cq RDMA_CALL(ibv_create_cq)
+#define ibv_destroy_cq RDMA_CALL(ibv_destroy_cq)
+#define ibv_reg_mr RDMA_CALL(ibv_reg_mr)
+#define ibv_dereg_mr RDMA_CALL(ibv_dereg_mr)
+#define ibv_query_device RDMA_CALL(ibv_query_device)
+#define ibv_get_cq_event RDMA_CALL(ibv_get_cq_event)
+#define ibv_ack_cq_events RDMA_CALL(ibv_ack_cq_events)
+#define ibv_wc_status_str RDMA_CALL(ibv_wc_status_str)
+
 #define RPCRDMA_VERSION         1
 
 #define RDMA_MSG                0
@@ -306,6 +427,10 @@ rpc_rdma_connect(struct rpc_context *rpc)
         }
         if (rpc->ifname[0]) {
                 RPC_LOG(rpc, 1, "if=%s is ignored for RDMA", rpc->ifname);
+        }
+
+        if (rdma_load(rpc) != 0) {
+                return -1;
         }
 
         r = calloc(1, sizeof(*r));
