@@ -417,24 +417,25 @@ libnfs_cv_HAVE_RDMA=no
 RDMA_LIBS=""
 
 if test x"$ENABLE_RDMA" != x"no"; then
-  save_LIBS="$LIBS"
-  LIBS="-lrdmacm -libverbs $LIBS"
-  AC_CACHE_CHECK([for librdmacm and libibverbs],libnfs_cv_HAVE_RDMACM,[
-  AC_LINK_IFELSE([AC_LANG_PROGRAM([[
+  # Only the headers are needed to build: librdmacm and libibverbs are
+  # loaded with dlopen() at run time, so libnfs does not link against them.
+  AC_SEARCH_LIBS([dlopen], [dl])
+  AC_CACHE_CHECK([for the librdmacm and libibverbs headers],libnfs_cv_HAVE_RDMACM,[
+  AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
 #include <sys/epoll.h>
 #include <infiniband/verbs.h>
 #include <rdma/rdma_cma.h>
 ]],
-[[struct rdma_event_channel *ch = rdma_create_event_channel();
- (void)ibv_wc_status_str(IBV_WC_SUCCESS);
+[[struct rdma_event_channel *ch = 0;
+ (void)ibv_wc_status_str;
+ (void)rdma_create_event_channel;
  (void)epoll_create1(EPOLL_CLOEXEC);
- rdma_destroy_event_channel(ch);]])],[libnfs_cv_HAVE_RDMACM=yes],[libnfs_cv_HAVE_RDMACM=no])])
-  LIBS="$save_LIBS"
+ (void)ch;]])],[libnfs_cv_HAVE_RDMACM=yes],[libnfs_cv_HAVE_RDMACM=no])])
   libnfs_cv_HAVE_RDMA=$libnfs_cv_HAVE_RDMACM
 
   if test x"$libnfs_cv_HAVE_RDMA" = x"no"; then
     if test x"$ENABLE_RDMA" = x"yes"; then
-      AC_MSG_ERROR([--enable-rdma was given but librdmacm/libibverbs development files are missing])
+      AC_MSG_ERROR([--enable-rdma was given but librdmacm/libibverbs development headers are missing])
     fi
     AC_MSG_NOTICE([librdmacm/libibverbs development files are missing])
   fi
@@ -442,7 +443,8 @@ fi
 
 if test x"$libnfs_cv_HAVE_RDMA" = x"yes"; then
     AC_DEFINE(HAVE_RDMA,1,[Whether we have NFS over RDMA support])
-    RDMA_LIBS="-lrdmacm -libverbs"
+    RDMA_LIBS="$ac_cv_search_dlopen"
+    test x"$RDMA_LIBS" = x"none required" && RDMA_LIBS=""
     AC_MSG_NOTICE([Build with NFS over RDMA support])
 else
     AC_MSG_NOTICE([Build WITHOUT NFS over RDMA support])
