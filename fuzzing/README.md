@@ -11,9 +11,12 @@ covered: NFS v2/v3, mount v1/v3, NLM, portmap v2/v3, rquota and the
 NFSv4.x compound, so the deep structures (READDIRPLUS3, fattr3, NFSv4
 operations and attributes) get reached too.
 
-Build libnfs first, then the target:
+Build libnfs first, without the optional TLS, Kerberos and RDMA
+support so the static library needs nothing beyond -lpthread, then the
+target:
 
-    cmake -S . -B build -DCMAKE_BUILD_TYPE=RelWithDebInfo -DBUILD_SHARED_LIBS=OFF
+    cmake -S . -B build -DCMAKE_BUILD_TYPE=RelWithDebInfo -DBUILD_SHARED_LIBS=OFF \
+      -DENABLE_TLS=OFF -DENABLE_KRB5=OFF -DENABLE_RDMA=OFF
     cmake --build build -j$(nproc)
 
     clang -std=c11 -g -fsanitize=fuzzer,address -fno-omit-frame-pointer \
