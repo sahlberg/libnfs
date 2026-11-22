@@ -401,6 +401,12 @@ librdmacm and libibverbs development files from rdma-core are found, see
 nfs_set_transport(). MOUNT and PORTMAP still use TCP, so an NFSv3 mount needs
 both.
 
+Only the headers are needed to build. libnfs does not link against librdmacm
+or libibverbs: it loads them with dlopen() the first time an RDMA transport is
+set up. A libnfs built with RDMA support therefore loads and works over TCP on
+a host without rdma-core, and only proto=rdma fails there, with an error naming
+the library that could not be loaded.
+
 READ data is placed directly in the caller's buffer and WRITE data is read
 directly from it, which pins that memory while the call is in flight. Processes
 without CAP_IPC_LOCK are limited by RLIMIT_MEMLOCK, which may need raising for
