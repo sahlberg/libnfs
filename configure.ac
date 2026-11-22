@@ -417,8 +417,7 @@ libnfs_cv_HAVE_RDMA=no
 RDMA_LIBS=""
 
 if test x"$ENABLE_RDMA" != x"no"; then
-  # Only the headers are needed to build: librdmacm and libibverbs are
-  # loaded with dlopen() at run time, so libnfs does not link against them.
+  # librdmacm/libibverbs are dlopen()ed at run time, only headers needed.
   AC_SEARCH_LIBS([dlopen], [dl])
   AC_CACHE_CHECK([for the librdmacm and libibverbs headers],libnfs_cv_HAVE_RDMACM,[
   AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[

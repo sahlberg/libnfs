@@ -186,8 +186,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL Linux)
   endif()
 
   if(ENABLE_RDMA)
-    # Only the headers are needed: librdmacm and libibverbs are loaded with
-    # dlopen() at run time, so libnfs does not link against them.
+    # librdmacm/libibverbs are dlopen()ed at run time, only headers needed.
     check_include_file("rdma/rdma_cma.h" HAVE_RDMA_CMA_H)
     check_include_file("infiniband/verbs.h" HAVE_INFINIBAND_VERBS_H)
     if(HAVE_RDMA_CMA_H AND HAVE_INFINIBAND_VERBS_H)

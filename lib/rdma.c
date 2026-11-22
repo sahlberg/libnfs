@@ -42,13 +42,7 @@
 #include <pthread.h>
 #endif
 
-/*
- * librdmacm and libibverbs are loaded with dlopen() the first time an RDMA
- * transport is set up, instead of being linked into libnfs. A libnfs built
- * with RDMA support therefore still loads on hosts without rdma-core, and
- * only proto=rdma fails there. The ibv_post_send/ibv_post_recv/ibv_poll_cq/
- * ibv_req_notify_cq helpers are static inlines in verbs.h and need no symbol.
- */
+/* librdmacm/libibverbs symbols resolved with dlopen() on first connect. */
 #define RDMA_CMA_SYMS(X) \
         X(rdma_create_event_channel) X(rdma_destroy_event_channel) \
         X(rdma_create_id) X(rdma_destroy_id) X(rdma_resolve_addr) \
