@@ -49,8 +49,10 @@ connecting to the server/share.
 NFSv4.2 is selected with version=4.2 or nfs_set_version(nfs, NFS_V4_2). It
 adds sparse file support: nfs_fallocate() for reserving, punching and zeroing
 ranges, lseek() with SEEK_HOLE and SEEK_DATA, and the READ_PLUS and
-WRITE_SAME operations. NFSv4.2 support is built by default and can be left
-out with --disable-nfs4-2 (autoconf) or -DENABLE_NFS4_2=OFF (cmake).
+WRITE_SAME operations. Server side copy is available through the COPY,
+COPY_NOTIFY, OFFLOAD_STATUS and OFFLOAD_CANCEL calls in libnfs-raw-nfs4.h.
+NFSv4.2 support is built by default and can be left out with
+--disable-nfs4-2 (autoconf) or -DENABLE_NFS4_2=OFF (cmake).
 
 NFSv4.1 is selected with version=4.1 or nfs_set_version(nfs, NFS_V4_1). It uses
 the same sessions as NFSv4.2 but not the sparse file operations:

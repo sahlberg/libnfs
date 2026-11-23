@@ -1416,6 +1416,68 @@ nfs42_op_write_same(struct nfs_context *nfs _U_, nfs_argop4 *op,
 }
 
 static int
+nfs42_op_copy(struct nfs_context *nfs _U_, nfs_argop4 *op,
+              struct nfsfh *src, uint64_t src_offset,
+              struct nfsfh *dst, uint64_t dst_offset,
+              uint64_t count, int synchronous, COPY_NOTIFY4resok *notify)
+{
+        COPY4args *cargs;
+
+        op[0].argop = OP_COPY;
+        cargs = &op[0].nfs_argop4_u.opcopy;
+
+        if (notify) {
+                cargs->ca_src_stateid = notify->cnr_stateid;
+                cargs->ca_source_server.ca_source_server_len =
+                        notify->cnr_source_server.cnr_source_server_len;
+                cargs->ca_source_server.ca_source_server_val =
+                        notify->cnr_source_server.cnr_source_server_val;
+        } else {
+                cargs->ca_src_stateid.seqid = src->stateid.seqid;
+                memcpy(cargs->ca_src_stateid.other, src->stateid.other, 12);
+        }
+        cargs->ca_dst_stateid.seqid = dst->stateid.seqid;
+        memcpy(cargs->ca_dst_stateid.other, dst->stateid.other, 12);
+        cargs->ca_src_offset = src_offset;
+        cargs->ca_dst_offset = dst_offset;
+        cargs->ca_count = count;
+        cargs->ca_consecutive = 1;
+        cargs->ca_synchronous = synchronous ? 1 : 0;
+
+        return 1;
+}
+
+static int
+nfs42_op_copy_notify(struct nfs_context *nfs _U_, nfs_argop4 *op,
+                     struct nfsfh *src, netloc4 *destination)
+{
+        COPY_NOTIFY4args *cnargs;
+
+        op[0].argop = OP_COPY_NOTIFY;
+        cnargs = &op[0].nfs_argop4_u.opcopynotify;
+
+        cnargs->cna_src_stateid.seqid = src->stateid.seqid;
+        memcpy(cnargs->cna_src_stateid.other, src->stateid.other, 12);
+        cnargs->cna_destination_server = *destination;
+
+        return 1;
+}
+
+static int
+nfs42_op_offload(struct nfs_context *nfs _U_, nfs_argop4 *op,
+                 nfs_opnum4 opnum, const stateid4 *stateid)
+{
+        op[0].argop = opnum;
+        if (opnum == OP_OFFLOAD_STATUS) {
+                op[0].nfs_argop4_u.opoffloadstatus.osa_stateid = *stateid;
+        } else {
+                op[0].nfs_argop4_u.opoffloadcancel.oca_stateid = *stateid;
+        }
+
+        return 1;
+}
+
+static int
 nfs42_op_seek(struct nfs_context *nfs _U_, nfs_argop4 *op, struct nfsfh *fh,
               uint64_t offset, data_content4 what)
 {
@@ -5527,6 +5589,184 @@ nfs42_write_same_async(struct nfs_context *nfs, struct nfsfh *fh,
         }
 
         return 0;
+}
+
+/*
+ * COPY, COPY_NOTIFY, OFFLOAD_STATUS and OFFLOAD_CANCEL. filler.flags is the
+ * operation the callback looks for.
+ */
+static const char *
+nfs42_copy_op_name(nfs_opnum4 opnum)
+{
+        switch (opnum) {
+        case OP_COPY: return "COPY";
+        case OP_COPY_NOTIFY: return "COPY_NOTIFY";
+        case OP_OFFLOAD_STATUS: return "OFFLOAD_STATUS";
+        default: return "OFFLOAD_CANCEL";
+        }
+}
+
+static void
+nfs42_copy_cb(struct rpc_context *rpc, int status, void *command_data,
+              void *private_data)
+{
+        struct nfs4_cb_data *data = private_data;
+        struct nfs_context *nfs = data->nfs;
+        COMPOUND4res *res = command_data;
+        nfs_opnum4 opnum = data->filler.flags;
+        const char *name = nfs42_copy_op_name(opnum);
+        nfs_resop4 *r;
+        void *result = NULL;
+        int i;
+
+        assert(rpc->magic == RPC_CONTEXT_MAGIC);
+
+        if (check_nfs4_error(nfs, status, data, res, discard_const(name))) {
+                return;
+        }
+        if ((i = nfs4_find_op(nfs, data, res, opnum, name)) < 0) {
+                return;
+        }
+        r = &res->resarray.resarray_val[i];
+
+        switch (opnum) {
+        case OP_COPY:
+                result = &r->nfs_resop4_u.opcopy.COPY4res_u.cr_resok4;
+                break;
+        case OP_COPY_NOTIFY:
+                result = &r->nfs_resop4_u.opcopynotify.COPY_NOTIFY4res_u.resok4;
+                break;
+        case OP_OFFLOAD_STATUS:
+                result = &r->nfs_resop4_u.opoffloadstatus.OFFLOAD_STATUS4res_u.osr_resok4;
+                break;
+        default:
+                break;
+        }
+
+        data->cb(0, nfs, result, data->private_data);
+        free_nfs4_cb_data(data);
+}
+
+static int
+nfs42_copy_send(struct nfs_context *nfs, nfs_argop4 *op, int i,
+                nfs_opnum4 opnum, nfs_cb cb, void *private_data)
+{
+        COMPOUND4args args;
+        struct nfs4_cb_data *data;
+
+        data = calloc(1, sizeof(*data));
+        if (data == NULL) {
+                nfs_set_error(nfs, "Out of memory.");
+                return -1;
+        }
+        data->nfs          = nfs;
+        data->cb           = cb;
+        data->private_data = private_data;
+        data->filler.flags = opnum;
+
+        memset(&args, 0, sizeof(args));
+        args.argarray.argarray_len = i;
+        args.argarray.argarray_val = op;
+
+        if (rpc_nfs4_compound_task(nfs->rpc, nfs42_copy_cb, &args,
+                                   data) == NULL) {
+                nfs_set_error(nfs, "Failed to queue %s. %s",
+                              nfs42_copy_op_name(opnum),
+                              rpc_get_error(nfs->rpc));
+                free_nfs4_cb_data(data);
+                return -1;
+        }
+
+        return 0;
+}
+
+int
+nfs42_copy_async(struct nfs_context *nfs,
+                 struct nfsfh *src, uint64_t src_offset,
+                 struct nfsfh *dst, uint64_t dst_offset,
+                 uint64_t count, int synchronous,
+                 COPY_NOTIFY4resok *notify, nfs_cb cb, void *private_data)
+{
+        nfs_argop4 op[5];
+        int i;
+
+        if (!nfs_is_v4_2(nfs)) {
+                nfs_set_error(nfs, "%s requires NFSv4.2", __FUNCTION__);
+                return -ENOTSUP;
+        }
+        if (dst->is_readonly) {
+                nfs_set_error(nfs, "Trying to write to a read-only file");
+                return -1;
+        }
+
+        memset(op, 0, sizeof(op));
+        i = nfs4_start_compound(nfs, op);
+        i += nfs4_op_putfh(nfs, &op[i], src);
+        i += nfs4_op_savefh(nfs, &op[i]);
+        i += nfs4_op_putfh(nfs, &op[i], dst);
+        i += nfs42_op_copy(nfs, &op[i], src, src_offset, dst, dst_offset,
+                           count, synchronous, notify);
+
+        return nfs42_copy_send(nfs, op, i, OP_COPY, cb, private_data);
+}
+
+int
+nfs42_copy_notify_async(struct nfs_context *nfs, struct nfsfh *src,
+                        netloc4 *destination, nfs_cb cb, void *private_data)
+{
+        nfs_argop4 op[3];
+        int i;
+
+        if (!nfs_is_v4_2(nfs)) {
+                nfs_set_error(nfs, "%s requires NFSv4.2", __FUNCTION__);
+                return -ENOTSUP;
+        }
+
+        memset(op, 0, sizeof(op));
+        i = nfs4_start_compound(nfs, op);
+        i += nfs4_op_putfh(nfs, &op[i], src);
+        i += nfs42_op_copy_notify(nfs, &op[i], src, destination);
+
+        return nfs42_copy_send(nfs, op, i, OP_COPY_NOTIFY, cb, private_data);
+}
+
+static int
+nfs42_offload_async(struct nfs_context *nfs, struct nfsfh *fh,
+                    const stateid4 *stateid, nfs_opnum4 opnum,
+                    nfs_cb cb, void *private_data)
+{
+        nfs_argop4 op[3];
+        int i;
+
+        if (!nfs_is_v4_2(nfs)) {
+                nfs_set_error(nfs, "%s requires NFSv4.2", __FUNCTION__);
+                return -ENOTSUP;
+        }
+
+        memset(op, 0, sizeof(op));
+        i = nfs4_start_compound(nfs, op);
+        i += nfs4_op_putfh(nfs, &op[i], fh);
+        i += nfs42_op_offload(nfs, &op[i], opnum, stateid);
+
+        return nfs42_copy_send(nfs, op, i, opnum, cb, private_data);
+}
+
+int
+nfs42_offload_status_async(struct nfs_context *nfs, struct nfsfh *fh,
+                           const stateid4 *stateid, nfs_cb cb,
+                           void *private_data)
+{
+        return nfs42_offload_async(nfs, fh, stateid, OP_OFFLOAD_STATUS, cb,
+                                   private_data);
+}
+
+int
+nfs42_offload_cancel_async(struct nfs_context *nfs, struct nfsfh *fh,
+                           const stateid4 *stateid, nfs_cb cb,
+                           void *private_data)
+{
+        return nfs42_offload_async(nfs, fh, stateid, OP_OFFLOAD_CANCEL, cb,
+                                   private_data);
 }
 
 /*

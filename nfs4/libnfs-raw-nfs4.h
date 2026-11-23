@@ -3449,6 +3449,188 @@ EXTERN int nfs42_write_same_async(struct nfs_context *nfs, struct nfsfh *nfsfh,
 EXTERN int nfs42_write_same(struct nfs_context *nfs, struct nfsfh *nfsfh,
                             app_data_block4 *adb, int stable, uint64_t *count);
 
+/*
+ * NFSv4.2 server side copy: COPY, COPY_NOTIFY, OFFLOAD_STATUS and
+ * OFFLOAD_CANCEL.
+ *
+ * These need the context to be NFSv4.2 and fail with -ENOTSUP otherwise.
+ * The async forms hand the callback a pointer into the reply, which is only
+ * valid until the callback returns. The sync forms copy the result out, and
+ * it must be released with the matching _free() function.
+ *
+ * A server may run a COPY in the background. It then returns the stateid of
+ * the copy in cr_response.wr_callback_id, and reports completion with
+ * CB_OFFLOAD to the back channel handler (rpc_nfs4_enable_backchannel() in
+ * libnfs-raw.h). CB_OFFLOAD may arrive before the COPY reply. Instead of, or
+ * as well as, waiting for it, the client can poll the copy with
+ * OFFLOAD_STATUS and stop it with OFFLOAD_CANCEL.
+ */
+
+/*
+ * Async COPY
+ *
+ * Copies count bytes from src_offset in src to dst_offset in dst. A count of
+ * 0 copies to the end of src. Set synchronous to ask the server to finish the
+ * copy before it replies; it may still choose to run it in the background,
+ * or fail with NFS4ERR_OFFLOAD_NO_REQS.
+ *
+ * Like WRITE, a synchronous copy may be short: cr_response.wr_count says how
+ * much was copied, and the rest needs another COPY. If wr_committed is not
+ * FILE_SYNC4 the data needs a COMMIT, e.g. nfs_fsync(), to be stable.
+ *
+ * For a copy within one server, notify is NULL and src and dst are both
+ * open on nfs. For a copy between two servers, src is open on the source
+ * server, nfs is the context for the destination server, and notify is the
+ * result of nfs42_copy_notify() sent to the source server for src.
+ *
+ * Function returns
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
+ *
+ * When the callback is invoked, status indicates the result:
+ *      0 : Success.
+ *          data is COPY4resok *.
+ * -errno : An error occured.
+ *          data is the error string.
+ */
+EXTERN int nfs42_copy_async(struct nfs_context *nfs,
+                            struct nfsfh *src, uint64_t src_offset,
+                            struct nfsfh *dst, uint64_t dst_offset,
+                            uint64_t count, int synchronous,
+                            COPY_NOTIFY4resok *notify,
+                            nfs_cb cb, void *private_data);
+
+/*
+ * Sync COPY
+ *
+ * Function returns
+ *      0 : The operation was successful.
+ * -errno : The command failed.
+ *
+ * If the command was successful, the returned data in res must be freed by
+ * calling nfs42_copy_free().
+ */
+EXTERN int nfs42_copy(struct nfs_context *nfs,
+                      struct nfsfh *src, uint64_t src_offset,
+                      struct nfsfh *dst, uint64_t dst_offset,
+                      uint64_t count, int synchronous,
+                      COPY_NOTIFY4resok *notify, COPY4resok *res);
+
+EXTERN void nfs42_copy_free(COPY4resok *res);
+
+/*
+ * Async COPY_NOTIFY
+ *
+ * Sent to the source server of a copy between two servers, to allow the
+ * destination server to read src. destination says where the destination
+ * server is.
+ *
+ * Function returns
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
+ *
+ * When the callback is invoked, status indicates the result:
+ *      0 : Success.
+ *          data is COPY_NOTIFY4resok *.
+ * -errno : An error occured.
+ *          data is the error string.
+ */
+EXTERN int nfs42_copy_notify_async(struct nfs_context *nfs, struct nfsfh *src,
+                                   netloc4 *destination,
+                                   nfs_cb cb, void *private_data);
+
+/*
+ * Sync COPY_NOTIFY
+ *
+ * Function returns
+ *      0 : The operation was successful.
+ * -errno : The command failed.
+ *
+ * If the command was successful, the returned data in res must be freed by
+ * calling nfs42_copy_notify_free().
+ */
+EXTERN int nfs42_copy_notify(struct nfs_context *nfs, struct nfsfh *src,
+                             netloc4 *destination, COPY_NOTIFY4resok *res);
+
+EXTERN void nfs42_copy_notify_free(COPY_NOTIFY4resok *res);
+
+/*
+ * Async OFFLOAD_STATUS
+ *
+ * Asks how far the background copy identified by stateid has come. fh is
+ * the destination file of the copy.
+ *
+ * Function returns
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
+ *
+ * When the callback is invoked, status indicates the result:
+ *      0 : Success.
+ *          data is OFFLOAD_STATUS4resok *. osr_complete holds the final
+ *          status once the copy has finished.
+ * -errno : An error occured.
+ *          data is the error string.
+ */
+EXTERN int nfs42_offload_status_async(struct nfs_context *nfs,
+                                      struct nfsfh *fh,
+                                      const stateid4 *stateid,
+                                      nfs_cb cb, void *private_data);
+
+/*
+ * Sync OFFLOAD_STATUS
+ *
+ * Function returns
+ *      0 : The operation was successful.
+ * -errno : The command failed.
+ *
+ * If the command was successful, the returned data in res must be freed by
+ * calling nfs42_offload_status_free().
+ */
+EXTERN int nfs42_offload_status(struct nfs_context *nfs, struct nfsfh *fh,
+                                const stateid4 *stateid,
+                                OFFLOAD_STATUS4resok *res);
+
+EXTERN void nfs42_offload_status_free(OFFLOAD_STATUS4resok *res);
+
+/*
+ * Async OFFLOAD_CANCEL
+ *
+ * Stops the background copy identified by stateid, with fh the destination
+ * file. Sent to the source server with the stateid from COPY_NOTIFY, it
+ * withdraws the permission that COPY_NOTIFY gave.
+ *
+ * Function returns
+ *  0 : The command was queued successfully. The callback will be invoked once
+ *      the command completes.
+ * <0 : An error occured when trying to queue the command.
+ *      The callback will not be invoked.
+ *
+ * When the callback is invoked, status indicates the result:
+ *      0 : Success.
+ * -errno : An error occured.
+ *          data is the error string.
+ */
+EXTERN int nfs42_offload_cancel_async(struct nfs_context *nfs,
+                                      struct nfsfh *fh,
+                                      const stateid4 *stateid,
+                                      nfs_cb cb, void *private_data);
+
+/*
+ * Sync OFFLOAD_CANCEL
+ *
+ * Function returns
+ *      0 : The operation was successful.
+ * -errno : The command failed.
+ */
+EXTERN int nfs42_offload_cancel(struct nfs_context *nfs, struct nfsfh *fh,
+                                const stateid4 *stateid);
+
 #ifdef __cplusplus
 }
 #endif
