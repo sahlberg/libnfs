@@ -2123,7 +2123,11 @@ enum nfs_opnum4 {
 	OP_DESTROY_CLIENTID = 57,
 	OP_RECLAIM_COMPLETE = 58,
 	OP_ALLOCATE = 59,
+	OP_COPY = 60,
+	OP_COPY_NOTIFY = 61,
 	OP_DEALLOCATE = 62,
+	OP_OFFLOAD_CANCEL = 66,
+	OP_OFFLOAD_STATUS = 67,
 	OP_READ_PLUS = 68,
 	OP_SEEK = 69,
 	OP_WRITE_SAME = 70,
@@ -2285,6 +2289,121 @@ struct WRITE_SAME4res {
 };
 typedef struct WRITE_SAME4res WRITE_SAME4res;
 
+struct netaddr4 {
+	char *na_r_netid;
+	char *na_r_addr;
+};
+typedef struct netaddr4 netaddr4;
+
+enum netloc_type4 {
+	NL4_NAME = 1,
+	NL4_URL = 2,
+	NL4_NETADDR = 3,
+};
+typedef enum netloc_type4 netloc_type4;
+
+struct netloc4 {
+	netloc_type4 nl_type;
+	union {
+		utf8str_cis nl_name;
+		utf8str_cis nl_url;
+		netaddr4 nl_addr;
+	} netloc4_u;
+};
+typedef struct netloc4 netloc4;
+
+struct COPY4args {
+	stateid4 ca_src_stateid;
+	stateid4 ca_dst_stateid;
+	offset4 ca_src_offset;
+	offset4 ca_dst_offset;
+	length4 ca_count;
+	uint32_t ca_consecutive;
+	uint32_t ca_synchronous;
+	struct {
+		uint32_t ca_source_server_len;
+		netloc4 *ca_source_server_val;
+	} ca_source_server;
+};
+typedef struct COPY4args COPY4args;
+
+struct copy_requirements4 {
+	uint32_t cr_consecutive;
+	uint32_t cr_synchronous;
+};
+typedef struct copy_requirements4 copy_requirements4;
+
+struct COPY4resok {
+	write_response4 cr_response;
+	copy_requirements4 cr_requirements;
+};
+typedef struct COPY4resok COPY4resok;
+
+struct COPY4res {
+	nfsstat4 cr_status;
+	union {
+		COPY4resok cr_resok4;
+		copy_requirements4 cr_requirements;
+	} COPY4res_u;
+};
+typedef struct COPY4res COPY4res;
+
+struct COPY_NOTIFY4args {
+	stateid4 cna_src_stateid;
+	netloc4 cna_destination_server;
+};
+typedef struct COPY_NOTIFY4args COPY_NOTIFY4args;
+
+struct COPY_NOTIFY4resok {
+	nfstime4 cnr_lease_time;
+	stateid4 cnr_stateid;
+	struct {
+		uint32_t cnr_source_server_len;
+		netloc4 *cnr_source_server_val;
+	} cnr_source_server;
+};
+typedef struct COPY_NOTIFY4resok COPY_NOTIFY4resok;
+
+struct COPY_NOTIFY4res {
+	nfsstat4 cnr_status;
+	union {
+		COPY_NOTIFY4resok resok4;
+	} COPY_NOTIFY4res_u;
+};
+typedef struct COPY_NOTIFY4res COPY_NOTIFY4res;
+
+struct OFFLOAD_CANCEL4args {
+	stateid4 oca_stateid;
+};
+typedef struct OFFLOAD_CANCEL4args OFFLOAD_CANCEL4args;
+
+struct OFFLOAD_CANCEL4res {
+	nfsstat4 ocr_status;
+};
+typedef struct OFFLOAD_CANCEL4res OFFLOAD_CANCEL4res;
+
+struct OFFLOAD_STATUS4args {
+	stateid4 osa_stateid;
+};
+typedef struct OFFLOAD_STATUS4args OFFLOAD_STATUS4args;
+
+struct OFFLOAD_STATUS4resok {
+	length4 osr_count;
+	struct {
+		uint32_t osr_complete_len;
+		nfsstat4 *osr_complete_val;
+	} osr_complete;
+};
+typedef struct OFFLOAD_STATUS4resok OFFLOAD_STATUS4resok;
+
+struct OFFLOAD_STATUS4res {
+	nfsstat4 osr_status;
+	union {
+		OFFLOAD_STATUS4resok osr_resok4;
+	} OFFLOAD_STATUS4res_u;
+};
+typedef struct OFFLOAD_STATUS4res OFFLOAD_STATUS4res;
+
 struct nfs_argop4 {
 	nfs_opnum4 argop;
 	union {
@@ -2342,6 +2461,10 @@ struct nfs_argop4 {
 		SEEK4args opseek;
 		WRITE_SAME4args opwritesame;
 		CLONE4args opclone;
+		COPY4args opcopy;
+		COPY_NOTIFY4args opcopynotify;
+		OFFLOAD_CANCEL4args opoffloadcancel;
+		OFFLOAD_STATUS4args opoffloadstatus;
 	} nfs_argop4_u;
 };
 typedef struct nfs_argop4 nfs_argop4;
@@ -2410,6 +2533,10 @@ struct nfs_resop4 {
 		SEEK4res opseek;
 		WRITE_SAME4res opwritesame;
 		CLONE4res opclone;
+		COPY4res opcopy;
+		COPY_NOTIFY4res opcopynotify;
+		OFFLOAD_CANCEL4res opoffloadcancel;
+		OFFLOAD_STATUS4res opoffloadstatus;
 		ILLEGAL4res opillegal;
 	} nfs_resop4_u;
 };
@@ -2555,6 +2682,27 @@ struct CB_SEQUENCE4res {
 };
 typedef struct CB_SEQUENCE4res CB_SEQUENCE4res;
 
+struct offload_info4 {
+	nfsstat4 coa_status;
+	union {
+		write_response4 coa_resok4;
+		length4 coa_bytes_copied;
+	} offload_info4_u;
+};
+typedef struct offload_info4 offload_info4;
+
+struct CB_OFFLOAD4args {
+	nfs_fh4 coa_fh;
+	stateid4 coa_stateid;
+	offload_info4 coa_offload_info;
+};
+typedef struct CB_OFFLOAD4args CB_OFFLOAD4args;
+
+struct CB_OFFLOAD4res {
+	nfsstat4 cor_status;
+};
+typedef struct CB_OFFLOAD4res CB_OFFLOAD4res;
+
 struct CB_ILLEGAL4res {
 	nfsstat4 status;
 };
@@ -2567,6 +2715,7 @@ enum nfs_cb_opnum4 {
 	OP_CB_RECALL_ANY = 8,
 	OP_CB_RECALLABLE_OBJ_AVAIL = 9,
 	OP_CB_SEQUENCE = 11,
+	OP_CB_OFFLOAD = 15,
 	OP_CB_ILLEGAL = 10044,
 };
 typedef enum nfs_cb_opnum4 nfs_cb_opnum4;
@@ -2580,6 +2729,7 @@ struct nfs_cb_argop4 {
 		CB_RECALL_ANY4args opcbrecall_any;
 		CB_RECALLABLE_OBJ_AVAIL4args opcbrecallable_obj_avail;
 		CB_SEQUENCE4args opcbsequence;
+		CB_OFFLOAD4args opcboffload;
 	} nfs_cb_argop4_u;
 };
 typedef struct nfs_cb_argop4 nfs_cb_argop4;
@@ -2593,6 +2743,7 @@ struct nfs_cb_resop4 {
 		CB_RECALL_ANY4res opcbrecall_any;
 		CB_RECALLABLE_OBJ_AVAIL4res opcbrecallable_obj_avail;
 		CB_SEQUENCE4res opcbsequence;
+		CB_OFFLOAD4res opcboffload;
 		CB_ILLEGAL4res opcbillegal;
 	} nfs_cb_resop4_u;
 };
@@ -3010,6 +3161,21 @@ extern uint32_t zdr_app_data_block4 (ZDR *, app_data_block4 *);
 extern uint32_t zdr_write_response4 (ZDR *, write_response4 *);
 extern uint32_t zdr_WRITE_SAME4args (ZDR *, WRITE_SAME4args *);
 extern uint32_t zdr_WRITE_SAME4res (ZDR *, WRITE_SAME4res *);
+extern uint32_t zdr_netaddr4 (ZDR *, netaddr4 *);
+extern uint32_t zdr_netloc_type4 (ZDR *, netloc_type4 *);
+extern uint32_t zdr_netloc4 (ZDR *, netloc4 *);
+extern uint32_t zdr_COPY4args (ZDR *, COPY4args *);
+extern uint32_t zdr_copy_requirements4 (ZDR *, copy_requirements4 *);
+extern uint32_t zdr_COPY4resok (ZDR *, COPY4resok *);
+extern uint32_t zdr_COPY4res (ZDR *, COPY4res *);
+extern uint32_t zdr_COPY_NOTIFY4args (ZDR *, COPY_NOTIFY4args *);
+extern uint32_t zdr_COPY_NOTIFY4resok (ZDR *, COPY_NOTIFY4resok *);
+extern uint32_t zdr_COPY_NOTIFY4res (ZDR *, COPY_NOTIFY4res *);
+extern uint32_t zdr_OFFLOAD_CANCEL4args (ZDR *, OFFLOAD_CANCEL4args *);
+extern uint32_t zdr_OFFLOAD_CANCEL4res (ZDR *, OFFLOAD_CANCEL4res *);
+extern uint32_t zdr_OFFLOAD_STATUS4args (ZDR *, OFFLOAD_STATUS4args *);
+extern uint32_t zdr_OFFLOAD_STATUS4resok (ZDR *, OFFLOAD_STATUS4resok *);
+extern uint32_t zdr_OFFLOAD_STATUS4res (ZDR *, OFFLOAD_STATUS4res *);
 extern uint32_t zdr_nfs_argop4 (ZDR *, nfs_argop4 *);
 extern uint32_t zdr_nfs_resop4 (ZDR *, nfs_resop4 *);
 extern uint32_t zdr_COMPOUND4args (ZDR *, COMPOUND4args *);
@@ -3030,6 +3196,9 @@ extern uint32_t zdr_referring_call_list4 (ZDR *, referring_call_list4 *);
 extern uint32_t zdr_CB_SEQUENCE4args (ZDR *, CB_SEQUENCE4args *);
 extern uint32_t zdr_CB_SEQUENCE4resok (ZDR *, CB_SEQUENCE4resok *);
 extern uint32_t zdr_CB_SEQUENCE4res (ZDR *, CB_SEQUENCE4res *);
+extern uint32_t zdr_offload_info4 (ZDR *, offload_info4 *);
+extern uint32_t zdr_CB_OFFLOAD4args (ZDR *, CB_OFFLOAD4args *);
+extern uint32_t zdr_CB_OFFLOAD4res (ZDR *, CB_OFFLOAD4res *);
 extern uint32_t zdr_CB_ILLEGAL4res (ZDR *, CB_ILLEGAL4res *);
 extern uint32_t zdr_nfs_cb_opnum4 (ZDR *, nfs_cb_opnum4 *);
 extern uint32_t zdr_nfs_cb_argop4 (ZDR *, nfs_cb_argop4 *);

@@ -3604,6 +3604,201 @@ zdr_WRITE_SAME4res (ZDR *zdrs, WRITE_SAME4res *objp)
 }
 
 uint32_t
+zdr_netaddr4 (ZDR *zdrs, netaddr4 *objp)
+{
+	 if (!zdr_string (zdrs, &objp->na_r_netid, ~0))
+		 return FALSE;
+	 if (!zdr_string (zdrs, &objp->na_r_addr, ~0))
+		 return FALSE;
+	return TRUE;
+}
+
+uint32_t
+zdr_netloc_type4 (ZDR *zdrs, netloc_type4 *objp)
+{
+	 if (!zdr_enum (zdrs, (enum_t *) objp))
+		 return FALSE;
+	return TRUE;
+}
+
+uint32_t
+zdr_netloc4 (ZDR *zdrs, netloc4 *objp)
+{
+	 if (!zdr_netloc_type4 (zdrs, &objp->nl_type))
+		 return FALSE;
+	switch (objp->nl_type) {
+	case NL4_NAME:
+		 if (!zdr_utf8str_cis (zdrs, &objp->netloc4_u.nl_name))
+			 return FALSE;
+		break;
+	case NL4_URL:
+		 if (!zdr_utf8str_cis (zdrs, &objp->netloc4_u.nl_url))
+			 return FALSE;
+		break;
+	case NL4_NETADDR:
+		 if (!zdr_netaddr4 (zdrs, &objp->netloc4_u.nl_addr))
+			 return FALSE;
+		break;
+	default:
+		return FALSE;
+	}
+	return TRUE;
+}
+
+uint32_t
+zdr_COPY4args (ZDR *zdrs, COPY4args *objp)
+{
+	 if (!zdr_stateid4 (zdrs, &objp->ca_src_stateid))
+		 return FALSE;
+	 if (!zdr_stateid4 (zdrs, &objp->ca_dst_stateid))
+		 return FALSE;
+	 if (!zdr_offset4 (zdrs, &objp->ca_src_offset))
+		 return FALSE;
+	 if (!zdr_offset4 (zdrs, &objp->ca_dst_offset))
+		 return FALSE;
+	 if (!zdr_length4 (zdrs, &objp->ca_count))
+		 return FALSE;
+	 if (!zdr_bool (zdrs, &objp->ca_consecutive))
+		 return FALSE;
+	 if (!zdr_bool (zdrs, &objp->ca_synchronous))
+		 return FALSE;
+	 if (!zdr_array (zdrs, (char **)&objp->ca_source_server.ca_source_server_val, &objp->ca_source_server.ca_source_server_len, ~0,
+		sizeof (netloc4), (zdrproc_t) zdr_netloc4))
+		 return FALSE;
+	return TRUE;
+}
+
+uint32_t
+zdr_copy_requirements4 (ZDR *zdrs, copy_requirements4 *objp)
+{
+	 if (!zdr_bool (zdrs, &objp->cr_consecutive))
+		 return FALSE;
+	 if (!zdr_bool (zdrs, &objp->cr_synchronous))
+		 return FALSE;
+	return TRUE;
+}
+
+uint32_t
+zdr_COPY4resok (ZDR *zdrs, COPY4resok *objp)
+{
+	 if (!zdr_write_response4 (zdrs, &objp->cr_response))
+		 return FALSE;
+	 if (!zdr_copy_requirements4 (zdrs, &objp->cr_requirements))
+		 return FALSE;
+	return TRUE;
+}
+
+uint32_t
+zdr_COPY4res (ZDR *zdrs, COPY4res *objp)
+{
+	 if (!zdr_nfsstat4 (zdrs, &objp->cr_status))
+		 return FALSE;
+	switch (objp->cr_status) {
+	case NFS4_OK:
+		 if (!zdr_COPY4resok (zdrs, &objp->COPY4res_u.cr_resok4))
+			 return FALSE;
+		break;
+	case NFS4ERR_OFFLOAD_NO_REQS:
+		 if (!zdr_copy_requirements4 (zdrs, &objp->COPY4res_u.cr_requirements))
+			 return FALSE;
+		break;
+	default:
+		break;
+	}
+	return TRUE;
+}
+
+uint32_t
+zdr_COPY_NOTIFY4args (ZDR *zdrs, COPY_NOTIFY4args *objp)
+{
+	 if (!zdr_stateid4 (zdrs, &objp->cna_src_stateid))
+		 return FALSE;
+	 if (!zdr_netloc4 (zdrs, &objp->cna_destination_server))
+		 return FALSE;
+	return TRUE;
+}
+
+uint32_t
+zdr_COPY_NOTIFY4resok (ZDR *zdrs, COPY_NOTIFY4resok *objp)
+{
+	 if (!zdr_nfstime4 (zdrs, &objp->cnr_lease_time))
+		 return FALSE;
+	 if (!zdr_stateid4 (zdrs, &objp->cnr_stateid))
+		 return FALSE;
+	 if (!zdr_array (zdrs, (char **)&objp->cnr_source_server.cnr_source_server_val, &objp->cnr_source_server.cnr_source_server_len, ~0,
+		sizeof (netloc4), (zdrproc_t) zdr_netloc4))
+		 return FALSE;
+	return TRUE;
+}
+
+uint32_t
+zdr_COPY_NOTIFY4res (ZDR *zdrs, COPY_NOTIFY4res *objp)
+{
+	 if (!zdr_nfsstat4 (zdrs, &objp->cnr_status))
+		 return FALSE;
+	switch (objp->cnr_status) {
+	case NFS4_OK:
+		 if (!zdr_COPY_NOTIFY4resok (zdrs, &objp->COPY_NOTIFY4res_u.resok4))
+			 return FALSE;
+		break;
+	default:
+		break;
+	}
+	return TRUE;
+}
+
+uint32_t
+zdr_OFFLOAD_CANCEL4args (ZDR *zdrs, OFFLOAD_CANCEL4args *objp)
+{
+	 if (!zdr_stateid4 (zdrs, &objp->oca_stateid))
+		 return FALSE;
+	return TRUE;
+}
+
+uint32_t
+zdr_OFFLOAD_CANCEL4res (ZDR *zdrs, OFFLOAD_CANCEL4res *objp)
+{
+	 if (!zdr_nfsstat4 (zdrs, &objp->ocr_status))
+		 return FALSE;
+	return TRUE;
+}
+
+uint32_t
+zdr_OFFLOAD_STATUS4args (ZDR *zdrs, OFFLOAD_STATUS4args *objp)
+{
+	 if (!zdr_stateid4 (zdrs, &objp->osa_stateid))
+		 return FALSE;
+	return TRUE;
+}
+
+uint32_t
+zdr_OFFLOAD_STATUS4resok (ZDR *zdrs, OFFLOAD_STATUS4resok *objp)
+{
+	 if (!zdr_length4 (zdrs, &objp->osr_count))
+		 return FALSE;
+	 if (!zdr_array (zdrs, (char **)&objp->osr_complete.osr_complete_val, &objp->osr_complete.osr_complete_len, 1,
+		sizeof (nfsstat4), (zdrproc_t) zdr_nfsstat4))
+		 return FALSE;
+	return TRUE;
+}
+
+uint32_t
+zdr_OFFLOAD_STATUS4res (ZDR *zdrs, OFFLOAD_STATUS4res *objp)
+{
+	 if (!zdr_nfsstat4 (zdrs, &objp->osr_status))
+		 return FALSE;
+	switch (objp->osr_status) {
+	case NFS4_OK:
+		 if (!zdr_OFFLOAD_STATUS4resok (zdrs, &objp->OFFLOAD_STATUS4res_u.osr_resok4))
+			 return FALSE;
+		break;
+	default:
+		break;
+	}
+	return TRUE;
+}
+
+uint32_t
 zdr_nfs_argop4 (ZDR *zdrs, nfs_argop4 *objp)
 {
 	 if (!zdr_nfs_opnum4 (zdrs, &objp->argop))
@@ -3837,6 +4032,22 @@ zdr_nfs_argop4 (ZDR *zdrs, nfs_argop4 *objp)
 		break;
 	case OP_CLONE:
 		 if (!zdr_CLONE4args (zdrs, &objp->nfs_argop4_u.opclone))
+			 return FALSE;
+		break;
+	case OP_COPY:
+		 if (!zdr_COPY4args (zdrs, &objp->nfs_argop4_u.opcopy))
+			 return FALSE;
+		break;
+	case OP_COPY_NOTIFY:
+		 if (!zdr_COPY_NOTIFY4args (zdrs, &objp->nfs_argop4_u.opcopynotify))
+			 return FALSE;
+		break;
+	case OP_OFFLOAD_CANCEL:
+		 if (!zdr_OFFLOAD_CANCEL4args (zdrs, &objp->nfs_argop4_u.opoffloadcancel))
+			 return FALSE;
+		break;
+	case OP_OFFLOAD_STATUS:
+		 if (!zdr_OFFLOAD_STATUS4args (zdrs, &objp->nfs_argop4_u.opoffloadstatus))
 			 return FALSE;
 		break;
 	case OP_ILLEGAL:
@@ -4097,6 +4308,22 @@ zdr_nfs_resop4 (ZDR *zdrs, nfs_resop4 *objp)
 		 if (!zdr_CLONE4res (zdrs, &objp->nfs_resop4_u.opclone))
 			 return FALSE;
 		break;
+	case OP_COPY:
+		 if (!zdr_COPY4res (zdrs, &objp->nfs_resop4_u.opcopy))
+			 return FALSE;
+		break;
+	case OP_COPY_NOTIFY:
+		 if (!zdr_COPY_NOTIFY4res (zdrs, &objp->nfs_resop4_u.opcopynotify))
+			 return FALSE;
+		break;
+	case OP_OFFLOAD_CANCEL:
+		 if (!zdr_OFFLOAD_CANCEL4res (zdrs, &objp->nfs_resop4_u.opoffloadcancel))
+			 return FALSE;
+		break;
+	case OP_OFFLOAD_STATUS:
+		 if (!zdr_OFFLOAD_STATUS4res (zdrs, &objp->nfs_resop4_u.opoffloadstatus))
+			 return FALSE;
+		break;
 	case OP_ILLEGAL:
 		 if (!zdr_ILLEGAL4res (zdrs, &objp->nfs_resop4_u.opillegal))
 			 return FALSE;
@@ -4312,6 +4539,44 @@ zdr_CB_SEQUENCE4res (ZDR *zdrs, CB_SEQUENCE4res *objp)
 }
 
 uint32_t
+zdr_offload_info4 (ZDR *zdrs, offload_info4 *objp)
+{
+	 if (!zdr_nfsstat4 (zdrs, &objp->coa_status))
+		 return FALSE;
+	switch (objp->coa_status) {
+	case NFS4_OK:
+		 if (!zdr_write_response4 (zdrs, &objp->offload_info4_u.coa_resok4))
+			 return FALSE;
+		break;
+	default:
+		 if (!zdr_length4 (zdrs, &objp->offload_info4_u.coa_bytes_copied))
+			 return FALSE;
+		break;
+	}
+	return TRUE;
+}
+
+uint32_t
+zdr_CB_OFFLOAD4args (ZDR *zdrs, CB_OFFLOAD4args *objp)
+{
+	 if (!zdr_nfs_fh4 (zdrs, &objp->coa_fh))
+		 return FALSE;
+	 if (!zdr_stateid4 (zdrs, &objp->coa_stateid))
+		 return FALSE;
+	 if (!zdr_offload_info4 (zdrs, &objp->coa_offload_info))
+		 return FALSE;
+	return TRUE;
+}
+
+uint32_t
+zdr_CB_OFFLOAD4res (ZDR *zdrs, CB_OFFLOAD4res *objp)
+{
+	 if (!zdr_nfsstat4 (zdrs, &objp->cor_status))
+		 return FALSE;
+	return TRUE;
+}
+
+uint32_t
 zdr_CB_ILLEGAL4res (ZDR *zdrs, CB_ILLEGAL4res *objp)
 {
 	 if (!zdr_nfsstat4 (zdrs, &objp->status))
@@ -4357,6 +4622,10 @@ zdr_nfs_cb_argop4 (ZDR *zdrs, nfs_cb_argop4 *objp)
 		 if (!zdr_CB_SEQUENCE4args (zdrs, &objp->nfs_cb_argop4_u.opcbsequence))
 			 return FALSE;
 		break;
+	case OP_CB_OFFLOAD:
+		 if (!zdr_CB_OFFLOAD4args (zdrs, &objp->nfs_cb_argop4_u.opcboffload))
+			 return FALSE;
+		break;
 	case OP_CB_ILLEGAL:
 		break;
 	default:
@@ -4393,6 +4662,10 @@ zdr_nfs_cb_resop4 (ZDR *zdrs, nfs_cb_resop4 *objp)
 		break;
 	case OP_CB_SEQUENCE:
 		 if (!zdr_CB_SEQUENCE4res (zdrs, &objp->nfs_cb_resop4_u.opcbsequence))
+			 return FALSE;
+		break;
+	case OP_CB_OFFLOAD:
+		 if (!zdr_CB_OFFLOAD4res (zdrs, &objp->nfs_cb_resop4_u.opcboffload))
 			 return FALSE;
 		break;
 	case OP_CB_ILLEGAL:
