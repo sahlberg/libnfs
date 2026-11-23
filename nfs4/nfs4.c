@@ -981,6 +981,7 @@ nfs4_cb_app_op(uint32_t op)
         case OP_CB_PUSH_DELEG:
         case OP_CB_RECALL_ANY:
         case OP_CB_RECALLABLE_OBJ_AVAIL:
+        case OP_CB_OFFLOAD:
                 return 1;
         }
         return 0;

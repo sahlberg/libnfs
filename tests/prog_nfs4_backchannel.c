@@ -71,6 +71,19 @@ static void handler(struct rpc_context *r, struct nfs_cb_argop4 *arg,
                       (1 << RCA4_TYPE_MASK_RDATA_DLG));
                 break;
         }
+        case OP_CB_OFFLOAD: {
+                CB_OFFLOAD4args *a = &arg->nfs_cb_argop4_u.opcboffload;
+                write_response4 *wr = &a->coa_offload_info.offload_info4_u.coa_resok4;
+
+                CHECK(a->coa_fh.nfs_fh4_len == 3);
+                CHECK(!memcmp(a->coa_fh.nfs_fh4_val, "abc", 3));
+                CHECK(a->coa_stateid.seqid == 5);
+                CHECK(a->coa_offload_info.coa_status == NFS4_OK);
+                CHECK(wr->wr_callback_id.wr_callback_id_len == 0);
+                CHECK(wr->wr_count == 12345);
+                CHECK(wr->wr_committed == FILE_SYNC4);
+                break;
+        }
         default:
                 CHECK(0);
         }
@@ -550,6 +563,57 @@ static void test_delegation_ops(void)
         teardown();
 }
 
+/* CB_OFFLOAD reaches the handler on 4.2 and is illegal on 4.1. */
+static void test_offload(void)
+{
+        uint32_t ident = 1, n = 2, len;
+        utf8str_cs tag = { 0, NULL };
+        nfs_cb_argop4 arg;
+        CB_OFFLOAD4args *oa = &arg.nfs_cb_argop4_u.opcboffload;
+        struct cb_res res;
+        char body[1024];
+        ZDR zdr;
+
+        setup(2);
+        zdrmem_create(&zdr, body, sizeof(body), ZDR_ENCODE);
+        CHECK(zdr_utf8str_cs(&zdr, &tag));
+        CHECK(zdr_uint32_t(&zdr, &minorversion));
+        CHECK(zdr_uint32_t(&zdr, &ident));
+        CHECK(zdr_uint32_t(&zdr, &n));
+        memset(&arg, 0, sizeof(arg));
+        arg.argop = OP_CB_SEQUENCE;
+        memcpy(arg.nfs_cb_argop4_u.opcbsequence.csa_sessionid, session,
+               sizeof(sessionid4));
+        arg.nfs_cb_argop4_u.opcbsequence.csa_sequenceid = 1;
+        CHECK(zdr_nfs_cb_argop4(&zdr, &arg));
+        memset(&arg, 0, sizeof(arg));
+        arg.argop = OP_CB_OFFLOAD;
+        oa->coa_fh.nfs_fh4_val = "abc";
+        oa->coa_fh.nfs_fh4_len = 3;
+        oa->coa_stateid.seqid = 5;
+        oa->coa_offload_info.coa_status = NFS4_OK;
+        oa->coa_offload_info.offload_info4_u.coa_resok4.wr_count = 12345;
+        oa->coa_offload_info.offload_info4_u.coa_resok4.wr_committed = FILE_SYNC4;
+        CHECK(zdr_nfs_cb_argop4(&zdr, &arg));
+        len = zdr_getpos(&zdr);
+        zdr_destroy(&zdr);
+
+        send_call(0x500, NFS4_CALLBACK, NFS_CB, CB_COMPOUND, body, len, 0);
+        service();
+        CHECK(read_reply(0x500, &res, NULL, NULL) == SUCCESS);
+        CHECK(res.nres == 2);
+        if (minorversion >= 2) {
+                CHECK(res.status == NFS4_OK);
+                CHECK(handler_calls == 1 && handler_op == OP_CB_OFFLOAD);
+                CHECK(res.resop[1] == OP_CB_OFFLOAD && res.opstatus[1] == NFS4_OK);
+        } else {
+                CHECK(res.status == NFS4ERR_OP_ILLEGAL);
+                CHECK(handler_calls == 0);
+                CHECK(res.resop[1] == OP_CB_ILLEGAL);
+        }
+        teardown();
+}
+
 /* A call whose xid is the same as one of our outstanding requests. */
 static void test_xid_collision(void)
 {
@@ -611,6 +675,7 @@ int main(void)
         for (minorversion = 1; minorversion <= 2; minorversion++) {
                 test_calls();
                 test_delegation_ops();
+                test_offload();
                 test_xid_collision();
                 test_reply_jumps_queue();
         }
