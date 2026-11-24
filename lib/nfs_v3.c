@@ -146,6 +146,19 @@ check_nfs3_error(struct nfs_context *nfs, int status,
 	return 0;
 }
 
+static int
+nfs3_empty_fh(struct nfs_context *nfs, struct nfs_cb_data *data,
+              u_int len)
+{
+	if (len != 0) {
+		return 0;
+	}
+	nfs_set_error(nfs, "Server returned an empty filehandle.");
+	data->cb(-EIO, nfs, nfs_get_error(nfs), data->private_data);
+	free_nfs_cb_data(data);
+	return 1;
+}
+
 static int nfs3_lookup_path_async_internal(struct nfs_context *nfs,
                                            struct nfs_attr *attr,
                                            struct nfs_cb_data *data,
@@ -314,6 +327,9 @@ nfs3_lookup_path_1_cb(struct rpc_context *rpc, int status, void *command_data,
 	 */
         fh.val = res->LOOKUP3res_u.resok.object.data.data_val;
         fh.len = res->LOOKUP3res_u.resok.object.data.data_len;
+	if (nfs3_empty_fh(nfs, data, fh.len)) {
+		return;
+	}
 	nfs3_lookup_path_async_internal(nfs, &attr, data, &fh);
 }
 
@@ -836,6 +852,11 @@ nfs3_mount_4_cb(struct rpc_context *rpc, int status, void *command_data,
 		md_cb->error = mountstat3_to_errno(res->fhs_status);
 		goto finished;
 	}
+	if (res->mountres3_u.mountinfo.fhandle.fhandle3_len == 0) {
+		nfs_set_error(nfs, "Server returned an empty filehandle.");
+		md_cb->error = -EIO;
+		goto finished;
+	}
 
 	mnt = malloc(sizeof(*mnt));
 	if (mnt == NULL) {
@@ -1059,6 +1080,10 @@ nfs3_mount_2_cb(struct rpc_context *rpc, int status, void *command_data,
 		return;
 	}
 
+	if (nfs3_empty_fh(nfs, data,
+	                  res->mountres3_u.mountinfo.fhandle.fhandle3_len)) {
+		return;
+	}
 	nfs->nfsi->rootfh.len = res->mountres3_u.mountinfo.fhandle.fhandle3_len;
 	nfs->nfsi->rootfh.val = malloc(nfs->nfsi->rootfh.len);
 	if (nfs->nfsi->rootfh.val == NULL) {
@@ -4955,6 +4980,11 @@ nfs3_create_1_cb(struct rpc_context *rpc, int status, void *command_data,
 		data->cb(nfsstat3_to_errno(res->status), nfs,
                          nfs_get_error(nfs), data->private_data);
 		free_nfs_cb_data(data);
+		return;
+	}
+
+	if (nfs3_empty_fh(nfs, data,
+	                  res->CREATE3res_u.resok.obj.post_op_fh3_u.handle.data.data_len)) {
 		return;
 	}
 

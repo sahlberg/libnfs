@@ -442,6 +442,27 @@ nfs4_find_op(struct nfs_context *nfs, struct nfs4_cb_data *data,
         return i;
 }
 
+static GETFH4resok *
+nfs4_find_getfh(struct nfs_context *nfs, struct nfs4_cb_data *data,
+                COMPOUND4res *res)
+{
+        GETFH4resok *resok;
+        int i;
+
+        if ((i = nfs4_find_op(nfs, data, res, OP_GETFH, "GETFH")) < 0) {
+                return NULL;
+        }
+        resok = &res->resarray.resarray_val[i].nfs_resop4_u.opgetfh.GETFH4res_u.resok4;
+        if (resok->object.nfs_fh4_len == 0) {
+                nfs_set_error(nfs, "Server returned an empty filehandle.");
+                data->cb(-EIO, nfs, nfs_get_error(nfs), data->private_data);
+                free_nfs4_cb_data(data);
+                return NULL;
+        }
+
+        return resok;
+}
+
 static uint64_t
 nfs_hton64(uint64_t val)
 {
@@ -2118,10 +2139,9 @@ nfs4_mount_4_cb(struct rpc_context *rpc, int status, void *command_data,
                 return;
         }
 
-        if ((i = nfs4_find_op(nfs, data, res, OP_GETFH, "GETFH")) < 0) {
+        if ((gfhresok = nfs4_find_getfh(nfs, data, res)) == NULL) {
                 return;
         }
-        gfhresok = &res->resarray.resarray_val[i].nfs_resop4_u.opgetfh.GETFH4res_u.resok4;
 
         nfs->nfsi->rootfh.len = gfhresok->object.nfs_fh4_len;
         nfs->nfsi->rootfh.val = malloc(nfs->nfsi->rootfh.len);
@@ -3073,11 +3093,9 @@ nfs4_open_cb(struct rpc_context *rpc, int status, void *command_data,
                 return;
         }
 
-        /* Parse GetFH */
-        if ((i = nfs4_find_op(nfs, data, res, OP_GETFH, "GETFH")) < 0) {
+        if ((gresok = nfs4_find_getfh(nfs, data, res)) == NULL) {
                 return;
         }
-        gresok = &res->resarray.resarray_val[i].nfs_resop4_u.opgetfh.GETFH4res_u.resok4;
 
         fh = calloc(1, sizeof(*fh));
         if (fh == NULL) {
@@ -3947,8 +3965,12 @@ nfs4_readlink_cb(struct rpc_context *rpc, int status, void *command_data,
 
         rlresok = &res->resarray.resarray_val[i].nfs_resop4_u.opreadlink.READLINK4res_u.resok4;
 
-        target = strndup(rlresok->link.utf8string_val,
-                         rlresok->link.utf8string_len);
+        if (rlresok->link.utf8string_len == 0) {
+                target = strdup("");
+        } else {
+                target = strndup(rlresok->link.utf8string_val,
+                                 rlresok->link.utf8string_len);
+        }
         if (target == NULL) {
                 data->cb(-ENOMEM, nfs, "Failed to allocate memory",
                          data->private_data);
@@ -4251,7 +4273,6 @@ nfs4_link_1_cb(struct rpc_context *rpc, int status, void *command_data,
         struct nfs_context *nfs = data->nfs;
         COMPOUND4res *res = command_data;
         GETFH4resok *gfhresok;
-        int i;
         struct nfsfh *fh;
 
         assert(rpc->magic == RPC_CONTEXT_MAGIC);
@@ -4260,10 +4281,9 @@ nfs4_link_1_cb(struct rpc_context *rpc, int status, void *command_data,
                 return;
         }
 
-        if ((i = nfs4_find_op(nfs, data, res, OP_GETFH, "GETFH")) < 0) {
+        if ((gfhresok = nfs4_find_getfh(nfs, data, res)) == NULL) {
                 return;
         }
-        gfhresok = &res->resarray.resarray_val[i].nfs_resop4_u.opgetfh.GETFH4res_u.resok4;
 
         /* oldpath fh */
         fh = calloc(1, sizeof(*fh));
@@ -4383,7 +4403,6 @@ nfs4_rename_1_cb(struct rpc_context *rpc, int status, void *command_data,
         struct nfs_context *nfs = data->nfs;
         COMPOUND4res *res = command_data;
         GETFH4resok *gfhresok;
-        int i;
         struct nfsfh *fh;
 
         assert(rpc->magic == RPC_CONTEXT_MAGIC);
@@ -4392,10 +4411,9 @@ nfs4_rename_1_cb(struct rpc_context *rpc, int status, void *command_data,
                 return;
         }
 
-        if ((i = nfs4_find_op(nfs, data, res, OP_GETFH, "GETFH")) < 0) {
+        if ((gfhresok = nfs4_find_getfh(nfs, data, res)) == NULL) {
                 return;
         }
-        gfhresok = &res->resarray.resarray_val[i].nfs_resop4_u.opgetfh.GETFH4res_u.resok4;
 
         /* newpath fh */
         fh = calloc(1, sizeof(*fh));
@@ -4686,8 +4704,12 @@ nfs4_parse_readdir(struct nfs_context *nfs, struct nfs4_cb_data *data,
 		 * name in the reply. Every other user of a utf8string in this
 		 * tree already respects the length; this one did not.
 		 */
-		nfsdirent->name = strndup(e->name.utf8string_val,
-		                          e->name.utf8string_len);
+		if (e->name.utf8string_len == 0) {
+			nfsdirent->name = strdup("");
+		} else {
+			nfsdirent->name = strndup(e->name.utf8string_val,
+			                          e->name.utf8string_len);
+		}
 		if (nfsdirent->name == NULL) {
                         nfs_set_error(nfs, "Out of memory.");
                         data->cb(-ENOMEM, nfs, nfs_get_error(nfs),
@@ -4807,11 +4829,9 @@ nfs4_opendir_cb(struct rpc_context *rpc, int status, void *command_data,
                 return;
         }
 
-        /* Parse GetFH */
-        if ((i = nfs4_find_op(nfs, data, res, OP_GETFH, "GETFH")) < 0) {
+        if ((gresok = nfs4_find_getfh(nfs, data, res)) == NULL) {
                 return;
         }
-        gresok = &res->resarray.resarray_val[i].nfs_resop4_u.opgetfh.GETFH4res_u.resok4;
 
         fh = calloc(1, sizeof(*fh));
         if (fh == NULL) {
