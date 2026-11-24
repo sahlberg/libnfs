@@ -13,8 +13,11 @@ operations and attributes) get reached too.
 
 Build libnfs first, without the optional TLS, Kerberos and RDMA
 support so the static library needs nothing beyond -lpthread, then the
-target:
+target. libnfs itself is built with -fsanitize=fuzzer-no-link so that
+libFuzzer sees coverage inside the library and not only in the harness,
+and with ASan so that it catches memory errors in it:
 
+    CC=clang CFLAGS="-g -fsanitize=fuzzer-no-link,address -fno-omit-frame-pointer" \
     cmake -S . -B build -DCMAKE_BUILD_TYPE=RelWithDebInfo -DBUILD_SHARED_LIBS=OFF \
       -DENABLE_TLS=OFF -DENABLE_KRB5=OFF -DENABLE_RDMA=OFF
     cmake --build build -j$(nproc)
