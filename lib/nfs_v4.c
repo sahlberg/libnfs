@@ -560,8 +560,11 @@ nfs_parse_attributes(struct nfs_context *nfs, struct nfs4_cb_data *data,
         }
         /* FSID */
         if (nfs4_attr_is_set(mask, FATTR4_FSID)) {
+                uint64_t fsid[2];
+
                 CHECK_GETATTR_BUF_SPACE(len, 16);
-                st->nfs_dev = ((uint64_t *)(void *)buf)[0] ^ ((uint64_t *)(void *)buf)[1];
+                memcpy(fsid, buf, sizeof(fsid));
+                st->nfs_dev = fsid[0] ^ fsid[1];
                 buf += 16;
                 len -= 16;
         }
