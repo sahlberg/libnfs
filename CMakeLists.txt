@@ -306,11 +306,16 @@ foreach(LIB ${SYSTEM_LIBRARIES})
   if(LIB MATCHES "/([^/]+)\\.framework$")
     list(APPEND PKG_LIBLIST "-framework ${CMAKE_MATCH_1}")
   elseif(IS_ABSOLUTE ${LIB} AND EXISTS ${LIB})
-    list(APPEND PKG_LIBLIST "${LIB}")
+    # find_library() paths are only valid on the build machine, use -l<name>
+    get_filename_component(LIBNAME ${LIB} NAME)
+    string(REGEX REPLACE "^lib" "" LIBNAME ${LIBNAME})
+    string(REGEX REPLACE "\\.(so|a|dylib|tbd|lib|dll\\.a)(\\..*)?$" "" LIBNAME ${LIBNAME})
+    list(APPEND PKG_LIBLIST "-l${LIBNAME}")
   else()
     list(APPEND PKG_LIBLIST "-l${LIB}")
   endif()
 endforeach()
+string(REPLACE ";" " " PKG_LIBLIST "${PKG_LIBLIST}")
 configure_file(cmake/libnfs.pc.cmake
                ${CMAKE_CURRENT_BINARY_DIR}/libnfs.pc @ONLY)
 
