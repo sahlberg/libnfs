@@ -1522,28 +1522,52 @@ nfs_absolute_link_path(struct nfs_context *nfs, const char *target,
 {
 	const char *export = nfs_get_export(nfs);
 	size_t export_len = export ? strlen(export) : 0;
+	char *norm;
+
+	norm = malloc(target_len + 2);
+	if (norm == NULL) {
+		goto nomem;
+	}
+	memcpy(norm, target, target_len);
+	norm[target_len] = '\0';
+	if (nfs_normalize_path(nfs, norm) != 0) {
+		goto outside;
+	}
+	/* "/x/.." normalizes to "" */
+	if (norm[0] == '\0') {
+		strcpy(norm, "/");
+	}
+	target_len = strlen(norm);
 
 	/* An export of "/" contains every absolute target. */
 	while (export_len > 0 && export[export_len - 1] == '/') {
 		export_len--;
 	}
 	if (target_len < export_len ||
-	    strncmp(target, export, export_len) != 0 ||
-	    (target_len > export_len && target[export_len] != '/')) {
-		nfs_set_error(nfs, "Symbolic link points outside export");
-		return -ENOENT;
+	    strncmp(norm, export, export_len) != 0 ||
+	    (target_len > export_len && norm[export_len] != '/')) {
+		goto outside;
 	}
-	target += export_len;
+	target = norm + export_len;
 	target_len -= export_len;
 
 	*path = malloc(target_len + strlen(rest) + 3);
 	if (*path == NULL) {
-		nfs_set_error(nfs, "Out of memory: failed to allocate path "
-			      "for symbolic link");
-		return -ENOMEM;
+		free(norm);
+		goto nomem;
 	}
 	sprintf(*path, "/%.*s/%s", (int)target_len, target, rest);
+	free(norm);
 	return 0;
+
+outside:
+	free(norm);
+	nfs_set_error(nfs, "Symbolic link points outside export");
+	return -ENOENT;
+nomem:
+	nfs_set_error(nfs, "Out of memory: failed to allocate path "
+		      "for symbolic link");
+	return -ENOMEM;
 }
 
 int
