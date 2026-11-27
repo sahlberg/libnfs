@@ -1647,6 +1647,8 @@ nfs4_lookup_path_2_cb(struct rpc_context *rpc, int status, void *command_data,
         COMPOUND4res *res = command_data;
         READLINK4res *rlres = NULL;
         char *path, *tmp, *end;
+        const char *link_val;
+        uint32_t link_len;
         int i;
 
         assert(rpc->magic == RPC_CONTEXT_MAGIC);
@@ -1697,20 +1699,37 @@ nfs4_lookup_path_2_cb(struct rpc_context *rpc, int status, void *command_data,
                 return;
         }
         rlres = &res->resarray.resarray_val[i].nfs_resop4_u.opreadlink;
-        
-        tmp = malloc(strlen(data->path) + 3 + rlres->READLINK4res_u.resok4.link.utf8string_len);
-        if (tmp == NULL) {
-                nfs_set_error(nfs, "Out of memory duplicating path.");
-                data->cb(-ENOMEM, nfs, nfs_get_error(nfs),
-                         data->private_data);
-                free_nfs4_cb_data(data);
-                free(path);
-                return;
-        }
+        link_val = rlres->READLINK4res_u.resok4.link.utf8string_val;
+        link_len = rlres->READLINK4res_u.resok4.link.utf8string_len;
 
-        sprintf(tmp, "%s/%.*s/%s",
-                path, (int)rlres->READLINK4res_u.resok4.link.utf8string_len,
-                rlres->READLINK4res_u.resok4.link.utf8string_val, end);
+        if (link_len > 0 && link_val[0] == '/') {
+                /*
+                 * An absolute target is a path on the server, not one
+                 * relative to the link's directory.
+                 */
+                int ret = nfs_absolute_link_path(nfs, link_val, link_len,
+                                                 end, &tmp);
+                if (ret < 0) {
+                        data->cb(ret, nfs, nfs_get_error(nfs),
+                                 data->private_data);
+                        free_nfs4_cb_data(data);
+                        free(path);
+                        return;
+                }
+        } else {
+                tmp = malloc(strlen(data->path) + 3 + link_len);
+                if (tmp == NULL) {
+                        nfs_set_error(nfs, "Out of memory duplicating path.");
+                        data->cb(-ENOMEM, nfs, nfs_get_error(nfs),
+                                 data->private_data);
+                        free_nfs4_cb_data(data);
+                        free(path);
+                        return;
+                }
+
+                sprintf(tmp, "%s/%.*s/%s", path, (int)link_len, link_val,
+                        end);
+        }
         free(path);
         free(data->path);
         data->path = tmp;
