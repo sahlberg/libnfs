@@ -200,29 +200,17 @@ nfs3_lookup_path_2_cb(struct rpc_context *rpc, int status, void *command_data,
 	path = res->READLINK3res_u.resok.data;
 
 	/* Handle absolute paths, ensuring that the path lies within the
-	 * export. */
+	 * export, both the case where the current component is an
+	 * intermediate component and when it is the final component. */
 	if (path[0] == '/') {
-		if (strstr(path, nfs_get_export(nfs)) == path) {
-			char *ptr = path + strlen(nfs_get_export(nfs));
-			if (*ptr == '/') {
-				newpath = strdup(ptr);
-			} else if (*ptr == '\0') {
-				newpath = strdup("/");
-			} else {
-				data->cb(-ENOENT, nfs, "Symbolic link points "
-                                         "outside export", data->private_data);
-				free_nfs_cb_data(data);
-				return;
-			}
-		} else {
-			data->cb(-ENOENT, nfs, "Symbolic link points outside "
-                                 "export", data->private_data);
+		int ret = nfs_absolute_link_path(nfs, path, strlen(path),
+						 data->path, &newpath);
+		if (ret < 0) {
+			data->cb(ret, nfs, nfs_get_error(nfs),
+				 data->private_data);
 			free_nfs_cb_data(data);
 			return;
 		}
-
-		if (!newpath)
-			goto nomem;
 	} else {
 		/* Handle relative paths, both the case where the current
 		 * component is an intermediate component and when it is the

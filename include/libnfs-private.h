@@ -1295,6 +1295,9 @@ void rpc_reset_cursor(struct rpc_context *rpc, struct rpc_iovec_cursor *v);
 const struct nfs_fh *nfs_get_rootfh(struct nfs_context *nfs);
 
 int nfs_normalize_path(struct nfs_context *nfs, char *path);
+int nfs_absolute_link_path(struct nfs_context *nfs, const char *target,
+                           size_t target_len, const char *rest,
+                           char **path);
 void nfs_free_nfsdir(struct nfsdir *nfsdir);
 void nfs_free_nfsfh(struct nfsfh *nfsfh);
 

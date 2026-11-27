@@ -1515,6 +1515,43 @@ nfs_umount_async(struct nfs_context *nfs, nfs_cb cb, void *private_data)
         }
 }
 
+/*
+ * The absolute target of a symbolic link is a path on the server. Turn it
+ * into a path from the root of the mounted export, followed by rest, the
+ * part of the path being looked up that comes after the link, so that the
+ * lookup can start again from the root. target need not be NUL-terminated.
+ * Returns -ENOENT if the target lies outside the export.
+ */
+int
+nfs_absolute_link_path(struct nfs_context *nfs, const char *target,
+                       size_t target_len, const char *rest, char **path)
+{
+	const char *export = nfs_get_export(nfs);
+	size_t export_len = export ? strlen(export) : 0;
+
+	/* An export of "/" contains every absolute target. */
+	while (export_len > 0 && export[export_len - 1] == '/') {
+		export_len--;
+	}
+	if (target_len < export_len ||
+	    strncmp(target, export, export_len) != 0 ||
+	    (target_len > export_len && target[export_len] != '/')) {
+		nfs_set_error(nfs, "Symbolic link points outside export");
+		return -ENOENT;
+	}
+	target += export_len;
+	target_len -= export_len;
+
+	*path = malloc(target_len + strlen(rest) + 3);
+	if (*path == NULL) {
+		nfs_set_error(nfs, "Out of memory: failed to allocate path "
+			      "for symbolic link");
+		return -ENOMEM;
+	}
+	sprintf(*path, "/%.*s/%s", (int)target_len, target, rest);
+	return 0;
+}
+
 int
 nfs_normalize_path(struct nfs_context *nfs, char *path)
 {
