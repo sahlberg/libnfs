@@ -1515,13 +1515,7 @@ nfs_umount_async(struct nfs_context *nfs, nfs_cb cb, void *private_data)
         }
 }
 
-/*
- * The absolute target of a symbolic link is a path on the server. Turn it
- * into a path from the root of the mounted export, followed by rest, the
- * part of the path being looked up that comes after the link, so that the
- * lookup can start again from the root. target need not be NUL-terminated.
- * Returns -ENOENT if the target lies outside the export.
- */
+/* Map an absolute link target into the export and append rest */
 int
 nfs_absolute_link_path(struct nfs_context *nfs, const char *target,
                        size_t target_len, const char *rest, char **path)

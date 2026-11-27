@@ -1703,10 +1703,6 @@ nfs4_lookup_path_2_cb(struct rpc_context *rpc, int status, void *command_data,
         link_len = rlres->READLINK4res_u.resok4.link.utf8string_len;
 
         if (link_len > 0 && link_val[0] == '/') {
-                /*
-                 * An absolute target is a path on the server, not one
-                 * relative to the link's directory.
-                 */
                 int ret = nfs_absolute_link_path(nfs, link_val, link_len,
                                                  end, &tmp);
                 if (ret < 0) {

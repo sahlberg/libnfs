@@ -199,9 +199,7 @@ nfs3_lookup_path_2_cb(struct rpc_context *rpc, int status, void *command_data,
 
 	path = res->READLINK3res_u.resok.data;
 
-	/* Handle absolute paths, ensuring that the path lies within the
-	 * export, both the case where the current component is an
-	 * intermediate component and when it is the final component. */
+	/* Absolute target: must lie within the export */
 	if (path[0] == '/') {
 		int ret = nfs_absolute_link_path(nfs, path, strlen(path),
 						 data->path, &newpath);
